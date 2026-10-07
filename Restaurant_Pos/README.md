@@ -4,7 +4,7 @@ Windows desktop POS for hotels and restaurants, running entirely on the venue's 
 
 Waiter, Kitchen, Billing and Admin modules live in one WPF application. The desktop never touches the
 database. Everything goes through a central ASP.NET Core Web API, SignalR pushes real-time updates, and
-SQL Server is the single source of truth.
+PostgreSQL is the single source of truth.
 
 ```
    WAITER WPF        KITCHEN WPF        BILLING WPF        ADMIN WPF
@@ -16,7 +16,7 @@ SQL Server is the single source of truth.
                      ASP.NET CORE WEB API  --  SignalR Hub
                                       |
                                       v
-                                 SQL SERVER
+                                 POSTGRESQL
 ```
 
 ## Project status
@@ -25,7 +25,7 @@ SQL Server is the single source of truth.
 |------------------------------------|--------------|
 | Planning documents                 | Done         |
 | Phase 1 – Foundation               | Done         |
-| Phase 2 – Tables & Sections        | Not started  |
+| Phase 2 – Tables & Sections        | Done         |
 | Phase 3 – Menu & Pricing           | Not started  |
 | Phase 4 – Waiter Ordering          | Not started  |
 | Phase 5 – Kitchen Display          | Not started  |
@@ -41,7 +41,7 @@ Update this table (and `docs/phases/README.md`) when a phase starts or finishes.
 
 ```powershell
 dotnet tool restore
-dotnet test HotelPOS.sln                       # builds everything and runs the tests (LocalDB required)
+dotnet test HotelPOS.sln                       # builds everything and runs the tests (local PostgreSQL required)
 dotnet run --project src/HotelPOS.Api          # API + SignalR on http://localhost:5000 (Swagger at /swagger)
 dotnet run --project src/HotelPOS.Desktop      # WPF client; first run asks for the server address
 ```
@@ -72,7 +72,7 @@ Development sign-in: `admin` / `Admin@123` (must change it), or `manager1`, `wai
 
 ## Golden rules (short form)
 
-1. WPF never connects to SQL Server. Clients talk only to the API.
+1. WPF never connects to the database. Clients talk only to the API.
 2. The API/database is the source of truth. SignalR is a notification, not a state store.
 3. No hard-coded server IP, printer, restaurant name or tax config. Everything is configuration.
 4. Network drops must never crash the app, lose an order, or duplicate one. Idempotency keys on critical calls.

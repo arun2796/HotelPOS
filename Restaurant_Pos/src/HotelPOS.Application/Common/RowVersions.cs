@@ -1,30 +1,43 @@
+using System.Buffers.Binary;
+
 namespace HotelPOS.Application.Common;
 
-/// <summary>Converts SQL Server rowversion values to and from the base64 strings used in DTOs.</summary>
+/// <summary>
+/// Converts row versions (PostgreSQL xmin values) to and from the opaque base64 strings used in DTOs.
+/// Clients only echo the string back; they never interpret it.
+/// </summary>
 public static class RowVersions
 {
-    public static string Encode(byte[]? rowVersion) =>
-        rowVersion is null || rowVersion.Length == 0 ? string.Empty : Convert.ToBase64String(rowVersion);
-
-    public static bool TryDecode(string? value, out byte[] rowVersion)
+    public static string Encode(uint rowVersion)
     {
-        rowVersion = Array.Empty<byte>();
+        if (rowVersion == 0)
+        {
+            return string.Empty;
+        }
+
+        Span<byte> bytes = stackalloc byte[sizeof(uint)];
+        BinaryPrimitives.WriteUInt32BigEndian(bytes, rowVersion);
+        return Convert.ToBase64String(bytes);
+    }
+
+    public static bool TryDecode(string? value, out uint rowVersion)
+    {
+        rowVersion = 0;
         if (string.IsNullOrWhiteSpace(value))
         {
             return false;
         }
 
-        try
-        {
-            rowVersion = Convert.FromBase64String(value);
-            return rowVersion.Length > 0;
-        }
-        catch (FormatException)
+        Span<byte> bytes = stackalloc byte[8];
+        if (!Convert.TryFromBase64String(value, bytes, out var written) || written != sizeof(uint))
         {
             return false;
         }
+
+        rowVersion = BinaryPrimitives.ReadUInt32BigEndian(bytes);
+        return rowVersion != 0;
     }
 
-    public static bool Matches(byte[] current, string? provided) =>
-        TryDecode(provided, out var decoded) && current.AsSpan().SequenceEqual(decoded);
+    public static bool Matches(uint current, string? provided) =>
+        TryDecode(provided, out var decoded) && decoded == current;
 }

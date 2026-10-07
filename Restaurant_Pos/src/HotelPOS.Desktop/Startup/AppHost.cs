@@ -49,6 +49,7 @@ public static class AppHost
         services.AddSingleton<ISystemApi, SystemApi>();
         services.AddSingleton<IUsersApi, UsersApi>();
         services.AddSingleton<IAdminSettingsApi, AdminSettingsApi>();
+        services.AddSingleton<IFloorApi, FloorApi>();
 
         // Real-time
         services.AddSingleton<IRealtimeClient, RealtimeClient>();

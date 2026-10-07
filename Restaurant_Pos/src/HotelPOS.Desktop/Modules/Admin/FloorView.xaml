@@ -1,0 +1,24 @@
+<UserControl x:Class="HotelPOS.Desktop.Modules.Admin.FloorView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:admin="clr-namespace:HotelPOS.Desktop.Modules.Admin"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance admin:FloorViewModel}"
+             d:DesignWidth="1100" d:DesignHeight="700">
+
+  <Grid Margin="24,16,24,24">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <ListBox Style="{StaticResource ChipList}" ItemsSource="{Binding Tabs}" SelectedIndex="{Binding SelectedTab}" Margin="0,0,0,8" />
+
+    <admin:TablesView Grid.Row="1" DataContext="{Binding Tables}"
+                      Visibility="{Binding DataContext.IsTablesTab, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}" />
+    <admin:SectionsView Grid.Row="1" DataContext="{Binding Sections}"
+                        Visibility="{Binding DataContext.IsSectionsTab, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}" />
+  </Grid>
+</UserControl>

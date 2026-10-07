@@ -32,7 +32,7 @@ public static class DependencyInjection
                     $"Connection string '{ConnectionStringName}' is not configured. Set ConnectionStrings:{ConnectionStringName} in appsettings.");
             }
 
-            options.UseSqlServer(connectionString, sql => sql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName));
+            options.UseNpgsql(connectionString, npgsql => npgsql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName));
             options.AddInterceptors(sp.GetRequiredService<AuditableEntityInterceptor>());
         });
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());

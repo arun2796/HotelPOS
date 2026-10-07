@@ -4,15 +4,17 @@ Last updated: 2026-10-07
 
 ## 1. Conventions
 
-- Primary keys: `int` identity (`Devices.Id` and `IdempotencyRecords.Key` are `uniqueidentifier`).
+- Database: PostgreSQL via Npgsql. Table and column names are PascalCase (quote them in raw SQL).
+- Primary keys: `int` identity (`Devices.Id` and `IdempotencyRecords.Key` are `uuid`).
 - Every entity derives from `BaseEntity`: `Id`, `CreatedAt`, `CreatedBy`, `UpdatedAt`, `UpdatedBy`
   (set by an EF `SaveChanges` interceptor from `ICurrentUser` and `IClock`).
-- `RowVersion` (`rowversion`) on: `Tables`, `Orders`, `Bills`, `MenuItems`, `Users`, `KitchenOrders`.
+- `RowVersion` (the `xmin` system column, a `uint` in .NET; no schema column) on: `Tables`, `Orders`, `Bills`, `MenuItems`, `Users`, `KitchenOrders`.
 - Master data (users, tables, menu items, categories, taxes, discounts, payment methods) is never
   deleted; it is deactivated (`IsActive = false`). Transactional data is never deleted.
 - Monetary columns: `decimal(18,2)`. Rates: `decimal(5,2)`. Quantities: `int`.
-- Timestamps: `datetime2(3)` in UTC.
-- Strings: `nvarchar` with explicit max lengths (names 100, codes 20, notes 500, JSON `nvarchar(max)`).
+- Timestamps: `timestamp(3) with time zone`, always written in UTC.
+- Strings: `character varying(n)` with explicit max lengths (names 100, codes 20, notes 500), JSON as `text`.
+  Comparisons are case-sensitive: case-insensitive rules upper-case both sides (or use a normalized column).
 - Snapshot on transactional rows what must not change afterwards (item name, unit price, tax rate,
   modifier prices, station).
 - Enums stored as `int` with a check constraint listing valid values.
@@ -62,7 +64,7 @@ Unique: `MenuItems (CategoryId, Name)`.
 | `OrderItems` | `OrderId`, `BatchNumber` (1..n), `MenuItemId`, `ItemName` (snapshot), `UnitPrice` (snapshot), `Quantity`, `Notes?`, `TaxId?`, `TaxRatePercent` (snapshot), `PreparationStationId` (snapshot), `Status` (Draft/Sent/Cancelled), `KitchenOrderId?`, `CancelledBy?`, `CancelReason?` |
 | `OrderItemModifiers` | `OrderItemId`, `ModifierOptionId`, `Name` (snapshot), `PriceDelta` (snapshot) |
 
-Constraints: at most one **active** order per table — filtered unique index on
+Constraints: at most one **active** order per table — partial unique index (EF `HasFilter`) on
 `Orders(TableId) WHERE Status NOT IN (Paid, Completed, Cancelled)`.
 
 ### 2.5 Kitchen (Phase 5)
@@ -177,10 +179,10 @@ Bill.PaymentStatus: Pending -> PartiallyPaid -> Paid -> Refunded (full refund)
 
 | Number | Rule |
 |---|---|
-| `OrderNumber` | `NEXT VALUE FOR dbo.OrderNumbers` (SEQUENCE starting 1001). Gaps allowed. |
+| `OrderNumber` | `nextval('"OrderNumbers"')` (SEQUENCE starting 1001, EF `HasSequence`). Gaps allowed. |
 | `TicketNumber` | `"{OrderNumber}-{BatchNumber}"` plus station suffix when a batch spans stations: `1025-1-BAR`. |
-| `BillNumber` | SEQUENCE `dbo.BillNumbers`. Internal. |
-| `InvoiceNumber` | `"{InvoicePrefix}{yyyy}{MM}-{000000}"` from a `Settings` counter row read with `UPDLOCK` inside the finalisation transaction. Gap-free. Prefix and reset policy (yearly/monthly/never) from settings. |
+| `BillNumber` | SEQUENCE `"BillNumbers"`. Internal. |
+| `InvoiceNumber` | `"{InvoicePrefix}{yyyy}{MM}-{000000}"` from a `Settings` counter row read with `SELECT ... FOR UPDATE` inside the finalisation transaction. Gap-free. Prefix and reset policy (yearly/monthly/never) from settings. |
 
 ## 6. Money and bill calculation (`BillCalculator`, pure domain code)
 
@@ -212,7 +214,7 @@ Prices are tax-exclusive in v1 (`PricesIncludeTax` setting reserved).
   `Orders(WaiterId, CreatedAt)`
 - `OrderItems(OrderId)`; `KitchenOrders(OrderId)`; `KitchenOrders(PreparationStationId, Status)`;
   `KitchenOrders(TicketNumber)` unique
-- `Bills(OrderId)` unique; `Bills(BillNumber)` unique; `Bills(InvoiceNumber)` unique filtered;
+- `Bills(OrderId)` unique; `Bills(BillNumber)` unique; `Bills(InvoiceNumber)` unique partial (where not null);
   `Bills(Status, CreatedAt)`
 - `Payments(BillId)`; `Payments(IdempotencyKey)` unique
 - `AuditLogs(Timestamp)`, `AuditLogs(EntityType, EntityId)`, `AuditLogs(UserId)`

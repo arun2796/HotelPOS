@@ -1,6 +1,7 @@
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Domain.Administration;
 using HotelPOS.Domain.Billing;
+using HotelPOS.Domain.Floor;
 using HotelPOS.Domain.Identity;
 using HotelPOS.Domain.Menu;
 using Microsoft.EntityFrameworkCore;
@@ -25,6 +26,8 @@ public sealed class AppDbContext : DbContext, IAppDbContext
     public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
     public DbSet<PreparationStation> PreparationStations => Set<PreparationStation>();
     public DbSet<PaymentMethod> PaymentMethods => Set<PaymentMethod>();
+    public DbSet<Section> Sections => Set<Section>();
+    public DbSet<Table> Tables => Set<Table>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -33,12 +36,13 @@ public sealed class AppDbContext : DbContext, IAppDbContext
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
-        // All timestamps are UTC. Store with millisecond precision and read back with Kind = Utc.
+        // All timestamps are UTC ("timestamp with time zone", which Npgsql only accepts with Kind = Utc).
+        // Store with millisecond precision and read back with Kind = Utc.
         configurationBuilder.Properties<DateTime>()
-            .HaveColumnType("datetime2(3)")
+            .HaveColumnType("timestamp(3) with time zone")
             .HaveConversion<UtcDateTimeConverter>();
         configurationBuilder.Properties<DateTime?>()
-            .HaveColumnType("datetime2(3)")
+            .HaveColumnType("timestamp(3) with time zone")
             .HaveConversion<NullableUtcDateTimeConverter>();
         configurationBuilder.Properties<decimal>().HavePrecision(18, 2);
     }

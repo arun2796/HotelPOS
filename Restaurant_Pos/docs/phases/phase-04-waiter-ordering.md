@@ -38,7 +38,7 @@ orders are visible to kitchen/cashier/manager screens as lists.
 | Contracts | `CreateOrderRequest` (`tableId, guestCount, notes, items[], submit`), `OrderItemInput` (`menuItemId, quantity, notes, modifierOptionIds[]`), `ReplaceOrderItemsRequest`, `AppendOrderItemsRequest`, `UpdateOrderRequest`, `CancelOrderRequest`, `OrderSummaryDto`, `OrderDetailDto`, `OrderItemDto`, `OrderItemModifierDto`, events `OrderCreated`, `OrderUpdated`, `OrderCancelled` |
 | Domain | `Order` (+ `OrderStateMachine`: `CanTransition(from, to)`, `Submit()`, `AppendBatch()`, `Cancel(by role)`), `OrderItem`, `OrderItemModifier`, `Table.AttachOrder/DetachOrder` |
 | Application | `IOrderService` (`CreateAsync`, `GetAsync`, `ListAsync`, `GetActiveAsync`, `ReplaceItemsAsync`, `SubmitAsync`, `AppendItemsAsync`, `UpdateAsync`, `CancelAsync`), `OrderItemFactory` (snapshots from menu, validates availability and modifier rules), `IIdempotencyStore`, validators |
-| Infrastructure | configurations, `Phase04_Orders` migration (tables + `OrderNumbers` sequence + filtered unique index), `IdempotencyStore`, cleanup hosted service (expired keys) |
+| Infrastructure | configurations, `Phase04_Orders` migration (tables + `OrderNumbers` sequence + partial unique index), `IdempotencyStore`, cleanup hosted service (expired keys) |
 | Api | `OrdersController`, `IdempotencyMiddleware` + `[Idempotent]` attribute, events |
 | Desktop | Waiter: `TableDetailsViewModel` (order section), `OrderBuilderView/VM`, `CartItemViewModel`, `ModifierPickerView`, `MyOrdersView/VM`; `ILocalDraftStore`; `IOrderSubmitter` (idempotent retry); shared `ActiveOrdersView` for kitchen/cashier placeholders; Ready/notification plumbing prepared |
 | Tests | see § 10 |
@@ -46,7 +46,7 @@ orders are visible to kitchen/cashier/manager screens as lists.
 ## 5. Data model
 
 `docs/02` § 2.4. Migration `Phase04_Orders`: `Orders`, `OrderItems`, `OrderItemModifiers`,
-sequence `dbo.OrderNumbers START 1001`, filtered unique index for one active order per table.
+sequence `"OrderNumbers"` starting 1001, partial unique index for one active order per table.
 
 ## 6. API endpoints
 

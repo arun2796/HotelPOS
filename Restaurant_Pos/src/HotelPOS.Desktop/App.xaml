@@ -6,6 +6,7 @@
              xmlns:auth="clr-namespace:HotelPOS.Desktop.Modules.Auth"
              xmlns:common="clr-namespace:HotelPOS.Desktop.Modules.Common"
              xmlns:admin="clr-namespace:HotelPOS.Desktop.Modules.Admin"
+             xmlns:tables="clr-namespace:HotelPOS.Desktop.Modules.Tables"
              ShutdownMode="OnMainWindowClose">
   <Application.Resources>
     <ResourceDictionary>
@@ -36,6 +37,12 @@
       </DataTemplate>
       <DataTemplate DataType="{x:Type admin:SettingsViewModel}">
         <admin:SettingsView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type admin:FloorViewModel}">
+        <admin:FloorView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type tables:TableMapViewModel}">
+        <tables:TableMapView />
       </DataTemplate>
     </ResourceDictionary>
   </Application.Resources>

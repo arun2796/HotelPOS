@@ -1,0 +1,108 @@
+<UserControl x:Class="HotelPOS.Desktop.Modules.Admin.SectionsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:admin="clr-namespace:HotelPOS.Desktop.Modules.Admin"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance admin:SectionsViewModel}"
+             d:DesignWidth="1100" d:DesignHeight="640">
+
+  <Grid>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="*" />
+      <ColumnDefinition Width="Auto" />
+    </Grid.ColumnDefinitions>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <!-- Toolbar -->
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,16">
+      <Button Command="{Binding RefreshListCommand}" ToolTip="Reload from the server">
+        <TextBlock Text="&#xE72C;" Style="{StaticResource Text.Icon}" />
+      </Button>
+      <Button Command="{Binding NewSectionCommand}" Style="{StaticResource Button.Primary}" Margin="8,0,0,0">
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Text="&#xE710;" Style="{StaticResource Text.Icon}" FontSize="14" />
+          <TextBlock Text="New section" Margin="8,0,0,0" />
+        </StackPanel>
+      </Button>
+    </StackPanel>
+
+    <Border Grid.Row="1" Style="{StaticResource Banner.Error}" Margin="0,0,0,12"
+            Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibility}}">
+      <TextBlock Text="{Binding ErrorMessage}" Style="{StaticResource Text.Error}" />
+    </Border>
+
+    <!-- List -->
+    <Grid Grid.Row="2">
+      <DataGrid ItemsSource="{Binding Sections}" SelectedItem="{Binding SelectedSection}" HorizontalScrollBarVisibility="Disabled">
+        <DataGrid.InputBindings>
+          <MouseBinding Gesture="LeftDoubleClick" Command="{Binding EditCommand}" />
+        </DataGrid.InputBindings>
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="ORDER" Binding="{Binding SortOrder}" Width="0.5*" MinWidth="70" />
+          <DataGridTextColumn Header="NAME" Binding="{Binding Name}" Width="2*" MinWidth="140" />
+          <DataGridTextColumn Header="ACTIVE TABLES" Binding="{Binding TableCount}" Width="1*" MinWidth="110" />
+          <DataGridTextColumn Header="STATUS" Binding="{Binding IsActive, Converter={StaticResource ActiveText}}" Width="0.8*" MinWidth="80" />
+        </DataGrid.Columns>
+      </DataGrid>
+      <ProgressBar IsIndeterminate="True" Height="3" VerticalAlignment="Top"
+                   Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}" />
+    </Grid>
+
+    <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,12,0,0">
+      <Button Content="Edit" Command="{Binding EditCommand}" MinWidth="90" />
+    </StackPanel>
+
+    <!-- Editor panel -->
+    <Border Grid.Column="1" Grid.RowSpan="4" Style="{StaticResource Card}" Width="360" Margin="20,0,0,0"
+            DataContext="{Binding Editor}"
+            Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibility}}">
+      <Grid>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="*" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <TextBlock Text="{Binding Title}" Style="{StaticResource Text.Title}" Margin="0,0,0,20" />
+
+            <TextBlock Text="Name" Style="{StaticResource Text.Label}" />
+            <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" MaxLength="100" Margin="0,0,0,14" />
+
+            <TextBlock Text="Sort order (position on the table map)" Style="{StaticResource Text.Label}" />
+            <TextBox Text="{Binding SortOrder, UpdateSourceTrigger=PropertyChanged}" MaxLength="4" Margin="0,0,0,14" />
+
+            <CheckBox Content="Active" IsChecked="{Binding IsActive}"
+                      Visibility="{Binding IsNew, Converter={StaticResource InverseBoolToVisibility}}" />
+            <TextBlock Text="A section can be deactivated only when all its tables are inactive."
+                       Style="{StaticResource Text.Caption}" TextWrapping="Wrap" Margin="0,6,0,0"
+                       Visibility="{Binding IsNew, Converter={StaticResource InverseBoolToVisibility}}" />
+
+            <Border Style="{StaticResource Banner.Error}" Margin="0,16,0,0"
+                    Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibility}}">
+              <TextBlock Text="{Binding ErrorMessage}" Style="{StaticResource Text.Error}" />
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+
+        <Grid Grid.Row="1" Margin="0,20,0,0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="12" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <Button Content="Cancel"
+                  Command="{Binding DataContext.CancelEditCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+          <Button Grid.Column="2" Content="{Binding SaveText}" Style="{StaticResource Button.Primary}"
+                  Command="{Binding DataContext.SaveSectionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+        </Grid>
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

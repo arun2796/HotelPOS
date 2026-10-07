@@ -111,7 +111,7 @@ device before dropping its connection.
       menu (verified by the matrix test).
 - [ ] Passwords hashed (PBKDF2, ≥ 100k iterations); no plaintext anywhere; tokens not logged.
 - [ ] JWT key ≥ 256 bits, generated per installation, stored only on the server.
-- [ ] SQL Server not reachable from client PCs (firewall test).
+- [ ] PostgreSQL not reachable from client PCs (firewall test, port 5432).
 - [ ] Input validation on every request; file uploads type/size checked.
 - [ ] Error responses never leak stack traces outside Development.
 - [ ] Audit log cannot be modified through the API.

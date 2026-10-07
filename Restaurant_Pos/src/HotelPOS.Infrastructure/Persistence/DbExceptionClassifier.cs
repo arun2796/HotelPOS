@@ -1,12 +1,12 @@
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace HotelPOS.Infrastructure.Persistence;
 
-/// <summary>Recognises provider-specific database errors without leaking SqlClient into the API layer.</summary>
+/// <summary>Recognises provider-specific database errors without leaking Npgsql into the API layer.</summary>
 public static class DbExceptionClassifier
 {
-    // 2601: duplicate key in unique index, 2627: unique/primary key constraint violation.
+    // SQLSTATE 23505: unique_violation (unique index or primary key).
     public static bool IsUniqueViolation(DbUpdateException exception) =>
-        exception.InnerException is SqlException sql && (sql.Number == 2601 || sql.Number == 2627);
+        exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
 }

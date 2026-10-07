@@ -90,8 +90,8 @@ Admin always has access; Manager has access wherever `M` is listed.
 | GET | `/api/tables` | * | Table map: sections with tables, status, current order summary (`?includeInactive` for admin) |
 | GET | `/api/tables/{id}` | * | Table details + active order summary |
 | POST / PUT / DELETE | `/api/tables`, `/api/tables/{id}` | A, M | |
-| POST | `/api/tables/{id}/occupy` | W, C, M | `{guestCount, rowVersion}` Available -> Occupied |
-| POST | `/api/tables/{id}/release` | W, C, M | Occupied (no order) -> Available; with order: Manager only |
+| POST | `/api/tables/{id}/occupy` | A, W, C, M | `{guestCount, rowVersion}` Available -> Occupied |
+| POST | `/api/tables/{id}/release` | A, W, C, M | Occupied (no order) -> Available; with order: Manager only |
 | POST | `/api/tables/{id}/out-of-service` / `in-service` | A, M | |
 
 ### 3.4 Menu (Phase 3)

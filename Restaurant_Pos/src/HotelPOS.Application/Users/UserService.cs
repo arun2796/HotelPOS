@@ -51,9 +51,9 @@ public sealed class UserService : IUserService
         var users = UsersWithRoles().AsNoTracking();
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
-            var term = query.Search.Trim();
-            var normalized = term.ToUpperInvariant();
-            users = users.Where(u => u.NormalizedUsername.Contains(normalized) || u.DisplayName.Contains(term));
+            // PostgreSQL compares case-sensitively, so both sides are upper-cased.
+            var normalized = query.Search.Trim().ToUpperInvariant();
+            users = users.Where(u => u.NormalizedUsername.Contains(normalized) || u.DisplayName.ToUpper().Contains(normalized));
         }
 
         if (query.IsActive is { } isActive)

@@ -1,5 +1,6 @@
 using HotelPOS.Domain.Administration;
 using HotelPOS.Domain.Billing;
+using HotelPOS.Domain.Floor;
 using HotelPOS.Domain.Identity;
 using HotelPOS.Domain.Menu;
 using Microsoft.EntityFrameworkCore;
@@ -21,6 +22,8 @@ public interface IAppDbContext
     DbSet<IdempotencyRecord> IdempotencyRecords { get; }
     DbSet<PreparationStation> PreparationStations { get; }
     DbSet<PaymentMethod> PaymentMethods { get; }
+    DbSet<Section> Sections { get; }
+    DbSet<Table> Tables { get; }
 
     DatabaseFacade Database { get; }
 

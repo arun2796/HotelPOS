@@ -4,6 +4,7 @@ using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Security;
 using HotelPOS.Domain.Administration;
 using HotelPOS.Domain.Billing;
+using HotelPOS.Domain.Floor;
 using HotelPOS.Domain.Identity;
 using HotelPOS.Domain.Menu;
 using Microsoft.EntityFrameworkCore;
@@ -18,7 +19,7 @@ public sealed class SeedOptions
     /// <summary>Initial password of the "admin" account. The user must change it at first login.</summary>
     public string AdminPassword { get; set; } = string.Empty;
 
-    /// <summary>Creates sample users (waiter1, kitchen1, cashier1, manager1). Development only.</summary>
+    /// <summary>Creates sample users (waiter1, kitchen1, cashier1, manager1) and a sample floor. Development only.</summary>
     public bool DemoData { get; set; }
 
     /// <summary>Password of the demo users.</summary>
@@ -74,6 +75,7 @@ public sealed class DbSeeder
         if (options.DemoData)
         {
             await SeedDemoUsersAsync(options.DemoPassword, cancellationToken);
+            await SeedDemoFloorAsync(cancellationToken);
         }
     }
 
@@ -181,5 +183,35 @@ public sealed class DbSeeder
         }
 
         await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task SeedDemoFloorAsync(CancellationToken cancellationToken)
+    {
+        // Only on an empty floor: once an admin has edited sections, the demo layout is never re-added.
+        if (await _db.Sections.AnyAsync(cancellationToken))
+        {
+            return;
+        }
+
+        var layout = new (string Section, int SortOrder, string[] Codes, int Capacity)[]
+        {
+            ("Ground Floor", 1, new[] { "T01", "T02", "T03", "T04", "T05", "T06", "T07", "T08" }, 4),
+            ("First Floor", 2, new[] { "T11", "T12", "T13", "T14" }, 6),
+            ("Outdoor", 3, new[] { "O01", "O02", "O03", "O04" }, 2),
+        };
+
+        foreach (var (name, sortOrder, codes, capacity) in layout)
+        {
+            var section = new Section(name, sortOrder);
+            _db.Sections.Add(section);
+            await _db.SaveChangesAsync(cancellationToken);
+            foreach (var code in codes)
+            {
+                _db.Tables.Add(new Table(code, null, section.Id, capacity));
+            }
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+        _logger.LogInformation("Seeded demo floor: {Sections} sections", layout.Length);
     }
 }

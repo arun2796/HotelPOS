@@ -1,6 +1,6 @@
 # Developer Setup
 
-Last updated: 2026-10-07 (Phase 1)
+Last updated: 2026-10-07 (Phase 2, PostgreSQL)
 
 How to build, run and test HotelPOS on a development PC. Production installation is covered in Phase 10
 (`docs/ops/`).
@@ -11,14 +11,14 @@ How to build, run and test HotelPOS on a development PC. Production installation
 |---|---|---|
 | Windows | 10 / 11 | The desktop client is WPF (Windows only). |
 | .NET SDK | 8.0.4xx | Pinned by `global.json` (roll-forward to the latest 8.0 feature band). |
-| SQL Server LocalDB | 2019+ | Installed with Visual Studio or SQL Server Express. Used for development and tests. |
+| PostgreSQL | 16+ (developed on 18) | Local server on `localhost:5432`, used for development and tests. Windows installer from postgresql.org. |
 | IDE | Visual Studio 2022, Rider or VS Code + C# Dev Kit | |
 
 Check:
 
 ```powershell
 dotnet --list-sdks          # an 8.0.x SDK must be listed
-sqllocaldb info             # MSSQLLocalDB must be listed
+psql -h localhost -U postgres -c "select version();"   # the server must answer
 ```
 
 Restore the local tools once (EF Core CLI pinned to 8.0.x):
@@ -35,12 +35,12 @@ src/
   HotelPOS.Contracts        DTOs, enums, error codes, roles, hub event names (shared with the desktop)
   HotelPOS.Domain           entities and domain rules
   HotelPOS.Application      use-case services, validators, interfaces
-  HotelPOS.Infrastructure   EF Core (SQL Server), migrations, seeding, JWT, password hashing, audit
+  HotelPOS.Infrastructure   EF Core (PostgreSQL via Npgsql), migrations, seeding, JWT, password hashing, audit
   HotelPOS.Api              ASP.NET Core Web API + SignalR hub (/hubs/restaurant)
   HotelPOS.Desktop          WPF client (all roles)
 tests/
   HotelPOS.Domain.Tests       pure unit tests
-  HotelPOS.Application.Tests  services against a throw-away LocalDB database
+  HotelPOS.Application.Tests  services against a throw-away PostgreSQL database
   HotelPOS.Api.Tests          in-memory API (WebApplicationFactory) against a throw-away database
   HotelPOS.Desktop.Tests      view-models, screen rendering, optional end-to-end resilience test
 ```
@@ -55,11 +55,13 @@ dotnet build HotelPOS.sln
 dotnet test HotelPOS.sln
 ```
 
-The Application and API tests create databases named `HotelPOS_AppTests_<guid>` / `HotelPOS_ApiTests_<guid>`
-on LocalDB and drop them afterwards. To use another SQL Server instance set:
+The Application and API tests create databases named `hotelpos_apptests_<guid>` / `hotelpos_apitests_<guid>`
+on the local PostgreSQL server and drop them afterwards. Only `hotelpos_*` databases are ever created or
+dropped. The default server account is in `tests/Shared/TestPostgres.cs`; to use another server or account
+set a connection string without `Database`:
 
 ```powershell
-$env:HOTELPOS_TEST_SQLSERVER = ".\SQLEXPRESS"
+$env:HOTELPOS_TEST_POSTGRES = "Host=localhost;Port=5432;Username=postgres;Password=<password>"
 ```
 
 ### Screen rendering test
@@ -79,7 +81,7 @@ $env:HOTELPOS_E2E = "1"
 dotnet test tests/HotelPOS.Desktop.Tests --filter "FullyQualifiedName~EndToEnd"
 ```
 
-It uses (and keeps) a LocalDB database named `HotelPOS_E2E`.
+It uses (and keeps) a PostgreSQL database named `hotelpos_e2e` on the same server as the other tests.
 
 ## 4. Run the API
 
@@ -91,8 +93,10 @@ The `Development` profile:
 
 - listens on `http://0.0.0.0:5000` (all interfaces, so other PCs on the LAN can connect — Windows may ask
   to allow the port through the firewall);
-- uses the LocalDB database `HotelPOS_Dev`, created and migrated automatically at start-up;
-- seeds the admin account and demo users (see below);
+- uses the PostgreSQL database `hotelpos_dev` (connection string in `appsettings.Development.json`), created
+  and migrated automatically at start-up;
+- seeds the admin account, demo users and a demo floor (Ground Floor T01–T08, First Floor T11–T14,
+  Outdoor O01–O04);
 - serves Swagger UI at `http://localhost:5000/swagger`.
 
 To listen on localhost only: `dotnet run --project src/HotelPOS.Api -- --urls http://localhost:5000`.
@@ -131,12 +135,25 @@ dotnet ef migrations add Phase02_Tables --project src/HotelPOS.Infrastructure --
 # Apply migrations manually (normally done by the API at start-up)
 dotnet ef database update --project src/HotelPOS.Infrastructure --startup-project src/HotelPOS.Infrastructure
 
-# Reset the development database
-sqlcmd -S "(localdb)\MSSQLLocalDB" -Q "ALTER DATABASE HotelPOS_Dev SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE HotelPOS_Dev"
+# Reset the development database (stop the API first); it is recreated at the next start
+psql -h localhost -U postgres -c "DROP DATABASE IF EXISTS hotelpos_dev WITH (FORCE);"
+
+# Inspect it
+psql -h localhost -U postgres -d hotelpos_dev -c '\dt'
 ```
 
-`dotnet ef` uses `DesignTimeDbContextFactory` (LocalDB `HotelPOS_Dev`); set `HOTELPOS_DESIGN_CONNECTION` to
-target another server.
+`dotnet ef migrations add` needs no database. `dotnet ef database update` uses `DesignTimeDbContextFactory`
+(`hotelpos_dev` on localhost); set `HOTELPOS_DESIGN_CONNECTION` to a full connection string (with password)
+to target another server.
+
+### PostgreSQL specifics
+
+- Tables and columns keep their PascalCase names, so quote them in hand-written SQL: `SELECT * FROM "Tables";`.
+- Optimistic concurrency uses the system column `xmin` (mapped to `RowVersion`); it is not a real column and
+  does not appear in `\d "Tables"`.
+- Timestamps are `timestamp(3) with time zone` and always written in UTC.
+- Text comparisons are case-sensitive; code that needs case-insensitive matching upper-cases both sides
+  (see `UserService` search and section names).
 
 ## 5. Run the desktop client
 
@@ -176,4 +193,5 @@ Delete the settings file to see the first-run screen again. **F11** toggles full
 | API fails with "Jwt:SigningKey must be configured" | Set `Jwt:SigningKey` (≥ 32 characters). Development has one in `appsettings.Development.json`. |
 | Desktop says "Cannot reach the server" | API running? Address and port right? On another PC: firewall rule for TCP 5000 on the server. |
 | Desktop status bar stays amber/red | The hub reconnects automatically (2 s → 15 s back-off); check the API log for errors. |
-| Tests fail to connect to `(localdb)\MSSQLLocalDB` | `sqllocaldb start MSSQLLocalDB`, or set `HOTELPOS_TEST_SQLSERVER`. |
+| Tests or API fail with "password authentication failed" / "No password has been provided" | Check the password in `appsettings.Development.json` / `tests/Shared/TestPostgres.cs`, or set `HOTELPOS_TEST_POSTGRES`. |
+| "Connection refused" on port 5432 | Start the Windows service `postgresql-x64-<version>` (`services.msc`). |

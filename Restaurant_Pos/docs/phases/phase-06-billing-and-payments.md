@@ -75,7 +75,7 @@ refunds.
 - Discount: either a predefined `Discount` or manual (type, value, reason). Predefined with
   `RequiresApproval` or manual discounts above `MaxCashierDiscountPercent` (setting, default 10)
   require manager approval. Recalculates totals; not allowed after finalize (reopen first).
-- Finalize: assigns the invoice number (gap-free, inside the transaction with `UPDLOCK` on the counter
+- Finalize: assigns the invoice number (gap-free, inside the transaction with `SELECT ... FOR UPDATE` on the counter
   row), freezes lines/discount, order -> `Billed`. Explicit (print before payment) or implicit on the
   first payment.
 - Payments: `Amount > 0`; non-cash amount must not exceed balance due (409

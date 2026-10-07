@@ -3,6 +3,7 @@ using System.Text;
 using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Auth;
 using HotelPOS.Contracts.Common;
+using HotelPOS.Contracts.Floor;
 using HotelPOS.Contracts.Users;
 
 namespace HotelPOS.Desktop.Services.Api;
@@ -149,4 +150,67 @@ public sealed class AdminSettingsApi : IAdminSettingsApi
 
     public Task<ApiResult<List<SettingDto>>> UpdateAsync(UpdateSettingsRequest request, CancellationToken cancellationToken = default) =>
         _api.PutAsync<List<SettingDto>>("api/admin/settings", request, cancellationToken);
+}
+
+public interface IFloorApi
+{
+    Task<ApiResult<TableMapDto>> GetMapAsync(bool includeInactive = false, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<TableDetailDto>> GetTableAsync(int id, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<TableDto>> OccupyAsync(int id, OccupyTableRequest request, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<TableDto>> ReleaseAsync(int id, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<TableDto>> SetOutOfServiceAsync(int id, bool outOfService, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<TableDto>> CreateTableAsync(CreateTableRequest request, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<TableDto>> UpdateTableAsync(int id, UpdateTableRequest request, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<List<SectionDto>>> GetSectionsAsync(bool includeInactive = false, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<SectionDto>> CreateSectionAsync(CreateSectionRequest request, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<SectionDto>> UpdateSectionAsync(int id, UpdateSectionRequest request, CancellationToken cancellationToken = default);
+}
+
+public sealed class FloorApi : IFloorApi
+{
+    private readonly IApiClient _api;
+
+    public FloorApi(IApiClient api)
+    {
+        _api = api;
+    }
+
+    public Task<ApiResult<TableMapDto>> GetMapAsync(bool includeInactive = false, CancellationToken cancellationToken = default) =>
+        _api.GetAsync<TableMapDto>(includeInactive ? "api/tables?includeInactive=true" : "api/tables", cancellationToken);
+
+    public Task<ApiResult<TableDetailDto>> GetTableAsync(int id, CancellationToken cancellationToken = default) =>
+        _api.GetAsync<TableDetailDto>($"api/tables/{id}", cancellationToken);
+
+    public Task<ApiResult<TableDto>> OccupyAsync(int id, OccupyTableRequest request, CancellationToken cancellationToken = default) =>
+        _api.PostAsync<TableDto>($"api/tables/{id}/occupy", request, cancellationToken);
+
+    public Task<ApiResult<TableDto>> ReleaseAsync(int id, CancellationToken cancellationToken = default) =>
+        _api.PostAsync<TableDto>($"api/tables/{id}/release", null, cancellationToken);
+
+    public Task<ApiResult<TableDto>> SetOutOfServiceAsync(int id, bool outOfService, CancellationToken cancellationToken = default) =>
+        _api.PostAsync<TableDto>($"api/tables/{id}/{(outOfService ? "out-of-service" : "in-service")}", null, cancellationToken);
+
+    public Task<ApiResult<TableDto>> CreateTableAsync(CreateTableRequest request, CancellationToken cancellationToken = default) =>
+        _api.PostAsync<TableDto>("api/tables", request, cancellationToken);
+
+    public Task<ApiResult<TableDto>> UpdateTableAsync(int id, UpdateTableRequest request, CancellationToken cancellationToken = default) =>
+        _api.PutAsync<TableDto>($"api/tables/{id}", request, cancellationToken);
+
+    public Task<ApiResult<List<SectionDto>>> GetSectionsAsync(bool includeInactive = false, CancellationToken cancellationToken = default) =>
+        _api.GetAsync<List<SectionDto>>(includeInactive ? "api/sections?includeInactive=true" : "api/sections", cancellationToken);
+
+    public Task<ApiResult<SectionDto>> CreateSectionAsync(CreateSectionRequest request, CancellationToken cancellationToken = default) =>
+        _api.PostAsync<SectionDto>("api/sections", request, cancellationToken);
+
+    public Task<ApiResult<SectionDto>> UpdateSectionAsync(int id, UpdateSectionRequest request, CancellationToken cancellationToken = default) =>
+        _api.PutAsync<SectionDto>($"api/sections/{id}", request, cancellationToken);
 }

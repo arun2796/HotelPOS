@@ -26,6 +26,8 @@ public abstract class DatabaseTestBase : IAsyncLifetime
 
     protected TestCurrentUser CurrentUser => Fixture.CurrentUser;
 
+    protected RecordingRealtimeNotifier Realtime => Fixture.Realtime;
+
     public async Task InitializeAsync()
     {
         await Fixture.ResetAsync();

@@ -4,6 +4,7 @@ using HotelPOS.Contracts.Auth;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Infrastructure.Persistence;
+using HotelPOS.Testing;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -14,8 +15,8 @@ using Microsoft.Extensions.DependencyInjection;
 namespace HotelPOS.Api.Tests.Support;
 
 /// <summary>
-/// Runs the real API in memory against its own throw-away SQL Server database (LocalDB by default,
-/// override with HOTELPOS_TEST_SQLSERVER). The database is migrated and seeded by the API's startup code.
+/// Runs the real API in memory against its own throw-away PostgreSQL database (see <see cref="TestPostgres"/>).
+/// The database is migrated and seeded by the API's startup code.
 /// </summary>
 public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
@@ -26,9 +27,7 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     public ApiFactory()
     {
-        var server = Environment.GetEnvironmentVariable("HOTELPOS_TEST_SQLSERVER") ?? @"(localdb)\MSSQLLocalDB";
-        _connectionString =
-            $"Server={server};Database=HotelPOS_ApiTests_{Guid.NewGuid():N};Trusted_Connection=True;TrustServerCertificate=True";
+        _connectionString = TestPostgres.NewDatabase("apitests");
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)

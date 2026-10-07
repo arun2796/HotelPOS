@@ -45,3 +45,38 @@ public sealed class TestCurrentUser : ICurrentUser
         DeviceName = null;
     }
 }
+
+/// <summary>Captures published real-time events instead of sending them.</summary>
+public sealed class RecordingRealtimeNotifier : IRealtimeNotifier
+{
+    private readonly List<(string EventName, object Payload, RealtimeAudience Audience)> _events = new();
+
+    public IReadOnlyList<(string EventName, object Payload, RealtimeAudience Audience)> Events
+    {
+        get
+        {
+            lock (_events)
+            {
+                return _events.ToList();
+            }
+        }
+    }
+
+    public Task PublishAsync(string eventName, object payload, RealtimeAudience audience, CancellationToken cancellationToken = default)
+    {
+        lock (_events)
+        {
+            _events.Add((eventName, payload, audience));
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public void Reset()
+    {
+        lock (_events)
+        {
+            _events.Clear();
+        }
+    }
+}

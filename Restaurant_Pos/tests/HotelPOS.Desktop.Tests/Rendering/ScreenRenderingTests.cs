@@ -9,6 +9,7 @@ using System.Windows.Threading;
 using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Enums;
+using HotelPOS.Contracts.Floor;
 using HotelPOS.Contracts.Users;
 using HotelPOS.Desktop.Modules.Auth;
 using HotelPOS.Desktop.Modules.Config;
@@ -102,6 +103,18 @@ public class ScreenRenderingTests
             await shell.NavigateToAsync(ModuleRegistry.ThisDevice, null);
             rendered.Add(await RenderScreenAsync(env, shell, "07-this-terminal"));
 
+            // Sections & Tables: tables tab with the editor open, then the sections tab
+            await shell.NavigateToAsync(ModuleRegistry.Floor, null);
+            var floor = (HotelPOS.Desktop.Modules.Admin.FloorViewModel)shell.CurrentPage!;
+            floor.Tables.SelectedRow = floor.Tables.Tables[4];
+            floor.Tables.EditCommand.Execute(null);
+            rendered.Add(await RenderScreenAsync(env, shell, "11-admin-floor-tables"));
+            floor.SelectedTab = HotelPOS.Desktop.Modules.Admin.FloorViewModel.SectionsTab;
+            await floor.Sections.LoadAsync();
+            floor.Sections.SelectedSection = floor.Sections.Sections[0];
+            floor.Sections.EditCommand.Execute(null);
+            rendered.Add(await RenderScreenAsync(env, shell, "12-admin-floor-sections"));
+
             // Dialog and toast layers over the users page, with the connection lost
             await shell.NavigateToAsync(ModuleRegistry.Users, null);
             env.Realtime.Raise(ConnectionStatus.Reconnecting);
@@ -123,7 +136,18 @@ public class ScreenRenderingTests
             var waiterShell = env.Create<ShellViewModel>();
             await waiterShell.OnNavigatedToAsync(null);
             env.Realtime.Raise(ConnectionStatus.Connected);
-            rendered.Add(await RenderScreenAsync(env, waiterShell, "10-waiter-home"));
+            rendered.Add(await RenderScreenAsync(env, waiterShell, "10-waiter-home-table-map"));
+
+            // Table details with guests typed on the keypad
+            var map = (HotelPOS.Desktop.Modules.Tables.TableMapViewModel)waiterShell.CurrentPage!;
+            map.SelectTableCommand.Execute(map.AllTables.Single(t => t.Code == "T05"));
+            map.Details.DigitCommand.Execute("4");
+            rendered.Add(await RenderScreenAsync(env, waiterShell, "13-waiter-table-details"));
+
+            map.SelectTableCommand.Execute(map.AllTables.Single(t => t.Code == "T02"));
+            env.Theme.Apply(ThemeService.Dark);
+            rendered.Add(await RenderScreenAsync(env, waiterShell, "14-waiter-table-details-occupied-dark"));
+            env.Theme.Apply(ThemeService.Light);
             waiterShell.Dispose();
         });
 
@@ -133,7 +157,7 @@ public class ScreenRenderingTests
         }
 
         bindingErrors.Errors.Should().BeEmpty("every binding in the views must point at an existing property");
-        rendered.Should().HaveCount(10);
+        rendered.Should().HaveCount(14);
     }
 
     private static async Task<string> RenderScreenAsync(Environment env, object screen, string name)
@@ -271,6 +295,16 @@ public class ScreenRenderingTests
                 new() { Key = "KitchenWarnMinutes", Value = "10", DataType = SettingDataType.Int, Description = "Kitchen ticket turns amber after this many minutes." },
             }));
 
+            var floorApi = Substitute.For<IFloorApi>();
+            floorApi.GetMapAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(ApiResult<TableMapDto>.Ok(DemoMap()));
+            floorApi.GetSectionsAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(ApiResult<List<SectionDto>>.Ok(new List<SectionDto>
+            {
+                new() { Id = 1, Name = "Ground Floor", SortOrder = 1, IsActive = true, TableCount = 8 },
+                new() { Id = 2, Name = "First Floor", SortOrder = 2, IsActive = true, TableCount = 4 },
+                new() { Id = 3, Name = "Outdoor", SortOrder = 3, IsActive = true, TableCount = 3 },
+                new() { Id = 4, Name = "Banquet Hall", SortOrder = 4, IsActive = false, TableCount = 0 },
+            }));
+
             var services = new ServiceCollection();
             services.AddLogging();
             services.AddSingleton<IClientSettingsService>(Settings);
@@ -283,6 +317,7 @@ public class ScreenRenderingTests
             services.AddSingleton(systemApi);
             services.AddSingleton(usersApi);
             services.AddSingleton(settingsApi);
+            services.AddSingleton(floorApi);
             services.AddSingleton(Substitute.For<IAuthApi>());
             services.AddSingleton(Substitute.For<IAppNavigator>());
             services.AddSingleton(Substitute.For<IUserPreferences>());
@@ -306,6 +341,64 @@ public class ScreenRenderingTests
         public MainViewModel Main { get; }
 
         public T Create<T>() => ActivatorUtilities.CreateInstance<T>(_provider);
+
+        /// <summary>A floor in mid-service: every status appears at least once.</summary>
+        private static TableMapDto DemoMap()
+        {
+            var now = DateTime.UtcNow;
+            TableDto T(int id, string code, int section, string sectionName, int capacity, TableStatus status = TableStatus.Available,
+                int? guests = null, int minutes = 0, int? order = null) => new()
+            {
+                Id = id,
+                Code = code,
+                SectionId = section,
+                SectionName = sectionName,
+                Capacity = capacity,
+                Status = status,
+                GuestCount = guests,
+                OccupiedAtUtc = guests is null ? null : now.AddMinutes(-minutes),
+                CurrentOrderNumber = order,
+                IsActive = true,
+                RowVersion = "AAAFow==",
+            };
+
+            return new TableMapDto
+            {
+                ServerTimeUtc = now,
+                Sections = new[]
+                {
+                    new TableMapSectionDto
+                    {
+                        Id = 1, Name = "Ground Floor", SortOrder = 1, IsActive = true,
+                        Tables = new[]
+                        {
+                            T(1, "T01", 1, "Ground Floor", 4),
+                            T(2, "T02", 1, "Ground Floor", 4, TableStatus.Occupied, 3, 12),
+                            T(3, "T03", 1, "Ground Floor", 2, TableStatus.Ordering, 2, 5, 1024),
+                            T(4, "T04", 1, "Ground Floor", 4, TableStatus.Preparing, 4, 26, 1019),
+                            T(5, "T05", 1, "Ground Floor", 6),
+                            T(6, "T06", 1, "Ground Floor", 4, TableStatus.Ready, 4, 41, 1012),
+                            T(7, "T07", 1, "Ground Floor", 8, TableStatus.Billing, 7, 83, 1003),
+                            T(8, "T08", 1, "Ground Floor", 4, TableStatus.OutOfService),
+                        },
+                    },
+                    new TableMapSectionDto
+                    {
+                        Id = 2, Name = "First Floor", SortOrder = 2, IsActive = true,
+                        Tables = new[]
+                        {
+                            T(11, "T11", 2, "First Floor", 6), T(12, "T12", 2, "First Floor", 6, TableStatus.Occupied, 5, 3),
+                            T(13, "T13", 2, "First Floor", 6), T(14, "T14", 2, "First Floor", 10),
+                        },
+                    },
+                    new TableMapSectionDto
+                    {
+                        Id = 3, Name = "Outdoor", SortOrder = 3, IsActive = true,
+                        Tables = new[] { T(21, "O01", 3, "Outdoor", 2), T(22, "O02", 3, "Outdoor", 2), T(23, "O03", 3, "Outdoor", 4) },
+                    },
+                },
+            };
+        }
 
         private static UserDto User(int id, string username, string name, bool active, DateTime? lastLogin, params string[] roles) => new()
         {

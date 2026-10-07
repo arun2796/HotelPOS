@@ -5,5 +5,5 @@ internal static class ConfigurationHelpers
     /// <summary>SQL check constraint that limits an int enum column to its defined values.</summary>
     public static string EnumCheck<TEnum>(string column)
         where TEnum : struct, Enum =>
-        $"[{column}] IN ({string.Join(", ", Enum.GetValues<TEnum>().Select(v => Convert.ToInt32(v, System.Globalization.CultureInfo.InvariantCulture)))})";
+        $"\"{column}\" IN ({string.Join(", ", Enum.GetValues<TEnum>().Select(v => Convert.ToInt32(v, System.Globalization.CultureInfo.InvariantCulture)))})";
 }

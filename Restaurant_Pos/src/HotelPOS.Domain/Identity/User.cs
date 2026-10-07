@@ -37,7 +37,7 @@ public sealed class User : BaseEntity, IHasRowVersion
     public DateTime? LockedUntil { get; private set; }
     public DateTime? LastLoginAt { get; private set; }
     public DateTime? PasswordChangedAt { get; private set; }
-    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
+    public uint RowVersion { get; set; }
 
     public IReadOnlyCollection<UserRole> UserRoles => _userRoles;
 

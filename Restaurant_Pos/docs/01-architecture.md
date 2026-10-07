@@ -27,7 +27,7 @@ Last updated: 2026-10-07
                                        |  EF Core (TCP 1433, localhost only)
                                        v
                    +------------------------------------------+
-                   |  SQL Server  (HotelPOS database)          |
+                   |  PostgreSQL  (hotelpos database)          |
                    +------------------------------------------+
 ```
 
@@ -37,7 +37,7 @@ Responsibilities:
 |---|---|
 | WPF client | Presentation, input, local configuration, local draft cache, printing, connection management |
 | API | Authentication, authorization, validation, business rules, state machines, calculations, transactions, audit, real-time publishing |
-| SQL Server | Persistent truth. Only the API process connects to it. |
+| PostgreSQL | Persistent truth. Only the API process connects to it. |
 
 The desktop app contains **no business rules** beyond UI conveniences (e.g. computing a provisional cart
 total for display). The server recalculates everything.
@@ -47,7 +47,7 @@ total for display). The server recalculates everything.
 - The server PC gets a **static LAN IP** (DHCP reservation on the router or manual IP).
 - The API listens on `http://0.0.0.0:5000` (configurable in `appsettings.json` -> `Kestrel:Endpoints`).
   HTTPS (`:5001`) with a self-signed or internal CA certificate is optional and documented in Phase 10.
-- SQL Server listens on localhost only. TCP 1433 is **not** opened on the firewall.
+- PostgreSQL listens on localhost only (`listen_addresses = 'localhost'`). TCP 5432 is **not** opened on the firewall.
 - Windows Firewall on the server allows inbound TCP 5000 (and 5001 if HTTPS) from the private network
   profile only.
 - Clients store the base URL in their local configuration (`ApiBaseUrl`). Nothing is compiled in.
@@ -196,8 +196,8 @@ Critical POSTs (`create order`, `append items`, `request bill`, `payment`, `refu
 
 ### 6.4 Concurrency
 
-`RowVersion` (SQL `rowversion`) on `Tables`, `Orders`, `Bills`, `MenuItems`, `Users`. DTOs carry
-`rowVersion` (base64). Update requests include it; mismatch => 409 `CONCURRENCY_CONFLICT` with the
+`RowVersion` (PostgreSQL system column `xmin`, mapped as a `uint` concurrency token) on `Tables`, `Orders`,
+`Bills`, `MenuItems`, `Users`. DTOs carry `rowVersion` (opaque base64). Update requests include it; mismatch => 409 `CONCURRENCY_CONFLICT` with the
 current state in `data` so the client can refresh. Bills additionally use a soft **claim lock**
 (cashier + device + expiry) so other counters see "being handled by BILLING-01".
 
@@ -215,7 +215,7 @@ timestamp. Written in the same transaction as the change.
 
 ### 6.7 Time and money
 
-- All timestamps stored as UTC (`datetime2`), displayed in the venue's local time by the client.
+- All timestamps stored as UTC (`timestamp(3) with time zone`), displayed in the venue's local time by the client.
 - `BusinessDayStartTime` setting defines report day boundaries.
 - Money: `decimal(18,2)`, rounding `MidpointRounding.AwayFromZero` at line level; optional whole-currency
   round-off on the bill total (`RoundOff` column). Currency symbol from settings.

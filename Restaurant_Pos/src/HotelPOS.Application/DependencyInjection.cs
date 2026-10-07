@@ -1,6 +1,7 @@
 using FluentValidation;
 using HotelPOS.Application.Auth;
 using HotelPOS.Application.Devices;
+using HotelPOS.Application.Floor;
 using HotelPOS.Application.Settings;
 using HotelPOS.Application.Users;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,6 +17,8 @@ public static class DependencyInjection
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IDeviceService, DeviceService>();
+        services.AddScoped<ISectionService, SectionService>();
+        services.AddScoped<ITableService, TableService>();
         services.AddScoped<SettingsService>();
         services.AddScoped<ISettingsService>(sp => sp.GetRequiredService<SettingsService>());
         services.AddScoped<ISystemInfoService>(sp => sp.GetRequiredService<SettingsService>());

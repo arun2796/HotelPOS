@@ -9,10 +9,13 @@ public interface IAuditable
     int? UpdatedBy { get; set; }
 }
 
-/// <summary>Entity protected by an optimistic-concurrency token (SQL Server rowversion).</summary>
+/// <summary>
+/// Entity protected by an optimistic-concurrency token. Mapped to PostgreSQL's <c>xmin</c> system
+/// column, which changes on every update of the row; never set it from application code.
+/// </summary>
 public interface IHasRowVersion
 {
-    byte[] RowVersion { get; set; }
+    uint RowVersion { get; set; }
 }
 
 /// <summary>Base class for entities with an int identity key.</summary>

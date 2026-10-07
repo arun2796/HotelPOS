@@ -39,12 +39,12 @@ Last updated: 2026-10-07
 | Project | What | Tools |
 |---|---|---|
 | `Domain.Tests` | State machines, `BillCalculator`, invariants; pure, no DB | xUnit, FluentAssertions |
-| `Application.Tests` | Services with a real `AppDbContext` on SQL Server LocalDB (per-test transaction rollback) and fakes for `IRealtimeNotifier`, `IClock`, `ICurrentUser` | xUnit, NSubstitute |
+| `Application.Tests` | Services with a real `AppDbContext` on a throw-away PostgreSQL database (tables truncated and re-seeded before each test) and fakes for `IRealtimeNotifier`, `IClock`, `ICurrentUser` | xUnit, NSubstitute |
 | `Api.Tests` | `WebApplicationFactory` end-to-end: auth, authorization matrix, idempotency, concurrency, hub events (real `HubConnection` to TestServer) | xUnit, Testcontainers (optional in CI) |
 | `Desktop.Tests` | View-model behaviour with fake services; connection-loss scenarios | xUnit |
 
-Database tests create `HotelPOS_<Suite>Tests_<guid>` on LocalDB (override with `HOTELPOS_TEST_SQLSERVER`)
-and drop it afterwards. `ScreenRenderingTests` renders every screen and fails on XAML or binding errors;
+Database tests create `hotelpos_<suite>tests_<guid>` on the local PostgreSQL server (override with
+`HOTELPOS_TEST_POSTGRES`) and drop it afterwards. `ScreenRenderingTests` renders every screen and fails on XAML or binding errors;
 the end-to-end resilience test runs only with `HOTELPOS_E2E=1`.
 
 Rules: test names `Method_Scenario_Expected`; one assertion topic per test; integration tests seed

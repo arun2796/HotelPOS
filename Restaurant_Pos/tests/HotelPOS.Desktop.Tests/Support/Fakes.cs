@@ -57,6 +57,8 @@ public sealed class InMemorySecureStore : ISecureStore
 
 public sealed class FakeRealtimeClient : IRealtimeClient
 {
+    private readonly List<(string EventName, Action<object> Handler)> _subscriptions = new();
+
     public event EventHandler<ConnectionStatus>? StatusChanged;
 
     public event EventHandler? Reconnected;
@@ -67,7 +69,24 @@ public sealed class FakeRealtimeClient : IRealtimeClient
 
     public Task StopAsync() => Task.CompletedTask;
 
-    public IDisposable Subscribe<T>(string eventName, Action<T> handler) => new NoopDisposable();
+    public IDisposable Subscribe<T>(string eventName, Action<T> handler)
+    {
+        var subscription = (eventName, (Action<object>)(payload => handler((T)payload)));
+        _subscriptions.Add(subscription);
+        return new Unsubscriber(() => _subscriptions.Remove(subscription));
+    }
+
+    /// <summary>Delivers a server event to the current subscribers, as the hub would.</summary>
+    public void Publish<T>(string eventName, T payload)
+        where T : notnull
+    {
+        foreach (var (name, handler) in _subscriptions.Where(s => s.EventName == eventName).ToList())
+        {
+            handler(payload);
+        }
+    }
+
+    public int SubscriberCount(string eventName) => _subscriptions.Count(s => s.EventName == eventName);
 
     public void Raise(ConnectionStatus status)
     {
@@ -77,11 +96,16 @@ public sealed class FakeRealtimeClient : IRealtimeClient
 
     public void RaiseReconnected() => Reconnected?.Invoke(this, EventArgs.Empty);
 
-    private sealed class NoopDisposable : IDisposable
+    private sealed class Unsubscriber : IDisposable
     {
-        public void Dispose()
+        private Action? _dispose;
+
+        public Unsubscriber(Action dispose)
         {
+            _dispose = dispose;
         }
+
+        public void Dispose() => Interlocked.Exchange(ref _dispose, null)?.Invoke();
     }
 }
 

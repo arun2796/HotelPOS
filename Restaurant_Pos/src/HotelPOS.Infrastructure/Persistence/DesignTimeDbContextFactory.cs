@@ -5,17 +5,17 @@ namespace HotelPOS.Infrastructure.Persistence;
 
 /// <summary>
 /// Used only by "dotnet ef" to create migrations. The connection string is irrelevant for
-/// "migrations add"; set HOTELPOS_DESIGN_CONNECTION to run "database update" against another server.
+/// "migrations add"; set HOTELPOS_DESIGN_CONNECTION to run "database update" against a server.
 /// </summary>
 public sealed class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
 {
     public AppDbContext CreateDbContext(string[] args)
     {
         var connection = Environment.GetEnvironmentVariable("HOTELPOS_DESIGN_CONNECTION")
-            ?? @"Server=(localdb)\MSSQLLocalDB;Database=HotelPOS_Dev;Trusted_Connection=True;TrustServerCertificate=True";
+            ?? "Host=localhost;Port=5432;Database=hotelpos_dev;Username=postgres";
 
         var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseSqlServer(connection, sql => sql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName))
+            .UseNpgsql(connection, npgsql => npgsql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName))
             .Options;
         return new AppDbContext(options);
     }

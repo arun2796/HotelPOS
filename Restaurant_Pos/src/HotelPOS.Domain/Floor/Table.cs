@@ -1,0 +1,135 @@
+using HotelPOS.Contracts.Common;
+using HotelPOS.Contracts.Enums;
+using HotelPOS.Contracts.Floor;
+using HotelPOS.Domain.Common;
+
+namespace HotelPOS.Domain.Floor;
+
+/// <summary>
+/// A table on the floor. Its status is stored and only changed through the methods below, which
+/// enforce the transitions of docs/02 § 4.3. From Phase 4 order transitions also set it.
+/// </summary>
+public sealed class Table : BaseEntity, IHasRowVersion
+{
+    private Table()
+    {
+    }
+
+    public Table(string code, string? name, int sectionId, int capacity)
+    {
+        Update(code, name, sectionId, capacity);
+        Status = TableStatus.Available;
+        IsActive = true;
+    }
+
+    public string Code { get; private set; } = string.Empty;
+    public string? Name { get; private set; }
+    public int SectionId { get; private set; }
+    public Section? Section { get; private set; }
+    public int Capacity { get; private set; }
+    public TableStatus Status { get; private set; }
+    public int? CurrentOrderId { get; private set; }
+    public DateTime? OccupiedAt { get; private set; }
+    public int? GuestCount { get; private set; }
+    public bool IsActive { get; private set; }
+    public uint RowVersion { get; set; }
+
+    public static string NormalizeCode(string code) => code.Trim().ToUpperInvariant();
+
+    /// <summary>A table can be deactivated only when nobody is seated at it.</summary>
+    public bool CanBeDeactivated => Status is TableStatus.Available or TableStatus.OutOfService;
+
+    public void Update(string code, string? name, int sectionId, int capacity)
+    {
+        var normalized = string.IsNullOrWhiteSpace(code) ? string.Empty : NormalizeCode(code);
+        if (normalized.Length is 0 or > FloorLimits.CodeMaxLength)
+        {
+            throw new DomainException($"Table code must be 1 to {FloorLimits.CodeMaxLength} characters.");
+        }
+
+        if (capacity is < FloorLimits.MinCapacity or > FloorLimits.MaxCapacity)
+        {
+            throw new DomainException($"Capacity must be between {FloorLimits.MinCapacity} and {FloorLimits.MaxCapacity}.");
+        }
+
+        if (sectionId <= 0)
+        {
+            throw new DomainException("A table belongs to a section.");
+        }
+
+        Code = normalized;
+        Name = string.IsNullOrWhiteSpace(name) ? null : name.Trim();
+        SectionId = sectionId;
+        Capacity = capacity;
+    }
+
+    /// <summary>Guests are seated: Available -> Occupied.</summary>
+    public void Occupy(int guestCount, DateTime nowUtc)
+    {
+        if (!IsActive || Status != TableStatus.Available)
+        {
+            throw new DomainException($"Table {Code} is not available.", ErrorCodes.TableNotAvailable);
+        }
+
+        if (guestCount < 1)
+        {
+            throw new DomainException("At least one guest is required.");
+        }
+
+        Status = TableStatus.Occupied;
+        GuestCount = guestCount;
+        OccupiedAt = nowUtc;
+    }
+
+    /// <summary>Guests left without an active order: Occupied -> Available.</summary>
+    public void Release()
+    {
+        if (Status != TableStatus.Occupied)
+        {
+            throw new DomainException($"Only an occupied table can be released (table {Code} is {Status}).", ErrorCodes.InvalidStateTransition);
+        }
+
+        if (CurrentOrderId is not null)
+        {
+            throw new DomainException($"Table {Code} has an active order. Close or cancel the order first.");
+        }
+
+        Status = TableStatus.Available;
+        GuestCount = null;
+        OccupiedAt = null;
+    }
+
+    /// <summary>Admin flag (broken table, reserved area): Available -> OutOfService.</summary>
+    public void SetOutOfService()
+    {
+        if (Status != TableStatus.Available)
+        {
+            throw new DomainException($"Only an available table can be taken out of service (table {Code} is {Status}).", ErrorCodes.InvalidStateTransition);
+        }
+
+        Status = TableStatus.OutOfService;
+    }
+
+    /// <summary>OutOfService -> Available.</summary>
+    public void ReturnToService()
+    {
+        if (Status != TableStatus.OutOfService)
+        {
+            throw new DomainException($"Table {Code} is not out of service.", ErrorCodes.InvalidStateTransition);
+        }
+
+        Status = TableStatus.Available;
+    }
+
+    public void Activate() => IsActive = true;
+
+    public void Deactivate()
+    {
+        if (!CanBeDeactivated)
+        {
+            throw new DomainException($"Table {Code} is in use and cannot be deactivated.", ErrorCodes.InvalidStateTransition);
+        }
+
+        IsActive = false;
+    }
+}

@@ -5,14 +5,14 @@ using System.Net.Sockets;
 
 namespace HotelPOS.Desktop.Tests.EndToEnd;
 
-/// <summary>Skips unless HOTELPOS_E2E=1: these tests start the real API process and need LocalDB.</summary>
+/// <summary>Skips unless HOTELPOS_E2E=1: these tests start the real API process and need PostgreSQL.</summary>
 public sealed class E2EFactAttribute : FactAttribute
 {
     public E2EFactAttribute()
     {
         if (Environment.GetEnvironmentVariable("HOTELPOS_E2E") != "1")
         {
-            Skip = "End-to-end test. Set HOTELPOS_E2E=1 (requires LocalDB and a built HotelPOS.Api).";
+            Skip = "End-to-end test. Set HOTELPOS_E2E=1 (requires PostgreSQL and a built HotelPOS.Api).";
         }
     }
 }
@@ -20,7 +20,7 @@ public sealed class E2EFactAttribute : FactAttribute
 /// <summary>Runs the built HotelPOS.Api as a separate process so tests can kill and restart the server.</summary>
 public sealed class ApiProcess : IAsyncDisposable
 {
-    private const string Database = "HotelPOS_E2E";
+    private const string Database = "hotelpos_e2e";
     private readonly string _dll;
     private Process? _process;
 
@@ -106,7 +106,7 @@ public sealed class ApiProcess : IAsyncDisposable
         };
         info.Environment["ASPNETCORE_ENVIRONMENT"] = "Development";
         info.Environment["ConnectionStrings__HotelPOS"] =
-            $@"Server=(localdb)\MSSQLLocalDB;Database={Database};Trusted_Connection=True;TrustServerCertificate=True";
+            $"{HotelPOS.Testing.TestPostgres.Server.TrimEnd(';')};Database={Database}";
         info.Environment["Logging__Directory"] = Path.Combine(Path.GetTempPath(), "hotelpos-e2e-logs");
 
         _process = Process.Start(info) ?? throw new InvalidOperationException("Could not start the API process.");

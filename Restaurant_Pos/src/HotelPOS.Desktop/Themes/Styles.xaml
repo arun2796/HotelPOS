@@ -362,6 +362,152 @@
     </Style.Triggers>
   </Style>
 
+  <!-- ===== Table map ===== -->
+  <!-- Status colours come from Brush.Status.* so they follow the theme. DataContext: an object with a Status (TableStatus). -->
+  <Style x:Key="TableTile" TargetType="Button">
+    <Setter Property="Width" Value="148" />
+    <Setter Property="Height" Value="112" />
+    <Setter Property="Margin" Value="0,0,12,12" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    <Setter Property="Foreground" Value="#FFFFFF" />
+    <Setter Property="Background" Value="{DynamicResource Brush.Status.Available}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="3" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Border x:Name="Root"
+                  Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="12"
+                  Padding="12,8"
+                  SnapsToDevicePixels="True">
+            <ContentPresenter />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Root" Property="Opacity" Value="0.9" />
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+              <Setter TargetName="Root" Property="Opacity" Value="0.75" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+    <Style.Triggers>
+      <DataTrigger Binding="{Binding Status}" Value="Occupied">
+        <Setter Property="Background" Value="{DynamicResource Brush.Status.Occupied}" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Status}" Value="Ordering">
+        <Setter Property="Background" Value="{DynamicResource Brush.Status.Ordering}" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Status}" Value="Preparing">
+        <Setter Property="Background" Value="{DynamicResource Brush.Status.Preparing}" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Status}" Value="Ready">
+        <Setter Property="Background" Value="{DynamicResource Brush.Status.Ready}" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Status}" Value="Billing">
+        <Setter Property="Background" Value="{DynamicResource Brush.Status.Billing}" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Status}" Value="OutOfService">
+        <Setter Property="Background" Value="{DynamicResource Brush.Status.OutOfService}" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding IsSelected}" Value="True">
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.TextPrimary}" />
+      </DataTrigger>
+    </Style.Triggers>
+  </Style>
+
+  <Style x:Key="TableStatusBadge" TargetType="Border">
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Padding" Value="12,4" />
+    <Setter Property="HorizontalAlignment" Value="Left" />
+    <Setter Property="TextElement.Foreground" Value="#FFFFFF" />
+    <Setter Property="TextElement.FontWeight" Value="SemiBold" />
+    <Setter Property="Background" Value="{DynamicResource Brush.Status.Available}" />
+    <Style.Triggers>
+      <DataTrigger Binding="{Binding Status}" Value="Occupied">
+        <Setter Property="Background" Value="{DynamicResource Brush.Status.Occupied}" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Status}" Value="Ordering">
+        <Setter Property="Background" Value="{DynamicResource Brush.Status.Ordering}" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Status}" Value="Preparing">
+        <Setter Property="Background" Value="{DynamicResource Brush.Status.Preparing}" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Status}" Value="Ready">
+        <Setter Property="Background" Value="{DynamicResource Brush.Status.Ready}" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Status}" Value="Billing">
+        <Setter Property="Background" Value="{DynamicResource Brush.Status.Billing}" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Status}" Value="OutOfService">
+        <Setter Property="Background" Value="{DynamicResource Brush.Status.OutOfService}" />
+      </DataTrigger>
+    </Style.Triggers>
+  </Style>
+
+  <Style x:Key="LegendDot" TargetType="Border">
+    <Setter Property="Width" Value="12" />
+    <Setter Property="Height" Value="12" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Margin" Value="16,0,6,0" />
+  </Style>
+
+  <!-- ===== Chips (section filters, sub-page tabs) ===== -->
+  <Style x:Key="Chip" TargetType="ListBoxItem">
+    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ListBoxItem">
+          <Border x:Name="Root" CornerRadius="20" Padding="18,0" Height="40" Margin="0,0,8,8"
+                  Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                  TextElement.Foreground="{DynamicResource Brush.TextPrimary}" TextElement.FontSize="15" TextElement.FontWeight="SemiBold">
+            <ContentPresenter VerticalAlignment="Center" />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Root" Property="Background" Value="{DynamicResource Brush.SurfaceAlt}" />
+            </Trigger>
+            <Trigger Property="IsSelected" Value="True">
+              <Setter TargetName="Root" Property="Background" Value="{DynamicResource Brush.Primary}" />
+              <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource Brush.Primary}" />
+              <Setter TargetName="Root" Property="TextElement.Foreground" Value="{DynamicResource Brush.PrimaryText}" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style x:Key="ChipList" TargetType="ListBox">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+    <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled" />
+    <Setter Property="ItemContainerStyle" Value="{StaticResource Chip}" />
+    <Setter Property="ItemsPanel">
+      <Setter.Value>
+        <ItemsPanelTemplate>
+          <WrapPanel />
+        </ItemsPanelTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- ===== Touch number pad ===== -->
+  <Style x:Key="NumPadKey" TargetType="Button" BasedOn="{StaticResource Button.Base}">
+    <Setter Property="Height" Value="52" />
+    <Setter Property="Margin" Value="4" />
+    <Setter Property="FontSize" Value="22" />
+  </Style>
+
   <!-- ===== Sidebar navigation ===== -->
   <Style x:Key="NavList" TargetType="ListBox">
     <Setter Property="Background" Value="Transparent" />

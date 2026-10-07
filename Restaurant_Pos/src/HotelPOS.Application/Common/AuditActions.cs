@@ -18,4 +18,17 @@ public static class AuditActions
     public const string DeviceRegistered = "Device.Registered";
 
     public const string SettingsUpdated = "Settings.Updated";
+
+    public const string SectionCreated = "Section.Created";
+    public const string SectionUpdated = "Section.Updated";
+    public const string SectionActivated = "Section.Activated";
+    public const string SectionDeactivated = "Section.Deactivated";
+
+    public const string TableCreated = "Table.Created";
+    public const string TableUpdated = "Table.Updated";
+    public const string TableActivated = "Table.Activated";
+    public const string TableDeactivated = "Table.Deactivated";
+    public const string TableOutOfService = "Table.OutOfService";
+    public const string TableInService = "Table.InService";
+    public const string TableReleasedByManager = "Table.ReleasedByManager";
 }

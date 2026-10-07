@@ -18,12 +18,12 @@ firewall, upgrade, troubleshooting and daily operations.
 **In**
 - API as Windows Service (`UseWindowsService`), Kestrel binding from configuration, optional HTTPS
   with a self-signed or internal certificate, auto-migrate on start, startup self-checks.
-- Server installer (Inno Setup): prerequisites check (.NET 8 runtime / self-contained publish, SQL
-  Server reachable), connection string + admin password wizard, JWT key generation, firewall rule,
+- Server installer (Inno Setup): prerequisites check (.NET 8 runtime / self-contained publish,
+  PostgreSQL reachable), connection string + admin password wizard, JWT key generation, firewall rule,
   service registration, first migration + seed, desktop shortcut for the admin client.
 - Client installer: desktop app, ProgramData settings folder with ACL, shortcut, optional
   pre-filled `ApiBaseUrl` passed as installer parameter (`/API=http://192.168.1.100:5000`).
-- Backup: `BackupHostedService` (daily at configured time -> `BACKUP DATABASE ... TO DISK`, retention
+- Backup: `BackupHostedService` (daily at configured time -> `pg_dump --format=custom`, retention
   cleanup, verify), admin **Backup now**, backups list, restore procedure and script.
 - Monitoring: `/health` with DB and disk checks, Serilog rolling files with retention, admin
   log tail screen, `ServerNotice` broadcast, version compatibility check (`minClientVersion`).
@@ -39,7 +39,7 @@ firewall, upgrade, troubleshooting and daily operations.
 | Project | Deliverables |
 |---|---|
 | Api | Windows Service hosting, `appsettings.Production.json` template, startup checks (DB reachable, migrations applied, settings seeded, disk space), HTTPS configuration section, `AdminController` (backup now, backups list, log tail), `ServerNotice` endpoint |
-| Infrastructure | `BackupService` (SQL BACKUP with COPY_ONLY off, CHECKSUM, verify via `RESTORE VERIFYONLY`), `BackupHostedService` (schedule from settings), retention cleanup |
+| Infrastructure | `BackupService` (`pg_dump -Fc` to a timestamped file, verify with `pg_restore --list`), `BackupHostedService` (schedule from settings), retention cleanup |
 | Contracts | `BackupDto`, `ServerNoticeRequest`, `LogTailDto`, `VersionInfo` |
 | Desktop | Version check on startup (blocks with message when below `minClientVersion`), Admin: Backup screen (now/list/settings), Log viewer, Server notice sender; graceful shutdown handling of `ServerNotice` |
 | Installers | `installer/server.iss`, `installer/client.iss`, `build/publish.ps1` (self-contained x64), `build/version.props` |
@@ -63,8 +63,8 @@ prefer the table for the admin list and audit (`Backup.Completed/Failed`). Migra
 
 ## 8. Business rules / operational rules
 
-- Service account: Local System or a dedicated local account with rights to the backup folder; SQL
-  login used by the API has `db_owner` on `HotelPOS` only.
+- Service account: Local System or a dedicated local account with rights to the backup folder; the
+  PostgreSQL role used by the API owns the `hotelpos` database only (no superuser).
 - Backups: daily full backup at `Backup:Time` (default 03:30, before business day start), retention
   default 14 days, written to `Backup:Path` (local disk + recommended copy to USB/NAS documented);
   failure raises an admin notice at next login and audit entry.
@@ -91,7 +91,7 @@ prefer the table for the admin list and audit (`Backup.Completed/Failed`). Migra
 
 ## 10. Tests
 
-- `BackupService` integration test against LocalDB: produces a file, verify succeeds, retention
+- `BackupService` integration test against PostgreSQL: produces a file, verify succeeds, retention
   deletes old files, failure audited.
 - Startup checks fail fast with clear log messages when DB unreachable (test via wrong connection
   string in a `WebApplicationFactory` variant).
@@ -104,7 +104,7 @@ prefer the table for the admin list and audit (`Backup.Completed/Failed`). Migra
 
 ## 11. Manual demo script (go-live rehearsal)
 
-1. Clean server VM: run server installer with SQL Express installed; service starts; `/health` OK;
+1. Clean server VM: run server installer with PostgreSQL installed; service starts; `/health` OK;
    firewall rule present; admin password set during install works.
 2. Two client VMs: run client installer with `/API=`; first login; device registration; full flow
    (order -> kitchen -> bill -> payment -> print to PDF printer).
@@ -126,8 +126,8 @@ prefer the table for the admin list and audit (`Backup.Completed/Failed`). Migra
 
 ## 13. Risks and notes
 
-- SQL Server Express has a 10 GB database limit — far above a single venue's yearly data, but
-  document it; audit log growth is the main driver (retention setting from Phase 9).
+- PostgreSQL has no edition size limit; audit log growth is the main driver of database size
+  (retention setting from Phase 9). Autovacuum must stay enabled.
 - Self-signed HTTPS adds support burden; keep HTTP as the default for isolated LANs and HTTPS as a
   documented option.
 - Installer development is often underestimated; start the Inno scripts early in this phase and test
