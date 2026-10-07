@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Floor;
+using HotelPOS.Contracts.Kitchen;
 using HotelPOS.Contracts.Orders;
 using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Modules.Orders;
@@ -16,7 +17,7 @@ namespace HotelPOS.Desktop.Modules.Tables;
 
 public sealed record OrderBatchViewModel(string Title, IReadOnlyList<OrderLineViewModel> Lines);
 
-public sealed record OrderLineViewModel(string Text, string Detail, string Total, bool IsCancelled)
+public sealed record OrderLineViewModel(int ItemId, string Text, string Detail, string Total, bool IsCancelled, bool CanCancel)
 {
     public bool HasDetail => Detail.Length > 0;
 }
@@ -36,6 +37,7 @@ public sealed partial class TableDetailsViewModel : ObservableObject
     private readonly Action<TableDto> _applyTable;
     private readonly Func<Task> _refreshMap;
     private readonly bool _canTakeOrders;
+    private readonly bool _isManager;
 
     public TableDetailsViewModel(
         IFloorApi floorApi,
@@ -46,7 +48,8 @@ public sealed partial class TableDetailsViewModel : ObservableObject
         INotificationService notifications,
         Action<TableDto> applyTable,
         Func<Task> refreshMap,
-        bool canTakeOrders)
+        bool canTakeOrders,
+        bool isManager = false)
     {
         _floorApi = floorApi;
         _ordersApi = ordersApi;
@@ -57,6 +60,7 @@ public sealed partial class TableDetailsViewModel : ObservableObject
         _applyTable = applyTable;
         _refreshMap = refreshMap;
         _canTakeOrders = canTakeOrders;
+        _isManager = isManager;
     }
 
     [ObservableProperty]
@@ -110,6 +114,8 @@ public sealed partial class TableDetailsViewModel : ObservableObject
     public bool ShowAddItems => Order is { CanModify: true } order
         && order.Status is OrderStatus.Submitted or OrderStatus.Accepted or OrderStatus.Preparing or OrderStatus.Ready or OrderStatus.Served;
 
+    public bool ShowServe => _canTakeOrders && Order is { } order && order.Tickets.Any(t => t.Status == KitchenOrderStatus.Ready);
+
     public bool ShowCancelOrder => Order is { CanModify: true } order
         && order.Status is OrderStatus.Draft or OrderStatus.Submitted or OrderStatus.Accepted or OrderStatus.Preparing or OrderStatus.Ready;
 
@@ -158,12 +164,13 @@ public sealed partial class TableDetailsViewModel : ObservableObject
         if (result.Success && result.Data is not null)
         {
             Order = result.Data;
-            Batches = result.Data.Items
+            var order = result.Data;
+            Batches = order.Items
                 .GroupBy(i => i.BatchNumber)
                 .OrderBy(g => g.Key)
                 .Select(g => new OrderBatchViewModel(
-                    result.Data.Status == OrderStatus.Draft ? "Not sent yet" : $"Batch {g.Key}",
-                    g.Select(ToLine).ToList()))
+                    order.Status == OrderStatus.Draft ? "Not sent yet" : BatchTitle(order, g.Key),
+                    g.Select(i => ToLine(i, CanCancelItem(order, i))).ToList()))
                 .ToList();
         }
         else
@@ -348,7 +355,83 @@ public sealed partial class TableDetailsViewModel : ObservableObject
         }
     }
 
+    private bool CanServe() => !IsBusy && ShowServe;
+
+    [RelayCommand(CanExecute = nameof(CanServe))]
+    private async Task ServeAsync()
+    {
+        var order = Order!;
+        IsBusy = true;
+        ErrorMessage = null;
+        try
+        {
+            var result = await _ordersApi.ServeAsync(order.Id);
+            if (result.Success)
+            {
+                _notifications.Success($"Order #{order.OrderNumber} served.");
+            }
+            else
+            {
+                ErrorMessage = ApiFailures.Describe(result);
+            }
+        }
+        finally
+        {
+            IsBusy = false;
+            await ReloadOrderAsync();
+        }
+    }
+
+    [RelayCommand]
+    private async Task CancelItemAsync(OrderLineViewModel? line)
+    {
+        var order = Order;
+        if (line is null || order is null || !line.CanCancel)
+        {
+            return;
+        }
+
+        var reason = await _dialogs.PromptAsync("Cancel item", $"Cancel {line.Text}? Enter the reason for the kitchen.", "Cancel item");
+        if (reason is null)
+        {
+            return;
+        }
+
+        IsBusy = true;
+        ErrorMessage = null;
+        try
+        {
+            var result = await _ordersApi.CancelItemAsync(order.Id, line.ItemId, new CancelOrderItemRequest { Reason = reason });
+            if (result.Success)
+            {
+                _notifications.Success($"{line.Text} cancelled.");
+            }
+            else
+            {
+                ErrorMessage = ApiFailures.Describe(result);
+            }
+        }
+        finally
+        {
+            IsBusy = false;
+            await ReloadOrderAsync();
+        }
+    }
+
     partial void OnIsBusyChanged(bool value) => RefreshCommands();
+
+    private bool CanCancelItem(OrderDetailDto order, OrderItemDto item) => order.CanModify && item.Status == OrderItemStatus.Sent
+        && (item.TicketStatus is KitchenOrderStatus.New or KitchenOrderStatus.Accepted
+            || (item.TicketStatus == KitchenOrderStatus.Preparing && _isManager));
+
+    private static string BatchTitle(OrderDetailDto order, int batch)
+    {
+        var tickets = order.Tickets.Where(t => t.BatchNumber == batch).ToList();
+        var states = tickets.Count == 1
+            ? tickets[0].Status.ToString()
+            : string.Join(" · ", tickets.Select(t => $"{t.StationCode} {t.Status}"));
+        return tickets.Count == 0 ? $"Batch {batch}" : $"Batch {batch} · {states}";
+    }
 
     private bool TryGuests(out int guests)
     {
@@ -363,7 +446,8 @@ public sealed partial class TableDetailsViewModel : ObservableObject
 
     private void RefreshCommands()
     {
-        foreach (var name in new[] { nameof(ShowOccupy), nameof(ShowRelease), nameof(ShowNewOrder), nameof(ShowOpenOrder), nameof(ShowAddItems), nameof(ShowCancelOrder), nameof(NewOrderText) })
+        ServeCommand.NotifyCanExecuteChanged();
+        foreach (var name in new[] { nameof(ShowServe), nameof(ShowOccupy), nameof(ShowRelease), nameof(ShowNewOrder), nameof(ShowOpenOrder), nameof(ShowAddItems), nameof(ShowCancelOrder), nameof(NewOrderText) })
         {
             OnPropertyChanged(name);
         }
@@ -376,11 +460,13 @@ public sealed partial class TableDetailsViewModel : ObservableObject
         CancelOrderCommand.NotifyCanExecuteChanged();
     }
 
-    private static OrderLineViewModel ToLine(OrderItemDto item) => new(
+    private static OrderLineViewModel ToLine(OrderItemDto item, bool canCancel) => new(
+        item.Id,
         $"{item.Quantity} × {item.ItemName}",
         string.Join(" · ", item.Modifiers.Select(m => m.Name).Concat(item.Notes is null ? Array.Empty<string>() : new[] { $"“{item.Notes}”" })),
         item.LineTotal.ToString("N2", CultureInfo.CurrentCulture),
-        item.Status == OrderItemStatus.Cancelled);
+        item.Status == OrderItemStatus.Cancelled,
+        canCancel);
 
     private void HandleFailure(ApiResult<TableDto> result, string action)
     {

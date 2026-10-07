@@ -40,7 +40,7 @@
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
           <DataTemplate DataType="{x:Type orders:OrderRow}">
-            <Button Width="280" Margin="0,0,12,12" Padding="16,12" HorizontalContentAlignment="Stretch"
+            <Button x:Name="Row" Width="280" Margin="0,0,12,12" Padding="16,12" HorizontalContentAlignment="Stretch"
                     Background="{DynamicResource Brush.Surface}" CommandParameter="{Binding}"
                     Command="{Binding DataContext.OpenCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
               <StackPanel>
@@ -55,6 +55,12 @@
                 <TextBlock Text="{Binding TotalText, StringFormat=approx. {0}}" FontWeight="SemiBold" Margin="0,4,0,0" />
               </StackPanel>
             </Button>
+            <DataTemplate.Triggers>
+              <DataTrigger Binding="{Binding IsReady}" Value="True">
+                <Setter TargetName="Row" Property="Background" Value="{DynamicResource Brush.SuccessSoft}" />
+                <Setter TargetName="Row" Property="BorderBrush" Value="{DynamicResource Brush.Success}" />
+              </DataTrigger>
+            </DataTemplate.Triggers>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>

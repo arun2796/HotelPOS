@@ -122,14 +122,14 @@ Admin always has access; Manager has access wherever `M` is listed.
 | POST **[I]** | `/api/orders/{id}/items` | W (own), M, A | Append items as a new batch (band B only); new tickets |
 | POST | `/api/orders/{id}/items/{itemId}/cancel` | W, M | Rules by ticket status (Phase 5) |
 | POST | `/api/orders/{id}/cancel` | W (own), M | `{reason}`; role rules by status |
-| POST | `/api/orders/{id}/serve` | W, M | Completes all Ready tickets (Phase 5) |
+| POST | `/api/orders/{id}/serve` | W, M, A | Completes all Ready tickets (any waiter may serve) |
 | POST **[I]** | `/api/orders/{id}/request-bill` | W, C, M | Creates bill, table -> Billing (Phase 6) |
 
 ### 3.6 Kitchen (Phase 5)
 
 | Method | Route | Roles | Notes |
 |---|---|---|---|
-| GET | `/api/kitchen/orders` | K, M | `?stationId=&status=` open tickets with items, elapsed time |
+| GET | `/api/kitchen/orders` | K, M, A | `?stationId=&status=` open tickets with items; `serverTimeUtc` for timers |
 | GET | `/api/kitchen/orders/{ticketId}` | K, W, M | |
 | GET | `/api/kitchen/orders/completed` | K, M | `?date=` business day |
 | POST | `/api/kitchen/orders/{ticketId}/accept` | K, M | New -> Accepted |

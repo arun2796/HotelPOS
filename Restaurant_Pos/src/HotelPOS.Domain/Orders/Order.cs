@@ -133,6 +133,18 @@ public sealed class Order : BaseEntity, IHasRowVersion
         return batch;
     }
 
+    public bool ApplyKitchenStatus(OrderStatus derived, DateTime nowUtc)
+    {
+        if (!OrderStateMachine.IsInKitchenBand(Status) || !OrderStateMachine.IsInKitchenBand(derived) || derived == Status)
+        {
+            return false;
+        }
+
+        Status = derived;
+        ServedAt = derived == OrderStatus.Served ? nowUtc : null;
+        return true;
+    }
+
     public void Cancel(int userId, string? reason, DateTime nowUtc)
     {
         if (!OrderStateMachine.CanTransition(Status, OrderStatus.Cancelled))

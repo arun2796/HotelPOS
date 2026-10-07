@@ -1,6 +1,7 @@
 using HotelPOS.Contracts.Security;
 using HotelPOS.Desktop.Modules.Admin;
 using HotelPOS.Desktop.Modules.Config;
+using HotelPOS.Desktop.Modules.Kitchen;
 using HotelPOS.Desktop.Modules.MenuAdmin;
 using HotelPOS.Desktop.Modules.Orders;
 using HotelPOS.Desktop.Modules.Tables;
@@ -51,9 +52,9 @@ public static class ModuleRegistry
             "Your active orders, with ready orders highlighted.", typeof(MyOrdersViewModel)),
 
         new(KitchenDisplay, "Kitchen Display", "", "Kitchen", new[] { Roles.Admin, Roles.Manager, Roles.Kitchen }, 5,
-            "New, preparing and ready tickets with large touch buttons.", typeof(ActiveOrdersViewModel)),
+            "New, preparing and ready tickets with large touch buttons.", typeof(KitchenDisplayViewModel)),
         new(KitchenCompleted, "Completed Orders", "", "Kitchen", new[] { Roles.Admin, Roles.Manager, Roles.Kitchen }, 5,
-            "Tickets completed today with preparation times."),
+            "Tickets completed today with preparation times.", typeof(CompletedOrdersViewModel)),
 
         new(Billing, "Billing", "", "Billing", new[] { Roles.Admin, Roles.Manager, Roles.Cashier }, 6,
             "Pending bills, discounts, tax and split payments.", typeof(ActiveOrdersViewModel)),

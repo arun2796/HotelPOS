@@ -86,6 +86,14 @@ public sealed class FakeRealtimeClient : IRealtimeClient
 
     public int SubscriberCount(string eventName) => _subscriptions.Count(s => s.EventName == eventName);
 
+    public int? StationId { get; private set; }
+
+    public Task SetStationAsync(int? stationId)
+    {
+        StationId = stationId;
+        return Task.CompletedTask;
+    }
+
     public void Raise(ConnectionStatus status)
     {
         Status = status;

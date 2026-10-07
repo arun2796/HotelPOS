@@ -1,6 +1,6 @@
 # Phase 5 — Kitchen Display
 
-Status: Not started · Depends on: Phase 4
+Status: Done (2026-10-07) · Depends on: Phase 4
 
 ## 1. Goal
 
@@ -115,11 +115,11 @@ moment something is ready and mark it served. Order and table status are derived
 
 ## 12. Acceptance criteria
 
-- [ ] Tickets routed by station and visible within 1 s; full workflow with large buttons.
-- [ ] Order/table status derivation correct for multi-station and multi-batch orders.
-- [ ] Waiter notified on Ready and can serve; item cancellation rules enforced.
-- [ ] Kitchen display resyncs after disconnect with no duplicates.
-- [ ] Definition of Done satisfied.
+- [x] Tickets routed by station and visible within 1 s; full workflow with large buttons.
+- [x] Order/table status derivation correct for multi-station and multi-batch orders.
+- [x] Waiter notified on Ready and can serve; item cancellation rules enforced.
+- [x] Kitchen display resyncs after disconnect with no duplicates (automated; the two-PC unplug demo is still to do).
+- [x] Definition of Done satisfied.
 
 ## 13. Risks and notes
 
@@ -130,4 +130,21 @@ moment something is ready and mark it served. Order and table status are derived
 
 ## 14. Changes during implementation
 
-(fill in while building)
+- **Derivation in one place.** `KitchenSync.Recompute` derives the order status from its tickets
+  (`OrderStatusDeriver`, docs/02 § 4.1) and the table follows: the table is **Ready while any ticket is Ready**,
+  even when the derived order status is still Submitted/Preparing because another station is working. An order
+  whose tickets are all cancelled keeps its status. Order-level events fire only when the derived status changes;
+  `OrderReady` fires whenever a ticket becomes Ready.
+- **Ticket numbers** are `{order}-{batch}`, plus `-{station code}` when a batch spans stations (`1003-1-BAR`).
+  On create-and-send the tickets are written in the same transaction, after the order number is assigned.
+- **Station screens.** The station is chosen on the Kitchen Display itself (chips at the top) and saved in the
+  terminal settings rather than on a separate settings page. The screen calls `JoinStation`, which also removes it
+  from `role:kitchen`, so it receives only its station's events; "All stations" leaves the station.
+- **Events only trigger a re-read.** The display fetches the ticket on every event, so duplicates and
+  out-of-order events cannot corrupt the board; it also reloads everything every minute and after a reconnect.
+- **Serve** may be pressed by any waiter (runners serve other waiters' tables); item cancel follows the order's
+  ownership rules plus the ticket rules (New/Accepted: owner or manager; Preparing: manager; Ready/Completed: never).
+- **Completed Orders** covers the current business day, using the `BusinessDayStartTime` setting.
+- `OrderItems.KitchenOrderId` was not added: the item ↔ ticket link is `KitchenOrderItems.OrderItemId`.
+- Kitchen **sold-out** list uses the existing availability endpoint and the cached menu.
+- The ticket columns use a virtualising panel, so 40+ open tickets stay smooth.

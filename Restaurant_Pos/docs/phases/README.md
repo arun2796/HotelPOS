@@ -15,7 +15,7 @@ documents say what to build, in which order, and how to verify it.
 | 2 | [Tables & Sections](phase-02-tables-and-sections.md) | 1 | Admin manages floor; waiter sees a live table map; occupy/release with concurrency control | Done (2026-10-07) |
 | 3 | [Menu & Pricing](phase-03-menu-and-pricing.md) | 1 | Categories, items, modifiers, taxes, stations; compact cached menu for clients | Done (2026-10-07) |
 | 4 | [Waiter Ordering](phase-04-waiter-ordering.md) | 2, 3 | Draft -> submit -> append -> cancel with idempotency; order builder UI; local drafts | Done (2026-10-07) |
-| 5 | [Kitchen Display](phase-05-kitchen-display.md) | 4 | Tickets per station, kitchen workflow, waiter "order ready" notifications, serve | Not started |
+| 5 | [Kitchen Display](phase-05-kitchen-display.md) | 4 | Tickets per station, kitchen workflow, waiter "order ready" notifications, serve | Done (2026-10-07) |
 | 6 | [Billing & Payments](phase-06-billing-and-payments.md) | 5 | Bill request queue, discounts, tax, finalize/invoice, split payments, multi-counter safety, void/refund | Not started |
 | 7 | [Printing](phase-07-printing.md) | 5, 6 | KOT, invoice, receipt via thermal/Windows/network printers behind `IPrintService` | Not started |
 | 8 | [Reports & Dashboard](phase-08-reports-and-dashboard.md) | 6 | Sales, items, payments, cancellations, discounts, taxes, staff and kitchen performance; dashboard | Not started |

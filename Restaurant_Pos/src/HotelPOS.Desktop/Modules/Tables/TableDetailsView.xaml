@@ -78,7 +78,15 @@
                                 <TextBlock Text="{Binding Detail}" Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
                                            Visibility="{Binding HasDetail, Converter={StaticResource BoolToVisibility}}" />
                               </StackPanel>
-                              <TextBlock Grid.Column="1" Text="{Binding Total}" Foreground="{DynamicResource Brush.TextSecondary}" Margin="8,0,0,0" />
+                              <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                                <TextBlock Text="{Binding Total}" Foreground="{DynamicResource Brush.TextSecondary}" Margin="8,0,0,0" />
+                                <Button Style="{StaticResource Button.Ghost}" MinWidth="36" MinHeight="32" Padding="6,0" Margin="4,-6,0,0"
+                                        ToolTip="Cancel this item" CommandParameter="{Binding}"
+                                        Command="{Binding DataContext.CancelItemCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        Visibility="{Binding CanCancel, Converter={StaticResource BoolToVisibility}}">
+                                  <TextBlock Text="&#xE711;" Style="{StaticResource Text.Icon}" FontSize="12" Foreground="{DynamicResource Brush.Danger}" />
+                                </Button>
+                              </StackPanel>
                             </Grid>
                             <DataTemplate.Triggers>
                               <DataTrigger Binding="{Binding IsCancelled}" Value="True">
@@ -156,6 +164,9 @@
         <Button Content="OPEN ORDER" Command="{Binding OpenOrderCommand}"
                 Background="{DynamicResource Brush.Primary}" BorderBrush="{DynamicResource Brush.Primary}" Foreground="{DynamicResource Brush.PrimaryText}"
                 Visibility="{Binding ShowOpenOrder, Converter={StaticResource BoolToVisibility}}" />
+        <Button Content="SERVED" Command="{Binding ServeCommand}"
+                Background="{DynamicResource Brush.Success}" BorderBrush="{DynamicResource Brush.Success}" Foreground="{DynamicResource Brush.PrimaryText}"
+                Visibility="{Binding ShowServe, Converter={StaticResource BoolToVisibility}}" />
         <Button Content="ADD ITEMS" Command="{Binding AddItemsCommand}"
                 Background="{DynamicResource Brush.Primary}" BorderBrush="{DynamicResource Brush.Primary}" Foreground="{DynamicResource Brush.PrimaryText}"
                 Visibility="{Binding ShowAddItems, Converter={StaticResource BoolToVisibility}}" />

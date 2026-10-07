@@ -92,6 +92,7 @@ public sealed record OrderDetailDto
     public DateTime? CancelledAtUtc { get; init; }
     public string? CancelReason { get; init; }
     public IReadOnlyList<OrderItemDto> Items { get; init; } = Array.Empty<OrderItemDto>();
+    public IReadOnlyList<OrderTicketDto> Tickets { get; init; } = Array.Empty<OrderTicketDto>();
 
     public decimal ApproxSubtotal { get; init; }
 
@@ -113,6 +114,17 @@ public sealed record OrderItemDto
     public OrderItemStatus Status { get; init; }
     public IReadOnlyList<OrderItemModifierDto> Modifiers { get; init; } = Array.Empty<OrderItemModifierDto>();
     public decimal LineTotal { get; init; }
+    public int? TicketId { get; init; }
+    public KitchenOrderStatus? TicketStatus { get; init; }
+}
+
+public sealed record OrderTicketDto
+{
+    public int Id { get; init; }
+    public string TicketNumber { get; init; } = string.Empty;
+    public int BatchNumber { get; init; }
+    public string StationCode { get; init; } = string.Empty;
+    public KitchenOrderStatus Status { get; init; }
 }
 
 public sealed record OrderItemModifierDto(int ModifierOptionId, string Name, decimal PriceDelta);

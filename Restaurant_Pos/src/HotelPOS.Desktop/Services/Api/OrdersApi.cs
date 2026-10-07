@@ -1,3 +1,4 @@
+using HotelPOS.Contracts.Kitchen;
 using HotelPOS.Contracts.Orders;
 
 namespace HotelPOS.Desktop.Services.Api;
@@ -17,6 +18,10 @@ public interface IOrdersApi
     Task<ApiResult<OrderDetailDto>> AppendItemsAsync(int id, AppendOrderItemsRequest request, Guid idempotencyKey, CancellationToken cancellationToken = default);
 
     Task<ApiResult<OrderDetailDto>> CancelAsync(int id, CancelOrderRequest request, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<OrderDetailDto>> ServeAsync(int id, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<OrderDetailDto>> CancelItemAsync(int id, int itemId, CancelOrderItemRequest request, CancellationToken cancellationToken = default);
 }
 
 public sealed class OrdersApi : IOrdersApi
@@ -48,4 +53,10 @@ public sealed class OrdersApi : IOrdersApi
 
     public Task<ApiResult<OrderDetailDto>> CancelAsync(int id, CancelOrderRequest request, CancellationToken cancellationToken = default) =>
         _api.PostAsync<OrderDetailDto>($"api/orders/{id}/cancel", request, cancellationToken);
+
+    public Task<ApiResult<OrderDetailDto>> ServeAsync(int id, CancellationToken cancellationToken = default) =>
+        _api.PostAsync<OrderDetailDto>($"api/orders/{id}/serve", null, cancellationToken);
+
+    public Task<ApiResult<OrderDetailDto>> CancelItemAsync(int id, int itemId, CancelOrderItemRequest request, CancellationToken cancellationToken = default) =>
+        _api.PostAsync<OrderDetailDto>($"api/orders/{id}/items/{itemId}/cancel", request, cancellationToken);
 }

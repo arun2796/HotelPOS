@@ -28,7 +28,7 @@ PostgreSQL is the single source of truth.
 | Phase 2 – Tables & Sections        | Done         |
 | Phase 3 – Menu & Pricing           | Done         |
 | Phase 4 – Waiter Ordering          | Done         |
-| Phase 5 – Kitchen Display          | Not started  |
+| Phase 5 – Kitchen Display          | Done         |
 | Phase 6 – Billing & Payments       | Not started  |
 | Phase 7 – Printing                 | Not started  |
 | Phase 8 – Reports & Dashboard      | Not started  |

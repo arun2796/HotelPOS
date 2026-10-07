@@ -155,6 +155,18 @@ public sealed class Table : BaseEntity, IHasRowVersion
         };
     }
 
+    // A table shows Ready while any of its tickets waits to be served, even if other stations are still cooking.
+    public void FollowKitchen(OrderStatus orderStatus, bool anyTicketReady)
+    {
+        if (anyTicketReady && orderStatus is OrderStatus.Submitted or OrderStatus.Accepted or OrderStatus.Preparing or OrderStatus.Ready)
+        {
+            Status = TableStatus.Ready;
+            return;
+        }
+
+        FollowOrder(orderStatus);
+    }
+
     public void SetGuestCount(int guestCount) => GuestCount = guestCount;
 
     public void DetachOrder(bool keepGuestsSeated)

@@ -58,8 +58,9 @@ public sealed partial class TableMapViewModel : ObservableObject, INavigationAwa
         _floorApi = floorApi;
         _realtime = realtime;
         var roles = session.User?.Roles ?? Array.Empty<string>();
-        var canTakeOrders = roles.Contains(Roles.Waiter) || roles.Contains(Roles.Manager) || roles.Contains(Roles.Admin);
-        Details = new TableDetailsViewModel(floorApi, ordersApi, drafts, navigation, dialogs, notifications, ApplyTable, RefreshAsync, canTakeOrders);
+        var isManager = roles.Contains(Roles.Manager) || roles.Contains(Roles.Admin);
+        var canTakeOrders = roles.Contains(Roles.Waiter) || isManager;
+        Details = new TableDetailsViewModel(floorApi, ordersApi, drafts, navigation, dialogs, notifications, ApplyTable, RefreshAsync, canTakeOrders, isManager);
     }
 
     public ObservableCollection<TableMapSectionViewModel> Sections { get; } = new();
@@ -95,6 +96,11 @@ public sealed partial class TableMapViewModel : ObservableObject, INavigationAwa
         _subscriptions.Add(_realtime.Subscribe<TableStatusChangedEvent>(HubEvents.TableStatusChanged, OnTableStatusChanged));
         _subscriptions.Add(_realtime.Subscribe<OrderUpdatedEvent>(HubEvents.OrderUpdated, e => OnOrderChanged(e.OrderId)));
         _subscriptions.Add(_realtime.Subscribe<OrderCancelledEvent>(HubEvents.OrderCancelled, e => OnOrderChanged(e.OrderId)));
+        _subscriptions.Add(_realtime.Subscribe<KitchenTicketUpdatedEvent>(HubEvents.KitchenTicketUpdated, e => OnOrderChanged(e.OrderId)));
+        foreach (var progress in new[] { HubEvents.OrderAccepted, HubEvents.OrderPreparing, HubEvents.OrderReady, HubEvents.OrderServed })
+        {
+            _subscriptions.Add(_realtime.Subscribe<OrderProgressEvent>(progress, e => OnOrderChanged(e.OrderId)));
+        }
         _timer = new CancellationTokenSource();
         _ = RunElapsedTimerAsync(_timer.Token);
         await RefreshAsync();

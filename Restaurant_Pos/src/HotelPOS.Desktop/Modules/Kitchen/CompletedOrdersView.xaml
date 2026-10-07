@@ -1,0 +1,43 @@
+<UserControl x:Class="HotelPOS.Desktop.Modules.Kitchen.CompletedOrdersView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:kitchen="clr-namespace:HotelPOS.Desktop.Modules.Kitchen"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance kitchen:CompletedOrdersViewModel}"
+             d:DesignWidth="1100" d:DesignHeight="700">
+
+  <Grid Margin="24">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <Grid Margin="0,0,0,12">
+      <TextBlock Text="{Binding SummaryText}" Style="{StaticResource Text.Caption}" FontSize="14" VerticalAlignment="Center" />
+      <Button Command="{Binding RefreshListCommand}" HorizontalAlignment="Right" ToolTip="Reload from the server">
+        <TextBlock Text="&#xE72C;" Style="{StaticResource Text.Icon}" />
+      </Button>
+    </Grid>
+
+    <Border Grid.Row="1" Style="{StaticResource Banner.Error}" Margin="0,0,0,12"
+            Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibility}}">
+      <TextBlock Text="{Binding ErrorMessage}" Style="{StaticResource Text.Error}" />
+    </Border>
+
+    <DataGrid Grid.Row="2" ItemsSource="{Binding Rows}" HorizontalScrollBarVisibility="Disabled">
+      <DataGrid.Columns>
+        <DataGridTextColumn Header="TICKET" Binding="{Binding Ticket.TicketNumber}" Width="1*" MinWidth="100" />
+        <DataGridTextColumn Header="TABLE" Binding="{Binding Ticket.TableCode}" Width="0.6*" MinWidth="70" />
+        <DataGridTextColumn Header="ITEMS" Binding="{Binding ItemsText}" Width="2.5*" MinWidth="160" />
+        <DataGridTextColumn Header="IN" Binding="{Binding CreatedText}" Width="0.6*" MinWidth="60" />
+        <DataGridTextColumn Header="WAIT" Binding="{Binding WaitText}" Width="0.7*" MinWidth="70" />
+        <DataGridTextColumn Header="PREP" Binding="{Binding PrepText}" Width="0.7*" MinWidth="70" />
+        <DataGridTextColumn Header="TOTAL" Binding="{Binding TotalText}" Width="0.7*" MinWidth="70" />
+        <DataGridTextColumn Header="STATUS" Binding="{Binding StatusText}" Width="0.9*" MinWidth="90" />
+      </DataGrid.Columns>
+    </DataGrid>
+  </Grid>
+</UserControl>

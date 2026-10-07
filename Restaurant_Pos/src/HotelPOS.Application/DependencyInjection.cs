@@ -2,6 +2,7 @@ using FluentValidation;
 using HotelPOS.Application.Auth;
 using HotelPOS.Application.Devices;
 using HotelPOS.Application.Floor;
+using HotelPOS.Application.Kitchen;
 using HotelPOS.Application.Menu;
 using HotelPOS.Application.Orders;
 using HotelPOS.Application.Settings;
@@ -24,6 +25,9 @@ public static class DependencyInjection
         services.AddScoped<ITableService, TableService>();
         services.AddScoped<OrderItemFactory>();
         services.AddScoped<IOrderService, OrderService>();
+        services.AddScoped<TicketFactory>();
+        services.AddScoped<KitchenSync>();
+        services.AddScoped<IKitchenService, KitchenService>();
         services.AddScoped<MenuChanges>();
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IStationService, StationService>();

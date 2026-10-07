@@ -68,6 +68,16 @@ public sealed class OrderItem : BaseEntity
 
     internal void MarkSent() => Status = OrderItemStatus.Sent;
 
+    public void CancelSent(int userId, string? reason)
+    {
+        if (Status != OrderItemStatus.Sent)
+        {
+            throw new DomainException($"{ItemName} is not with the kitchen and cannot be cancelled here.", Contracts.Common.ErrorCodes.InvalidStateTransition);
+        }
+
+        Cancel(userId, reason);
+    }
+
     internal void Cancel(int userId, string? reason)
     {
         if (Status == OrderItemStatus.Cancelled)

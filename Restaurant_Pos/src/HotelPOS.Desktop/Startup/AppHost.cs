@@ -53,6 +53,8 @@ public static class AppHost
         services.AddSingleton<IOrdersApi, OrdersApi>();
         services.AddSingleton<ILocalDraftStore, LocalDraftStore>();
         services.AddSingleton<IOrderSubmitter, OrderSubmitter>();
+        services.AddSingleton<IKitchenApi, KitchenApi>();
+        services.AddSingleton<IReadyNotifier, ReadyNotifier>();
         services.AddHttpClient(MenuCache.ImageHttpClientName, client => client.Timeout = TimeSpan.FromSeconds(15));
         services.AddSingleton<IMenuCache, MenuCache>();
 
@@ -65,6 +67,7 @@ public static class AppHost
         services.AddSingleton<INotificationService>(sp => sp.GetRequiredService<NotificationService>());
         services.AddSingleton<ThemeService>();
         services.AddSingleton<IFilePicker, WpfFilePicker>();
+        services.AddSingleton<ISoundPlayer, SystemSoundPlayer>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<IAppNavigator, AppNavigator>();
         services.AddSingleton<NavigationService>();

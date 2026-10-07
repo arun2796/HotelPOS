@@ -22,6 +22,8 @@ public sealed record OrderRow(OrderSummaryDto Order, string ElapsedText, string 
 
     public bool IsDraft => Order.Status == OrderStatus.Draft;
 
+    public bool IsReady => Order.Status == OrderStatus.Ready;
+
     public string Detail => $"{Order.ItemCount} items · {Order.GuestCount} guests · {Order.WaiterName}";
 }
 

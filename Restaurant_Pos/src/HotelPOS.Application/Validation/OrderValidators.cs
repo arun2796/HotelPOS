@@ -1,5 +1,6 @@
 using FluentValidation;
 using HotelPOS.Contracts.Floor;
+using HotelPOS.Contracts.Kitchen;
 using HotelPOS.Contracts.Orders;
 
 namespace HotelPOS.Application.Validation;
@@ -70,5 +71,13 @@ public sealed class OrderQueryValidator : AbstractValidator<OrderQuery>
     {
         RuleFor(x => x.Page).GreaterThanOrEqualTo(1);
         RuleFor(x => x.PageSize).InclusiveBetween(1, OrderQuery.MaxPageSize);
+    }
+}
+
+public sealed class CancelOrderItemRequestValidator : AbstractValidator<CancelOrderItemRequest>
+{
+    public CancelOrderItemRequestValidator()
+    {
+        RuleFor(x => x.Reason).MaximumLength(OrderLimits.ReasonMaxLength);
     }
 }

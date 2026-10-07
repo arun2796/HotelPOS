@@ -65,4 +65,6 @@ public static class AuditActions
     public const string OrderItemsAppended = "Order.ItemsAppended";
     public const string OrderUpdated = "Order.Updated";
     public const string OrderCancelled = "Order.Cancelled";
+    public const string OrderServed = "Order.Served";
+    public const string OrderItemCancelled = "Order.ItemCancelled";
 }

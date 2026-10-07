@@ -11,6 +11,7 @@ using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Floor;
 using HotelPOS.Contracts.Menu;
+using HotelPOS.Contracts.Kitchen;
 using HotelPOS.Contracts.Orders;
 using HotelPOS.Desktop.Modules.Orders;
 using HotelPOS.Desktop.Services.Orders;
@@ -177,6 +178,15 @@ public class ScreenRenderingTests
             await waiterShell.NavigateToAsync(ModuleRegistry.MyOrders, null);
             rendered.Add(await RenderScreenAsync(env, waiterShell, "23-waiter-my-orders"));
             waiterShell.Dispose();
+
+            env.Session.Start(TestData.Login("kitchen1", roles: "Kitchen"));
+            var kitchenShell = env.Create<ShellViewModel>();
+            await kitchenShell.OnNavigatedToAsync(null);
+            env.Realtime.Raise(ConnectionStatus.Connected);
+            rendered.Add(await RenderScreenAsync(env, kitchenShell, "24-kitchen-display"));
+            await kitchenShell.NavigateToAsync(ModuleRegistry.KitchenCompleted, null);
+            rendered.Add(await RenderScreenAsync(env, kitchenShell, "25-kitchen-completed"));
+            kitchenShell.Dispose();
         });
 
         foreach (var file in rendered)
@@ -185,7 +195,7 @@ public class ScreenRenderingTests
         }
 
         bindingErrors.Errors.Should().BeEmpty("every binding in the views must point at an existing property");
-        rendered.Should().HaveCount(23);
+        rendered.Should().HaveCount(25);
     }
 
     private static async Task<string> RenderScreenAsync(Environment env, object screen, string name)
@@ -351,6 +361,9 @@ public class ScreenRenderingTests
             services.AddSingleton(DemoOrdersApi());
             services.AddSingleton(Substitute.For<ILocalDraftStore>());
             services.AddSingleton<IOrderSubmitter>(new OrderSubmitter(NullLogger<OrderSubmitter>.Instance));
+            services.AddSingleton(DemoKitchenApi());
+            services.AddSingleton(Substitute.For<ISoundPlayer>());
+            services.AddSingleton(Substitute.For<IReadyNotifier>());
             services.AddSingleton(Substitute.For<IAuthApi>());
             services.AddSingleton(Substitute.For<IAppNavigator>());
             services.AddSingleton(Substitute.For<IUserPreferences>());
@@ -471,6 +484,8 @@ public class ScreenRenderingTests
                 Status = OrderItemStatus.Sent,
                 Modifiers = modifiers.Select((m, i) => new OrderItemModifierDto(i, m, 0m)).ToList(),
                 LineTotal = price * quantity,
+                TicketId = batch,
+                TicketStatus = batch == 1 ? KitchenOrderStatus.Ready : KitchenOrderStatus.New,
             };
             var detail = new OrderDetailDto
             {
@@ -490,6 +505,11 @@ public class ScreenRenderingTests
                     Item(3, 2, "Fresh Lime Soda", 60m, 3),
                 },
                 ApproxSubtotal = 900m,
+                Tickets = new[]
+                {
+                    new OrderTicketDto { Id = 1, TicketNumber = "1019-1", BatchNumber = 1, StationCode = "MAIN", Status = KitchenOrderStatus.Ready },
+                    new OrderTicketDto { Id = 2, TicketNumber = "1019-2", BatchNumber = 2, StationCode = "BAR", Status = KitchenOrderStatus.New },
+                },
                 RowVersion = "AAAFow==",
             };
             OrderSummaryDto Summary(int id, int number, string table, OrderStatus status, int items, decimal total, int minutes) => new()
@@ -517,6 +537,52 @@ public class ScreenRenderingTests
                 Summary(6, 1012, "T06", OrderStatus.Ready, 6, 1240m, 41),
                 Summary(7, 1003, "T07", OrderStatus.BillRequested, 14, 3180m, 83),
             }));
+            return api;
+        }
+
+        private static IKitchenApi DemoKitchenApi()
+        {
+            var now = DateTime.UtcNow;
+            KitchenTicketDto Ticket(int id, string number, string table, int batch, KitchenOrderStatus status, int minutes, params KitchenTicketItemDto[] items) => new()
+            {
+                Id = id,
+                TicketNumber = number,
+                TableCode = table,
+                BatchNumber = batch,
+                WaiterName = "Arun (Waiter)",
+                StationId = 1,
+                StationCode = "MAIN",
+                Status = status,
+                CreatedAtUtc = now.AddMinutes(-minutes),
+                AcceptedAtUtc = status == KitchenOrderStatus.New ? null : now.AddMinutes(-minutes + 1),
+                StartedAtUtc = status is KitchenOrderStatus.Preparing or KitchenOrderStatus.Ready or KitchenOrderStatus.Completed ? now.AddMinutes(-minutes + 2) : null,
+                ReadyAtUtc = status is KitchenOrderStatus.Ready or KitchenOrderStatus.Completed ? now.AddMinutes(-2) : null,
+                CompletedAtUtc = status == KitchenOrderStatus.Completed ? now.AddMinutes(-1) : null,
+                Items = items,
+            };
+            KitchenTicketItemDto Line(string name, int quantity, string? notes = null, bool cancelled = false, params string[] modifiers) =>
+                new() { Name = name, Quantity = quantity, Notes = notes, IsCancelled = cancelled, Modifiers = modifiers };
+
+            var open = new List<KitchenTicketDto>
+            {
+                Ticket(1, "1024-1", "T03", 1, KitchenOrderStatus.New, 2, Line("Chicken Biryani", 2, "less oil", false, "Spicy", "Extra raita"), Line("Butter Naan", 4)),
+                Ticket(2, "1025-1", "T12", 1, KitchenOrderStatus.Accepted, 6, Line("Paneer Tikka", 1, null, false, "Mild")),
+                Ticket(3, "1019-2", "T04", 2, KitchenOrderStatus.Preparing, 12, Line("Gulab Jamun", 2), Line("Kulfi", 1, null, true)),
+                Ticket(4, "1012-1", "T06", 1, KitchenOrderStatus.Preparing, 24, Line("Mutton Biryani", 3, "one without onion", false, "Medium")),
+                Ticket(5, "1008-1", "O02", 1, KitchenOrderStatus.Ready, 18, Line("Veg Spring Roll", 2), Line("Gobi Manchurian", 1)),
+            };
+            var done = new List<KitchenTicketDto>
+            {
+                Ticket(6, "1003-1", "T07", 1, KitchenOrderStatus.Completed, 40, Line("Chicken 65", 2), Line("Veg Biryani", 1)),
+                Ticket(7, "1004-1", "T02", 1, KitchenOrderStatus.Completed, 32, Line("Egg Biryani", 2)),
+                Ticket(8, "1006-2", "T11", 2, KitchenOrderStatus.Cancelled, 20, Line("Rasmalai", 2, null, true)),
+            };
+
+            var api = Substitute.For<IKitchenApi>();
+            api.GetOpenAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>())
+                .Returns(ApiResult<KitchenTicketListDto>.Ok(new KitchenTicketListDto { Tickets = open, ServerTimeUtc = now }));
+            api.GetCompletedAsync(Arg.Any<DateOnly?>(), Arg.Any<CancellationToken>())
+                .Returns(ApiResult<KitchenTicketListDto>.Ok(new KitchenTicketListDto { Tickets = done, ServerTimeUtc = now }));
             return api;
         }
 

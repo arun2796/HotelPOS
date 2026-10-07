@@ -1,6 +1,7 @@
 using HotelPOS.Api.Common;
 using HotelPOS.Application.Orders;
 using HotelPOS.Contracts.Common;
+using HotelPOS.Contracts.Kitchen;
 using HotelPOS.Contracts.Orders;
 using HotelPOS.Contracts.Security;
 using Microsoft.AspNetCore.Authorization;
@@ -68,6 +69,18 @@ public sealed class OrdersController : ApiControllerBase
     [ProducesResponseType<ApiResponse<OrderDetailDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> AppendItems(int id, AppendOrderItemsRequest request, CancellationToken cancellationToken) =>
         FromResult(await _orders.AppendItemsAsync(id, request, cancellationToken), message: "Items sent to the kitchen.");
+
+    [HttpPost("{id:int}/serve")]
+    [Authorize(Roles = OrderTakers)]
+    [ProducesResponseType<ApiResponse<OrderDetailDto>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> Serve(int id, CancellationToken cancellationToken) =>
+        FromResult(await _orders.ServeAsync(id, cancellationToken), message: "Served.");
+
+    [HttpPost("{id:int}/items/{itemId:int}/cancel")]
+    [Authorize(Roles = OrderTakers)]
+    [ProducesResponseType<ApiResponse<OrderDetailDto>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> CancelItem(int id, int itemId, CancelOrderItemRequest request, CancellationToken cancellationToken) =>
+        FromResult(await _orders.CancelItemAsync(id, itemId, request, cancellationToken), message: "Item cancelled.");
 
     [HttpPost("{id:int}/cancel")]
     [Authorize(Roles = OrderTakers)]

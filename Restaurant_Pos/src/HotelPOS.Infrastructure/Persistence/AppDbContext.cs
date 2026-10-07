@@ -2,6 +2,7 @@ using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Domain.Administration;
 using HotelPOS.Domain.Billing;
 using HotelPOS.Domain.Floor;
+using HotelPOS.Domain.Kitchen;
 using HotelPOS.Domain.Identity;
 using HotelPOS.Domain.Menu;
 using HotelPOS.Domain.Orders;
@@ -38,6 +39,8 @@ public sealed class AppDbContext : DbContext, IAppDbContext
     public DbSet<MenuItemModifierGroup> MenuItemModifierGroups => Set<MenuItemModifierGroup>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+    public DbSet<KitchenOrder> KitchenOrders => Set<KitchenOrder>();
+    public DbSet<KitchenOrderItem> KitchenOrderItems => Set<KitchenOrderItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

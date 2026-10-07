@@ -49,6 +49,10 @@ Payloads are intentionally small. Clients call REST for full details (`GET /api/
 | `OrderAccepted` | user:{waiter}, role:waiter, cashier, manager | `orderId, orderNumber, tableCode` | derived order status becomes Accepted | 5 |
 | `OrderPreparing` | same | same | derived status Preparing | 5 |
 | `OrderReady` | same | `+ readyTicketNumbers[]` | any ticket becomes Ready (waiter shows "TABLE 05 — ORDER READY") | 5 |
+
+The four order-progress events share one payload (`OrderProgressEvent`: `orderId, orderNumber, tableId, tableCode,
+waiterId, status, readyTicketNumbers`). A kitchen screen that calls `JoinStation` leaves the `role:kitchen` group, so
+it receives only its station's ticket events; `LeaveStation` puts it back. The client re-joins after every reconnect.
 | `OrderServed` | cashier, manager, role:waiter | `orderId, orderNumber, tableCode` | all tickets completed | 5 |
 | `BillRequested` | role:cashier, manager | `billId, billNumber, orderId, orderNumber, tableCode, waiterName, grandTotal` | request-bill | 6 |
 | `BillUpdated` | role:cashier, manager, user:{waiter} | `billId, status, paymentStatus, claimedByDevice?, grandTotal, paidAmount, changeType` | claim/release/discount/finalize/partial payment/reopen/void | 6 |

@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security.Claims;
 using HotelPOS.Application.Common.Security;
 using HotelPOS.Application.Devices;
+using HotelPOS.Contracts.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
@@ -78,6 +79,25 @@ public sealed class RestaurantHub : Hub
     }
 
     public DateTime Ping() => DateTime.UtcNow;
+
+    // A kitchen screen bound to a station leaves the all-stations kitchen group, so it receives only its own tickets.
+    public async Task JoinStation(int stationId)
+    {
+        await Groups.AddToGroupAsync(Context.ConnectionId, HubGroups.Station(stationId));
+        if (Context.User!.IsInRole(Roles.Kitchen))
+        {
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, HubGroups.Role(Roles.Kitchen));
+        }
+    }
+
+    public async Task LeaveStation(int stationId)
+    {
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, HubGroups.Station(stationId));
+        if (Context.User!.IsInRole(Roles.Kitchen))
+        {
+            await Groups.AddToGroupAsync(Context.ConnectionId, HubGroups.Role(Roles.Kitchen));
+        }
+    }
 
     private async Task TouchDeviceAsync(Guid deviceId)
     {

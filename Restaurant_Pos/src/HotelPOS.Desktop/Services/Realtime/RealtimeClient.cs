@@ -31,6 +31,9 @@ public interface IRealtimeClient
     Task StopAsync();
 
     IDisposable Subscribe<T>(string eventName, Action<T> handler);
+
+    // Remembered and joined again after every reconnect; null leaves the station.
+    Task SetStationAsync(int? stationId);
 }
 
 public sealed class RealtimeClient : IRealtimeClient, IAsyncDisposable
@@ -51,6 +54,7 @@ public sealed class RealtimeClient : IRealtimeClient, IAsyncDisposable
     private HubConnection? _connection;
     private CancellationTokenSource? _lifetime;
     private bool _hadOutage;
+    private int? _stationId;
 
     public RealtimeClient(IClientSettingsService settings, ITokenRefresher tokens, IUiDispatcher dispatcher, ILogger<RealtimeClient> logger)
     {
@@ -256,8 +260,42 @@ public sealed class RealtimeClient : IRealtimeClient, IAsyncDisposable
         }
     }
 
+    public async Task SetStationAsync(int? stationId)
+    {
+        var previous = _stationId;
+        _stationId = stationId;
+        if (previous == stationId || _connection is not { State: HubConnectionState.Connected } connection)
+        {
+            return;
+        }
+
+        try
+        {
+            if (previous is { } old)
+            {
+                await connection.InvokeAsync(HubMethods.LeaveStation, old).ConfigureAwait(false);
+            }
+
+            if (stationId is { } station)
+            {
+                await connection.InvokeAsync(HubMethods.JoinStation, station).ConfigureAwait(false);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not change the kitchen station on the hub; it is applied at the next reconnect");
+        }
+    }
+
     private void OnConnected()
     {
+        if (_stationId is { } stationId && _connection is { } connection)
+        {
+            _ = connection.InvokeAsync(HubMethods.JoinStation, stationId).ContinueWith(
+                t => _logger.LogWarning(t.Exception, "Could not join station {StationId}", stationId),
+                TaskContinuationOptions.OnlyOnFaulted);
+        }
+
         SetStatus(ConnectionStatus.Connected);
         if (_hadOutage)
         {

@@ -1,6 +1,7 @@
 using HotelPOS.Domain.Administration;
 using HotelPOS.Domain.Billing;
 using HotelPOS.Domain.Floor;
+using HotelPOS.Domain.Kitchen;
 using HotelPOS.Domain.Identity;
 using HotelPOS.Domain.Menu;
 using HotelPOS.Domain.Orders;
@@ -32,6 +33,8 @@ public interface IAppDbContext
     DbSet<MenuItemModifierGroup> MenuItemModifierGroups { get; }
     DbSet<Order> Orders { get; }
     DbSet<OrderItem> OrderItems { get; }
+    DbSet<KitchenOrder> KitchenOrders { get; }
+    DbSet<KitchenOrderItem> KitchenOrderItems { get; }
 
     DatabaseFacade Database { get; }
 

@@ -8,7 +8,9 @@ using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Auth;
 using HotelPOS.Desktop.Services.Configuration;
+using HotelPOS.Contracts.Security;
 using HotelPOS.Desktop.Services.Menu;
+using HotelPOS.Desktop.Services.Orders;
 using HotelPOS.Desktop.Services.Navigation;
 using HotelPOS.Desktop.Services.Realtime;
 using HotelPOS.Desktop.Services.Ui;
@@ -23,6 +25,7 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
     private readonly IAuthSession _session;
     private readonly IRealtimeClient _realtime;
     private readonly IMenuCache _menuCache;
+    private readonly IReadyNotifier _readyNotifier;
     private readonly IAppNavigator _navigator;
     private readonly NavigationService _navigation;
     private readonly ISystemApi _systemApi;
@@ -36,6 +39,7 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
         IAuthSession session,
         IRealtimeClient realtime,
         IMenuCache menuCache,
+        IReadyNotifier readyNotifier,
         IAppNavigator navigator,
         NavigationService navigation,
         ISystemApi systemApi,
@@ -47,6 +51,7 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
         _session = session;
         _realtime = realtime;
         _menuCache = menuCache;
+        _readyNotifier = readyNotifier;
         _navigator = navigator;
         _navigation = navigation;
         _systemApi = systemApi;
@@ -92,6 +97,11 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
 
         // Every role works with the menu (ordering, kitchen sold-out, billing); load it in the background.
         _ = _menuCache.StartAsync();
+        if (_session.User?.Roles.Contains(Roles.Waiter) == true)
+        {
+            _readyNotifier.Start();
+        }
+
         await GoHomeAsync();
         await LoadRestaurantNameAsync();
     }
@@ -107,6 +117,7 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
         _lifetime.Dispose();
         _realtime.Reconnected -= OnReconnected;
         _menuCache.Stop();
+        _readyNotifier.Stop();
         _navigation.Detach(this);
         StatusBar.Dispose();
         (CurrentPage as IDisposable)?.Dispose();
