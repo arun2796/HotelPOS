@@ -1,3 +1,4 @@
+using HotelPOS.Contracts.Billing;
 using HotelPOS.Contracts.Kitchen;
 using HotelPOS.Contracts.Orders;
 
@@ -22,6 +23,8 @@ public interface IOrdersApi
     Task<ApiResult<OrderDetailDto>> ServeAsync(int id, CancellationToken cancellationToken = default);
 
     Task<ApiResult<OrderDetailDto>> CancelItemAsync(int id, int itemId, CancelOrderItemRequest request, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<BillDetailDto>> RequestBillAsync(int id, Guid idempotencyKey, CancellationToken cancellationToken = default);
 }
 
 public sealed class OrdersApi : IOrdersApi
@@ -59,4 +62,7 @@ public sealed class OrdersApi : IOrdersApi
 
     public Task<ApiResult<OrderDetailDto>> CancelItemAsync(int id, int itemId, CancelOrderItemRequest request, CancellationToken cancellationToken = default) =>
         _api.PostAsync<OrderDetailDto>($"api/orders/{id}/items/{itemId}/cancel", request, cancellationToken);
+
+    public Task<ApiResult<BillDetailDto>> RequestBillAsync(int id, Guid idempotencyKey, CancellationToken cancellationToken = default) =>
+        _api.PostAsync<BillDetailDto>($"api/orders/{id}/request-bill", null, cancellationToken, new ApiRequestOptions { IdempotencyKey = idempotencyKey });
 }

@@ -7,12 +7,14 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using HotelPOS.Contracts.Admin;
+using HotelPOS.Contracts.Billing;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Floor;
 using HotelPOS.Contracts.Menu;
 using HotelPOS.Contracts.Kitchen;
 using HotelPOS.Contracts.Orders;
+using HotelPOS.Desktop.Modules.Billing;
 using HotelPOS.Desktop.Modules.Orders;
 using HotelPOS.Desktop.Services.Orders;
 using HotelPOS.Desktop.Modules.MenuAdmin;
@@ -160,6 +162,14 @@ public class ScreenRenderingTests
             await map.Details.ReloadOrderAsync();
             rendered.Add(await RenderScreenAsync(env, waiterShell, "20-waiter-table-with-order"));
 
+            env.Notifications.Items.Clear();
+            map.SelectTableCommand.Execute(map.AllTables.Single(t => t.Code == "T06"));
+            await map.Details.ReloadOrderAsync();
+            rendered.Add(await RenderScreenAsync(env, waiterShell, "26-waiter-request-bill"));
+            map.SelectTableCommand.Execute(map.AllTables.Single(t => t.Code == "T07"));
+            await map.Details.ReloadOrderAsync();
+            rendered.Add(await RenderScreenAsync(env, waiterShell, "27-waiter-bill-at-counter"));
+
             var builder = env.Create<OrderBuilderViewModel>();
             await waiterShell.ShowPageAsync(builder, new OrderBuilderContext(5, "T05", OrderBuilderMode.NewOrder, 4));
             builder.AddItemCommand.Execute(builder.Items.Single(i => i.Name == "Veg Spring Roll"));
@@ -187,6 +197,60 @@ public class ScreenRenderingTests
             await kitchenShell.NavigateToAsync(ModuleRegistry.KitchenCompleted, null);
             rendered.Add(await RenderScreenAsync(env, kitchenShell, "25-kitchen-completed"));
             kitchenShell.Dispose();
+
+            env.Session.Start(TestData.Login("cashier1", roles: "Cashier"));
+            var cashierShell = env.Create<ShellViewModel>();
+            await cashierShell.OnNavigatedToAsync(null);
+            env.Realtime.Raise(ConnectionStatus.Connected);
+            rendered.Add(await RenderScreenAsync(env, cashierShell, "28-billing-queue"));
+
+            var bill = env.Create<BillDetailViewModel>();
+            await cashierShell.ShowPageAsync(bill, 1);
+            rendered.Add(await RenderScreenAsync(env, cashierShell, "29-bill-detail"));
+            bill.PaySplitCommand.Execute(null);
+            bill.Payment!.AddLineCommand.Execute(bill.Payment.Methods.Single(m => m.Code == "CASH"));
+            bill.Payment.Lines[0].AmountText = Money.Format(400m);
+            bill.Payment.AddLineCommand.Execute(bill.Payment.Methods.Single(m => m.Code == "UPI"));
+            bill.Payment.Lines[1].Reference = "UPI 4021 7788";
+            rendered.Add(await RenderScreenAsync(env, cashierShell, "30-bill-split-payment"));
+            bill.ClosePanelCommand.Execute(null);
+            bill.PayCashCommand.Execute(null);
+            bill.Payment!.QuickTenderCommand.Execute(bill.Payment.QuickTenders[3]);
+            rendered.Add(await RenderScreenAsync(env, cashierShell, "31-bill-cash-payment"));
+            bill.ClosePanelCommand.Execute(null);
+            bill.ShowDiscountCommand.Execute(null);
+            bill.ManualValue = "15";
+            bill.ManualReason = "Regular guest";
+            rendered.Add(await RenderScreenAsync(env, cashierShell, "32-bill-discount"));
+            _ = env.Dialogs.RequestApprovalAsync("Manager approval", "A manager must approve this discount.");
+            rendered.Add(await RenderScreenAsync(env, cashierShell, "33-manager-approval"));
+            env.Dialogs.Current?.CancelCommand.Execute(null);
+            await Dispatcher.Yield(DispatcherPriority.Background);
+            bill.ClosePanelCommand.Execute(null);
+            await bill.FinalizeCommand.ExecuteAsync(null);
+            env.Notifications.Items.Clear();
+            rendered.Add(await RenderScreenAsync(env, cashierShell, "34-invoice-preview"));
+            bill.ClosePanelCommand.Execute(null);
+            bill.PayCashCommand.Execute(null);
+            bill.Payment!.QuickTenderCommand.Execute(bill.Payment.QuickTenders[2]);
+            await bill.ConfirmPaymentCommand.ExecuteAsync(null);
+            env.Notifications.Items.Clear();
+            rendered.Add(await RenderScreenAsync(env, cashierShell, "35-bill-paid"));
+
+            await cashierShell.NavigateToAsync(ModuleRegistry.ClosedBills, null);
+            var closed = (ClosedBillsViewModel)cashierShell.CurrentPage!;
+            closed.SelectedBill = closed.Bills[0];
+            await Dispatcher.Yield(DispatcherPriority.Background);
+            rendered.Add(await RenderScreenAsync(env, cashierShell, "36-closed-bills"));
+            cashierShell.Dispose();
+
+            env.Session.Start(TestData.Login("admin", roles: "Admin"));
+            var setupShell = env.Create<ShellViewModel>();
+            await setupShell.OnNavigatedToAsync(null);
+            await setupShell.NavigateToAsync(ModuleRegistry.Discounts, null);
+            ((BillingSetupViewModel)setupShell.CurrentPage!).NewDiscountCommand.Execute(null);
+            rendered.Add(await RenderScreenAsync(env, setupShell, "37-discounts-and-payment-methods"));
+            setupShell.Dispose();
         });
 
         foreach (var file in rendered)
@@ -195,7 +259,7 @@ public class ScreenRenderingTests
         }
 
         bindingErrors.Errors.Should().BeEmpty("every binding in the views must point at an existing property");
-        rendered.Should().HaveCount(25);
+        rendered.Should().HaveCount(37);
     }
 
     private static async Task<string> RenderScreenAsync(Environment env, object screen, string name)
@@ -362,6 +426,7 @@ public class ScreenRenderingTests
             services.AddSingleton(Substitute.For<ILocalDraftStore>());
             services.AddSingleton<IOrderSubmitter>(new OrderSubmitter(NullLogger<OrderSubmitter>.Instance));
             services.AddSingleton(DemoKitchenApi());
+            services.AddSingleton(DemoBillingApi());
             services.AddSingleton(Substitute.For<ISoundPlayer>());
             services.AddSingleton(Substitute.For<IReadyNotifier>());
             services.AddSingleton(Substitute.For<IAuthApi>());
@@ -530,6 +595,19 @@ public class ScreenRenderingTests
 
             var api = Substitute.For<IOrdersApi>();
             api.GetAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(ApiResult<OrderDetailDto>.Ok(detail));
+            api.GetAsync(12, Arg.Any<CancellationToken>()).Returns(ApiResult<OrderDetailDto>.Ok(detail with
+            {
+                Id = 12, OrderNumber = 1012, TableId = 6, TableCode = "T06", Status = OrderStatus.Served,
+                Tickets = detail.Tickets.Select(t => t with { Status = KitchenOrderStatus.Completed }).ToList(),
+                Items = detail.Items.Select(i => i with { TicketStatus = KitchenOrderStatus.Completed }).ToList(),
+            }));
+            api.GetAsync(3, Arg.Any<CancellationToken>()).Returns(ApiResult<OrderDetailDto>.Ok(detail with
+            {
+                Id = 3, OrderNumber = 1003, TableId = 7, TableCode = "T07", Status = OrderStatus.BillRequested, CanModify = true,
+                Tickets = detail.Tickets.Select(t => t with { Status = KitchenOrderStatus.Completed }).ToList(),
+                Items = detail.Items.Select(i => i with { TicketStatus = KitchenOrderStatus.Completed }).ToList(),
+                Bill = new OrderBillDto { Id = 3, BillNumber = 41, Status = BillStatus.Open, PaymentStatus = PaymentStatus.Pending, GrandTotal = 945m },
+            }));
             api.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ApiResult<List<OrderSummaryDto>>.Ok(new List<OrderSummaryDto>
             {
                 Summary(3, 1024, "T03", OrderStatus.Draft, 2, 520m, 5),
@@ -583,6 +661,125 @@ public class ScreenRenderingTests
                 .Returns(ApiResult<KitchenTicketListDto>.Ok(new KitchenTicketListDto { Tickets = open, ServerTimeUtc = now }));
             api.GetCompletedAsync(Arg.Any<DateOnly?>(), Arg.Any<CancellationToken>())
                 .Returns(ApiResult<KitchenTicketListDto>.Ok(new KitchenTicketListDto { Tickets = done, ServerTimeUtc = now }));
+            return api;
+        }
+
+        private static IBillingApi DemoBillingApi()
+        {
+            var now = DateTime.UtcNow;
+            BillSummaryDto Summary(int id, string table, int order, decimal total, int minutes, string? device, BillStatus status = BillStatus.Open, decimal paid = 0m) => new()
+            {
+                Id = id,
+                BillNumber = 40 + id,
+                InvoiceNumber = status == BillStatus.Open ? null : $"INV-202610-0000{id:00}",
+                OrderNumber = order,
+                TableCode = table,
+                WaiterName = "Arun (Waiter)",
+                Status = status,
+                PaymentStatus = paid > 0 ? PaymentStatus.PartiallyPaid : PaymentStatus.Pending,
+                GrandTotal = total,
+                PaidAmount = paid,
+                RequestedAtUtc = now.AddMinutes(-minutes),
+                ClaimedByDevice = device,
+            };
+            BillItemDto Item(int id, string name, int quantity, decimal price, decimal extras = 0m) => new()
+            {
+                Id = id,
+                ItemName = name,
+                Quantity = quantity,
+                UnitPrice = price,
+                ModifiersAmount = extras,
+                LineSubtotal = (price + extras) * quantity,
+                TaxRatePercent = 5m,
+            };
+            var detail = new BillDetailDto
+            {
+                Id = 1,
+                BillNumber = 41,
+                OrderId = 4,
+                OrderNumber = 1019,
+                TableId = 4,
+                TableCode = "T04",
+                WaiterId = 7,
+                WaiterName = "Arun (Waiter)",
+                GuestCount = 4,
+                Status = BillStatus.Open,
+                PaymentStatus = PaymentStatus.Pending,
+                Items = new[]
+                {
+                    Item(1, "Chicken Biryani", 2, 250m, 10m),
+                    Item(2, "Butter Naan", 4, 50m),
+                    Item(3, "Fresh Lime Soda", 3, 60m),
+                    Item(4, "Gulab Jamun", 2, 90m),
+                },
+                Subtotal = 1080m,
+                TaxableAmount = 1080m,
+                TaxAmount = 54m,
+                TaxBreakup = new[]
+                {
+                    new TaxBreakupDto { Label = "CGST 2.5%", RatePercent = 2.5m, TaxableAmount = 1080m, TaxAmount = 27m },
+                    new TaxBreakupDto { Label = "SGST 2.5%", RatePercent = 2.5m, TaxableAmount = 1080m, TaxAmount = 27m },
+                },
+                GrandTotal = 1134m,
+                BalanceDue = 1134m,
+                ClaimedByDevice = "ADMIN-01",
+                IsClaimedByMe = true,
+                RequestedAtUtc = now.AddMinutes(-6),
+                RowVersion = "AAAFow==",
+            };
+            var finalized = detail with { Status = BillStatus.Finalized, InvoiceNumber = "INV-202610-000042", CustomerName = "Kumar Traders", CustomerGstin = "33ABCDE1234F1Z5" };
+            var paid = finalized with
+            {
+                Status = BillStatus.Settled,
+                PaymentStatus = PaymentStatus.Paid,
+                PaidAmount = 1134m,
+                BalanceDue = 0m,
+                Payments = new[] { new PaymentDto { Id = 1, MethodName = "Cash", MethodCode = "CASH", Amount = 1134m, TenderedAmount = 1200m, ChangeAmount = 66m, ReceivedBy = "Priya (Cashier)", PaidAtUtc = now } },
+            };
+            var closedDetail = paid with
+            {
+                Id = 7,
+                TableCode = "T02",
+                InvoiceNumber = "INV-202610-000038",
+                RefundedAmount = 100m,
+                Payments = new[]
+                {
+                    new PaymentDto { Id = 11, MethodName = "Cash", MethodCode = "CASH", Amount = 600m, ReceivedBy = "Priya (Cashier)", PaidAtUtc = now.AddMinutes(-50), RefundableAmount = 500m },
+                    new PaymentDto { Id = 12, MethodName = "UPI", MethodCode = "UPI", Amount = 534m, Reference = "UPI 4021 7788", ReceivedBy = "Priya (Cashier)", PaidAtUtc = now.AddMinutes(-50), RefundableAmount = 534m },
+                    new PaymentDto { Id = 13, MethodName = "Cash", MethodCode = "CASH", Amount = -100m, RefundOfPaymentId = 11, RefundReason = "Cold food", ReceivedBy = "Meena (Manager)", PaidAtUtc = now.AddMinutes(-20) },
+                },
+            };
+
+            var api = Substitute.For<IBillingApi>();
+            api.GetPendingAsync(Arg.Any<CancellationToken>()).Returns(ApiResult<List<BillSummaryDto>>.Ok(new List<BillSummaryDto>
+            {
+                Summary(1, "T04", 1019, 1134m, 6, "ADMIN-01"),
+                Summary(2, "T07", 1003, 3180m, 14, "BILLING-02"),
+                Summary(3, "T11", 1031, 945m, 2, null),
+                Summary(4, "O02", 1008, 512m, 9, null, BillStatus.Finalized, 300m),
+            }));
+            api.GetAsync(1, Arg.Any<CancellationToken>()).Returns(ApiResult<BillDetailDto>.Ok(detail));
+            api.GetAsync(7, Arg.Any<CancellationToken>()).Returns(ApiResult<BillDetailDto>.Ok(closedDetail));
+            api.FinalizeAsync(1, Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(ApiResult<BillDetailDto>.Ok(finalized));
+            api.AddPaymentAsync(1, Arg.Any<AddPaymentRequest>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(ApiResult<BillDetailDto>.Ok(paid));
+            api.GetClosedAsync(Arg.Any<DateOnly?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(ApiResult<List<BillSummaryDto>>.Ok(new List<BillSummaryDto>
+            {
+                Summary(7, "T02", 1004, 1134m, 50, null, BillStatus.Settled) with { SettledAtUtc = now.AddMinutes(-48), RefundedAmount = 100m, PaymentStatus = PaymentStatus.Paid },
+                Summary(8, "T09", 1006, 820m, 75, null, BillStatus.Settled) with { SettledAtUtc = now.AddMinutes(-70), PaymentStatus = PaymentStatus.Paid },
+                Summary(9, "T12", 1002, 410m, 95, null, BillStatus.Voided) with { VoidedAtUtc = now.AddMinutes(-90) },
+            }));
+            api.GetDiscountsAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(ApiResult<List<DiscountDto>>.Ok(new List<DiscountDto>
+            {
+                new() { Id = 1, Name = "Happy hour", Type = DiscountType.Percentage, Value = 10m, IsActive = true },
+                new() { Id = 2, Name = "Staff meal", Type = DiscountType.Percentage, Value = 50m, RequiresApproval = true, IsActive = true },
+                new() { Id = 3, Name = "Loyalty card", Type = DiscountType.FixedAmount, Value = 100m, IsActive = true },
+            }));
+            api.GetPaymentMethodsAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(ApiResult<List<PaymentMethodDto>>.Ok(new List<PaymentMethodDto>
+            {
+                new() { Id = 1, Name = "Cash", Code = "CASH", IsCash = true, SortOrder = 1, IsActive = true },
+                new() { Id = 2, Name = "Card", Code = "CARD", RequiresReference = true, SortOrder = 2, IsActive = true },
+                new() { Id = 3, Name = "UPI", Code = "UPI", RequiresReference = true, SortOrder = 3, IsActive = true },
+            }));
             return api;
         }
 

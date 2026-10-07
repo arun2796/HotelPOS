@@ -145,6 +145,45 @@ public sealed class Order : BaseEntity, IHasRowVersion
         return true;
     }
 
+    public void RequestBill(DateTime nowUtc, bool allowBeforeReady)
+    {
+        var allowed = Status is OrderStatus.Served or OrderStatus.Ready
+            || (allowBeforeReady && OrderStateMachine.IsInKitchenBand(Status));
+        if (!allowed)
+        {
+            throw new DomainException(
+                Status is OrderStatus.BillRequested or OrderStatus.Billed
+                    ? $"The bill for order {OrderNumber} was already requested."
+                    : $"Order {OrderNumber} is {Status}. The bill can be requested once the food is ready.",
+                ErrorCodes.InvalidStateTransition);
+        }
+
+        Status = OrderStatus.BillRequested;
+        BillRequestedAt = nowUtc;
+    }
+
+    public void MarkBilled() => MoveTo(OrderStatus.BillRequested, OrderStatus.Billed);
+
+    public void MarkPaid() => MoveTo(OrderStatus.Billed, OrderStatus.Paid);
+
+    public void Close(DateTime nowUtc)
+    {
+        MoveTo(OrderStatus.Paid, OrderStatus.Completed);
+        ClosedAt = nowUtc;
+    }
+
+    // The kitchen status is derived again by the caller, so tickets still waiting are not lost.
+    public void ReopenFromBill()
+    {
+        if (Status is not (OrderStatus.BillRequested or OrderStatus.Billed))
+        {
+            throw new DomainException($"Order {OrderNumber} is {Status} and has no open bill.", ErrorCodes.InvalidStateTransition);
+        }
+
+        Status = OrderStatus.Served;
+        BillRequestedAt = null;
+    }
+
     public void Cancel(int userId, string? reason, DateTime nowUtc)
     {
         if (!OrderStateMachine.CanTransition(Status, OrderStatus.Cancelled))
@@ -161,6 +200,16 @@ public sealed class Order : BaseEntity, IHasRowVersion
         CancelledAt = nowUtc;
         CancelledBy = userId;
         CancelReason = Clean(reason);
+    }
+
+    private void MoveTo(OrderStatus expected, OrderStatus next)
+    {
+        if (Status != expected)
+        {
+            throw new DomainException($"Order {OrderNumber} is {Status}, not {expected}.", ErrorCodes.InvalidStateTransition);
+        }
+
+        Status = next;
     }
 
     private static string? Clean(string? text) => string.IsNullOrWhiteSpace(text) ? null : text.Trim();

@@ -1,11 +1,13 @@
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using HotelPOS.Contracts.Billing;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Floor;
 using HotelPOS.Contracts.Kitchen;
 using HotelPOS.Contracts.Orders;
+using HotelPOS.Desktop.Modules.Billing;
 using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Modules.Orders;
 using HotelPOS.Desktop.Services.Api;
@@ -38,6 +40,8 @@ public sealed partial class TableDetailsViewModel : ObservableObject
     private readonly Func<Task> _refreshMap;
     private readonly bool _canTakeOrders;
     private readonly bool _isManager;
+    private readonly bool _isCashier;
+    private Guid? _billRequestKey;
 
     public TableDetailsViewModel(
         IFloorApi floorApi,
@@ -49,7 +53,8 @@ public sealed partial class TableDetailsViewModel : ObservableObject
         Action<TableDto> applyTable,
         Func<Task> refreshMap,
         bool canTakeOrders,
-        bool isManager = false)
+        bool isManager = false,
+        bool isCashier = false)
     {
         _floorApi = floorApi;
         _ordersApi = ordersApi;
@@ -61,6 +66,7 @@ public sealed partial class TableDetailsViewModel : ObservableObject
         _refreshMap = refreshMap;
         _canTakeOrders = canTakeOrders;
         _isManager = isManager;
+        _isCashier = isCashier;
     }
 
     [ObservableProperty]
@@ -77,7 +83,8 @@ public sealed partial class TableDetailsViewModel : ObservableObject
     private string? _errorMessage;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasOrder), nameof(OrderTitle), nameof(OrderStatusText), nameof(OrderTotalText), nameof(ShowKeypad))]
+    [NotifyPropertyChangedFor(nameof(HasOrder), nameof(OrderTitle), nameof(OrderStatusText), nameof(OrderTotalText), nameof(ShowKeypad),
+        nameof(HasBill), nameof(BillStatusText))]
     private OrderDetailDto? _order;
 
     [ObservableProperty]
@@ -101,6 +108,16 @@ public sealed partial class TableDetailsViewModel : ObservableObject
 
     public string OrderTotalText => Order is null ? string.Empty : $"approx. {Order.ApproxSubtotal.ToString("N2", CultureInfo.CurrentCulture)}";
 
+    public bool HasBill => Order?.Bill is not null;
+
+    public string BillStatusText => Order?.Bill switch
+    {
+        null => string.Empty,
+        { Status: BillStatus.Settled } bill => $"Paid · {Money.Format(bill.GrandTotal)}",
+        { PaidAmount: > 0 } bill => $"Bill at counter · {Money.Format(bill.PaidAmount)} of {Money.Format(bill.GrandTotal)} paid",
+        var bill => $"Bill at counter · {Money.Format(bill.GrandTotal)}",
+    };
+
     public IReadOnlyList<string> Keys { get; } = new[] { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
 
     public bool ShowOccupy => Table?.IsAvailable == true;
@@ -118,6 +135,9 @@ public sealed partial class TableDetailsViewModel : ObservableObject
 
     public bool ShowCancelOrder => Order is { CanModify: true } order
         && order.Status is OrderStatus.Draft or OrderStatus.Submitted or OrderStatus.Accepted or OrderStatus.Preparing or OrderStatus.Ready;
+
+    public bool ShowRequestBill => Order is { Bill: null, Status: OrderStatus.Served or OrderStatus.Ready } order
+        && (order.CanModify || _isCashier || _isManager);
 
     public string NewOrderText => HasLocalDraft ? "RESUME ORDER" : "NEW ORDER";
 
@@ -382,6 +402,42 @@ public sealed partial class TableDetailsViewModel : ObservableObject
         }
     }
 
+    private bool CanRequestBill() => !IsBusy && ShowRequestBill;
+
+    [RelayCommand(CanExecute = nameof(CanRequestBill))]
+    private async Task RequestBillAsync()
+    {
+        var order = Order!;
+        IsBusy = true;
+        ErrorMessage = null;
+        try
+        {
+            // The key survives a lost response, so pressing again cannot create a second bill.
+            _billRequestKey ??= Guid.NewGuid();
+            var result = await _ordersApi.RequestBillAsync(order.Id, _billRequestKey.Value);
+            if (!result.IsConnectionFailure)
+            {
+                _billRequestKey = null;
+            }
+
+            if (result.Success && result.Data is not null)
+            {
+                _notifications.Success($"Bill for table {result.Data.TableCode} sent to the counter ({Money.Format(result.Data.GrandTotal)}).");
+            }
+            else
+            {
+                ErrorMessage = result.IsConnectionFailure
+                    ? "Could not confirm the bill request. Check the connection and press REQUEST BILL again."
+                    : ApiFailures.Describe(result);
+            }
+        }
+        finally
+        {
+            IsBusy = false;
+            await ReloadOrderAsync();
+        }
+    }
+
     [RelayCommand]
     private async Task CancelItemAsync(OrderLineViewModel? line)
     {
@@ -447,7 +503,8 @@ public sealed partial class TableDetailsViewModel : ObservableObject
     private void RefreshCommands()
     {
         ServeCommand.NotifyCanExecuteChanged();
-        foreach (var name in new[] { nameof(ShowServe), nameof(ShowOccupy), nameof(ShowRelease), nameof(ShowNewOrder), nameof(ShowOpenOrder), nameof(ShowAddItems), nameof(ShowCancelOrder), nameof(NewOrderText) })
+        RequestBillCommand.NotifyCanExecuteChanged();
+        foreach (var name in new[] { nameof(ShowServe), nameof(ShowRequestBill), nameof(ShowOccupy), nameof(ShowRelease), nameof(ShowNewOrder), nameof(ShowOpenOrder), nameof(ShowAddItems), nameof(ShowCancelOrder), nameof(NewOrderText) })
         {
             OnPropertyChanged(name);
         }

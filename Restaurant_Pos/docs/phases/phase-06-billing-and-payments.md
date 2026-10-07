@@ -1,6 +1,6 @@
 # Phase 6 — Billing & Payments
 
-Status: Not started · Depends on: Phase 5
+Status: Done (2026-10-07) · Depends on: Phase 5
 
 ## 1. Goal
 
@@ -144,11 +144,11 @@ refunds.
 
 ## 12. Acceptance criteria
 
-- [ ] Request -> queue -> discount -> finalize -> split payment -> close -> table released, atomic.
-- [ ] Gap-free invoice numbers under concurrency; idempotent payments; multi-counter claim lock.
-- [ ] Void, refund, reopen with manager approval and audit.
-- [ ] Calculation rules match `docs/02` § 6 exactly (tests are the spec).
-- [ ] Definition of Done satisfied.
+- [x] Request -> queue -> discount -> finalize -> split payment -> close -> table released, atomic.
+- [x] Gap-free invoice numbers under concurrency; idempotent payments; multi-counter claim lock.
+- [x] Void, refund, reopen with manager approval and audit.
+- [x] Calculation rules match `docs/02` § 6 exactly (tests are the spec).
+- [x] Definition of Done satisfied (the two-PC unplug demo, step 6, is still to do by hand).
 
 ## 13. Risks and notes
 
@@ -161,4 +161,29 @@ refunds.
 
 ## 14. Changes during implementation
 
-(fill in while building)
+- **Invoice counter table.** Counters live in `InvoiceCounters (Period, LastNumber)` instead of `Settings` rows, so
+  they never show up (or get edited) on the Settings screen. The number is taken with
+  `INSERT ... ON CONFLICT DO UPDATE ... RETURNING`, which locks the period row until the finalisation commits, the
+  same guarantee as `SELECT ... FOR UPDATE`. A rollback hands the number back (tested with an injected failure and
+  20 parallel finalisations).
+- **One live bill per order.** `Bills.OrderId` is unique only among non-voided bills, because a reopened order gets a
+  new bill (new bill number, and a new invoice number on finalisation).
+- **Refund rows** are negative `Payments` rows; the check constraint is `Amount > 0` for payments and `< 0` for
+  refunds. `Bills.RefundedAmount` keeps the running total; `PaidAmount` stays the gross amount received.
+- **Cash over the balance** is accepted: the applied amount is capped at the balance and the rest is change.
+  Card/UPI above the balance -> 409 `PAYMENT_EXCEEDS_BALANCE`.
+- **Approvals.** Void and refund accept cashiers too, but then require a manager's credentials in `approval`
+  (the Closed Bills / Bill Detail approval dialog). Reopen needs approval only when the bill already has an invoice
+  number (that invoice is cancelled). Rejected approvals are audited as `Approval.Rejected` (password never logged).
+- **Claims.** Every cashier action claims or refreshes the claim; the Bill Detail screen renews it every two minutes
+  while open, and a cleanup job releases expired claims every minute (emitting `BillUpdated`). A bill held by another
+  counter opens read-only with "Being handled by BILLING-02"; a manager can take it over.
+- **Settlement** closes the order (`Paid`, then `Completed` when `AutoCloseOnFullPayment`), releases the table and
+  completes any ticket still open, in one transaction; `AutoCloseOnFullPayment = false` keeps the order `Paid` until
+  `POST /close`, but the table is released at payment either way.
+- A zero-total bill (100 % discount) is settled when finalized.
+- New settings: `MaxCashierDiscountPercent` (10) and `AllowBillBeforeReady` (false).
+- Desktop payments keep the idempotency key and the exact request only across connection failures; any definitive
+  server answer (also a 4xx, which the server stores under the key) makes the next attempt use a new key.
+- Printing remains Phase 7: FINALIZE & PRINT shows an on-screen invoice preview, and reprint is disabled.
+- The waiter list used as a placeholder for Billing (`ActiveOrdersViewModel`) was removed.

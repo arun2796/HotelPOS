@@ -48,4 +48,6 @@ public static class SettingKeys
     public const string MenuVersion = "MenuVersion";
     public const string TaxSplitDisplay = "TaxSplitDisplay";
     public const string AllowAnyWaiterToEditOrders = "AllowAnyWaiterToEditOrders";
+    public const string MaxCashierDiscountPercent = "MaxCashierDiscountPercent";
+    public const string AllowBillBeforeReady = "AllowBillBeforeReady";
 }

@@ -151,15 +151,3 @@ public sealed class MyOrdersViewModel : OrderListViewModelBase
 
     protected override bool Include(OrderSummaryDto order) => order.WaiterId == Session.User?.Id;
 }
-
-public sealed class ActiveOrdersViewModel : OrderListViewModelBase
-{
-    public ActiveOrdersViewModel(IOrdersApi ordersApi, IRealtimeClient realtime, INavigationService navigation, IAuthSession session)
-        : base(ordersApi, realtime, navigation, session)
-    {
-    }
-
-    public override string EmptyText => "No active orders.";
-
-    protected override bool Include(OrderSummaryDto order) => order.Status != OrderStatus.Draft;
-}

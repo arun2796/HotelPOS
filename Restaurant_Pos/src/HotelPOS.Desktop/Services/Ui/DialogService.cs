@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using HotelPOS.Contracts.Billing;
 
 namespace HotelPOS.Desktop.Services.Ui;
 
@@ -10,6 +11,8 @@ public interface IDialogService
     Task AlertAsync(string title, string message);
 
     Task<string?> PromptAsync(string title, string message, string confirmText = "OK", bool isPassword = false);
+
+    Task<ManagerApprovalDto?> RequestApprovalAsync(string title, string message);
 }
 
 public sealed partial class DialogService : ObservableObject, IDialogService
@@ -32,6 +35,15 @@ public sealed partial class DialogService : ObservableObject, IDialogService
     {
         var result = await ShowAsync(new DialogViewModel(title, message, confirmText, "Cancel", destructive: false, hasInput: true, isPassword));
         return result.Confirmed ? result.Input : null;
+    }
+
+    public async Task<ManagerApprovalDto?> RequestApprovalAsync(string title, string message)
+    {
+        var dialog = new DialogViewModel(title, message, "Approve", "Cancel", destructive: false, hasInput: true, isPassword: true) { NeedsApprover = true };
+        var result = await ShowAsync(dialog);
+        return result.Confirmed && dialog.ApproverUsername.Trim().Length > 0
+            ? new ManagerApprovalDto { ApproverUsername = dialog.ApproverUsername.Trim(), ApproverPassword = result.Input ?? string.Empty }
+            : null;
     }
 
     private async Task<DialogResult> ShowAsync(DialogViewModel dialog)
@@ -76,10 +88,15 @@ public sealed partial class DialogViewModel : ObservableObject
     public bool HasInput { get; }
     public bool IsPassword { get; }
     public bool IsTextInput => HasInput && !IsPassword;
-    public bool IsPasswordInput => HasInput && IsPassword;
+    public bool IsPasswordInput => HasInput && IsPassword && !NeedsApprover;
+
+    public bool NeedsApprover { get; init; }
 
     [ObservableProperty]
     private string _input = string.Empty;
+
+    [ObservableProperty]
+    private string _approverUsername = string.Empty;
 
     public Task<DialogResult> Completion => _completion.Task;
 

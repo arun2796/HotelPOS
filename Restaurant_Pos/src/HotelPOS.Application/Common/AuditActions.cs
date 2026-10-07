@@ -67,4 +67,25 @@ public static class AuditActions
     public const string OrderCancelled = "Order.Cancelled";
     public const string OrderServed = "Order.Served";
     public const string OrderItemCancelled = "Order.ItemCancelled";
+
+    public const string BillRequested = "Bill.Requested";
+    public const string BillClaimed = "Bill.Claimed";
+    public const string BillReleased = "Bill.Released";
+    public const string BillClaimOverridden = "Bill.ClaimOverridden";
+    public const string BillDiscountApplied = "Bill.DiscountApplied";
+    public const string BillDiscountCleared = "Bill.DiscountCleared";
+    public const string BillCustomerUpdated = "Bill.CustomerUpdated";
+    public const string BillFinalized = "Bill.Finalized";
+    public const string BillSettled = "Bill.Settled";
+    public const string BillClosed = "Bill.Closed";
+    public const string BillReopened = "Bill.Reopened";
+    public const string BillVoided = "Bill.Voided";
+    public const string PaymentReceived = "Payment.Received";
+    public const string PaymentRefunded = "Payment.Refunded";
+    public const string ApprovalRejected = "Approval.Rejected";
+
+    public const string DiscountCreated = "Discount.Created";
+    public const string DiscountUpdated = "Discount.Updated";
+    public const string PaymentMethodCreated = "PaymentMethod.Created";
+    public const string PaymentMethodUpdated = "PaymentMethod.Updated";
 }

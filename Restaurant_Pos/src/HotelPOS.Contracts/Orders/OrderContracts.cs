@@ -1,3 +1,4 @@
+using HotelPOS.Contracts.Billing;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Enums;
 
@@ -93,6 +94,7 @@ public sealed record OrderDetailDto
     public string? CancelReason { get; init; }
     public IReadOnlyList<OrderItemDto> Items { get; init; } = Array.Empty<OrderItemDto>();
     public IReadOnlyList<OrderTicketDto> Tickets { get; init; } = Array.Empty<OrderTicketDto>();
+    public OrderBillDto? Bill { get; init; }
 
     public decimal ApproxSubtotal { get; init; }
 

@@ -1,5 +1,6 @@
 using HotelPOS.Contracts.Security;
 using HotelPOS.Desktop.Modules.Admin;
+using HotelPOS.Desktop.Modules.Billing;
 using HotelPOS.Desktop.Modules.Config;
 using HotelPOS.Desktop.Modules.Kitchen;
 using HotelPOS.Desktop.Modules.MenuAdmin;
@@ -57,9 +58,9 @@ public static class ModuleRegistry
             "Tickets completed today with preparation times.", typeof(CompletedOrdersViewModel)),
 
         new(Billing, "Billing", "", "Billing", new[] { Roles.Admin, Roles.Manager, Roles.Cashier }, 6,
-            "Pending bills, discounts, tax and split payments.", typeof(ActiveOrdersViewModel)),
+            "Pending bills, discounts, tax and split payments.", typeof(BillingQueueViewModel)),
         new(ClosedBills, "Closed Bills", "", "Billing", new[] { Roles.Admin, Roles.Manager, Roles.Cashier }, 6,
-            "Settled and voided bills, reprints and refunds."),
+            "Settled and voided bills, reprints and refunds.", typeof(ClosedBillsViewModel)),
 
         new(Reports, "Reports", "", "Management", Management, 8,
             "Sales, items, payments, taxes, staff and kitchen performance."),
@@ -67,8 +68,8 @@ public static class ModuleRegistry
             "Create sections and tables, capacity and service state.", typeof(FloorViewModel)),
         new(Menu, "Menu", "", "Management", Management, 3,
             "Categories, items, prices, modifiers, taxes and preparation stations.", typeof(MenuAdminViewModel)),
-        new(Discounts, "Discounts", "", "Management", Management, 6,
-            "Predefined discounts and payment methods."),
+        new(Discounts, "Discounts & Payments", "", "Management", Management, 6,
+            "Predefined discounts and payment methods.", typeof(BillingSetupViewModel)),
         new(Audit, "Audit Log", "", "Management", Management, 9,
             "Who changed what, when and from which terminal."),
 

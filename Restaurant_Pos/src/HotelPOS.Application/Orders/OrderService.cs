@@ -4,6 +4,7 @@ using HotelPOS.Application.Common.Results;
 using HotelPOS.Application.Floor;
 using HotelPOS.Application.Kitchen;
 using HotelPOS.Contracts.Admin;
+using HotelPOS.Contracts.Billing;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Kitchen;
@@ -173,7 +174,20 @@ public sealed class OrderService : IOrderService
         var waiterName = await WaiterNameAsync(order.WaiterId, cancellationToken);
         var tickets = await _db.KitchenOrders.AsNoTracking().Include(k => k.Items).Where(k => k.OrderId == id).OrderBy(k => k.Id).ToListAsync(cancellationToken);
         var stations = await _db.PreparationStations.AsNoTracking().ToDictionaryAsync(s => s.Id, s => s.Code, cancellationToken);
-        return ToDetail(order, waiterName, await CanModifyAsync(order, cancellationToken), tickets, stations);
+        var bill = await _db.Bills.AsNoTracking()
+            .Where(b => b.OrderId == id && b.Status != BillStatus.Voided)
+            .Select(b => new OrderBillDto
+            {
+                Id = b.Id,
+                BillNumber = b.BillNumber,
+                InvoiceNumber = b.InvoiceNumber,
+                Status = b.Status,
+                PaymentStatus = b.PaymentStatus,
+                GrandTotal = b.GrandTotal,
+                PaidAmount = b.PaidAmount,
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+        return ToDetail(order, waiterName, await CanModifyAsync(order, cancellationToken), tickets, stations) with { Bill = bill };
     }
 
     public async Task<PagedResult<OrderSummaryDto>> ListAsync(OrderQuery query, CancellationToken cancellationToken = default)
@@ -459,6 +473,11 @@ public sealed class OrderService : IOrderService
         if (order is null || item is null)
         {
             return AppErrors.NotFound("Order item", itemId);
+        }
+
+        if (!OrderStateMachine.IsInKitchenBand(order.Status))
+        {
+            return AppErrors.OrderLocked($"Order {order.OrderNumber} is {order.Status}; reopen the bill to change its items.", await GetDetailAsync(id, cancellationToken));
         }
 
         if (item.Status != OrderItemStatus.Sent)

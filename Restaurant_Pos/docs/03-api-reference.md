@@ -123,7 +123,7 @@ Admin always has access; Manager has access wherever `M` is listed.
 | POST | `/api/orders/{id}/items/{itemId}/cancel` | W, M | Rules by ticket status (Phase 5) |
 | POST | `/api/orders/{id}/cancel` | W (own), M | `{reason}`; role rules by status |
 | POST | `/api/orders/{id}/serve` | W, M, A | Completes all Ready tickets (any waiter may serve) |
-| POST **[I]** | `/api/orders/{id}/request-bill` | W, C, M | Creates bill, table -> Billing (Phase 6) |
+| POST **[I]** | `/api/orders/{id}/request-bill` | W, C, M, A | Creates the bill (lines snapshotted, totals computed); order -> BillRequested, table -> Billing. Waiters: own orders unless `AllowAnyWaiterToEditOrders` |
 
 ### 3.6 Kitchen (Phase 5)
 
@@ -145,17 +145,17 @@ Admin always has access; Manager has access wherever `M` is listed.
 | GET | `/api/billing/pending` | C, M | Open/Finalized bills with claim info |
 | GET | `/api/billing/{id}` | C, M, W (own order) | Bill with lines, totals, payments |
 | GET | `/api/billing/closed` | C, M | `?date=&search=` settled/voided |
-| POST | `/api/billing/{id}/claim` | C, M | Soft lock (5 min, refreshable); 409 if held by another device |
+| POST | `/api/billing/{id}/claim` | C, M | Soft lock (5 min, refreshed by every cashier action); 409 `BILL_CLAIMED` naming the holder. `{override:true}` lets a manager take over (audited) |
 | POST | `/api/billing/{id}/release` | C, M | |
 | PUT | `/api/billing/{id}/discount` | C, M | `{discountId? | type,value, reason, approval?}`; recalculates |
-| DELETE | `/api/billing/{id}/discount` | C, M | |
+| DELETE | `/api/billing/{id}/discount?rowVersion=` | C, M | |
 | PUT | `/api/billing/{id}/customer` | C, M | name/phone/GSTIN for invoice |
 | POST | `/api/billing/{id}/finalize` | C, M | Assigns invoice number, locks discount; Order -> Billed |
 | POST **[I]** | `/api/billing/{id}/payments` | C, M | `{paymentMethodId, amount, tendered?, reference?}`; implicit finalize; settles when fully paid |
 | POST | `/api/billing/{id}/close` | C, M | Only when `AutoCloseOnFullPayment=false` |
-| POST | `/api/billing/{id}/reopen` | C, M | Voids bill, Order -> Served, items editable |
-| POST | `/api/billing/{id}/void` | M | Unpaid finalized bill, `{reason, approval}` |
-| POST **[I]** | `/api/billing/{id}/refunds` | M | `{paymentId, amount, reason, approval}` |
+| POST | `/api/billing/{id}/reopen` | C, M | `{reason, approval?, rowVersion}` unpaid bills; voids the bill, Order -> Served, items editable. Approval required once an invoice number exists |
+| POST | `/api/billing/{id}/void` | C, M | Unpaid finalized bill, `{reason, approval, rowVersion}`; a cashier must include a manager approval. Order cancelled, table released |
+| POST **[I]** | `/api/billing/{id}/refunds` | C, M | `{paymentId, amount, reason, approval, rowVersion}` on settled bills; a cashier must include a manager approval |
 | GET / POST / PUT / DELETE | `/api/discounts[/{id}]` | read C/M, write A/M | |
 | GET / POST / PUT / DELETE | `/api/payment-methods[/{id}]` | read *, write A | |
 

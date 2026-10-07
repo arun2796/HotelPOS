@@ -54,6 +54,7 @@ public static class AppHost
         services.AddSingleton<ILocalDraftStore, LocalDraftStore>();
         services.AddSingleton<IOrderSubmitter, OrderSubmitter>();
         services.AddSingleton<IKitchenApi, KitchenApi>();
+        services.AddSingleton<IBillingApi, BillingApi>();
         services.AddSingleton<IReadyNotifier, ReadyNotifier>();
         services.AddHttpClient(MenuCache.ImageHttpClientName, client => client.Timeout = TimeSpan.FromSeconds(15));
         services.AddSingleton<IMenuCache, MenuCache>();

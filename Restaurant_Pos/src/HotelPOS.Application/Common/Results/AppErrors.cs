@@ -47,6 +47,15 @@ public static class AppErrors
     public static AppError OrderLocked(string message, object? current = null) =>
         new(ErrorCodes.OrderLocked, message) { Data = current };
 
+    public static AppError BillClaimed(string holder, object? current = null) =>
+        new(ErrorCodes.BillClaimed, $"This bill is being handled by {holder}.") { Data = current };
+
+    public static AppError ApprovalRequired(string action) =>
+        new(ErrorCodes.ApprovalRequired, $"A manager must approve {action}.");
+
+    public static AppError ApprovalInvalid() =>
+        new(ErrorCodes.ApprovalInvalid, "The approval was not accepted: check the manager's username and password.");
+
     public static AppError TableNotAvailable(string tableCode, object? current = null) =>
         new(ErrorCodes.TableNotAvailable, $"Table {tableCode} is no longer available. The latest status has been loaded.")
         {

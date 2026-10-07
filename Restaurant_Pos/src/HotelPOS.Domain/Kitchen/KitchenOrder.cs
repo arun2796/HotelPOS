@@ -100,6 +100,19 @@ public sealed class KitchenOrder : BaseEntity, IHasRowVersion
         CompletedBy = userId;
     }
 
+    // A paid bill closes the order, so whatever the kitchen still shows is treated as handed over.
+    public void CloseOnSettle(int userId, DateTime nowUtc)
+    {
+        if (!IsOpen)
+        {
+            return;
+        }
+
+        Status = KitchenOrderStatus.Completed;
+        CompletedAt = nowUtc;
+        CompletedBy = userId;
+    }
+
     public void Cancel(DateTime nowUtc)
     {
         if (!IsOpen)

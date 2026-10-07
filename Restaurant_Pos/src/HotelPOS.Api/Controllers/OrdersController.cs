@@ -1,5 +1,7 @@
 using HotelPOS.Api.Common;
+using HotelPOS.Application.Billing;
 using HotelPOS.Application.Orders;
+using HotelPOS.Contracts.Billing;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Kitchen;
 using HotelPOS.Contracts.Orders;
@@ -15,11 +17,15 @@ public sealed class OrdersController : ApiControllerBase
 {
     private const string OrderTakers = Roles.Admin + "," + Roles.Manager + "," + Roles.Waiter;
 
-    private readonly IOrderService _orders;
+    private const string BillRequesters = OrderTakers + "," + Roles.Cashier;
 
-    public OrdersController(IOrderService orders)
+    private readonly IOrderService _orders;
+    private readonly IBillingService _billing;
+
+    public OrdersController(IOrderService orders, IBillingService billing)
     {
         _orders = orders;
+        _billing = billing;
     }
 
     [HttpPost]
@@ -87,4 +93,11 @@ public sealed class OrdersController : ApiControllerBase
     [ProducesResponseType<ApiResponse<OrderDetailDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Cancel(int id, CancelOrderRequest request, CancellationToken cancellationToken) =>
         FromResult(await _orders.CancelAsync(id, request, cancellationToken), message: "Order cancelled.");
+
+    [HttpPost("{id:int}/request-bill")]
+    [Idempotent]
+    [Authorize(Roles = BillRequesters)]
+    [ProducesResponseType<ApiResponse<BillDetailDto>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> RequestBill(int id, CancellationToken cancellationToken) =>
+        FromResult(await _billing.RequestBillAsync(id, cancellationToken), message: "Bill sent to the counter.");
 }

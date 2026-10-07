@@ -80,9 +80,10 @@ Constraints: at most one **active** order per table — partial unique index (EF
 |---|---|
 | `Discounts` | `Name`, `Type` (Percentage/FixedAmount), `Value`, `RequiresApproval`, `IsActive` |
 | `PaymentMethods` | `Name`, `Code` (unique: CASH, CARD, UPI...), `RequiresReference`, `IsActive`, `SortOrder` |
-| `Bills` | `BillNumber` (int, unique, assigned at creation), `InvoiceNumber?` (string, unique, assigned at finalisation), `OrderId` (unique), `TableCode` (snapshot), `WaiterId`, `Status` (Open/Finalized/Settled/Voided), `PaymentStatus` (enum), `Subtotal`, `DiscountId?`, `DiscountType?`, `DiscountValue?`, `DiscountAmount`, `DiscountReason?`, `DiscountApprovedBy?`, `TaxableAmount`, `TaxAmount`, `RoundOff`, `GrandTotal`, `PaidAmount`, `CustomerName?`, `CustomerPhone?`, `CustomerGstin?`, `ClaimedByUserId?`, `ClaimedByDeviceId?`, `ClaimedAt?`, `ClaimExpiresAt?`, `FinalizedAt?`, `SettledAt?`, `SettledBy?`, `VoidedAt?`, `VoidReason?`, `RowVersion` |
+| `Bills` | `BillNumber` (int, unique, assigned at creation), `InvoiceNumber?` (string, unique, assigned at finalisation), `OrderId` (unique among non-voided bills), `TableCode` (snapshot), `WaiterId`, `Status` (Open/Finalized/Settled/Voided), `PaymentStatus` (enum), `Subtotal`, `DiscountId?`, `DiscountType?`, `DiscountValue?`, `DiscountAmount`, `DiscountReason?`, `DiscountApprovedBy?`, `TaxableAmount`, `TaxAmount`, `RoundOff`, `GrandTotal`, `PaidAmount`, `RefundedAmount`, `ServiceChargeAmount?` (reserved), `CustomerName?`, `CustomerPhone?`, `CustomerGstin?`, `ClaimedByUserId?`, `ClaimedByDeviceId?`, `ClaimedAt?`, `ClaimExpiresAt?`, `FinalizedAt?`, `SettledAt?`, `SettledBy?`, `VoidedAt?`, `VoidReason?`, `RowVersion` |
 | `BillItems` | `BillId`, `OrderItemId`, `ItemName`, `Quantity`, `UnitPrice`, `ModifiersAmount`, `LineSubtotal`, `DiscountShare`, `TaxRatePercent`, `TaxAmount`, `LineTotal` |
-| `Payments` | `BillId`, `PaymentMethodId`, `Amount`, `TenderedAmount?`, `ChangeAmount?`, `Reference?`, `Status` (Completed/Refunded/Voided), `ReceivedBy`, `DeviceId`, `PaidAt`, `IdempotencyKey`, `RefundOfPaymentId?`, `RefundReason?` |
+| `Payments` | `BillId`, `PaymentMethodId`, `Amount`, `TenderedAmount?`, `ChangeAmount?`, `Reference?`, `Status` (Completed/Refunded/Voided), `ReceivedBy`, `DeviceId?`, `PaidAt`, `IdempotencyKey`, `RefundOfPaymentId?`, `RefundReason?` (refund rows carry a negative `Amount`) |
+| `InvoiceCounters` | `Period` (PK: `2026`, `202610` or `ALL`), `LastNumber` |
 
 ## 3. Enums (defined in `HotelPOS.Contracts.Enums`)
 
@@ -182,7 +183,7 @@ Bill.PaymentStatus: Pending -> PartiallyPaid -> Paid -> Refunded (full refund)
 | `OrderNumber` | `nextval('"OrderNumbers"')` (SEQUENCE starting 1001, EF `HasSequence`). Gaps allowed. |
 | `TicketNumber` | `"{OrderNumber}-{BatchNumber}"` plus station suffix when a batch spans stations: `1025-1-BAR`. |
 | `BillNumber` | SEQUENCE `"BillNumbers"`. Internal. |
-| `InvoiceNumber` | `"{InvoicePrefix}{yyyy}{MM}-{000000}"` from a `Settings` counter row read with `SELECT ... FOR UPDATE` inside the finalisation transaction. Gap-free. Prefix and reset policy (yearly/monthly/never) from settings. |
+| `InvoiceNumber` | `"{InvoicePrefix}{yyyy}{MM}-{000000}"` from the period's `InvoiceCounters` row, incremented with `INSERT ... ON CONFLICT DO UPDATE ... RETURNING` (row lock until commit) inside the finalisation transaction. Gap-free. Prefix and reset policy (yearly/monthly/never) from settings. |
 
 ## 6. Money and bill calculation (`BillCalculator`, pure domain code)
 
@@ -214,13 +215,13 @@ Prices are tax-exclusive in v1 (`PricesIncludeTax` setting reserved).
   `Orders(WaiterId, CreatedAt)`
 - `OrderItems(OrderId)`; `KitchenOrders(OrderId)`; `KitchenOrders(PreparationStationId, Status)`;
   `KitchenOrders(TicketNumber)` unique
-- `Bills(OrderId)` unique; `Bills(BillNumber)` unique; `Bills(InvoiceNumber)` unique partial (where not null);
+- `Bills(OrderId) WHERE Status <> Voided` unique; `Bills(BillNumber)` unique; `Bills(InvoiceNumber)` unique partial (where not null);
   `Bills(Status, CreatedAt)`
 - `Payments(BillId)`; `Payments(IdempotencyKey)` unique
 - `AuditLogs(Timestamp)`, `AuditLogs(EntityType, EntityId)`, `AuditLogs(UserId)`
 - `IdempotencyRecords(ExpiresAt)`
 - Check constraints: `Price >= 0`, `Quantity > 0`, `RatePercent BETWEEN 0 AND 100`,
-  `Amount > 0` on payments, enum ranges
+  `Amount > 0` on payments (`< 0` on refund rows), enum ranges
 
 ## 8. Seed data (first migration + `DbSeeder`)
 
@@ -231,7 +232,8 @@ Prices are tax-exclusive in v1 (`PricesIncludeTax` setting reserved).
 - Settings: `RestaurantName`, `Address`, `Gstin`, `CurrencySymbol` (₹), `InvoicePrefix` (INV-),
   `InvoiceResetPolicy` (Yearly), `RoundOffTotals` (true), `BusinessDayStartTime` (04:00),
   `KitchenWarnMinutes` (10), `KitchenLateMinutes` (20), `AutoCloseOnFullPayment` (true),
-  `ReceiptFooter`, `MenuVersion` (1), `TaxSplitDisplay` (CGST_SGST)
+  `ReceiptFooter`, `MenuVersion` (1), `TaxSplitDisplay` (CGST_SGST), `AllowAnyWaiterToEditOrders` (false),
+  `MaxCashierDiscountPercent` (10), `AllowBillBeforeReady` (false)
 - Development-only seed: sample sections, tables, categories, items, a waiter/kitchen/cashier user
 
 ## 9. Migration strategy

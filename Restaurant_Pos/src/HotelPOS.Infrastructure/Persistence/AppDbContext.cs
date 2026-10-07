@@ -41,10 +41,16 @@ public sealed class AppDbContext : DbContext, IAppDbContext
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<KitchenOrder> KitchenOrders => Set<KitchenOrder>();
     public DbSet<KitchenOrderItem> KitchenOrderItems => Set<KitchenOrderItem>();
+    public DbSet<Discount> Discounts => Set<Discount>();
+    public DbSet<Bill> Bills => Set<Bill>();
+    public DbSet<BillItem> BillItems => Set<BillItem>();
+    public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<InvoiceCounter> InvoiceCounters => Set<InvoiceCounter>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasSequence<int>(OrderConfiguration.NumberSequence).StartsAt(1001);
+        modelBuilder.HasSequence<int>(BillConfiguration.NumberSequence).StartsAt(1);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
     }
 

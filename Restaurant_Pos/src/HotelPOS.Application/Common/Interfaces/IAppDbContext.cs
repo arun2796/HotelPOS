@@ -35,6 +35,11 @@ public interface IAppDbContext
     DbSet<OrderItem> OrderItems { get; }
     DbSet<KitchenOrder> KitchenOrders { get; }
     DbSet<KitchenOrderItem> KitchenOrderItems { get; }
+    DbSet<Discount> Discounts { get; }
+    DbSet<Bill> Bills { get; }
+    DbSet<BillItem> BillItems { get; }
+    DbSet<Payment> Payments { get; }
+    DbSet<InvoiceCounter> InvoiceCounters { get; }
 
     DatabaseFacade Database { get; }
 

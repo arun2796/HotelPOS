@@ -22,6 +22,8 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.HasSequence<int>("BillNumbers");
+
             modelBuilder.HasSequence<int>("OrderNumbers")
                 .StartsAt(1001L);
 
@@ -173,6 +175,394 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("HotelPOS.Domain.Billing.Bill", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BillNumber")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValueSql("nextval('\"BillNumbers\"')");
+
+                    b.Property<DateTime?>("ClaimExpiresAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<DateTime?>("ClaimedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<Guid?>("ClaimedByDeviceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("ClaimedByUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("CustomerGstin")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("CustomerName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("CustomerPhone")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<decimal>("DiscountAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int?>("DiscountApprovedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("DiscountId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("DiscountReason")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<int?>("DiscountType")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal?>("DiscountValue")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime?>("FinalizedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<decimal>("GrandTotal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("InvoiceNumber")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("PaidAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("PaymentStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("RefundedAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("RoundOff")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<decimal?>("ServiceChargeAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime?>("SettledAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int?>("SettledBy")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("Subtotal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("TableCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<decimal>("TaxAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("TaxableAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int?>("UpdatedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("VoidReason")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTime?>("VoidedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int>("WaiterId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BillNumber")
+                        .IsUnique();
+
+                    b.HasIndex("DiscountId");
+
+                    b.HasIndex("InvoiceNumber")
+                        .IsUnique()
+                        .HasFilter("\"InvoiceNumber\" IS NOT NULL");
+
+                    b.HasIndex("OrderId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Bills_OrderId_Live")
+                        .HasFilter("\"Status\" <> 4");
+
+                    b.HasIndex("SettledAt");
+
+                    b.HasIndex("WaiterId");
+
+                    b.HasIndex("Status", "CreatedAt");
+
+                    b.ToTable("Bills", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Bills_Amounts", "\"Subtotal\" >= 0 AND \"DiscountAmount\" >= 0 AND \"GrandTotal\" >= 0 AND \"PaidAmount\" >= 0 AND \"RefundedAmount\" >= 0");
+
+                            t.HasCheckConstraint("CK_Bills_DiscountType", "\"DiscountType\" IS NULL OR \"DiscountType\" IN (1, 2)");
+
+                            t.HasCheckConstraint("CK_Bills_PaymentStatus", "\"PaymentStatus\" IN (1, 2, 3, 4, 5)");
+
+                            t.HasCheckConstraint("CK_Bills_Status", "\"Status\" IN (1, 2, 3, 4)");
+                        });
+                });
+
+            modelBuilder.Entity("HotelPOS.Domain.Billing.BillItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BillId")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("DiscountShare")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("ItemName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<decimal>("LineSubtotal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("LineTotal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("ModifiersAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("OrderItemId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("TaxAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("TaxRatePercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BillId");
+
+                    b.HasIndex("OrderItemId");
+
+                    b.ToTable("BillItems", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_BillItems_Quantity", "\"Quantity\" > 0");
+                        });
+                });
+
+            modelBuilder.Entity("HotelPOS.Domain.Billing.Discount", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<bool>("RequiresApproval")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int?>("UpdatedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("Value")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Discounts", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Discounts_Type", "\"Type\" IN (1, 2)");
+
+                            t.HasCheckConstraint("CK_Discounts_Value", "\"Value\" > 0");
+                        });
+                });
+
+            modelBuilder.Entity("HotelPOS.Domain.Billing.InvoiceCounter", b =>
+                {
+                    b.Property<string>("Period")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<long>("LastNumber")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Period");
+
+                    b.ToTable("InvoiceCounters", (string)null);
+                });
+
+            modelBuilder.Entity("HotelPOS.Domain.Billing.Payment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("BillId")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal?>("ChangeAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("DeviceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("IdempotencyKey")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("PaidAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int>("PaymentMethodId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ReceivedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Reference")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int?>("RefundOfPaymentId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RefundReason")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal?>("TenderedAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int?>("UpdatedBy")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BillId");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique();
+
+                    b.HasIndex("PaidAt");
+
+                    b.HasIndex("PaymentMethodId");
+
+                    b.HasIndex("RefundOfPaymentId");
+
+                    b.ToTable("Payments", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Payments_Amount", "(\"RefundOfPaymentId\" IS NULL AND \"Amount\" > 0) OR (\"RefundOfPaymentId\" IS NOT NULL AND \"Amount\" < 0)");
+
+                            t.HasCheckConstraint("CK_Payments_Status", "\"Status\" IN (1, 2, 3)");
+                        });
+                });
+
             modelBuilder.Entity("HotelPOS.Domain.Billing.PaymentMethod", b =>
                 {
                     b.Property<int>("Id")
@@ -197,8 +587,8 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<bool>("RequiresReference")
                         .HasColumnType("boolean");
@@ -1224,6 +1614,61 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                     b.ToTable("OrderItemModifiers", (string)null);
                 });
 
+            modelBuilder.Entity("HotelPOS.Domain.Billing.Bill", b =>
+                {
+                    b.HasOne("HotelPOS.Domain.Billing.Discount", null)
+                        .WithMany()
+                        .HasForeignKey("DiscountId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("HotelPOS.Domain.Orders.Order", null)
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("HotelPOS.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("WaiterId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("HotelPOS.Domain.Billing.BillItem", b =>
+                {
+                    b.HasOne("HotelPOS.Domain.Billing.Bill", null)
+                        .WithMany("Items")
+                        .HasForeignKey("BillId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("HotelPOS.Domain.Orders.OrderItem", null)
+                        .WithMany()
+                        .HasForeignKey("OrderItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("HotelPOS.Domain.Billing.Payment", b =>
+                {
+                    b.HasOne("HotelPOS.Domain.Billing.Bill", null)
+                        .WithMany("Payments")
+                        .HasForeignKey("BillId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("HotelPOS.Domain.Billing.PaymentMethod", null)
+                        .WithMany()
+                        .HasForeignKey("PaymentMethodId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("HotelPOS.Domain.Billing.Payment", null)
+                        .WithMany()
+                        .HasForeignKey("RefundOfPaymentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
             modelBuilder.Entity("HotelPOS.Domain.Floor.Table", b =>
                 {
                     b.HasOne("HotelPOS.Domain.Orders.Order", "CurrentOrder")
@@ -1420,6 +1865,13 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                         .HasForeignKey("OrderItemId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("HotelPOS.Domain.Billing.Bill", b =>
+                {
+                    b.Navigation("Items");
+
+                    b.Navigation("Payments");
                 });
 
             modelBuilder.Entity("HotelPOS.Domain.Identity.User", b =>

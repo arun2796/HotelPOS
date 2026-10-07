@@ -2,7 +2,6 @@ using System.Globalization;
 using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
-using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Kitchen;
 using HotelPOS.Domain.Common;
@@ -77,7 +76,7 @@ public sealed class KitchenService : IKitchenService
 
     public async Task<KitchenTicketListDto> ListCompletedAsync(DateOnly? businessDay, CancellationToken cancellationToken = default)
     {
-        var (from, to) = await BusinessDayAsync(businessDay, cancellationToken);
+        var (from, to) = await _db.BusinessDayAsync(_clock, businessDay, cancellationToken);
         var tickets = await Tickets()
             .Where(k => (k.Status == KitchenOrderStatus.Completed && k.CompletedAt >= from && k.CompletedAt < to)
                 || (k.Status == KitchenOrderStatus.Cancelled && k.CancelledAt >= from && k.CancelledAt < to))
@@ -188,15 +187,4 @@ public sealed class KitchenService : IKitchenService
         }).ToList(),
         RowVersion = RowVersions.Encode(ticket.RowVersion),
     };
-
-    private async Task<(DateTime From, DateTime To)> BusinessDayAsync(DateOnly? day, CancellationToken cancellationToken)
-    {
-        var startText = await _db.Settings.AsNoTracking().Where(s => s.Key == SettingKeys.BusinessDayStartTime).Select(s => s.Value).FirstOrDefaultAsync(cancellationToken);
-        var start = TimeOnly.TryParse(startText, CultureInfo.InvariantCulture, out var parsed) ? parsed : new TimeOnly(4, 0);
-        var nowLocal = TimeZoneInfo.ConvertTimeFromUtc(_clock.UtcNow, TimeZoneInfo.Local);
-        var date = day ?? DateOnly.FromDateTime(TimeOnly.FromDateTime(nowLocal) < start ? nowLocal.AddDays(-1) : nowLocal);
-        var fromLocal = date.ToDateTime(start, DateTimeKind.Unspecified);
-        var from = TimeZoneInfo.ConvertTimeToUtc(fromLocal, TimeZoneInfo.Local);
-        return (from, from.AddDays(1));
-    }
 }

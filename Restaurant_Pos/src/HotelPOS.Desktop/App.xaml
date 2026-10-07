@@ -10,6 +10,7 @@
              xmlns:menuadmin="clr-namespace:HotelPOS.Desktop.Modules.MenuAdmin"
              xmlns:orders="clr-namespace:HotelPOS.Desktop.Modules.Orders"
              xmlns:kitchen="clr-namespace:HotelPOS.Desktop.Modules.Kitchen"
+             xmlns:billing="clr-namespace:HotelPOS.Desktop.Modules.Billing"
              ShutdownMode="OnMainWindowClose">
   <Application.Resources>
     <ResourceDictionary>
@@ -55,14 +56,23 @@
       <DataTemplate DataType="{x:Type orders:MyOrdersViewModel}">
         <orders:OrderListView />
       </DataTemplate>
-      <DataTemplate DataType="{x:Type orders:ActiveOrdersViewModel}">
-        <orders:OrderListView />
-      </DataTemplate>
       <DataTemplate DataType="{x:Type kitchen:KitchenDisplayViewModel}">
         <kitchen:KitchenDisplayView />
       </DataTemplate>
       <DataTemplate DataType="{x:Type kitchen:CompletedOrdersViewModel}">
         <kitchen:CompletedOrdersView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type billing:BillingQueueViewModel}">
+        <billing:BillingQueueView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type billing:BillDetailViewModel}">
+        <billing:BillDetailView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type billing:ClosedBillsViewModel}">
+        <billing:ClosedBillsView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type billing:BillingSetupViewModel}">
+        <billing:BillingSetupView />
       </DataTemplate>
     </ResourceDictionary>
   </Application.Resources>

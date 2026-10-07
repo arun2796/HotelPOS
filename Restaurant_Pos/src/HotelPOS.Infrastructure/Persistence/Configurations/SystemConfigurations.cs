@@ -1,6 +1,5 @@
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Domain.Administration;
-using HotelPOS.Domain.Billing;
 using HotelPOS.Domain.Menu;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -59,16 +58,5 @@ internal sealed class PreparationStationConfiguration : IEntityTypeConfiguration
         builder.Property(s => s.Name).HasMaxLength(100).IsRequired();
         builder.Property(s => s.Code).HasMaxLength(20).IsRequired();
         builder.HasIndex(s => s.Code).IsUnique();
-    }
-}
-
-internal sealed class PaymentMethodConfiguration : IEntityTypeConfiguration<PaymentMethod>
-{
-    public void Configure(EntityTypeBuilder<PaymentMethod> builder)
-    {
-        builder.ToTable("PaymentMethods");
-        builder.Property(p => p.Name).HasMaxLength(50).IsRequired();
-        builder.Property(p => p.Code).HasMaxLength(20).IsRequired();
-        builder.HasIndex(p => p.Code).IsUnique();
     }
 }

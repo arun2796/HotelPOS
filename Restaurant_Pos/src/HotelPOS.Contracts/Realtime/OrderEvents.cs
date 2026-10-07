@@ -8,6 +8,12 @@ public static class OrderChangeTypes
     public const string GuestsChanged = "GuestsChanged";
     public const string ItemCancelled = "ItemCancelled";
     public const string StatusDerived = "StatusDerived";
+    public const string BillRequested = "BillRequested";
+    public const string Billed = "Billed";
+    public const string Paid = "Paid";
+    public const string Completed = "Completed";
+    public const string BillReopened = "BillReopened";
+    public const string BillVoided = "BillVoided";
 }
 
 public sealed record OrderCreatedEvent : RealtimeEvent

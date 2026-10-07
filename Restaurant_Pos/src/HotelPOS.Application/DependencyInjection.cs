@@ -1,5 +1,6 @@
 using FluentValidation;
 using HotelPOS.Application.Auth;
+using HotelPOS.Application.Billing;
 using HotelPOS.Application.Devices;
 using HotelPOS.Application.Floor;
 using HotelPOS.Application.Kitchen;
@@ -28,6 +29,10 @@ public static class DependencyInjection
         services.AddScoped<TicketFactory>();
         services.AddScoped<KitchenSync>();
         services.AddScoped<IKitchenService, KitchenService>();
+        services.AddScoped<IManagerApprovalService, ManagerApprovalService>();
+        services.AddScoped<IBillingService, BillingService>();
+        services.AddScoped<IDiscountService, DiscountService>();
+        services.AddScoped<IPaymentMethodService, PaymentMethodService>();
         services.AddScoped<MenuChanges>();
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IStationService, StationService>();

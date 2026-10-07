@@ -44,6 +44,8 @@ public static class DependencyInjection
         services.AddSingleton<ITokenService, JwtTokenService>();
         services.AddScoped<IAuditService, AuditService>();
         services.AddScoped<IMenuVersionStore, MenuVersionStore>();
+        services.AddScoped<IInvoiceNumberService, InvoiceNumberService>();
+        services.AddHostedService<BillClaimCleanupService>();
         services.AddSingleton<IIdempotencyStore, IdempotencyStore>();
         services.AddHostedService<IdempotencyCleanupService>();
         services.AddSingleton<IMenuImageStore, MenuImageStore>();

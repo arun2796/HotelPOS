@@ -55,7 +55,7 @@
             <StackPanel>
               <Grid>
                 <TextBlock Text="{Binding OrderTitle}" FontWeight="SemiBold" FontSize="15" Foreground="{DynamicResource Brush.TextPrimary}"
-                           TextTrimming="CharacterEllipsis" Margin="0,0,90,0" />
+                           TextTrimming="CharacterEllipsis" Margin="0,0,124,0" />
                 <Border Background="{DynamicResource Brush.PrimarySoft}" CornerRadius="10" Padding="10,2" HorizontalAlignment="Right">
                   <TextBlock Text="{Binding OrderStatusText}" FontWeight="SemiBold" Foreground="{DynamicResource Brush.Primary}" />
                 </Border>
@@ -102,6 +102,10 @@
               </ItemsControl>
               <TextBlock Text="{Binding OrderTotalText}" HorizontalAlignment="Right" FontWeight="SemiBold" Margin="0,8,0,0"
                          Foreground="{DynamicResource Brush.TextPrimary}" />
+              <Border Background="{DynamicResource Brush.Status.Billing}" CornerRadius="8" Padding="10,6" Margin="0,8,0,0"
+                      Visibility="{Binding HasBill, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Text="{Binding BillStatusText}" FontWeight="SemiBold" Foreground="{DynamicResource Brush.PrimaryText}" />
+              </Border>
             </StackPanel>
           </Border>
 
@@ -167,6 +171,9 @@
         <Button Content="SERVED" Command="{Binding ServeCommand}"
                 Background="{DynamicResource Brush.Success}" BorderBrush="{DynamicResource Brush.Success}" Foreground="{DynamicResource Brush.PrimaryText}"
                 Visibility="{Binding ShowServe, Converter={StaticResource BoolToVisibility}}" />
+        <Button Content="REQUEST BILL" Command="{Binding RequestBillCommand}"
+                Background="{DynamicResource Brush.Status.Billing}" BorderBrush="{DynamicResource Brush.Status.Billing}" Foreground="{DynamicResource Brush.PrimaryText}"
+                Visibility="{Binding ShowRequestBill, Converter={StaticResource BoolToVisibility}}" />
         <Button Content="ADD ITEMS" Command="{Binding AddItemsCommand}"
                 Background="{DynamicResource Brush.Primary}" BorderBrush="{DynamicResource Brush.Primary}" Foreground="{DynamicResource Brush.PrimaryText}"
                 Visibility="{Binding ShowAddItems, Converter={StaticResource BoolToVisibility}}" />
