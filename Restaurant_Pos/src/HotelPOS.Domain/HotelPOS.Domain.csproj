@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>HotelPOS.Domain</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Domain references Contracts for shared enums only (see docs/01-architecture.md, decision 1). -->
+    <ProjectReference Include="..\HotelPOS.Contracts\HotelPOS.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

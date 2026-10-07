@@ -1,0 +1,160 @@
+<UserControl x:Class="HotelPOS.Desktop.Modules.Admin.UsersView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:admin="clr-namespace:HotelPOS.Desktop.Modules.Admin"
+             xmlns:controls="clr-namespace:HotelPOS.Desktop.Controls"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance admin:UsersViewModel}"
+             d:DesignWidth="1100" d:DesignHeight="700">
+
+  <Grid Margin="24">
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="*" />
+      <ColumnDefinition Width="Auto" />
+    </Grid.ColumnDefinitions>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <!-- Toolbar -->
+    <Grid Margin="0,0,0,16">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" MinWidth="160" MaxWidth="340" />
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+      <TextBox Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" ToolTip="Search by username or name">
+        <TextBox.InputBindings>
+          <KeyBinding Key="Enter" Command="{Binding SearchCommand}" />
+        </TextBox.InputBindings>
+      </TextBox>
+      <Button Grid.Column="1" Command="{Binding SearchCommand}" Margin="8,0,0,0" ToolTip="Search">
+        <TextBlock Text="&#xE721;" Style="{StaticResource Text.Icon}" />
+      </Button>
+      <CheckBox Grid.Column="2" Content="Show inactive" IsChecked="{Binding ShowInactive}" Margin="16,0,16,0" />
+      <Button Grid.Column="4" Command="{Binding RefreshListCommand}" ToolTip="Reload from the server">
+        <TextBlock Text="&#xE72C;" Style="{StaticResource Text.Icon}" />
+      </Button>
+      <Button Grid.Column="5" Command="{Binding NewUserCommand}" Style="{StaticResource Button.Primary}" Margin="8,0,0,0">
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Text="&#xE710;" Style="{StaticResource Text.Icon}" FontSize="14" />
+          <TextBlock Text="New user" Margin="8,0,0,0" />
+        </StackPanel>
+      </Button>
+    </Grid>
+
+    <Border Grid.Row="1" Style="{StaticResource Banner.Error}" Margin="0,0,0,12"
+            Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibility}}">
+      <TextBlock Text="{Binding ErrorMessage}" Style="{StaticResource Text.Error}" />
+    </Border>
+
+    <!-- List -->
+    <Grid Grid.Row="2">
+      <DataGrid ItemsSource="{Binding Users}" SelectedItem="{Binding SelectedUser}" HorizontalScrollBarVisibility="Disabled">
+        <DataGrid.InputBindings>
+          <MouseBinding Gesture="LeftDoubleClick" Command="{Binding EditCommand}" />
+        </DataGrid.InputBindings>
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="USERNAME" Binding="{Binding Username}" Width="1*" MinWidth="90" />
+          <DataGridTextColumn Header="NAME" Binding="{Binding DisplayName}" Width="1.5*" MinWidth="120" />
+          <DataGridTextColumn Header="ROLES" Binding="{Binding Roles, Converter={StaticResource ListJoin}}" Width="1.2*" MinWidth="90" />
+          <DataGridTextColumn Header="STATUS" Binding="{Binding IsActive, Converter={StaticResource ActiveText}}" Width="0.7*" MinWidth="70" />
+          <DataGridTextColumn Header="LAST SIGN-IN" Binding="{Binding LastLoginAtUtc, Converter={StaticResource UtcToLocal}}" Width="1.2*" MinWidth="125" />
+        </DataGrid.Columns>
+      </DataGrid>
+      <ProgressBar IsIndeterminate="True" Height="3" VerticalAlignment="Top"
+                   Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}" />
+    </Grid>
+
+    <!-- Actions + paging -->
+    <Grid Grid.Row="3" Margin="0,12,0,0">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+      <StackPanel Orientation="Horizontal">
+        <Button Content="Edit" Command="{Binding EditCommand}" MinWidth="90" />
+        <Button Content="Reset password" Command="{Binding ResetPasswordCommand}" Margin="8,0,0,0" />
+        <Button Content="{Binding ToggleActiveText}" Command="{Binding ToggleActiveCommand}" Margin="8,0,0,0" MinWidth="110" />
+      </StackPanel>
+      <StackPanel Grid.Column="2" Orientation="Horizontal">
+        <Button Command="{Binding PreviousPageCommand}" ToolTip="Previous page">
+          <TextBlock Text="&#xE76B;" Style="{StaticResource Text.Icon}" />
+        </Button>
+        <TextBlock Text="{Binding PageText}" Style="{StaticResource Text.Caption}" FontSize="14" VerticalAlignment="Center" Margin="14,0" />
+        <Button Command="{Binding NextPageCommand}" ToolTip="Next page">
+          <TextBlock Text="&#xE76C;" Style="{StaticResource Text.Icon}" />
+        </Button>
+      </StackPanel>
+    </Grid>
+
+    <!-- Editor panel -->
+    <Border Grid.Column="1" Grid.RowSpan="4" Style="{StaticResource Card}" Width="380" Margin="20,0,0,0"
+            DataContext="{Binding Editor}"
+            Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibility}}">
+      <Grid>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="*" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <TextBlock Text="{Binding Title}" Style="{StaticResource Text.Title}" Margin="0,0,0,20" />
+
+            <TextBlock Text="Username" Style="{StaticResource Text.Label}" />
+            <TextBox Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding IsNew}" Margin="0,0,0,14" />
+
+            <TextBlock Text="Display name" Style="{StaticResource Text.Label}" />
+            <TextBox Text="{Binding DisplayName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,14" />
+
+            <StackPanel Visibility="{Binding IsNew, Converter={StaticResource BoolToVisibility}}">
+              <TextBlock Text="Initial password" Style="{StaticResource Text.Label}" />
+              <PasswordBox controls:PasswordBoxAssistant.BoundPassword="{Binding Password, Mode=TwoWay}" Margin="0,0,0,8" />
+              <CheckBox Content="Must change password at first sign-in" IsChecked="{Binding MustChangePassword}" Margin="0,0,0,14" />
+            </StackPanel>
+
+            <TextBlock Text="Roles" Style="{StaticResource Text.Label}" />
+            <ItemsControl ItemsSource="{Binding Roles}" Focusable="False">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="{x:Type admin:RoleOptionViewModel}">
+                  <CheckBox IsChecked="{Binding IsSelected}" Margin="0,2">
+                    <StackPanel>
+                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding Description}" Style="{StaticResource Text.Caption}" />
+                    </StackPanel>
+                  </CheckBox>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <Border Style="{StaticResource Banner.Error}" Margin="0,16,0,0"
+                    Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibility}}">
+              <TextBlock Text="{Binding ErrorMessage}" Style="{StaticResource Text.Error}" />
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+
+        <Grid Grid.Row="1" Margin="0,20,0,0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="12" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <Button Content="Cancel"
+                  Command="{Binding DataContext.CancelEditCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+          <Button Grid.Column="2" Content="{Binding SaveText}" Style="{StaticResource Button.Primary}"
+                  Command="{Binding DataContext.SaveUserCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+        </Grid>
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

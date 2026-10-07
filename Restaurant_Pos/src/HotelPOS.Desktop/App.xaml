@@ -1,0 +1,42 @@
+<Application x:Class="HotelPOS.Desktop.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:shell="clr-namespace:HotelPOS.Desktop.Shell"
+             xmlns:config="clr-namespace:HotelPOS.Desktop.Modules.Config"
+             xmlns:auth="clr-namespace:HotelPOS.Desktop.Modules.Auth"
+             xmlns:common="clr-namespace:HotelPOS.Desktop.Modules.Common"
+             xmlns:admin="clr-namespace:HotelPOS.Desktop.Modules.Admin"
+             ShutdownMode="OnMainWindowClose">
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <!-- Index 0 is swapped at runtime by ThemeService (Light / Dark). -->
+        <ResourceDictionary Source="Themes/Colors.Light.xaml" />
+        <ResourceDictionary Source="Themes/Styles.xaml" />
+      </ResourceDictionary.MergedDictionaries>
+
+      <!-- View-model first navigation: each view-model type is rendered by its view. -->
+      <DataTemplate DataType="{x:Type config:ConfigurationViewModel}">
+        <config:ConfigurationView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type auth:LoginViewModel}">
+        <auth:LoginView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type auth:ChangePasswordViewModel}">
+        <auth:ChangePasswordView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type shell:ShellViewModel}">
+        <shell:ShellView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type common:PlaceholderViewModel}">
+        <common:PlaceholderView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type admin:UsersViewModel}">
+        <admin:UsersView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type admin:SettingsViewModel}">
+        <admin:SettingsView />
+      </DataTemplate>
+    </ResourceDictionary>
+  </Application.Resources>
+</Application>

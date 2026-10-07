@@ -1,0 +1,138 @@
+# Phase 10 — Production Readiness
+
+Status: Not started · Depends on: all previous phases
+
+## 1. Goal
+
+Make the system installable, operable and recoverable by a technician at the venue: the API runs as a
+Windows Service with automatic migrations, installers set up server and clients, backups run on a
+schedule and can be restored, logs and health are observable, and documentation covers LAN setup,
+firewall, upgrade, troubleshooting and daily operations.
+
+## 2. Prerequisites
+
+- All functional phases complete; `docs/01` § 2 network layout.
+
+## 3. Scope
+
+**In**
+- API as Windows Service (`UseWindowsService`), Kestrel binding from configuration, optional HTTPS
+  with a self-signed or internal certificate, auto-migrate on start, startup self-checks.
+- Server installer (Inno Setup): prerequisites check (.NET 8 runtime / self-contained publish, SQL
+  Server reachable), connection string + admin password wizard, JWT key generation, firewall rule,
+  service registration, first migration + seed, desktop shortcut for the admin client.
+- Client installer: desktop app, ProgramData settings folder with ACL, shortcut, optional
+  pre-filled `ApiBaseUrl` passed as installer parameter (`/API=http://192.168.1.100:5000`).
+- Backup: `BackupHostedService` (daily at configured time -> `BACKUP DATABASE ... TO DISK`, retention
+  cleanup, verify), admin **Backup now**, backups list, restore procedure and script.
+- Monitoring: `/health` with DB and disk checks, Serilog rolling files with retention, admin
+  log tail screen, `ServerNotice` broadcast, version compatibility check (`minClientVersion`).
+- Performance validation on venue-like hardware (20 clients, 500-item menu).
+- Documentation set in `docs/ops/`: installation, LAN & firewall, backup & recovery, upgrade,
+  troubleshooting, daily operations, go-live checklist.
+
+**Out**
+- Cloud sync, remote access/VPN, automatic updates over the internet (document manual upgrade).
+
+## 4. Deliverables by project
+
+| Project | Deliverables |
+|---|---|
+| Api | Windows Service hosting, `appsettings.Production.json` template, startup checks (DB reachable, migrations applied, settings seeded, disk space), HTTPS configuration section, `AdminController` (backup now, backups list, log tail), `ServerNotice` endpoint |
+| Infrastructure | `BackupService` (SQL BACKUP with COPY_ONLY off, CHECKSUM, verify via `RESTORE VERIFYONLY`), `BackupHostedService` (schedule from settings), retention cleanup |
+| Contracts | `BackupDto`, `ServerNoticeRequest`, `LogTailDto`, `VersionInfo` |
+| Desktop | Version check on startup (blocks with message when below `minClientVersion`), Admin: Backup screen (now/list/settings), Log viewer, Server notice sender; graceful shutdown handling of `ServerNotice` |
+| Installers | `installer/server.iss`, `installer/client.iss`, `build/publish.ps1` (self-contained x64), `build/version.props` |
+| Scripts | `scripts/backup-now.ps1`, `scripts/restore-db.ps1`, `scripts/create-firewall-rule.ps1`, `scripts/set-static-ip.md` |
+| Docs | `docs/ops/01-installation.md`, `02-lan-and-firewall.md`, `03-backup-and-recovery.md`, `04-upgrade.md`, `05-troubleshooting.md`, `06-daily-operations.md`, `07-go-live-checklist.md` |
+| Tests | see § 10 |
+
+## 5. Data model
+
+`Settings` keys: `Backup:Path`, `Backup:Time`, `Backup:RetentionDays`, `Backup:Enabled`. Possible
+`Backups` table (file, size, started/finished, status, triggered by) or derive from the folder;
+prefer the table for the admin list and audit (`Backup.Completed/Failed`). Migration `Phase10_Ops`.
+
+## 6. API endpoints
+
+`docs/03-api-reference.md` § 3.10: backup, backups, logs; plus `POST /api/admin/notice`.
+
+## 7. Real-time events
+
+`ServerNotice { level, message }` (e.g. "Server restarting in 2 minutes for maintenance").
+
+## 8. Business rules / operational rules
+
+- Service account: Local System or a dedicated local account with rights to the backup folder; SQL
+  login used by the API has `db_owner` on `HotelPOS` only.
+- Backups: daily full backup at `Backup:Time` (default 03:30, before business day start), retention
+  default 14 days, written to `Backup:Path` (local disk + recommended copy to USB/NAS documented);
+  failure raises an admin notice at next login and audit entry.
+- Restore: documented step-by-step with the script; always tested at go-live.
+- Upgrade: stop service -> backup -> run server installer -> auto-migrate on start -> verify health
+  -> update clients (clients below `minClientVersion` are blocked with a clear message).
+- Logs: API `C:\ProgramData\HotelPOS\Api\logs`, 30-day retention, max 50 MB per file; desktop
+  `%LocalAppData%\HotelPOS\logs`, 14 days.
+- Firewall: inbound TCP 5000 (and 5001 for HTTPS) on Private profile only; SQL port closed.
+- Static IP for the server (router DHCP reservation preferred); hostname alternative documented
+  (`http://hotelpos-server:5000`) when the router resolves names.
+- HTTPS (recommended when any non-trusted device can join the Wi-Fi): self-signed certificate
+  generated by the installer, exported `.cer` installed on clients by the client installer parameter
+  `/CERT=path`.
+
+## 9. Desktop screens
+
+| Screen | Behaviour |
+|---|---|
+| Admin Backup | Settings (path, time, retention, enabled), **BACKUP NOW**, list with status/size/duration, last failure banner |
+| Admin Logs | Tail of API log (last N lines, refresh), filter by level |
+| Admin Server Notice | Message + level -> broadcast |
+| Startup | Version mismatch screen with required version and where to get it |
+
+## 10. Tests
+
+- `BackupService` integration test against LocalDB: produces a file, verify succeeds, retention
+  deletes old files, failure audited.
+- Startup checks fail fast with clear log messages when DB unreachable (test via wrong connection
+  string in a `WebApplicationFactory` variant).
+- Health endpoint reports degraded on low disk (threshold mocked).
+- Version check: client below minimum is rejected by `/api/system/info` consumer logic (desktop test).
+- Installer smoke test (manual, documented): clean Windows VM -> server installer -> client installer
+  -> login -> full order-to-payment flow -> restore from backup on a second VM.
+- Load test script (`k6` or a small .NET console) : 20 virtual clients ordering/billing for 10
+  minutes; API p95 < 300 ms on LAN; no deadlocks; SignalR events delivered.
+
+## 11. Manual demo script (go-live rehearsal)
+
+1. Clean server VM: run server installer with SQL Express installed; service starts; `/health` OK;
+   firewall rule present; admin password set during install works.
+2. Two client VMs: run client installer with `/API=`; first login; device registration; full flow
+   (order -> kitchen -> bill -> payment -> print to PDF printer).
+3. Trigger **Backup now**; copy the file to a third VM; run restore script; start API there; data
+   present.
+4. Simulate server reboot during service: clients show 🔴, then 🟢 and resync automatically.
+5. Upgrade rehearsal: install a newer build over the existing one; migrations applied; old client
+   blocked by version check; new client works.
+6. Walk through `07-go-live-checklist.md` and tick every item.
+
+## 12. Acceptance criteria
+
+- [ ] API runs as a Windows Service with auto-migrate and startup checks; HTTPS option documented.
+- [ ] Server and client installers produce a working system on clean machines.
+- [ ] Scheduled and manual backups work; restore procedure executed successfully in rehearsal.
+- [ ] Logs, health, version compatibility and server notices in place.
+- [ ] Ops documentation complete; load test passed on target hardware.
+- [ ] Definition of Done satisfied; project status table marked complete.
+
+## 13. Risks and notes
+
+- SQL Server Express has a 10 GB database limit — far above a single venue's yearly data, but
+  document it; audit log growth is the main driver (retention setting from Phase 9).
+- Self-signed HTTPS adds support burden; keep HTTP as the default for isolated LANs and HTTPS as a
+  documented option.
+- Installer development is often underestimated; start the Inno scripts early in this phase and test
+  on a clean VM every time.
+
+## 14. Changes during implementation
+
+(fill in while building)

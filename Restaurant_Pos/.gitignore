@@ -1,0 +1,30 @@
+# Build output
+bin/
+obj/
+out/
+publish/
+artifacts/
+TestResults/
+
+# IDE
+.vs/
+.vscode/*
+!.vscode/settings.json
+.idea/
+*.user
+*.suo
+*.rsuser
+
+# Logs and runtime data
+logs/
+*.log
+
+# Local secrets and machine configuration (never commit)
+appsettings.Local.json
+appsettings.Production.json
+**/HotelPOS.Desktop/settings.json
+*.pfx
+
+# OS
+Thumbs.db
+.DS_Store

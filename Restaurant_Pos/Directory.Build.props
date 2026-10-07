@@ -1,0 +1,20 @@
+<Project>
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <Deterministic>true</Deterministic>
+    <Version>0.1.0</Version>
+    <Company>HotelPOS</Company>
+    <Product>HotelPOS</Product>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
+
+  <!-- Production code builds with zero warnings. Test projects are allowed warnings. -->
+  <PropertyGroup Condition="$(MSBuildProjectDirectory.Contains('\src\'))">
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- Vulnerable-package advisories stay visible but must not block an offline/LAN build. -->
+    <WarningsNotAsErrors>NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
+  </PropertyGroup>
+</Project>

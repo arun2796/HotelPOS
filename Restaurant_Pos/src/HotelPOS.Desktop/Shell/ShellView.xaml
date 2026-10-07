@@ -1,0 +1,147 @@
+<UserControl x:Class="HotelPOS.Desktop.Shell.ShellView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:shell="clr-namespace:HotelPOS.Desktop.Shell"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance shell:ShellViewModel}"
+             d:DesignWidth="1366" d:DesignHeight="800">
+
+  <Grid>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="264" />
+      <ColumnDefinition Width="*" />
+    </Grid.ColumnDefinitions>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="*" />
+      <RowDefinition Height="34" />
+    </Grid.RowDefinitions>
+
+    <!-- ===== Sidebar ===== -->
+    <Grid Background="{DynamicResource Brush.Sidebar}">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+        <RowDefinition Height="Auto" />
+      </Grid.RowDefinitions>
+
+      <StackPanel Margin="22,22,16,10">
+        <TextBlock Text="HotelPOS" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource Brush.SidebarText}" />
+        <TextBlock Text="{Binding RestaurantName}" FontSize="13" Foreground="{DynamicResource Brush.SidebarTextMuted}"
+                   TextTrimming="CharacterEllipsis" Margin="0,2,0,0" />
+      </StackPanel>
+
+      <ListBox Grid.Row="1"
+               ItemsSource="{Binding NavItems}"
+               SelectedItem="{Binding SelectedNavItem}"
+               Style="{StaticResource NavList}"
+               ItemContainerStyle="{StaticResource NavItem}" />
+
+      <!-- Signed-in user -->
+      <Border Grid.Row="2" BorderBrush="{DynamicResource Brush.SidebarHover}" BorderThickness="0,1,0,0" Padding="16,14">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <Border Width="40" Height="40" CornerRadius="20" Background="{DynamicResource Brush.SidebarSelected}">
+            <TextBlock Text="{Binding UserInitials}" Foreground="White" FontWeight="SemiBold"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+            <TextBlock Text="{Binding UserDisplayName}" Foreground="{DynamicResource Brush.SidebarText}" FontWeight="SemiBold"
+                       TextTrimming="CharacterEllipsis" />
+            <TextBlock Text="{Binding RolesText}" Foreground="{DynamicResource Brush.SidebarTextMuted}" FontSize="12"
+                       TextTrimming="CharacterEllipsis" />
+          </StackPanel>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <!-- ===== Main area ===== -->
+    <Grid Grid.Column="1" Background="{DynamicResource Brush.Background}">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="64" />
+        <RowDefinition Height="*" />
+      </Grid.RowDefinitions>
+
+      <!-- Top bar -->
+      <Border Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,0,0,1"
+              Padding="24,0,12,0">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+            <TextBlock Text="{Binding SelectedNavItem.Glyph}" Style="{StaticResource Text.Icon}" Foreground="{DynamicResource Brush.Primary}" />
+            <TextBlock Text="{Binding SelectedNavItem.Title}" Style="{StaticResource Text.Title}" Margin="12,0,0,0" />
+          </StackPanel>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+            <TextBlock Text="{Binding Clock}" Style="{StaticResource Text.Caption}" FontSize="14" VerticalAlignment="Center" Margin="0,0,16,0" />
+            <Button Style="{StaticResource Button.Ghost}" Command="{Binding ToggleThemeCommand}" ToolTip="Switch light / dark theme">
+              <TextBlock Text="&#xE793;" Style="{StaticResource Text.Icon}" />
+            </Button>
+            <Button Style="{StaticResource Button.Ghost}" Command="{Binding ChangePasswordCommand}" ToolTip="Change my password" Margin="4,0,0,0">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="&#xE8D7;" Style="{StaticResource Text.Icon}" />
+                <TextBlock Text="Password" Margin="8,0,0,0" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+            <Button Style="{StaticResource Button.Ghost}" Command="{Binding LogoutCommand}" ToolTip="Sign out" Margin="4,0,0,0">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="&#xE7E8;" Style="{StaticResource Text.Icon}" />
+                <TextBlock Text="Sign out" Margin="8,0,0,0" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- Current page (resolved through the DataTemplates in App.xaml) -->
+      <ContentControl Grid.Row="1" Content="{Binding CurrentPage}" Focusable="False" />
+    </Grid>
+
+    <!-- ===== Status bar ===== -->
+    <Border Grid.Row="1" Grid.ColumnSpan="2" Background="{DynamicResource Brush.Surface}"
+            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,1,0,0" Padding="16,0"
+            DataContext="{Binding StatusBar}">
+      <Grid VerticalAlignment="Center">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <StackPanel Orientation="Horizontal">
+          <Ellipse Width="10" Height="10" VerticalAlignment="Center">
+            <Ellipse.Style>
+              <Style TargetType="Ellipse">
+                <Setter Property="Fill" Value="{DynamicResource Brush.Danger}" />
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding Status}" Value="Connected">
+                    <Setter Property="Fill" Value="{DynamicResource Brush.Success}" />
+                  </DataTrigger>
+                  <DataTrigger Binding="{Binding Status}" Value="Connecting">
+                    <Setter Property="Fill" Value="{DynamicResource Brush.Warning}" />
+                  </DataTrigger>
+                  <DataTrigger Binding="{Binding Status}" Value="Reconnecting">
+                    <Setter Property="Fill" Value="{DynamicResource Brush.Warning}" />
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </Ellipse.Style>
+          </Ellipse>
+          <TextBlock Text="{Binding StatusText}" FontSize="13" FontWeight="SemiBold" Margin="8,0,0,0" VerticalAlignment="Center" />
+        </StackPanel>
+        <TextBlock Grid.Column="1" Style="{StaticResource Text.Caption}" Margin="24,0,0,0" VerticalAlignment="Center">
+          <Run Text="Server" />
+          <Run Text="{Binding ServerAddress, Mode=OneWay}" />
+          <Run Text="  ·  Terminal" />
+          <Run Text="{Binding DeviceName, Mode=OneWay}" />
+        </TextBlock>
+        <TextBlock Grid.Column="2" Text="{Binding Version}" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

@@ -1,0 +1,31 @@
+using HotelPOS.Domain.Administration;
+using HotelPOS.Domain.Billing;
+using HotelPOS.Domain.Identity;
+using HotelPOS.Domain.Menu;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+
+namespace HotelPOS.Application.Common.Interfaces;
+
+/// <summary>Unit of work over the HotelPOS database. Implemented by the EF Core context in Infrastructure.</summary>
+public interface IAppDbContext
+{
+    DbSet<User> Users { get; }
+    DbSet<Role> Roles { get; }
+    DbSet<UserRole> UserRoles { get; }
+    DbSet<RefreshToken> RefreshTokens { get; }
+    DbSet<Device> Devices { get; }
+    DbSet<Setting> Settings { get; }
+    DbSet<AuditLog> AuditLogs { get; }
+    DbSet<IdempotencyRecord> IdempotencyRecords { get; }
+    DbSet<PreparationStation> PreparationStations { get; }
+    DbSet<PaymentMethod> PaymentMethods { get; }
+
+    DatabaseFacade Database { get; }
+
+    EntityEntry<TEntity> Entry<TEntity>(TEntity entity)
+        where TEntity : class;
+
+    Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+}
