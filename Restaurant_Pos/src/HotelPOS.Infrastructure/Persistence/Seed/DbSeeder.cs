@@ -56,6 +56,7 @@ public sealed class DbSeeder
         new Setting(SettingKeys.ReceiptFooter, "Thank you! Visit again.", SettingDataType.String, "Footer text on invoices and receipts.", true),
         new Setting(SettingKeys.MenuVersion, "1", SettingDataType.Int, "Incremented on every menu change (managed by the system).", true),
         new Setting(SettingKeys.TaxSplitDisplay, "CGST_SGST", SettingDataType.String, "How tax is shown on invoices: SINGLE or CGST_SGST.", true),
+        new Setting(SettingKeys.AllowAnyWaiterToEditOrders, "false", SettingDataType.Bool, "Let any waiter change or cancel another waiter's order (managers always can).", true),
     };
 
     public async Task SeedAsync(SeedOptions options, CancellationToken cancellationToken = default)

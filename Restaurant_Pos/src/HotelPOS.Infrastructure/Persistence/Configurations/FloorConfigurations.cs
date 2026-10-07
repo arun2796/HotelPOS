@@ -32,7 +32,11 @@ internal sealed class TableConfiguration : IEntityTypeConfiguration<Table>
         builder.Property(t => t.RowVersion).IsRowVersion();
         builder.HasIndex(t => t.SectionId);
 
-        // CurrentOrderId gets its foreign key when Orders exist (Phase 4).
+        builder.HasOne(t => t.CurrentOrder)
+            .WithMany()
+            .HasForeignKey(t => t.CurrentOrderId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasOne(t => t.Section)
             .WithMany()
             .HasForeignKey(t => t.SectionId)

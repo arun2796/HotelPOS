@@ -4,6 +4,8 @@ using HotelPOS.Domain.Billing;
 using HotelPOS.Domain.Floor;
 using HotelPOS.Domain.Identity;
 using HotelPOS.Domain.Menu;
+using HotelPOS.Domain.Orders;
+using HotelPOS.Infrastructure.Persistence.Configurations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
@@ -34,9 +36,12 @@ public sealed class AppDbContext : DbContext, IAppDbContext
     public DbSet<ModifierOption> ModifierOptions => Set<ModifierOption>();
     public DbSet<MenuItem> MenuItems => Set<MenuItem>();
     public DbSet<MenuItemModifierGroup> MenuItemModifierGroups => Set<MenuItemModifierGroup>();
+    public DbSet<Order> Orders => Set<Order>();
+    public DbSet<OrderItem> OrderItems => Set<OrderItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.HasSequence<int>(OrderConfiguration.NumberSequence).StartsAt(1001);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
     }
 

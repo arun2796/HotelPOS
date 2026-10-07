@@ -3,6 +3,7 @@ using HotelPOS.Application.Auth;
 using HotelPOS.Application.Devices;
 using HotelPOS.Application.Floor;
 using HotelPOS.Application.Menu;
+using HotelPOS.Application.Orders;
 using HotelPOS.Application.Settings;
 using HotelPOS.Application.Users;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,7 +20,10 @@ public static class DependencyInjection
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IDeviceService, DeviceService>();
         services.AddScoped<ISectionService, SectionService>();
+        services.AddScoped<TableEvents>();
         services.AddScoped<ITableService, TableService>();
+        services.AddScoped<OrderItemFactory>();
+        services.AddScoped<IOrderService, OrderService>();
         services.AddScoped<MenuChanges>();
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IStationService, StationService>();

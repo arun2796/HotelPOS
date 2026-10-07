@@ -112,14 +112,14 @@ Admin always has access; Manager has access wherever `M` is listed.
 
 | Method | Route | Roles | Notes |
 |---|---|---|---|
-| POST **[I]** | `/api/orders` | W, M | `{tableId, guestCount, notes, items[], submit:boolean}` creates Draft (or Draft+Submit) |
+| POST **[I]** | `/api/orders` | A, W, M | `{tableId, guestCount, notes, items[], submit:boolean}` creates Draft (or Draft+Submit). Table busy -> 409 `TABLE_NOT_AVAILABLE` with the existing order summary in `data` |
 | GET | `/api/orders` | *, filtered | `?status=&tableId=&waiterId=me&from=&to=` paged |
 | GET | `/api/orders/active` | * | All non-terminal orders (for resync) |
 | GET | `/api/orders/{id}` | * | Full order with items, modifiers, tickets, bill summary |
-| PUT | `/api/orders/{id}` | W (own), M | `{guestCount, notes, rowVersion}` |
+| PUT | `/api/orders/{id}` | W (own), M, A | `{guestCount, notes, rowVersion}` |
 | PUT | `/api/orders/{id}/items` | W (own), M | Replace items while Draft |
 | POST | `/api/orders/{id}/submit` | W (own), M | Draft -> Submitted, creates tickets (Phase 5) |
-| POST **[I]** | `/api/orders/{id}/items` | W, M | Append items as a new batch (band B only); new tickets |
+| POST **[I]** | `/api/orders/{id}/items` | W (own), M, A | Append items as a new batch (band B only); new tickets |
 | POST | `/api/orders/{id}/items/{itemId}/cancel` | W, M | Rules by ticket status (Phase 5) |
 | POST | `/api/orders/{id}/cancel` | W (own), M | `{reason}`; role rules by status |
 | POST | `/api/orders/{id}/serve` | W, M | Completes all Ready tickets (Phase 5) |
@@ -201,6 +201,8 @@ All `GET`, roles A/M, params `from`, `to` (business days), optional `format=csv`
 4. If all retries fail, show: "Could not confirm that the order was saved. Check the connection and
    press Retry." The key is kept until a definitive response arrives.
 5. A new key is generated only after a definitive success or when the user discards the action.
+6. A replayed response carries the header `Idempotent-Replayed: true`. Server errors (5xx) are not stored, so the
+   retry is processed again.
 
 ## 5. Manager approval protocol
 

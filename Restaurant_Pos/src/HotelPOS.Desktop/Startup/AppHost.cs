@@ -4,6 +4,7 @@ using HotelPOS.Desktop.Services.Auth;
 using HotelPOS.Desktop.Services.Configuration;
 using HotelPOS.Desktop.Services.Menu;
 using HotelPOS.Desktop.Services.Navigation;
+using HotelPOS.Desktop.Services.Orders;
 using HotelPOS.Desktop.Services.Realtime;
 using HotelPOS.Desktop.Services.Ui;
 using HotelPOS.Desktop.Shell;
@@ -49,6 +50,9 @@ public static class AppHost
         services.AddSingleton<IAdminSettingsApi, AdminSettingsApi>();
         services.AddSingleton<IFloorApi, FloorApi>();
         services.AddSingleton<IMenuApi, MenuApi>();
+        services.AddSingleton<IOrdersApi, OrdersApi>();
+        services.AddSingleton<ILocalDraftStore, LocalDraftStore>();
+        services.AddSingleton<IOrderSubmitter, OrderSubmitter>();
         services.AddHttpClient(MenuCache.ImageHttpClientName, client => client.Timeout = TimeSpan.FromSeconds(15));
         services.AddSingleton<IMenuCache, MenuCache>();
 

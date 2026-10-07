@@ -186,6 +186,7 @@ dotnet run --project src/HotelPOS.Desktop -- --profile kitchen
 | Session (refresh token, DPAPI-encrypted) | `%LocalAppData%\HotelPOS\<profile>\session.dat` |
 | Preferences (last username) | `%LocalAppData%\HotelPOS\<profile>\preferences.json` |
 | Logs | `%LocalAppData%\HotelPOS\logs\desktop[-profile]-YYYYMMDD.log` |
+| Unsent order drafts | `%LocalAppData%\HotelPOS\<profile>\drafts\table-<id>.json` (removed once the server confirms) |
 | Menu pictures (cache) | `%LocalAppData%\HotelPOS\cache\images` (safe to delete; downloaded again when needed) |
 
 Delete the settings file to see the first-run screen again. **F11** toggles full screen.

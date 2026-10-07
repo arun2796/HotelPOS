@@ -3,6 +3,7 @@ using HotelPOS.Domain.Billing;
 using HotelPOS.Domain.Floor;
 using HotelPOS.Domain.Identity;
 using HotelPOS.Domain.Menu;
+using HotelPOS.Domain.Orders;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -29,6 +30,8 @@ public interface IAppDbContext
     DbSet<ModifierOption> ModifierOptions { get; }
     DbSet<MenuItem> MenuItems { get; }
     DbSet<MenuItemModifierGroup> MenuItemModifierGroups { get; }
+    DbSet<Order> Orders { get; }
+    DbSet<OrderItem> OrderItems { get; }
 
     DatabaseFacade Database { get; }
 

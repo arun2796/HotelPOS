@@ -4,6 +4,9 @@ using HotelPOS.Contracts.Floor;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Desktop.Modules.Tables;
 using HotelPOS.Desktop.Services.Api;
+using HotelPOS.Desktop.Services.Auth;
+using HotelPOS.Desktop.Services.Navigation;
+using HotelPOS.Desktop.Services.Orders;
 using HotelPOS.Desktop.Services.Ui;
 using HotelPOS.Desktop.Tests.Support;
 using NSubstitute;
@@ -24,7 +27,10 @@ public sealed class TableMapViewModelTests : IDisposable
         _api.GetMapAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(ApiResult<TableMapDto>.Ok(Map(MapTime, Table(1, "T01"), Table(2, "T02"), Table(11, "O01", sectionId: 2))));
         _dialogs.ConfirmAsync(default!, default!, default!, default!, default).ReturnsForAnyArgs(true);
-        _vm = new TableMapViewModel(_api, _realtime, _dialogs, Substitute.For<INotificationService>());
+        var session = new AuthSession(new InMemorySecureStore());
+        session.Start(TestData.Login("waiter1", roles: "Waiter"));
+        _vm = new TableMapViewModel(_api, Substitute.For<IOrdersApi>(), Substitute.For<ILocalDraftStore>(), _realtime,
+            Substitute.For<INavigationService>(), session, _dialogs, Substitute.For<INotificationService>());
     }
 
     public void Dispose() => _vm.Dispose();

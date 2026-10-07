@@ -60,4 +60,9 @@ public static class AuditActions
     public const string MenuItemImageChanged = "MenuItem.ImageChanged";
     public const string MenuItemActivated = "MenuItem.Activated";
     public const string MenuItemDeactivated = "MenuItem.Deactivated";
+
+    public const string OrderSubmitted = "Order.Submitted";
+    public const string OrderItemsAppended = "Order.ItemsAppended";
+    public const string OrderUpdated = "Order.Updated";
+    public const string OrderCancelled = "Order.Cancelled";
 }

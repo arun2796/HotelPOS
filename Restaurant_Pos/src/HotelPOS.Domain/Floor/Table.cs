@@ -2,6 +2,7 @@ using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Floor;
 using HotelPOS.Domain.Common;
+using HotelPOS.Domain.Orders;
 
 namespace HotelPOS.Domain.Floor;
 
@@ -25,6 +26,7 @@ public sealed class Table : BaseEntity, IHasRowVersion
     public int Capacity { get; private set; }
     public TableStatus Status { get; private set; }
     public int? CurrentOrderId { get; private set; }
+    public Order? CurrentOrder { get; private set; }
     public DateTime? OccupiedAt { get; private set; }
     public int? GuestCount { get; private set; }
     public bool IsActive { get; private set; }
@@ -33,6 +35,9 @@ public sealed class Table : BaseEntity, IHasRowVersion
     public static string NormalizeCode(string code) => code.Trim().ToUpperInvariant();
 
     public bool CanBeDeactivated => Status is TableStatus.Available or TableStatus.OutOfService;
+
+    public bool CanTakeNewOrder => IsActive && CurrentOrderId is null && CurrentOrder is null
+        && Status is TableStatus.Available or TableStatus.Occupied;
 
     public void Update(string code, string? name, int sectionId, int capacity)
     {
@@ -122,5 +127,48 @@ public sealed class Table : BaseEntity, IHasRowVersion
         }
 
         IsActive = false;
+    }
+
+    public void AttachOrder(Order order, DateTime nowUtc)
+    {
+        if (!CanTakeNewOrder)
+        {
+            throw new DomainException($"Table {Code} already has an order or is not available.", ErrorCodes.TableNotAvailable);
+        }
+
+        CurrentOrder = order;
+        GuestCount = order.GuestCount;
+        OccupiedAt ??= nowUtc;
+        FollowOrder(order.Status);
+    }
+
+    public void FollowOrder(OrderStatus status)
+    {
+        Status = status switch
+        {
+            OrderStatus.Draft => TableStatus.Ordering,
+            OrderStatus.Submitted or OrderStatus.Accepted or OrderStatus.Preparing => TableStatus.Preparing,
+            OrderStatus.Ready => TableStatus.Ready,
+            OrderStatus.Served => TableStatus.Occupied,
+            OrderStatus.BillRequested or OrderStatus.Billed => TableStatus.Billing,
+            _ => Status,
+        };
+    }
+
+    public void SetGuestCount(int guestCount) => GuestCount = guestCount;
+
+    public void DetachOrder(bool keepGuestsSeated)
+    {
+        CurrentOrderId = null;
+        CurrentOrder = null;
+        if (keepGuestsSeated)
+        {
+            Status = TableStatus.Occupied;
+            return;
+        }
+
+        Status = TableStatus.Available;
+        GuestCount = null;
+        OccupiedAt = null;
     }
 }

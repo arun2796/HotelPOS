@@ -11,6 +11,9 @@ using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Floor;
 using HotelPOS.Contracts.Menu;
+using HotelPOS.Contracts.Orders;
+using HotelPOS.Desktop.Modules.Orders;
+using HotelPOS.Desktop.Services.Orders;
 using HotelPOS.Desktop.Modules.MenuAdmin;
 using HotelPOS.Desktop.Services.Menu;
 using HotelPOS.Testing;
@@ -150,6 +153,29 @@ public class ScreenRenderingTests
             env.Theme.Apply(ThemeService.Dark);
             rendered.Add(await RenderScreenAsync(env, waiterShell, "14-waiter-table-details-occupied-dark"));
             env.Theme.Apply(ThemeService.Light);
+
+            env.Notifications.Items.Clear();
+            map.SelectTableCommand.Execute(map.AllTables.Single(t => t.Code == "T04"));
+            await map.Details.ReloadOrderAsync();
+            rendered.Add(await RenderScreenAsync(env, waiterShell, "20-waiter-table-with-order"));
+
+            var builder = env.Create<OrderBuilderViewModel>();
+            await waiterShell.ShowPageAsync(builder, new OrderBuilderContext(5, "T05", OrderBuilderMode.NewOrder, 4));
+            builder.AddItemCommand.Execute(builder.Items.Single(i => i.Name == "Veg Spring Roll"));
+            builder.AddItemCommand.Execute(builder.Items.Single(i => i.Name == "Veg Spring Roll"));
+            builder.AddItemCommand.Execute(builder.Items.Single(i => i.Name == "Chicken 65"));
+            builder.ToggleOptionCommand.Execute(builder.Picker!.Groups[0].Options[2]);
+            builder.ConfirmPickerCommand.Execute(null);
+            builder.EditNoteCommand.Execute(builder.Cart[0]);
+            builder.AddQuickNoteCommand.Execute("Less oil");
+            builder.ApplyNoteCommand.Execute(null);
+            rendered.Add(await RenderScreenAsync(env, waiterShell, "21-order-builder"));
+            builder.AddItemCommand.Execute(builder.Items.Single(i => i.Name == "Paneer Tikka"));
+            rendered.Add(await RenderScreenAsync(env, waiterShell, "22-order-builder-modifiers"));
+            builder.CancelPickerCommand.Execute(null);
+
+            await waiterShell.NavigateToAsync(ModuleRegistry.MyOrders, null);
+            rendered.Add(await RenderScreenAsync(env, waiterShell, "23-waiter-my-orders"));
             waiterShell.Dispose();
         });
 
@@ -159,7 +185,7 @@ public class ScreenRenderingTests
         }
 
         bindingErrors.Errors.Should().BeEmpty("every binding in the views must point at an existing property");
-        rendered.Should().HaveCount(19);
+        rendered.Should().HaveCount(23);
     }
 
     private static async Task<string> RenderScreenAsync(Environment env, object screen, string name)
@@ -322,6 +348,9 @@ public class ScreenRenderingTests
             services.AddSingleton(DemoMenuApi());
             services.AddSingleton<IMenuCache>(new DemoMenuCache());
             services.AddSingleton(Substitute.For<IFilePicker>());
+            services.AddSingleton(DemoOrdersApi());
+            services.AddSingleton(Substitute.For<ILocalDraftStore>());
+            services.AddSingleton<IOrderSubmitter>(new OrderSubmitter(NullLogger<OrderSubmitter>.Instance));
             services.AddSingleton(Substitute.For<IAuthApi>());
             services.AddSingleton(Substitute.For<IAppNavigator>());
             services.AddSingleton(Substitute.For<IUserPreferences>());
@@ -428,6 +457,69 @@ public class ScreenRenderingTests
             return api;
         }
 
+        private static IOrdersApi DemoOrdersApi()
+        {
+            var now = DateTime.UtcNow;
+            OrderItemDto Item(int id, int batch, string name, decimal price, int quantity, string? notes = null, params string[] modifiers) => new()
+            {
+                Id = id,
+                BatchNumber = batch,
+                ItemName = name,
+                UnitPrice = price,
+                Quantity = quantity,
+                Notes = notes,
+                Status = OrderItemStatus.Sent,
+                Modifiers = modifiers.Select((m, i) => new OrderItemModifierDto(i, m, 0m)).ToList(),
+                LineTotal = price * quantity,
+            };
+            var detail = new OrderDetailDto
+            {
+                Id = 19,
+                OrderNumber = 1019,
+                TableId = 4,
+                TableCode = "T04",
+                WaiterId = 7,
+                WaiterName = "Arun (Waiter)",
+                GuestCount = 4,
+                Status = OrderStatus.Preparing,
+                CanModify = true,
+                Items = new[]
+                {
+                    Item(1, 1, "Chicken Biryani", 260m, 2, "less oil", "Spicy", "Extra raita"),
+                    Item(2, 1, "Butter Naan", 50m, 4),
+                    Item(3, 2, "Fresh Lime Soda", 60m, 3),
+                },
+                ApproxSubtotal = 900m,
+                RowVersion = "AAAFow==",
+            };
+            OrderSummaryDto Summary(int id, int number, string table, OrderStatus status, int items, decimal total, int minutes) => new()
+            {
+                Id = id,
+                OrderNumber = number,
+                TableId = id,
+                TableCode = table,
+                WaiterId = 7,
+                WaiterName = "Arun (Waiter)",
+                GuestCount = 2,
+                Status = status,
+                ItemCount = items,
+                ApproxTotal = total,
+                CreatedAtUtc = now.AddMinutes(-minutes),
+                SubmittedAtUtc = status == OrderStatus.Draft ? null : now.AddMinutes(-minutes),
+            };
+
+            var api = Substitute.For<IOrdersApi>();
+            api.GetAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(ApiResult<OrderDetailDto>.Ok(detail));
+            api.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ApiResult<List<OrderSummaryDto>>.Ok(new List<OrderSummaryDto>
+            {
+                Summary(3, 1024, "T03", OrderStatus.Draft, 2, 520m, 5),
+                Summary(4, 1019, "T04", OrderStatus.Preparing, 9, 900m, 26),
+                Summary(6, 1012, "T06", OrderStatus.Ready, 6, 1240m, 41),
+                Summary(7, 1003, "T07", OrderStatus.BillRequested, 14, 3180m, 83),
+            }));
+            return api;
+        }
+
         private static TableMapDto DemoMap()
         {
             var now = DateTime.UtcNow;
@@ -442,6 +534,7 @@ public class ScreenRenderingTests
                 Status = status,
                 GuestCount = guests,
                 OccupiedAtUtc = guests is null ? null : now.AddMinutes(-minutes),
+                CurrentOrderId = order is null ? null : order - 1000,
                 CurrentOrderNumber = order,
                 IsActive = true,
                 RowVersion = "AAAFow==",
@@ -507,6 +600,14 @@ public class ScreenRenderingTests
         {
             Version = 12,
             Categories = new[] { new MenuCategoryDto(1, "Starters", 1), new MenuCategoryDto(2, "Biryani", 2), new MenuCategoryDto(3, "Breads", 3) },
+            ModifierGroups = new[]
+            {
+                new MenuModifierGroupDto
+                {
+                    Id = 1, Name = "Spice level", MinSelections = 1, MaxSelections = 1,
+                    Options = new[] { new MenuModifierOptionDto(1, "Mild", 0m), new MenuModifierOptionDto(2, "Medium", 0m), new MenuModifierOptionDto(3, "Spicy", 0m) },
+                },
+            },
             Items = new[]
             {
                 new MenuEntryDto { Id = 1, CategoryId = 1, Name = "Chicken 65", Price = 235m, IsAvailable = true, ImageUrl = "/images/menu/1-demo.jpg", ModifierGroupIds = new[] { 1 } },

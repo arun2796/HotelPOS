@@ -2,6 +2,7 @@ using HotelPOS.Contracts.Security;
 using HotelPOS.Desktop.Modules.Admin;
 using HotelPOS.Desktop.Modules.Config;
 using HotelPOS.Desktop.Modules.MenuAdmin;
+using HotelPOS.Desktop.Modules.Orders;
 using HotelPOS.Desktop.Modules.Tables;
 
 namespace HotelPOS.Desktop.Services.Navigation;
@@ -47,15 +48,15 @@ public static class ModuleRegistry
         new(Tables, "Tables", "", "Service", new[] { Roles.Admin, Roles.Manager, Roles.Waiter, Roles.Cashier }, 2,
             "Live table map: occupy tables, open orders and follow their status.", typeof(TableMapViewModel)),
         new(MyOrders, "My Orders", "", "Service", new[] { Roles.Admin, Roles.Manager, Roles.Waiter }, 4,
-            "Your active orders, with ready orders highlighted."),
+            "Your active orders, with ready orders highlighted.", typeof(MyOrdersViewModel)),
 
         new(KitchenDisplay, "Kitchen Display", "", "Kitchen", new[] { Roles.Admin, Roles.Manager, Roles.Kitchen }, 5,
-            "New, preparing and ready tickets with large touch buttons."),
+            "New, preparing and ready tickets with large touch buttons.", typeof(ActiveOrdersViewModel)),
         new(KitchenCompleted, "Completed Orders", "", "Kitchen", new[] { Roles.Admin, Roles.Manager, Roles.Kitchen }, 5,
             "Tickets completed today with preparation times."),
 
         new(Billing, "Billing", "", "Billing", new[] { Roles.Admin, Roles.Manager, Roles.Cashier }, 6,
-            "Pending bills, discounts, tax and split payments."),
+            "Pending bills, discounts, tax and split payments.", typeof(ActiveOrdersViewModel)),
         new(ClosedBills, "Closed Bills", "", "Billing", new[] { Roles.Admin, Roles.Manager, Roles.Cashier }, 6,
             "Settled and voided bills, reprints and refunds."),
 

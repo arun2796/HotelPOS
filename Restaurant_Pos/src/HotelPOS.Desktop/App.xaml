@@ -8,6 +8,7 @@
              xmlns:admin="clr-namespace:HotelPOS.Desktop.Modules.Admin"
              xmlns:tables="clr-namespace:HotelPOS.Desktop.Modules.Tables"
              xmlns:menuadmin="clr-namespace:HotelPOS.Desktop.Modules.MenuAdmin"
+             xmlns:orders="clr-namespace:HotelPOS.Desktop.Modules.Orders"
              ShutdownMode="OnMainWindowClose">
   <Application.Resources>
     <ResourceDictionary>
@@ -46,6 +47,15 @@
       </DataTemplate>
       <DataTemplate DataType="{x:Type menuadmin:MenuAdminViewModel}">
         <menuadmin:MenuAdminView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type orders:OrderBuilderViewModel}">
+        <orders:OrderBuilderView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type orders:MyOrdersViewModel}">
+        <orders:OrderListView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type orders:ActiveOrdersViewModel}">
+        <orders:OrderListView />
       </DataTemplate>
     </ResourceDictionary>
   </Application.Resources>

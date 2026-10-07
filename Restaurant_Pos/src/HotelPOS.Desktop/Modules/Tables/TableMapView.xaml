@@ -73,7 +73,7 @@
                           </Grid.RowDefinitions>
                           <TextBlock Text="{Binding Code}" FontSize="24" FontWeight="Bold" />
                           <TextBlock Text="{Binding ElapsedText}" FontSize="13" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,0,0" />
-                          <TextBlock Grid.Row="2" Text="{Binding StatusText}" FontSize="13" FontWeight="SemiBold" />
+                          <TextBlock Grid.Row="2" Text="{Binding StatusLine}" FontSize="13" FontWeight="SemiBold" />
                           <TextBlock Grid.Row="3" Text="{Binding GuestsText}" FontSize="12" Opacity="0.9" />
                         </Grid>
                       </Button>

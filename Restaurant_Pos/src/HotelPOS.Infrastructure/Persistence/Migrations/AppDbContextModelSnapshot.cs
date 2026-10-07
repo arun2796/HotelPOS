@@ -22,6 +22,9 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.HasSequence<int>("OrderNumbers")
+                .StartsAt(1001L);
+
             modelBuilder.Entity("HotelPOS.Domain.Administration.AuditLog", b =>
                 {
                     b.Property<long>("Id")
@@ -316,6 +319,8 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("Code")
                         .IsUnique();
+
+                    b.HasIndex("CurrentOrderId");
 
                     b.HasIndex("SectionId");
 
@@ -903,13 +908,225 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("HotelPOS.Domain.Orders.Order", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("BillRequestedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<string>("CancelReason")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int?>("CancelledBy")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ClosedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("GuestCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("OpenedOnOccupiedTable")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("OrderNumber")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValueSql("nextval('\"OrderNumbers\"')");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<DateTime?>("ServedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int>("TableId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int?>("UpdatedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("WaiterId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderNumber")
+                        .IsUnique();
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("TableId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Orders_TableId_Active")
+                        .HasFilter("\"Status\" NOT IN (9, 10, 11)");
+
+                    b.HasIndex("WaiterId", "CreatedAt");
+
+                    b.ToTable("Orders", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Orders_GuestCount", "\"GuestCount\" > 0");
+
+                            t.HasCheckConstraint("CK_Orders_Status", "\"Status\" IN (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)");
+                        });
+                });
+
+            modelBuilder.Entity("HotelPOS.Domain.Orders.OrderItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BatchNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("CancelReason")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<int?>("CancelledBy")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ItemName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("MenuItemId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PreparationStationId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("TaxId")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("TaxRatePercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int?>("UpdatedBy")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MenuItemId");
+
+                    b.HasIndex("OrderId");
+
+                    b.ToTable("OrderItems", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_OrderItems_Quantity", "\"Quantity\" > 0");
+
+                            t.HasCheckConstraint("CK_OrderItems_Status", "\"Status\" IN (1, 2, 3)");
+                        });
+                });
+
+            modelBuilder.Entity("HotelPOS.Domain.Orders.OrderItemModifier", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ModifierOptionId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("OrderItemId")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("PriceDelta")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ModifierOptionId");
+
+                    b.HasIndex("OrderItemId");
+
+                    b.ToTable("OrderItemModifiers", (string)null);
+                });
+
             modelBuilder.Entity("HotelPOS.Domain.Floor.Table", b =>
                 {
+                    b.HasOne("HotelPOS.Domain.Orders.Order", "CurrentOrder")
+                        .WithMany()
+                        .HasForeignKey("CurrentOrderId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("HotelPOS.Domain.Floor.Section", "Section")
                         .WithMany()
                         .HasForeignKey("SectionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("CurrentOrder");
 
                     b.Navigation("Section");
                 });
@@ -1011,6 +1228,53 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("HotelPOS.Domain.Orders.Order", b =>
+                {
+                    b.HasOne("HotelPOS.Domain.Floor.Table", "Table")
+                        .WithMany()
+                        .HasForeignKey("TableId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("HotelPOS.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("WaiterId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Table");
+                });
+
+            modelBuilder.Entity("HotelPOS.Domain.Orders.OrderItem", b =>
+                {
+                    b.HasOne("HotelPOS.Domain.Menu.MenuItem", null)
+                        .WithMany()
+                        .HasForeignKey("MenuItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("HotelPOS.Domain.Orders.Order", null)
+                        .WithMany("Items")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("HotelPOS.Domain.Orders.OrderItemModifier", b =>
+                {
+                    b.HasOne("HotelPOS.Domain.Menu.ModifierOption", null)
+                        .WithMany()
+                        .HasForeignKey("ModifierOptionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("HotelPOS.Domain.Orders.OrderItem", null)
+                        .WithMany("Modifiers")
+                        .HasForeignKey("OrderItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("HotelPOS.Domain.Identity.User", b =>
                 {
                     b.Navigation("UserRoles");
@@ -1024,6 +1288,16 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("HotelPOS.Domain.Menu.ModifierGroup", b =>
                 {
                     b.Navigation("Options");
+                });
+
+            modelBuilder.Entity("HotelPOS.Domain.Orders.Order", b =>
+                {
+                    b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("HotelPOS.Domain.Orders.OrderItem", b =>
+                {
+                    b.Navigation("Modifiers");
                 });
 #pragma warning restore 612, 618
         }

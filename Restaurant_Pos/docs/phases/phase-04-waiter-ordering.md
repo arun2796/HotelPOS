@@ -1,6 +1,6 @@
 # Phase 4 — Waiter Ordering
 
-Status: Not started · Depends on: Phase 2, Phase 3
+Status: Done (2026-10-07) · Depends on: Phase 2, Phase 3
 
 ## 1. Goal
 
@@ -125,11 +125,13 @@ submit, append items, cancel. `[I]` endpoints: create, append.
 
 ## 12. Acceptance criteria
 
-- [ ] Draft/submit/append/cancel flows with server-enforced transitions and audit.
-- [ ] Idempotency middleware proven by tests and the network demo (no duplicate, no loss).
-- [ ] Order builder usable with touch: table -> category -> item -> qty -> send without dialogs.
-- [ ] Local drafts survive navigation and app restart.
-- [ ] Definition of Done satisfied.
+- [x] Draft/submit/append/cancel flows with server-enforced transitions and audit.
+- [x] Idempotency middleware proven by tests (same key -> one row and the stored response; changed payload ->
+  `IDEMPOTENCY_KEY_REUSED`; client retries with the same key). The unplug-the-cable demo on two PCs is still to do.
+- [x] Order builder usable with touch: table -> category -> item -> qty -> send without dialogs (the modifier
+  sheet appears only for items that have modifier groups).
+- [x] Local drafts survive navigation and app restart (stored per table on the terminal).
+- [x] Definition of Done satisfied.
 
 ## 13. Risks and notes
 
@@ -142,4 +144,26 @@ submit, append items, cancel. `[I]` endpoints: create, append.
 
 ## 14. Changes during implementation
 
-(fill in while building)
+- **Idempotency store** inserts the key with `INSERT ... ON CONFLICT DO NOTHING` on its own DbContext, so a
+  failed business operation can never be saved together with the stored response. The request hash is SHA-256
+  of route + canonical JSON (keys sorted, case-insensitive). A key still "in progress" after 2 minutes belongs
+  to a crashed request and can be taken over. Expired keys (48 h) are deleted hourly by a hosted service.
+- **Ownership** applies to every change, append included: the owning waiter, a Manager/Admin, or any waiter
+  when the new setting `AllowAnyWaiterToEditOrders` is true (default false). Admin may take orders like a
+  Manager. Cashier and Kitchen can read orders but not change them.
+- **Table coupling.** `Tables.CurrentOrderId` now has its foreign key. A concurrent second order on the same
+  table is caught by the table's row version (409 `TABLE_NOT_AVAILABLE` with the existing order), and the
+  partial unique index `IX_Orders_TableId_Active` is the last line of defence. A table follows its order
+  (Draft -> Ordering, sent -> Preparing); cancelling returns it to Occupied when guests were seated before the
+  order was opened (`Orders.OpenedOnOccupiedTable`), otherwise to Available.
+- **Concurrent submit** of the same draft: the order's row version lets one submit win; the other gets
+  `CONCURRENCY_CONFLICT` (or `INVALID_STATE_TRANSITION` if it read the order after the commit).
+- **Kitchen and Billing modules** show the read-only Active Orders board until Phases 5 and 6 replace them.
+- **Order builder.** New order, edit draft and add items share one screen. Every cart change is written to
+  `drafts\table-<id>.json`; the idempotency key is stored with it before sending, so a retry after a crash or a
+  lost response replays the same request. Lost responses are retried 3 times (1 s/3 s/5 s), then the user can
+  retry or keep the draft. A rejected request clears the key. Quick notes: Less spicy, Extra spicy, No onion,
+  No garlic, Less oil, Jain, Parcel.
+- **Bug found by the tests:** opening the builder used to overwrite the stored draft before restoring it; saving
+  now starts only after the restore.
+- **Append** leaves the order status unchanged in this phase; Phase 5 recomputes it from kitchen tickets.

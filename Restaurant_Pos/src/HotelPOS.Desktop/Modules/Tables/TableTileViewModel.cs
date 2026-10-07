@@ -33,7 +33,7 @@ public sealed partial class TableTileViewModel : ObservableObject
     private int _capacity;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(StatusText), nameof(IsAvailable), nameof(IsOccupied), nameof(GuestsText))]
+    [NotifyPropertyChangedFor(nameof(StatusText), nameof(StatusLine), nameof(IsAvailable), nameof(IsOccupied), nameof(GuestsText))]
     private TableStatus _status;
 
     [ObservableProperty]
@@ -44,6 +44,10 @@ public sealed partial class TableTileViewModel : ObservableObject
     private DateTime? _occupiedAtUtc;
 
     [ObservableProperty]
+    private int? _currentOrderId;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StatusLine))]
     private int? _currentOrderNumber;
 
     [ObservableProperty]
@@ -62,6 +66,8 @@ public sealed partial class TableTileViewModel : ObservableObject
     public bool IsOccupied => Status == TableStatus.Occupied;
 
     public string StatusText => DescribeStatus(Status);
+
+    public string StatusLine => CurrentOrderNumber is { } number ? $"{StatusText} · #{number}" : StatusText;
 
     public string GuestsText => GuestCount is { } guests
         ? $"{guests} / {Capacity} guests"
@@ -87,6 +93,7 @@ public sealed partial class TableTileViewModel : ObservableObject
         Status = table.Status;
         GuestCount = table.GuestCount;
         OccupiedAtUtc = table.OccupiedAtUtc;
+        CurrentOrderId = table.CurrentOrderId;
         CurrentOrderNumber = table.CurrentOrderNumber;
         RowVersion = table.RowVersion;
         if (stateTimestampUtc > StateTimestampUtc)
@@ -105,6 +112,7 @@ public sealed partial class TableTileViewModel : ObservableObject
         Status = change.Status;
         GuestCount = change.GuestCount;
         OccupiedAtUtc = change.OccupiedAtUtc;
+        CurrentOrderId = change.OrderId;
         CurrentOrderNumber = change.OrderNumber;
         if (!string.IsNullOrEmpty(change.EntityVersion))
         {

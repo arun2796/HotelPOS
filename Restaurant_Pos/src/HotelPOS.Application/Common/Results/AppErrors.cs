@@ -44,6 +44,9 @@ public static class AppErrors
     public static AppError InvalidState(string message, object? current = null) =>
         new(ErrorCodes.InvalidStateTransition, message) { Data = current };
 
+    public static AppError OrderLocked(string message, object? current = null) =>
+        new(ErrorCodes.OrderLocked, message) { Data = current };
+
     public static AppError TableNotAvailable(string tableCode, object? current = null) =>
         new(ErrorCodes.TableNotAvailable, $"Table {tableCode} is no longer available. The latest status has been loaded.")
         {

@@ -8,17 +8,22 @@
              d:DataContext="{d:DesignInstance tables:TableDetailsViewModel}"
              d:DesignWidth="360" d:DesignHeight="700">
 
-  <Border Style="{StaticResource Card}">
+  <Border Style="{StaticResource Card}" Padding="20">
     <Grid>
       <Grid.RowDefinitions>
         <RowDefinition Height="*" />
         <RowDefinition Height="Auto" />
       </Grid.RowDefinitions>
 
-      <ScrollViewer VerticalScrollBarVisibility="Auto">
+      <ScrollViewer VerticalScrollBarVisibility="Auto" PanningMode="VerticalOnly">
         <StackPanel>
           <Grid>
-            <TextBlock Text="{Binding Table.Code}" Style="{StaticResource Text.Display}" />
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="{Binding Table.Code}" Style="{StaticResource Text.Display}" />
+              <Border Style="{StaticResource TableStatusBadge}" DataContext="{Binding Table}" Margin="12,0,0,0" VerticalAlignment="Center">
+                <TextBlock Text="{Binding StatusText}" />
+              </Border>
+            </StackPanel>
             <Button Style="{StaticResource Button.Ghost}" HorizontalAlignment="Right" VerticalAlignment="Top"
                     Command="{Binding CloseCommand}" ToolTip="Close">
               <TextBlock Text="&#xE711;" Style="{StaticResource Text.Icon}" />
@@ -27,11 +32,7 @@
           <TextBlock Text="{Binding Table.Name}" Style="{StaticResource Text.Body}" Foreground="{DynamicResource Brush.TextSecondary}"
                      Visibility="{Binding Table.Name, Converter={StaticResource StringToVisibility}}" />
 
-          <Border Style="{StaticResource TableStatusBadge}" DataContext="{Binding Table}" Margin="0,12,0,16">
-            <TextBlock Text="{Binding StatusText}" />
-          </Border>
-
-          <Grid Margin="0,0,0,16">
+          <Grid Margin="0,14,0,12">
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="*" />
               <ColumnDefinition Width="*" />
@@ -39,23 +40,69 @@
             <Grid.RowDefinitions>
               <RowDefinition Height="Auto" />
               <RowDefinition Height="Auto" />
-              <RowDefinition Height="Auto" />
-              <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
-            <TextBlock Text="Section" Style="{StaticResource Text.Label}" />
-            <TextBlock Grid.Column="1" Text="Guests" Style="{StaticResource Text.Label}" />
-            <TextBlock Grid.Row="1" Text="{Binding Table.SectionName}" Style="{StaticResource Text.Body}" Margin="0,0,0,10" />
-            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Table.GuestsDetailText}" Style="{StaticResource Text.Body}" Margin="0,0,0,10" />
-            <TextBlock Grid.Row="2" Text="Occupied since" Style="{StaticResource Text.Label}" />
-            <TextBlock Grid.Row="2" Grid.Column="1" Text="Order" Style="{StaticResource Text.Label}" />
-            <StackPanel Grid.Row="3" Orientation="Horizontal">
+            <TextBlock Text="Guests" Style="{StaticResource Text.Label}" />
+            <TextBlock Grid.Column="1" Text="Occupied since" Style="{StaticResource Text.Label}" />
+            <TextBlock Grid.Row="1" Text="{Binding Table.GuestsDetailText}" Style="{StaticResource Text.Body}" />
+            <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal">
               <TextBlock Text="{Binding OccupiedSinceText}" Style="{StaticResource Text.Body}" />
               <TextBlock Text="{Binding Table.ElapsedText}" Style="{StaticResource Text.Caption}" Margin="8,0,0,0" VerticalAlignment="Center" />
             </StackPanel>
-            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding OrderText}" Style="{StaticResource Text.Body}" />
           </Grid>
 
-          <StackPanel Visibility="{Binding Table.IsAvailable, Converter={StaticResource BoolToVisibility}}">
+          <Border Background="{DynamicResource Brush.SurfaceAlt}" CornerRadius="8" Padding="12" Margin="0,0,0,12"
+                  Visibility="{Binding HasOrder, Converter={StaticResource BoolToVisibility}}">
+            <StackPanel>
+              <Grid>
+                <TextBlock Text="{Binding OrderTitle}" FontWeight="SemiBold" FontSize="15" Foreground="{DynamicResource Brush.TextPrimary}"
+                           TextTrimming="CharacterEllipsis" Margin="0,0,90,0" />
+                <Border Background="{DynamicResource Brush.PrimarySoft}" CornerRadius="10" Padding="10,2" HorizontalAlignment="Right">
+                  <TextBlock Text="{Binding OrderStatusText}" FontWeight="SemiBold" Foreground="{DynamicResource Brush.Primary}" />
+                </Border>
+              </Grid>
+              <ItemsControl ItemsSource="{Binding Batches}" Focusable="False" Margin="0,8,0,0">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate DataType="{x:Type tables:OrderBatchViewModel}">
+                    <StackPanel Margin="0,4,0,0">
+                      <TextBlock Text="{Binding Title}" Style="{StaticResource Text.Caption}" FontWeight="SemiBold" />
+                      <ItemsControl ItemsSource="{Binding Lines}" Focusable="False">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate DataType="{x:Type tables:OrderLineViewModel}">
+                            <Grid x:Name="Line" Margin="0,3,0,0">
+                              <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                              </Grid.ColumnDefinitions>
+                              <StackPanel>
+                                <TextBlock Text="{Binding Text}" Foreground="{DynamicResource Brush.TextPrimary}" TextWrapping="Wrap" />
+                                <TextBlock Text="{Binding Detail}" Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
+                                           Visibility="{Binding HasDetail, Converter={StaticResource BoolToVisibility}}" />
+                              </StackPanel>
+                              <TextBlock Grid.Column="1" Text="{Binding Total}" Foreground="{DynamicResource Brush.TextSecondary}" Margin="8,0,0,0" />
+                            </Grid>
+                            <DataTemplate.Triggers>
+                              <DataTrigger Binding="{Binding IsCancelled}" Value="True">
+                                <Setter TargetName="Line" Property="Opacity" Value="0.45" />
+                              </DataTrigger>
+                            </DataTemplate.Triggers>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Text="{Binding OrderTotalText}" HorizontalAlignment="Right" FontWeight="SemiBold" Margin="0,8,0,0"
+                         Foreground="{DynamicResource Brush.TextPrimary}" />
+            </StackPanel>
+          </Border>
+
+          <Border Style="{StaticResource Banner.Info}" Margin="0,0,0,12"
+                  Visibility="{Binding HasLocalDraft, Converter={StaticResource BoolToVisibility}}">
+            <TextBlock Text="Unsent items are saved on this terminal." TextWrapping="Wrap" Foreground="{DynamicResource Brush.TextPrimary}" />
+          </Border>
+
+          <StackPanel Visibility="{Binding ShowKeypad, Converter={StaticResource BoolToVisibility}}">
             <TextBlock Text="Number of guests" Style="{StaticResource Text.Label}" />
             <Border Background="{DynamicResource Brush.InputBackground}" BorderBrush="{DynamicResource Brush.InputBorder}"
                     BorderThickness="1" CornerRadius="8" Height="48" Margin="4,0,4,4">
@@ -92,14 +139,31 @@
         </StackPanel>
       </ScrollViewer>
 
-      <StackPanel Grid.Row="1" Margin="0,16,0,0">
-        <Button Content="OCCUPY" Style="{StaticResource Button.Primary}" MinHeight="56" FontSize="17"
-                Command="{Binding OccupyCommand}"
-                Visibility="{Binding Table.IsAvailable, Converter={StaticResource BoolToVisibility}}" />
-        <Button Content="RELEASE" MinHeight="56" FontSize="17"
-                Command="{Binding ReleaseCommand}"
-                Visibility="{Binding Table.IsOccupied, Converter={StaticResource BoolToVisibility}}" />
-      </StackPanel>
+      <WrapPanel Grid.Row="1" Margin="0,12,0,0" Orientation="Horizontal">
+        <WrapPanel.Resources>
+          <Style TargetType="Button" BasedOn="{StaticResource Button.Base}">
+            <Setter Property="MinHeight" Value="52" />
+            <Setter Property="Width" Value="156" />
+            <Setter Property="Margin" Value="0,0,8,8" />
+            <Setter Property="FontSize" Value="15" />
+          </Style>
+        </WrapPanel.Resources>
+        <Button Content="OCCUPY" Command="{Binding OccupyCommand}"
+                Visibility="{Binding ShowOccupy, Converter={StaticResource BoolToVisibility}}" />
+        <Button Content="{Binding NewOrderText}" Command="{Binding NewOrderCommand}"
+                Background="{DynamicResource Brush.Primary}" BorderBrush="{DynamicResource Brush.Primary}" Foreground="{DynamicResource Brush.PrimaryText}"
+                Visibility="{Binding ShowNewOrder, Converter={StaticResource BoolToVisibility}}" />
+        <Button Content="OPEN ORDER" Command="{Binding OpenOrderCommand}"
+                Background="{DynamicResource Brush.Primary}" BorderBrush="{DynamicResource Brush.Primary}" Foreground="{DynamicResource Brush.PrimaryText}"
+                Visibility="{Binding ShowOpenOrder, Converter={StaticResource BoolToVisibility}}" />
+        <Button Content="ADD ITEMS" Command="{Binding AddItemsCommand}"
+                Background="{DynamicResource Brush.Primary}" BorderBrush="{DynamicResource Brush.Primary}" Foreground="{DynamicResource Brush.PrimaryText}"
+                Visibility="{Binding ShowAddItems, Converter={StaticResource BoolToVisibility}}" />
+        <Button Content="RELEASE" Command="{Binding ReleaseCommand}"
+                Visibility="{Binding ShowRelease, Converter={StaticResource BoolToVisibility}}" />
+        <Button Content="CANCEL ORDER" Command="{Binding CancelOrderCommand}" Foreground="{DynamicResource Brush.Danger}"
+                Visibility="{Binding ShowCancelOrder, Converter={StaticResource BoolToVisibility}}" />
+      </WrapPanel>
     </Grid>
   </Border>
 </UserControl>

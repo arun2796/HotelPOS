@@ -47,4 +47,5 @@ public static class SettingKeys
     public const string ReceiptFooter = "ReceiptFooter";
     public const string MenuVersion = "MenuVersion";
     public const string TaxSplitDisplay = "TaxSplitDisplay";
+    public const string AllowAnyWaiterToEditOrders = "AllowAnyWaiterToEditOrders";
 }

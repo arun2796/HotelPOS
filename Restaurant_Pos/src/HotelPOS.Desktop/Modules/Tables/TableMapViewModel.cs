@@ -4,8 +4,11 @@ using CommunityToolkit.Mvvm.Input;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Floor;
 using HotelPOS.Contracts.Realtime;
+using HotelPOS.Contracts.Security;
 using HotelPOS.Desktop.Services.Api;
+using HotelPOS.Desktop.Services.Auth;
 using HotelPOS.Desktop.Services.Navigation;
+using HotelPOS.Desktop.Services.Orders;
 using HotelPOS.Desktop.Services.Realtime;
 using HotelPOS.Desktop.Services.Ui;
 
@@ -36,16 +39,27 @@ public sealed partial class TableMapViewModel : ObservableObject, INavigationAwa
     private readonly IFloorApi _floorApi;
     private readonly IRealtimeClient _realtime;
     private readonly Dictionary<int, TableTileViewModel> _tiles = new();
-    private IDisposable? _subscription;
+    private readonly List<IDisposable> _subscriptions = new();
+    private int? _selectAfterLoad;
     private CancellationTokenSource? _timer;
     private TimeSpan _serverClockOffset;
     private int _refreshing;
 
-    public TableMapViewModel(IFloorApi floorApi, IRealtimeClient realtime, IDialogService dialogs, INotificationService notifications)
+    public TableMapViewModel(
+        IFloorApi floorApi,
+        IOrdersApi ordersApi,
+        ILocalDraftStore drafts,
+        IRealtimeClient realtime,
+        INavigationService navigation,
+        IAuthSession session,
+        IDialogService dialogs,
+        INotificationService notifications)
     {
         _floorApi = floorApi;
         _realtime = realtime;
-        Details = new TableDetailsViewModel(floorApi, dialogs, notifications, ApplyTable, RefreshAsync);
+        var roles = session.User?.Roles ?? Array.Empty<string>();
+        var canTakeOrders = roles.Contains(Roles.Waiter) || roles.Contains(Roles.Manager) || roles.Contains(Roles.Admin);
+        Details = new TableDetailsViewModel(floorApi, ordersApi, drafts, navigation, dialogs, notifications, ApplyTable, RefreshAsync, canTakeOrders);
     }
 
     public ObservableCollection<TableMapSectionViewModel> Sections { get; } = new();
@@ -77,7 +91,10 @@ public sealed partial class TableMapViewModel : ObservableObject, INavigationAwa
 
     public async Task OnNavigatedToAsync(object? parameter)
     {
-        _subscription = _realtime.Subscribe<TableStatusChangedEvent>(HubEvents.TableStatusChanged, OnTableStatusChanged);
+        _selectAfterLoad = parameter as int?;
+        _subscriptions.Add(_realtime.Subscribe<TableStatusChangedEvent>(HubEvents.TableStatusChanged, OnTableStatusChanged));
+        _subscriptions.Add(_realtime.Subscribe<OrderUpdatedEvent>(HubEvents.OrderUpdated, e => OnOrderChanged(e.OrderId)));
+        _subscriptions.Add(_realtime.Subscribe<OrderCancelledEvent>(HubEvents.OrderCancelled, e => OnOrderChanged(e.OrderId)));
         _timer = new CancellationTokenSource();
         _ = RunElapsedTimerAsync(_timer.Token);
         await RefreshAsync();
@@ -87,8 +104,12 @@ public sealed partial class TableMapViewModel : ObservableObject, INavigationAwa
 
     public void Dispose()
     {
-        _subscription?.Dispose();
-        _subscription = null;
+        foreach (var subscription in _subscriptions)
+        {
+            subscription.Dispose();
+        }
+
+        _subscriptions.Clear();
         _timer?.Cancel();
         _timer?.Dispose();
         _timer = null;
@@ -163,7 +184,9 @@ public sealed partial class TableMapViewModel : ObservableObject, INavigationAwa
         }
 
         RebuildFilters();
-        SelectedTable = selectedId is { } id && _tiles.TryGetValue(id, out var keep) ? keep : null;
+        var select = _selectAfterLoad ?? selectedId;
+        _selectAfterLoad = null;
+        SelectedTable = select is { } id && _tiles.TryGetValue(id, out var keep) ? keep : null;
         UpdateSummary();
     }
 
@@ -221,6 +244,14 @@ public sealed partial class TableMapViewModel : ObservableObject, INavigationAwa
             tile.UpdateElapsed(ServerNowUtc);
             UpdateSummary();
             Details.OnTableChanged();
+        }
+    }
+
+    private void OnOrderChanged(int orderId)
+    {
+        if (Details.Order?.Id == orderId)
+        {
+            _ = Details.ReloadOrderAsync();
         }
     }
 

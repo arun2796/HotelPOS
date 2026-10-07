@@ -95,6 +95,7 @@ app.UseStaticFiles(new StaticFileOptions
 app.UseAuthentication();
 app.UseMiddleware<RequestContextLoggingMiddleware>();
 app.UseAuthorization();
+app.UseMiddleware<IdempotencyMiddleware>();
 
 app.MapControllers();
 app.MapHub<RestaurantHub>(HubRoutes.Restaurant);
