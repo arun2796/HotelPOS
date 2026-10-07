@@ -24,6 +24,12 @@ public interface IAppDbContext
     DbSet<PaymentMethod> PaymentMethods { get; }
     DbSet<Section> Sections { get; }
     DbSet<Table> Tables { get; }
+    DbSet<Category> Categories { get; }
+    DbSet<Tax> Taxes { get; }
+    DbSet<ModifierGroup> ModifierGroups { get; }
+    DbSet<ModifierOption> ModifierOptions { get; }
+    DbSet<MenuItem> MenuItems { get; }
+    DbSet<MenuItemModifierGroup> MenuItemModifierGroups { get; }
 
     DatabaseFacade Database { get; }
 

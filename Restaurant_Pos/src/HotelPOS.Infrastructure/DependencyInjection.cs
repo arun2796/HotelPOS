@@ -1,6 +1,7 @@
 using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Infrastructure.Identity;
+using HotelPOS.Infrastructure.Media;
 using HotelPOS.Infrastructure.Persistence;
 using HotelPOS.Infrastructure.Persistence.Interceptors;
 using HotelPOS.Infrastructure.Persistence.Seed;
@@ -21,6 +22,7 @@ public static class DependencyInjection
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
         services.Configure<DatabaseOptions>(configuration.GetSection(DatabaseOptions.SectionName));
         services.Configure<SeedOptions>(configuration.GetSection(SeedOptions.SectionName));
+        services.Configure<MediaOptions>(configuration.GetSection(MediaOptions.SectionName));
 
         services.AddScoped<AuditableEntityInterceptor>();
         services.AddDbContext<AppDbContext>((sp, options) =>
@@ -41,6 +43,8 @@ public static class DependencyInjection
         services.AddSingleton<IPasswordHasher, PasswordHasherAdapter>();
         services.AddSingleton<ITokenService, JwtTokenService>();
         services.AddScoped<IAuditService, AuditService>();
+        services.AddScoped<IMenuVersionStore, MenuVersionStore>();
+        services.AddSingleton<IMenuImageStore, MenuImageStore>();
         services.AddScoped<DbSeeder>();
 
         return services;

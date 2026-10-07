@@ -1,5 +1,7 @@
+using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using HotelPOS.Contracts.Common;
@@ -33,6 +35,13 @@ public interface IApiClient
     Task<ApiResult<T>> PostAsync<T>(string path, object? body, CancellationToken cancellationToken = default, ApiRequestOptions? options = null);
 
     Task<ApiResult<T>> PutAsync<T>(string path, object? body, CancellationToken cancellationToken = default, ApiRequestOptions? options = null);
+
+    Task<ApiResult<T>> PatchAsync<T>(string path, object? body, CancellationToken cancellationToken = default, ApiRequestOptions? options = null);
+
+    Task<ApiResult<T>> DeleteAsync<T>(string path, CancellationToken cancellationToken = default, ApiRequestOptions? options = null);
+
+    /// <summary>Posts one file as multipart/form-data (field "file").</summary>
+    Task<ApiResult<T>> UploadAsync<T>(string path, Stream content, string fileName, string contentType, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -81,6 +90,20 @@ public sealed class ApiClient : IApiClient
     public Task<ApiResult<T>> PutAsync<T>(string path, object? body, CancellationToken cancellationToken = default, ApiRequestOptions? options = null) =>
         SendAsync<T>(HttpMethod.Put, path, body, options, cancellationToken);
 
+    public Task<ApiResult<T>> PatchAsync<T>(string path, object? body, CancellationToken cancellationToken = default, ApiRequestOptions? options = null) =>
+        SendAsync<T>(HttpMethod.Patch, path, body, options, cancellationToken);
+
+    public Task<ApiResult<T>> DeleteAsync<T>(string path, CancellationToken cancellationToken = default, ApiRequestOptions? options = null) =>
+        SendAsync<T>(HttpMethod.Delete, path, null, options, cancellationToken);
+
+    public Task<ApiResult<T>> UploadAsync<T>(string path, Stream content, string fileName, string contentType, CancellationToken cancellationToken = default)
+    {
+        var file = new StreamContent(content);
+        file.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+        var form = new MultipartFormDataContent { { file, "file", fileName } };
+        return SendAsync<T>(HttpMethod.Post, path, form, new ApiRequestOptions { Timeout = TimeSpan.FromSeconds(60) }, cancellationToken);
+    }
+
     private async Task<ApiResult<T>> SendAsync<T>(HttpMethod method, string path, object? body, ApiRequestOptions? options, CancellationToken cancellationToken)
     {
         var baseUrl = options?.BaseUrlOverride ?? _settings.Current.ApiBaseUrl;
@@ -90,7 +113,11 @@ public sealed class ApiClient : IApiClient
         }
 
         using var request = new HttpRequestMessage(method, new Uri(baseUri, path.TrimStart('/')));
-        if (body is not null)
+        if (body is HttpContent content)
+        {
+            request.Content = content;
+        }
+        else if (body is not null)
         {
             request.Content = JsonContent.Create(body, body.GetType(), options: PosJson.Options);
         }

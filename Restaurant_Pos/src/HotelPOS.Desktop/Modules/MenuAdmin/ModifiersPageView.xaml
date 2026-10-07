@@ -1,0 +1,146 @@
+<UserControl x:Class="HotelPOS.Desktop.Modules.MenuAdmin.ModifiersPageView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:m="clr-namespace:HotelPOS.Desktop.Modules.MenuAdmin"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance m:ModifiersPageViewModel}"
+             d:DesignWidth="1100" d:DesignHeight="640">
+
+  <Grid>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="*" />
+      <ColumnDefinition Width="Auto" />
+    </Grid.ColumnDefinitions>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <!-- Groups -->
+    <Grid Margin="0,0,0,12">
+      <TextBlock Text="Modifier groups" Style="{StaticResource Text.Subtitle}" VerticalAlignment="Center" />
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+        <Button Command="{Binding RefreshListCommand}" ToolTip="Reload from the server">
+          <TextBlock Text="&#xE72C;" Style="{StaticResource Text.Icon}" />
+        </Button>
+        <Button Content="Edit group" Command="{Binding EditGroupCommand}" Margin="8,0,0,0" />
+        <Button Command="{Binding NewGroupCommand}" Style="{StaticResource Button.Primary}" Margin="8,0,0,0">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Text="&#xE710;" Style="{StaticResource Text.Icon}" FontSize="14" />
+            <TextBlock Text="New group" Margin="8,0,0,0" />
+          </StackPanel>
+        </Button>
+      </StackPanel>
+    </Grid>
+
+    <Border Grid.Row="1" Style="{StaticResource Banner.Error}" Margin="0,0,0,12"
+            Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibility}}">
+      <TextBlock Text="{Binding ErrorMessage}" Style="{StaticResource Text.Error}" />
+    </Border>
+
+    <Grid Grid.Row="2">
+      <DataGrid ItemsSource="{Binding Groups}" SelectedItem="{Binding SelectedGroup}" HorizontalScrollBarVisibility="Disabled">
+        <DataGrid.InputBindings>
+          <MouseBinding Gesture="LeftDoubleClick" Command="{Binding EditGroupCommand}" />
+        </DataGrid.InputBindings>
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="GROUP" Binding="{Binding Group.Name}" Width="1.5*" MinWidth="120" />
+          <DataGridTextColumn Header="SELECTION" Binding="{Binding SelectionText}" Width="1.2*" MinWidth="120" />
+          <DataGridTextColumn Header="OPTIONS" Binding="{Binding OptionCount}" Width="0.6*" MinWidth="70" />
+          <DataGridTextColumn Header="STATUS" Binding="{Binding Group.IsActive, Converter={StaticResource ActiveText}}" Width="0.7*" MinWidth="80" />
+        </DataGrid.Columns>
+      </DataGrid>
+      <ProgressBar IsIndeterminate="True" Height="3" VerticalAlignment="Top"
+                   Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}" />
+    </Grid>
+
+    <!-- Options of the selected group -->
+    <Grid Grid.Row="3" Margin="0,20,0,12">
+      <TextBlock Text="Options of the selected group" Style="{StaticResource Text.Subtitle}" VerticalAlignment="Center" />
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+        <Button Content="Edit option" Command="{Binding EditOptionCommand}" />
+        <Button Content="Add option" Command="{Binding NewOptionCommand}" Margin="8,0,0,0" />
+      </StackPanel>
+    </Grid>
+
+    <DataGrid Grid.Row="4" ItemsSource="{Binding Options}" SelectedItem="{Binding SelectedOption}" HorizontalScrollBarVisibility="Disabled">
+      <DataGrid.InputBindings>
+        <MouseBinding Gesture="LeftDoubleClick" Command="{Binding EditOptionCommand}" />
+      </DataGrid.InputBindings>
+      <DataGrid.Columns>
+        <DataGridTextColumn Header="ORDER" Binding="{Binding SortOrder}" Width="0.5*" MinWidth="70" />
+        <DataGridTextColumn Header="OPTION" Binding="{Binding Name}" Width="2*" MinWidth="140" />
+        <DataGridTextColumn Header="PRICE CHANGE" Binding="{Binding PriceDelta, StringFormat=+0.00;-0.00;0}" Width="1*" MinWidth="110" />
+        <DataGridTextColumn Header="STATUS" Binding="{Binding IsActive, Converter={StaticResource ActiveText}}" Width="0.8*" MinWidth="80" />
+      </DataGrid.Columns>
+    </DataGrid>
+
+    <!-- Editor panel (group or option) -->
+    <Border Grid.Column="1" Grid.RowSpan="5" Style="{StaticResource Card}" Width="360" Margin="20,0,0,0"
+            Visibility="{Binding IsEditorOpen, Converter={StaticResource BoolToVisibility}}">
+      <Grid>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="*" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <StackPanel>
+          <TextBlock Text="{Binding EditorTitle}" Style="{StaticResource Text.Title}" TextWrapping="Wrap" Margin="0,0,0,20" />
+          <TextBlock Text="Name" Style="{StaticResource Text.Label}" />
+          <TextBox Text="{Binding EditName, UpdateSourceTrigger=PropertyChanged}" MaxLength="100" Margin="0,0,0,14" />
+
+          <Grid Margin="0,0,0,14" Visibility="{Binding IsEditingGroup, Converter={StaticResource BoolToVisibility}}">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="12" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+              <TextBlock Text="Minimum to pick" Style="{StaticResource Text.Label}" />
+              <TextBox Text="{Binding EditMin, UpdateSourceTrigger=PropertyChanged}" MaxLength="2" />
+            </StackPanel>
+            <StackPanel Grid.Column="2">
+              <TextBlock Text="Maximum to pick" Style="{StaticResource Text.Label}" />
+              <TextBox Text="{Binding EditMax, UpdateSourceTrigger=PropertyChanged}" MaxLength="2" />
+            </StackPanel>
+          </Grid>
+
+          <Grid Margin="0,0,0,14" Visibility="{Binding IsEditingOption, Converter={StaticResource BoolToVisibility}}">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="12" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+              <TextBlock Text="Price change" Style="{StaticResource Text.Label}" />
+              <TextBox Text="{Binding EditPriceDelta, UpdateSourceTrigger=PropertyChanged}" MaxLength="10" />
+            </StackPanel>
+            <StackPanel Grid.Column="2">
+              <TextBlock Text="Sort order" Style="{StaticResource Text.Label}" />
+              <TextBox Text="{Binding EditSortOrder, UpdateSourceTrigger=PropertyChanged}" MaxLength="4" />
+            </StackPanel>
+          </Grid>
+
+          <CheckBox Content="Active" IsChecked="{Binding EditIsActive}" />
+          <Border Style="{StaticResource Banner.Error}" Margin="0,16,0,0"
+                  Visibility="{Binding EditorError, Converter={StaticResource StringToVisibility}}">
+            <TextBlock Text="{Binding EditorError}" Style="{StaticResource Text.Error}" />
+          </Border>
+        </StackPanel>
+        <Grid Grid.Row="1" Margin="0,20,0,0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="12" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <Button Content="Cancel" Command="{Binding CancelEditCommand}" />
+          <Button Grid.Column="2" Content="Save" Style="{StaticResource Button.Primary}" Command="{Binding SaveCommand}" />
+        </Grid>
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HotelPOS.Contracts.Floor;
+using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Ui;
 
@@ -181,25 +182,11 @@ public sealed partial class SectionsViewModel : ObservableObject
                 return;
             }
 
-            Editor.ErrorMessage = FloorFailures.Describe(result);
+            Editor.ErrorMessage = ApiFailures.Describe(result);
         }
         finally
         {
             IsBusy = false;
         }
-    }
-}
-
-internal static class FloorFailures
-{
-    public static string Describe<T>(ApiResult<T> result)
-    {
-        if (result.IsConnectionFailure)
-        {
-            return "Connection unavailable. The change was NOT saved.";
-        }
-
-        var fieldErrors = result.Errors.Where(e => e.Field is not null).Select(e => e.Message).ToList();
-        return fieldErrors.Count > 0 ? string.Join("\n", fieldErrors) : result.Message;
     }
 }

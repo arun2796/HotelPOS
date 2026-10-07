@@ -16,6 +16,7 @@
   <conv:ListJoinConverter x:Key="ListJoin" />
   <conv:UtcToLocalConverter x:Key="UtcToLocal" />
   <conv:ActiveTextConverter x:Key="ActiveText" />
+  <conv:ImageFileConverter x:Key="ImageFile" />
 
   <!-- ===== Text ===== -->
   <Style x:Key="Text.Display" TargetType="TextBlock">

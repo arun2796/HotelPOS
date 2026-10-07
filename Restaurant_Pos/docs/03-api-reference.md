@@ -99,9 +99,10 @@ Admin always has access; Manager has access wherever `M` is listed.
 | Method | Route | Roles | Notes |
 |---|---|---|---|
 | GET | `/api/menu` | * | Compact active menu for ordering. `?version=N` returns `notModified: true` when unchanged |
-| GET / POST / PUT / DELETE | `/api/categories[/{id}]` | read *, write A/M | |
-| GET / POST / PUT / DELETE | `/api/menu-items[/{id}]` | read *, write A/M | Price change audited |
-| POST | `/api/menu-items/{id}/image` | A, M | multipart upload; served from `/images/menu/...` |
+| GET / POST / PUT / DELETE | `/api/categories[/{id}]` | read *, write A/M | `DELETE ?deactivateItems=true` (or `PUT` with `deactivateItems`) also deactivates the items |
+| GET / POST / PUT / DELETE | `/api/menu-items[/{id}]` | read *, write A/M | Price change audited; `GET ?categoryId=&search=&includeInactive=` (inactive: A/M) |
+| POST | `/api/menu-items/{id}/image` | A, M | multipart field `file`, JPEG/PNG up to 2 MB; stored as JPEG (max 512 px) and served anonymously from `/images/menu/{id}-{random}.jpg` |
+| DELETE | `/api/menu-items/{id}/image` | A, M | Removes the picture |
 | PATCH | `/api/menu-items/{id}/availability` | K, M, A | `{isAvailable}` sold-out toggle |
 | GET / POST / PUT / DELETE | `/api/modifier-groups[/{id}]` | read *, write A/M | Options nested: `/api/modifier-groups/{id}/options[/{optionId}]` |
 | GET / POST / PUT / DELETE | `/api/taxes[/{id}]` | read *, write A | |

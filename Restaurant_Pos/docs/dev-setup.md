@@ -95,8 +95,11 @@ The `Development` profile:
   to allow the port through the firewall);
 - uses the PostgreSQL database `hotelpos_dev` (connection string in `appsettings.Development.json`), created
   and migrated automatically at start-up;
-- seeds the admin account, demo users and a demo floor (Ground Floor T01–T08, First Floor T11–T14,
-  Outdoor O01–O04);
+- seeds the admin account, demo users, a demo floor (Ground Floor T01–T08, First Floor T11–T14,
+  Outdoor O01–O04) and a demo menu (Starters, Biryani, Breads, Beverages, Desserts; MAIN and BAR stations;
+  GST 5%/18%; Spice level, Add-ons and Sugar modifiers);
+- stores uploaded menu pictures in `src/HotelPOS.Api/media/menu` (git-ignored; `Media:RootPath` to change)
+  and serves them at `/images/menu/...`;
 - serves Swagger UI at `http://localhost:5000/swagger`.
 
 To listen on localhost only: `dotnet run --project src/HotelPOS.Api -- --urls http://localhost:5000`.
@@ -108,6 +111,7 @@ Useful endpoints:
 | `GET /health` | Liveness + database check (anonymous) |
 | `GET /api/system/info` | Restaurant name and API version (anonymous) |
 | `POST /api/auth/login` | Sign in |
+| `GET /api/menu` | Compact ordering menu (`?version=N` answers `notModified` when unchanged) |
 | `/hubs/restaurant` | SignalR hub |
 
 API logs: `src/HotelPOS.Api/logs/api-YYYYMMDD.log` (and the console).
@@ -182,6 +186,7 @@ dotnet run --project src/HotelPOS.Desktop -- --profile kitchen
 | Session (refresh token, DPAPI-encrypted) | `%LocalAppData%\HotelPOS\<profile>\session.dat` |
 | Preferences (last username) | `%LocalAppData%\HotelPOS\<profile>\preferences.json` |
 | Logs | `%LocalAppData%\HotelPOS\logs\desktop[-profile]-YYYYMMDD.log` |
+| Menu pictures (cache) | `%LocalAppData%\HotelPOS\cache\images` (safe to delete; downloaded again when needed) |
 
 Delete the settings file to see the first-run screen again. **F11** toggles full screen.
 

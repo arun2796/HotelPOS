@@ -1,7 +1,9 @@
 using System.Collections;
 using System.Globalization;
 using System.Windows;
+using System.IO;
 using System.Windows.Data;
+using System.Windows.Media.Imaging;
 
 namespace HotelPOS.Desktop.Converters;
 
@@ -76,6 +78,42 @@ public sealed class ActiveTextConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         value is true ? "Active" : "Inactive";
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
+/// <summary>
+/// Local picture file -> image, read fully into memory (the file is not kept open, so the cache can replace it)
+/// and decoded at a small size. Null or unreadable files give no image.
+/// </summary>
+public sealed class ImageFileConverter : IValueConverter
+{
+    public int DecodeWidth { get; set; } = 256;
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is not string path || !File.Exists(path))
+        {
+            return null;
+        }
+
+        try
+        {
+            var image = new BitmapImage();
+            image.BeginInit();
+            image.CacheOption = BitmapCacheOption.OnLoad;
+            image.DecodePixelWidth = DecodeWidth;
+            image.UriSource = new Uri(path, UriKind.Absolute);
+            image.EndInit();
+            image.Freeze();
+            return image;
+        }
+        catch (Exception ex) when (ex is IOException or NotSupportedException or UriFormatException)
+        {
+            return null;
+        }
+    }
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException();

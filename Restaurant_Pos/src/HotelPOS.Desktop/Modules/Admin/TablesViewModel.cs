@@ -5,6 +5,7 @@ using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Floor;
 using HotelPOS.Desktop.Modules.Tables;
+using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Ui;
 
@@ -297,7 +298,7 @@ public sealed partial class TablesViewModel : ObservableObject
                 return;
             }
 
-            Editor.ErrorMessage = FloorFailures.Describe(result);
+            Editor.ErrorMessage = ApiFailures.Describe(result);
         }
         finally
         {
@@ -331,7 +332,7 @@ public sealed partial class TablesViewModel : ObservableObject
         }
         else
         {
-            _notifications.Error(FloorFailures.Describe(result), result.CorrelationId);
+            _notifications.Error(ApiFailures.Describe(result), result.CorrelationId);
             await LoadAsync(table.Id);
         }
     }

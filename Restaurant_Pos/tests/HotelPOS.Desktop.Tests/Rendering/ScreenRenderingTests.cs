@@ -10,6 +10,10 @@ using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Floor;
+using HotelPOS.Contracts.Menu;
+using HotelPOS.Desktop.Modules.MenuAdmin;
+using HotelPOS.Desktop.Services.Menu;
+using HotelPOS.Testing;
 using HotelPOS.Contracts.Users;
 using HotelPOS.Desktop.Modules.Auth;
 using HotelPOS.Desktop.Modules.Config;
@@ -115,6 +119,19 @@ public class ScreenRenderingTests
             floor.Sections.EditCommand.Execute(null);
             rendered.Add(await RenderScreenAsync(env, shell, "12-admin-floor-sections"));
 
+            // Menu: items with the editor open, categories, modifiers, taxes, live preview
+            await shell.NavigateToAsync(ModuleRegistry.Menu, null);
+            var menu = (MenuAdminViewModel)shell.CurrentPage!;
+            menu.Items.SelectedItem = menu.Items.Items[0];
+            await menu.Items.EditCommand.ExecuteAsync(null);
+            rendered.Add(await RenderScreenAsync(env, shell, "15-admin-menu-items"));
+            foreach (var (tab, name) in new[] { ("Categories", "16-admin-menu-categories"), ("Modifiers", "17-admin-menu-modifiers"), ("Taxes", "18-admin-menu-taxes"), ("Preview", "19-admin-menu-preview") })
+            {
+                menu.SelectedTab = menu.Tabs.Single(t => t.Title == tab);
+                await menu.SelectedTab.LoadAsync();
+                rendered.Add(await RenderScreenAsync(env, shell, name));
+            }
+
             // Dialog and toast layers over the users page, with the connection lost
             await shell.NavigateToAsync(ModuleRegistry.Users, null);
             env.Realtime.Raise(ConnectionStatus.Reconnecting);
@@ -157,7 +174,7 @@ public class ScreenRenderingTests
         }
 
         bindingErrors.Errors.Should().BeEmpty("every binding in the views must point at an existing property");
-        rendered.Should().HaveCount(14);
+        rendered.Should().HaveCount(19);
     }
 
     private static async Task<string> RenderScreenAsync(Environment env, object screen, string name)
@@ -318,6 +335,9 @@ public class ScreenRenderingTests
             services.AddSingleton(usersApi);
             services.AddSingleton(settingsApi);
             services.AddSingleton(floorApi);
+            services.AddSingleton(DemoMenuApi());
+            services.AddSingleton<IMenuCache>(new DemoMenuCache());
+            services.AddSingleton(Substitute.For<IFilePicker>());
             services.AddSingleton(Substitute.For<IAuthApi>());
             services.AddSingleton(Substitute.For<IAppNavigator>());
             services.AddSingleton(Substitute.For<IUserPreferences>());
@@ -341,6 +361,88 @@ public class ScreenRenderingTests
         public MainViewModel Main { get; }
 
         public T Create<T>() => ActivatorUtilities.CreateInstance<T>(_provider);
+
+        private static IMenuApi DemoMenuApi()
+        {
+            var categories = new List<CategoryDto>
+            {
+                new() { Id = 1, Name = "Starters", SortOrder = 1, IsActive = true, ItemCount = 4 },
+                new() { Id = 2, Name = "Biryani", SortOrder = 2, IsActive = true, ItemCount = 4 },
+                new() { Id = 3, Name = "Breads", SortOrder = 3, IsActive = true, ItemCount = 4 },
+                new() { Id = 4, Name = "Beverages", SortOrder = 4, IsActive = true, ItemCount = 4 },
+                new() { Id = 5, Name = "Seasonal Specials", SortOrder = 5, IsActive = false, ItemCount = 0 },
+            };
+            var taxes = new List<TaxDto>
+            {
+                new() { Id = 1, Name = "GST 5%", Code = "GST5", RatePercent = 5m, IsActive = true },
+                new() { Id = 2, Name = "GST 18%", Code = "GST18", RatePercent = 18m, IsActive = true },
+            };
+            var stations = new List<StationDto>
+            {
+                new() { Id = 1, Name = "Main Kitchen", Code = "MAIN", SortOrder = 1, IsActive = true },
+                new() { Id = 2, Name = "Bar", Code = "BAR", SortOrder = 2, IsActive = true },
+            };
+            var groups = new List<ModifierGroupDto>
+            {
+                new()
+                {
+                    Id = 1, Name = "Spice level", MinSelections = 1, MaxSelections = 1, IsActive = true,
+                    Options = new[]
+                    {
+                        new ModifierOptionDto { Id = 1, ModifierGroupId = 1, Name = "Mild", SortOrder = 1, IsActive = true },
+                        new ModifierOptionDto { Id = 2, ModifierGroupId = 1, Name = "Medium", SortOrder = 2, IsActive = true },
+                        new ModifierOptionDto { Id = 3, ModifierGroupId = 1, Name = "Spicy", SortOrder = 3, IsActive = true },
+                    },
+                },
+                new()
+                {
+                    Id = 2, Name = "Add-ons", MinSelections = 0, MaxSelections = 3, IsActive = true,
+                    Options = new[]
+                    {
+                        new ModifierOptionDto { Id = 4, ModifierGroupId = 2, Name = "Extra raita", PriceDelta = 30m, SortOrder = 1, IsActive = true },
+                        new ModifierOptionDto { Id = 5, ModifierGroupId = 2, Name = "Boiled egg", PriceDelta = 20m, SortOrder = 2, IsActive = true },
+                        new ModifierOptionDto { Id = 6, ModifierGroupId = 2, Name = "No onion", PriceDelta = -5m, SortOrder = 3, IsActive = false },
+                    },
+                },
+            };
+            MenuItemDto Item(int id, int category, string name, string code, decimal price, bool available = true, string? image = null, params int[] groupIds) => new()
+            {
+                Id = id,
+                CategoryId = category,
+                CategoryName = categories.Single(c => c.Id == category).Name,
+                Name = name,
+                Code = code,
+                Price = price,
+                TaxId = 1,
+                TaxName = "GST 5%",
+                TaxRatePercent = 5m,
+                PreparationStationId = category == 4 ? 2 : 1,
+                StationName = category == 4 ? "Bar" : "Main Kitchen",
+                IsAvailable = available,
+                IsActive = true,
+                ImageUrl = image,
+                ModifierGroupIds = groupIds,
+                RowVersion = "AAAFow==",
+            };
+            var items = new List<MenuItemDto>
+            {
+                Item(1, 1, "Chicken 65", "S01", 235m, true, "/images/menu/1-demo.jpg", 1),
+                Item(2, 1, "Paneer Tikka", "S02", 240m, true, null, 1),
+                Item(3, 1, "Gobi Manchurian", "S03", 180m, false, null, 1),
+                Item(4, 2, "Chicken Biryani", "B01", 260m, true, null, 1, 2),
+                Item(5, 2, "Mutton Biryani", "B02", 340m, true, null, 1, 2),
+                Item(6, 3, "Butter Naan", "N01", 50m),
+                Item(7, 4, "Masala Chai", "D01", 30m),
+            };
+
+            var api = Substitute.For<IMenuApi>();
+            api.GetCategoriesAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(ApiResult<List<CategoryDto>>.Ok(categories));
+            api.GetTaxesAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(ApiResult<List<TaxDto>>.Ok(taxes));
+            api.GetStationsAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(ApiResult<List<StationDto>>.Ok(stations));
+            api.GetModifierGroupsAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(ApiResult<List<ModifierGroupDto>>.Ok(groups));
+            api.GetItemsAsync(Arg.Any<MenuItemQuery>(), Arg.Any<CancellationToken>()).Returns(ApiResult<List<MenuItemDto>>.Ok(items));
+            return api;
+        }
 
         /// <summary>A floor in mid-service: every status appears at least once.</summary>
         private static TableMapDto DemoMap()
@@ -410,6 +512,48 @@ public class ScreenRenderingTests
             LastLoginAtUtc = lastLogin,
             RowVersion = "AAAAAAAAB9g=",
         };
+    }
+
+    /// <summary>A loaded ordering menu with one real picture on disk.</summary>
+    private sealed class DemoMenuCache : IMenuCache
+    {
+        private static readonly string Picture = WritePicture();
+
+        public event EventHandler? Changed;
+
+        public MenuDto? Menu { get; } = new()
+        {
+            Version = 12,
+            Categories = new[] { new MenuCategoryDto(1, "Starters", 1), new MenuCategoryDto(2, "Biryani", 2), new MenuCategoryDto(3, "Breads", 3) },
+            Items = new[]
+            {
+                new MenuEntryDto { Id = 1, CategoryId = 1, Name = "Chicken 65", Price = 235m, IsAvailable = true, ImageUrl = "/images/menu/1-demo.jpg", ModifierGroupIds = new[] { 1 } },
+                new MenuEntryDto { Id = 2, CategoryId = 1, Name = "Paneer Tikka", Price = 240m, IsAvailable = true, ModifierGroupIds = new[] { 1 } },
+                new MenuEntryDto { Id = 3, CategoryId = 1, Name = "Gobi Manchurian", Price = 180m, IsAvailable = false },
+                new MenuEntryDto { Id = 8, CategoryId = 1, Name = "Veg Spring Roll", Price = 160m, IsAvailable = true },
+            },
+        };
+
+        public Task StartAsync() => Task.CompletedTask;
+
+        public void Stop()
+        {
+        }
+
+        public Task<bool> RefreshAsync()
+        {
+            Changed?.Invoke(this, EventArgs.Empty);
+            return Task.FromResult(true);
+        }
+
+        public Task<string?> GetImageFileAsync(string? imageUrl) => Task.FromResult(imageUrl is null ? null : Picture);
+
+        private static string WritePicture()
+        {
+            var path = Path.Combine(Path.GetTempPath(), "hotelpos-render-picture.png");
+            File.WriteAllBytes(path, TestImages.Png(240, 160));
+            return path;
+        }
     }
 
     private sealed class BindingErrorListener : TraceListener

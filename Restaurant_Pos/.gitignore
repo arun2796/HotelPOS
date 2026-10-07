@@ -18,6 +18,8 @@ TestResults/
 # Logs and runtime data
 logs/
 *.log
+# Uploaded menu images (Media:RootPath, default src/HotelPOS.Api/media)
+media/
 
 # Local secrets and machine configuration (never commit)
 appsettings.Local.json

@@ -2,9 +2,13 @@ using HotelPOS.Api.Common;
 using HotelPOS.Api.Hubs;
 using HotelPOS.Application;
 using HotelPOS.Contracts.Common;
+using HotelPOS.Contracts.Menu;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Infrastructure;
+using HotelPOS.Infrastructure.Media;
 using HotelPOS.Infrastructure.Persistence;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Options;
 using Serilog;
 using Serilog.Events;
 
@@ -77,6 +81,16 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI(options => options.DocumentTitle = "HotelPOS API");
 }
+
+// Menu pictures: anonymous and cacheable for a year, because every upload gets a new file name.
+var menuImages = app.Services.GetRequiredService<IOptions<MediaOptions>>().Value.MenuImagesPath;
+Directory.CreateDirectory(menuImages);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(menuImages),
+    RequestPath = MenuImageRoutes.RequestPath,
+    OnPrepareResponse = context => context.Context.Response.Headers.CacheControl = "public, max-age=31536000, immutable",
+});
 
 app.UseAuthentication();
 app.UseMiddleware<RequestContextLoggingMiddleware>();

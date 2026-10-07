@@ -1,6 +1,7 @@
 using HotelPOS.Contracts.Security;
 using HotelPOS.Desktop.Modules.Admin;
 using HotelPOS.Desktop.Modules.Config;
+using HotelPOS.Desktop.Modules.MenuAdmin;
 using HotelPOS.Desktop.Modules.Tables;
 
 namespace HotelPOS.Desktop.Services.Navigation;
@@ -65,7 +66,7 @@ public static class ModuleRegistry
         new(Floor, "Sections & Tables", "", "Management", Management, 2,
             "Create sections and tables, capacity and service state.", typeof(FloorViewModel)),
         new(Menu, "Menu", "", "Management", Management, 3,
-            "Categories, items, prices, modifiers, taxes and preparation stations."),
+            "Categories, items, prices, modifiers, taxes and preparation stations.", typeof(MenuAdminViewModel)),
         new(Discounts, "Discounts", "", "Management", Management, 6,
             "Predefined discounts and payment methods."),
         new(Audit, "Audit Log", "", "Management", Management, 9,

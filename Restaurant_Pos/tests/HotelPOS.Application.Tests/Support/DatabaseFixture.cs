@@ -26,6 +26,9 @@ public sealed class DatabaseFixture : IAsyncLifetime
 
     public string ConnectionString { get; }
 
+    /// <summary>Throw-away folder for uploaded pictures.</summary>
+    public string MediaPath { get; } = Path.Combine(Path.GetTempPath(), "hotelpos-apptests-media-" + Guid.NewGuid().ToString("N"));
+
     public TestClock Clock { get; } = new();
 
     public TestCurrentUser CurrentUser { get; } = new();
@@ -47,6 +50,7 @@ public sealed class DatabaseFixture : IAsyncLifetime
                 ["Jwt:RefreshTokenHours"] = "12",
                 ["Seed:AdminPassword"] = AdminPassword,
                 ["Seed:DemoData"] = "false",
+                ["Media:RootPath"] = MediaPath,
             })
             .Build();
 
@@ -102,6 +106,10 @@ public sealed class DatabaseFixture : IAsyncLifetime
         }
 
         await Services.DisposeAsync();
+        if (Directory.Exists(MediaPath))
+        {
+            Directory.Delete(MediaPath, recursive: true);
+        }
     }
 }
 

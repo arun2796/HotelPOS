@@ -1,0 +1,48 @@
+<UserControl x:Class="HotelPOS.Desktop.Modules.MenuAdmin.MenuAdminView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:m="clr-namespace:HotelPOS.Desktop.Modules.MenuAdmin"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance m:MenuAdminViewModel}"
+             d:DesignWidth="1100" d:DesignHeight="700">
+
+  <UserControl.Resources>
+    <DataTemplate DataType="{x:Type m:MenuItemsPageViewModel}">
+      <m:MenuItemsPageView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type m:CategoriesPageViewModel}">
+      <m:CategoriesPageView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type m:ModifiersPageViewModel}">
+      <m:ModifiersPageView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type m:TaxesPageViewModel}">
+      <m:TaxesPageView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type m:StationsPageViewModel}">
+      <m:StationsPageView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type m:MenuPreviewViewModel}">
+      <m:MenuPreviewView />
+    </DataTemplate>
+  </UserControl.Resources>
+
+  <Grid Margin="24,16,24,24">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <ListBox Style="{StaticResource ChipList}" ItemsSource="{Binding Tabs}" SelectedItem="{Binding SelectedTab}" Margin="0,0,0,8">
+      <ListBox.ItemTemplate>
+        <DataTemplate>
+          <TextBlock Text="{Binding Title}" />
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+
+    <ContentControl Grid.Row="1" Content="{Binding SelectedTab}" Focusable="False" />
+  </Grid>
+</UserControl>

@@ -13,7 +13,7 @@ documents say what to build, in which order, and how to verify it.
 | 0 | [Planning](../00-project-overview.md) | — | This documentation set | Done |
 | 1 | [Foundation](phase-01-foundation.md) | 0 | Solution, database, API skeleton, JWT login, users admin, SignalR hub, WPF shell with first-run config and connection indicator | Done (2026-10-07) |
 | 2 | [Tables & Sections](phase-02-tables-and-sections.md) | 1 | Admin manages floor; waiter sees a live table map; occupy/release with concurrency control | Done (2026-10-07) |
-| 3 | [Menu & Pricing](phase-03-menu-and-pricing.md) | 1 | Categories, items, modifiers, taxes, stations; compact cached menu for clients | Not started |
+| 3 | [Menu & Pricing](phase-03-menu-and-pricing.md) | 1 | Categories, items, modifiers, taxes, stations; compact cached menu for clients | Done (2026-10-07) |
 | 4 | [Waiter Ordering](phase-04-waiter-ordering.md) | 2, 3 | Draft -> submit -> append -> cancel with idempotency; order builder UI; local drafts | Not started |
 | 5 | [Kitchen Display](phase-05-kitchen-display.md) | 4 | Tickets per station, kitchen workflow, waiter "order ready" notifications, serve | Not started |
 | 6 | [Billing & Payments](phase-06-billing-and-payments.md) | 5 | Bill request queue, discounts, tax, finalize/invoice, split payments, multi-counter safety, void/refund | Not started |

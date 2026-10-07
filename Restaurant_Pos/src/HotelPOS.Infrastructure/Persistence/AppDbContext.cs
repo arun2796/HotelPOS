@@ -28,6 +28,12 @@ public sealed class AppDbContext : DbContext, IAppDbContext
     public DbSet<PaymentMethod> PaymentMethods => Set<PaymentMethod>();
     public DbSet<Section> Sections => Set<Section>();
     public DbSet<Table> Tables => Set<Table>();
+    public DbSet<Category> Categories => Set<Category>();
+    public DbSet<Tax> Taxes => Set<Tax>();
+    public DbSet<ModifierGroup> ModifierGroups => Set<ModifierGroup>();
+    public DbSet<ModifierOption> ModifierOptions => Set<ModifierOption>();
+    public DbSet<MenuItem> MenuItems => Set<MenuItem>();
+    public DbSet<MenuItemModifierGroup> MenuItemModifierGroups => Set<MenuItemModifierGroup>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

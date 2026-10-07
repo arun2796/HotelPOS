@@ -2,6 +2,7 @@ using System.IO;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Auth;
 using HotelPOS.Desktop.Services.Configuration;
+using HotelPOS.Desktop.Services.Menu;
 using HotelPOS.Desktop.Services.Navigation;
 using HotelPOS.Desktop.Services.Realtime;
 using HotelPOS.Desktop.Services.Ui;
@@ -50,6 +51,9 @@ public static class AppHost
         services.AddSingleton<IUsersApi, UsersApi>();
         services.AddSingleton<IAdminSettingsApi, AdminSettingsApi>();
         services.AddSingleton<IFloorApi, FloorApi>();
+        services.AddSingleton<IMenuApi, MenuApi>();
+        services.AddHttpClient(MenuCache.ImageHttpClientName, client => client.Timeout = TimeSpan.FromSeconds(15));
+        services.AddSingleton<IMenuCache, MenuCache>();
 
         // Real-time
         services.AddSingleton<IRealtimeClient, RealtimeClient>();
@@ -61,6 +65,7 @@ public static class AppHost
         services.AddSingleton<NotificationService>();
         services.AddSingleton<INotificationService>(sp => sp.GetRequiredService<NotificationService>());
         services.AddSingleton<ThemeService>();
+        services.AddSingleton<IFilePicker, WpfFilePicker>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<IAppNavigator, AppNavigator>();
         services.AddSingleton<NavigationService>();

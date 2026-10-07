@@ -8,6 +8,7 @@ using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Auth;
 using HotelPOS.Desktop.Services.Configuration;
+using HotelPOS.Desktop.Services.Menu;
 using HotelPOS.Desktop.Services.Navigation;
 using HotelPOS.Desktop.Services.Realtime;
 using HotelPOS.Desktop.Services.Ui;
@@ -25,6 +26,7 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
     private readonly IServiceProvider _services;
     private readonly IAuthSession _session;
     private readonly IRealtimeClient _realtime;
+    private readonly IMenuCache _menuCache;
     private readonly IAppNavigator _navigator;
     private readonly NavigationService _navigation;
     private readonly ISystemApi _systemApi;
@@ -37,6 +39,7 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
         IServiceProvider services,
         IAuthSession session,
         IRealtimeClient realtime,
+        IMenuCache menuCache,
         IAppNavigator navigator,
         NavigationService navigation,
         ISystemApi systemApi,
@@ -47,6 +50,7 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
         _services = services;
         _session = session;
         _realtime = realtime;
+        _menuCache = menuCache;
         _navigator = navigator;
         _navigation = navigation;
         _systemApi = systemApi;
@@ -89,6 +93,9 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
         _ = RunClockAsync(_lifetime.Token);
 
         await _realtime.StartAsync();
+
+        // Every role works with the menu (ordering, kitchen sold-out, billing); load it in the background.
+        _ = _menuCache.StartAsync();
         await GoHomeAsync();
         await LoadRestaurantNameAsync();
     }
@@ -103,6 +110,7 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
         _lifetime.Cancel();
         _lifetime.Dispose();
         _realtime.Reconnected -= OnReconnected;
+        _menuCache.Stop();
         _navigation.Detach(this);
         StatusBar.Dispose();
         (CurrentPage as IDisposable)?.Dispose();

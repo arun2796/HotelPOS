@@ -31,4 +31,34 @@ public static class AuditActions
     public const string TableOutOfService = "Table.OutOfService";
     public const string TableInService = "Table.InService";
     public const string TableReleasedByManager = "Table.ReleasedByManager";
+
+    public const string CategoryCreated = "Category.Created";
+    public const string CategoryUpdated = "Category.Updated";
+    public const string CategoryActivated = "Category.Activated";
+    public const string CategoryDeactivated = "Category.Deactivated";
+
+    public const string StationCreated = "Station.Created";
+    public const string StationUpdated = "Station.Updated";
+    public const string StationActivated = "Station.Activated";
+    public const string StationDeactivated = "Station.Deactivated";
+
+    public const string TaxCreated = "Tax.Created";
+    public const string TaxUpdated = "Tax.Updated";
+    public const string TaxActivated = "Tax.Activated";
+    public const string TaxDeactivated = "Tax.Deactivated";
+
+    public const string ModifierGroupCreated = "ModifierGroup.Created";
+    public const string ModifierGroupUpdated = "ModifierGroup.Updated";
+    public const string ModifierGroupDeactivated = "ModifierGroup.Deactivated";
+    public const string ModifierOptionAdded = "ModifierGroup.OptionAdded";
+    public const string ModifierOptionUpdated = "ModifierGroup.OptionUpdated";
+    public const string ModifierOptionDeactivated = "ModifierGroup.OptionDeactivated";
+
+    public const string MenuItemCreated = "MenuItem.Created";
+    public const string MenuItemUpdated = "MenuItem.Updated";
+    public const string MenuItemPriceChanged = "MenuItem.PriceChanged";
+    public const string MenuItemAvailabilityChanged = "MenuItem.AvailabilityChanged";
+    public const string MenuItemImageChanged = "MenuItem.ImageChanged";
+    public const string MenuItemActivated = "MenuItem.Activated";
+    public const string MenuItemDeactivated = "MenuItem.Deactivated";
 }

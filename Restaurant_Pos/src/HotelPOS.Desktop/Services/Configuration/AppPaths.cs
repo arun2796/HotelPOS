@@ -41,6 +41,9 @@ public sealed partial class AppPaths
 
     public string LogDirectory => Path.Combine(UserRoot, "logs");
 
+    /// <summary>Downloaded menu pictures, shared by all profiles (file names are unique per upload).</summary>
+    public string ImageCacheDirectory => Path.Combine(UserRoot, "cache", "images");
+
     public string LogFilePrefix => Profile == DefaultProfile ? "desktop" : $"desktop-{Profile}";
 
     public static AppPaths FromArgs(IReadOnlyList<string> args)

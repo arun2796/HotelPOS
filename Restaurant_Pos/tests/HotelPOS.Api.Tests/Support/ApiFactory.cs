@@ -25,6 +25,9 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     private readonly string _connectionString;
 
+    /// <summary>Throw-away folder for uploaded pictures.</summary>
+    public string MediaPath { get; } = Path.Combine(Path.GetTempPath(), "hotelpos-apitests-media-" + Guid.NewGuid().ToString("N"));
+
     public ApiFactory()
     {
         _connectionString = TestPostgres.NewDatabase("apitests");
@@ -41,6 +44,7 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             ["Seed:DemoData"] = "true",
             ["Seed:DemoPassword"] = DemoPassword,
             ["Logging:Directory"] = Path.Combine(Path.GetTempPath(), "hotelpos-test-logs"),
+            ["Media:RootPath"] = MediaPath,
         }));
     }
 
@@ -54,6 +58,10 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         }
 
         await base.DisposeAsync();
+        if (Directory.Exists(MediaPath))
+        {
+            Directory.Delete(MediaPath, recursive: true);
+        }
     }
 
     public async Task<LoginResponse> LoginAsync(string username, string password, string? deviceName = null)

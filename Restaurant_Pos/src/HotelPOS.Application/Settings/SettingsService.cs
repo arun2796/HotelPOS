@@ -63,6 +63,11 @@ public sealed class SettingsService : ISettingsService, ISystemInfoService
             {
                 errors.Add(new ApiError(ErrorCodes.ValidationError, $"Unknown setting '{item.Key}'.", item.Key));
             }
+            else if (setting.Key == SettingKeys.MenuVersion && setting.Value != item.Value.Trim())
+            {
+                // Clients compare this number to decide whether their cached menu is current.
+                errors.Add(new ApiError(ErrorCodes.ValidationError, "The menu version is managed by the system.", item.Key));
+            }
             else if (!Setting.IsValidValue(setting.DataType, item.Value.Trim()))
             {
                 errors.Add(new ApiError(ErrorCodes.ValidationError, $"'{item.Value}' is not a valid {setting.DataType} value.", item.Key));

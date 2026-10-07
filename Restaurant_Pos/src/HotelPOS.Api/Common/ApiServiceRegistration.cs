@@ -6,6 +6,7 @@ using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Security;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Infrastructure.Identity;
+using HotelPOS.Infrastructure.Media;
 using HotelPOS.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -36,6 +37,15 @@ public static class ApiServiceRegistration
                 $"Jwt:SigningKey must be configured and at least {MinimumSigningKeyLength} characters long.")
             .Validate(o => o.AccessTokenMinutes > 0 && o.RefreshTokenHours > 0, "Jwt token lifetimes must be positive.")
             .ValidateOnStart();
+
+        // Uploaded files live next to the API unless Media:RootPath says otherwise.
+        services.PostConfigure<MediaOptions>(o =>
+        {
+            if (string.IsNullOrWhiteSpace(o.RootPath))
+            {
+                o.RootPath = Path.Combine(environment.ContentRootPath, "media");
+            }
+        });
 
         services.AddControllers(options => options.Filters.Add<ValidationFilter>())
             .AddJsonOptions(options => PosJson.Apply(options.JsonSerializerOptions))

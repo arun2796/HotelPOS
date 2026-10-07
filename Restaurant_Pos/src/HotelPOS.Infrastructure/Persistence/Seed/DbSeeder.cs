@@ -76,6 +76,7 @@ public sealed class DbSeeder
         {
             await SeedDemoUsersAsync(options.DemoPassword, cancellationToken);
             await SeedDemoFloorAsync(cancellationToken);
+            await SeedDemoMenuAsync(cancellationToken);
         }
     }
 
@@ -213,5 +214,115 @@ public sealed class DbSeeder
 
         await _db.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Seeded demo floor: {Sections} sections", layout.Length);
+    }
+
+    private async Task SeedDemoMenuAsync(CancellationToken cancellationToken)
+    {
+        // Only on an empty menu, so it never re-adds what an admin removed.
+        if (await _db.Categories.AnyAsync(cancellationToken))
+        {
+            return;
+        }
+
+        var kitchen = await _db.PreparationStations.FirstAsync(s => s.Code == "MAIN", cancellationToken);
+        var bar = await _db.PreparationStations.FirstOrDefaultAsync(s => s.Code == "BAR", cancellationToken);
+        if (bar is null)
+        {
+            bar = new PreparationStation("Bar", "BAR", 2);
+            _db.PreparationStations.Add(bar);
+        }
+
+        var gst5 = new Tax("GST 5%", "GST5", 5m);
+        var gst18 = new Tax("GST 18%", "GST18", 18m);
+        _db.Taxes.AddRange(gst5, gst18);
+
+        var spice = new ModifierGroup("Spice level", minSelections: 1, maxSelections: 1);
+        var addOns = new ModifierGroup("Add-ons", minSelections: 0, maxSelections: 3);
+        var sugar = new ModifierGroup("Sugar", minSelections: 0, maxSelections: 1);
+        _db.ModifierGroups.AddRange(spice, addOns, sugar);
+        await _db.SaveChangesAsync(cancellationToken);
+
+        _db.ModifierOptions.AddRange(
+            new ModifierOption(spice.Id, "Mild", 0m, 1),
+            new ModifierOption(spice.Id, "Medium", 0m, 2),
+            new ModifierOption(spice.Id, "Spicy", 0m, 3),
+            new ModifierOption(addOns.Id, "Extra raita", 30m, 1),
+            new ModifierOption(addOns.Id, "Boiled egg", 20m, 2),
+            new ModifierOption(addOns.Id, "Extra gravy", 40m, 3),
+            new ModifierOption(sugar.Id, "Less sugar", 0m, 1),
+            new ModifierOption(sugar.Id, "No sugar", 0m, 2));
+
+        var menu = new (string Category, (string Name, string Code, decimal Price, bool Spicy, bool AddOns, bool Bar, bool Sugar)[] Items)[]
+        {
+            ("Starters", new[]
+            {
+                ("Chicken 65", "S01", 220m, true, false, false, false),
+                ("Paneer Tikka", "S02", 240m, true, false, false, false),
+                ("Gobi Manchurian", "S03", 180m, true, false, false, false),
+                ("Veg Spring Roll", "S04", 160m, false, false, false, false),
+            }),
+            ("Biryani", new[]
+            {
+                ("Chicken Biryani", "B01", 260m, true, true, false, false),
+                ("Mutton Biryani", "B02", 340m, true, true, false, false),
+                ("Veg Biryani", "B03", 200m, true, true, false, false),
+                ("Egg Biryani", "B04", 210m, true, true, false, false),
+            }),
+            ("Breads", new[]
+            {
+                ("Butter Naan", "N01", 50m, false, false, false, false),
+                ("Garlic Naan", "N02", 60m, false, false, false, false),
+                ("Tandoori Roti", "N03", 30m, false, false, false, false),
+                ("Kerala Parotta", "N04", 40m, false, false, false, false),
+            }),
+            ("Beverages", new[]
+            {
+                ("Masala Chai", "D01", 30m, false, false, true, true),
+                ("Filter Coffee", "D02", 40m, false, false, true, true),
+                ("Fresh Lime Soda", "D03", 60m, false, false, true, true),
+                ("Mango Lassi", "D04", 90m, false, false, true, true),
+            }),
+            ("Desserts", new[]
+            {
+                ("Gulab Jamun", "E01", 80m, false, false, false, false),
+                ("Rasmalai", "E02", 110m, false, false, false, false),
+                ("Kulfi", "E03", 90m, false, false, false, false),
+            }),
+        };
+
+        var categoryOrder = 0;
+        foreach (var (categoryName, items) in menu)
+        {
+            var category = new Category(categoryName, ++categoryOrder);
+            _db.Categories.Add(category);
+            await _db.SaveChangesAsync(cancellationToken);
+
+            var itemOrder = 0;
+            foreach (var (name, code, price, spicy, withAddOns, atBar, withSugar) in items)
+            {
+                var item = new MenuItem(category.Id, name, code, null, price, gst5.Id, atBar ? bar.Id : kitchen.Id, ++itemOrder);
+                var groups = new List<int>();
+                if (spicy)
+                {
+                    groups.Add(spice.Id);
+                }
+
+                if (withAddOns)
+                {
+                    groups.Add(addOns.Id);
+                }
+
+                if (withSugar)
+                {
+                    groups.Add(sugar.Id);
+                }
+
+                item.SetModifierGroups(groups);
+                _db.MenuItems.Add(item);
+            }
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+        _logger.LogInformation("Seeded demo menu: {Categories} categories, {Items} items", menu.Length, menu.Sum(c => c.Items.Length));
     }
 }

@@ -23,7 +23,8 @@ firewall, upgrade, troubleshooting and daily operations.
   service registration, first migration + seed, desktop shortcut for the admin client.
 - Client installer: desktop app, ProgramData settings folder with ACL, shortcut, optional
   pre-filled `ApiBaseUrl` passed as installer parameter (`/API=http://192.168.1.100:5000`).
-- Backup: `BackupHostedService` (daily at configured time -> `pg_dump --format=custom`, retention
+- Backup: `BackupHostedService` (daily at configured time -> `pg_dump --format=custom` plus a copy of the `Media:RootPath` folder
+  with menu pictures, retention
   cleanup, verify), admin **Backup now**, backups list, restore procedure and script.
 - Monitoring: `/health` with DB and disk checks, Serilog rolling files with retention, admin
   log tail screen, `ServerNotice` broadcast, version compatibility check (`minClientVersion`).

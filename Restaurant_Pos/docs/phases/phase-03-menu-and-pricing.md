@@ -1,6 +1,6 @@
 # Phase 3 — Menu & Pricing
 
-Status: Not started · Depends on: Phase 1 (can run in parallel with Phase 2)
+Status: Done (2026-10-07) · Depends on: Phase 1
 
 ## 1. Goal
 
@@ -93,10 +93,11 @@ menu suitable for fast ordering, and are notified when it changes.
 
 ## 12. Acceptance criteria
 
-- [ ] All menu master data manageable from the desktop with validation and audit.
-- [ ] Compact menu endpoint with version check; `MenuChanged` propagates to clients.
-- [ ] Image upload and display working; images cached on clients.
-- [ ] Definition of Done satisfied.
+- [x] All menu master data manageable from the desktop with validation and audit.
+- [x] Compact menu endpoint with version check; `MenuChanged` propagates to clients.
+- [x] Image upload and display working; images cached on clients.
+- [x] Definition of Done satisfied. (Demo steps 2–4 were run against the real API and in automated tests; the
+  two-terminal run on the target hardware is still to do, as for Phase 2.)
 
 ## 13. Risks and notes
 
@@ -106,4 +107,27 @@ menu suitable for fast ordering, and are notified when it changes.
 
 ## 14. Changes during implementation
 
-(fill in while building)
+- **Atomic menu version.** Every menu write goes through `MenuChanges`: the change, its audit rows and the
+  `MenuVersion` bump (one `UPDATE ... RETURNING` on the settings row) share one transaction, then one
+  `MenuChanged` is published. Concurrent writes serialise on that row and never lose a bump (tested with six
+  parallel writes). `MenuVersion` can no longer be edited through the settings screen.
+- **DTOs.** `MenuItemDto` carries the detail fields (description, modifier group ids), so there is no separate
+  `MenuItemDetailDto`. Stations, taxes and modifier groups/options use one `Save...Request` for create and
+  update (`isActive` is ignored on create). The ordering menu uses compact `MenuEntryDto` /
+  `MenuModifierGroupDto` records.
+- **Images.** Stored by `MenuImageStore` (SkiaSharp, MIT): JPEG/PNG only (checked by decoding, not by file
+  name), EXIF orientation applied, max 512 px, JPEG on a white background. Each upload gets a new name
+  (`{id}-{random}.jpg`) and the old file is deleted, so files are served with a one-year immutable cache header
+  and terminals cache them by name. The folder is `Media:RootPath` (default next to the API) and must be backed
+  up with the database (Phase 10 updated). Pictures can be attached once the item is saved.
+- **Sold-out toggle** uses the item's row version like any write; a simultaneous edit returns
+  `CONCURRENCY_CONFLICT` with the current item rather than overwriting it.
+- **Inactive modifier groups** stay linked to items but are left out of the ordering menu; modifier option names
+  are unique within their group.
+- **Desktop.** One "Menu" page with tabs Items, Categories, Modifiers, Taxes, Stations (the last two for Admin
+  only, matching the API) and Preview, which shows the menu exactly as terminals receive it from `MenuCache`
+  and updates live on `MenuChanged`. `MenuCache` starts at sign-in for every role, reloads on a newer version
+  or after a reconnect, keeps the old menu if a reload fails, and caches pictures in
+  `%LocalAppData%\HotelPOS\cache\images`.
+- **Kitchen sold-out button** is in the API now (`PATCH availability`, Kitchen allowed); the kitchen screen
+  that uses it comes with Phase 5.
