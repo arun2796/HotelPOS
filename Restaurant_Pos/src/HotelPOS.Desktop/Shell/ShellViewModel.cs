@@ -11,6 +11,7 @@ using HotelPOS.Desktop.Services.Configuration;
 using HotelPOS.Contracts.Security;
 using HotelPOS.Desktop.Services.Menu;
 using HotelPOS.Desktop.Services.Orders;
+using HotelPOS.Desktop.Services.Printing;
 using HotelPOS.Desktop.Services.Navigation;
 using HotelPOS.Desktop.Services.Realtime;
 using HotelPOS.Desktop.Services.Ui;
@@ -26,6 +27,7 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
     private readonly IRealtimeClient _realtime;
     private readonly IMenuCache _menuCache;
     private readonly IReadyNotifier _readyNotifier;
+    private readonly IKotAutoPrinter _kotPrinter;
     private readonly IAppNavigator _navigator;
     private readonly NavigationService _navigation;
     private readonly ISystemApi _systemApi;
@@ -40,6 +42,8 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
         IRealtimeClient realtime,
         IMenuCache menuCache,
         IReadyNotifier readyNotifier,
+        IKotAutoPrinter kotPrinter,
+        IPrintQueue printQueue,
         IAppNavigator navigator,
         NavigationService navigation,
         ISystemApi systemApi,
@@ -52,12 +56,13 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
         _realtime = realtime;
         _menuCache = menuCache;
         _readyNotifier = readyNotifier;
+        _kotPrinter = kotPrinter;
         _navigator = navigator;
         _navigation = navigation;
         _systemApi = systemApi;
         _theme = theme;
         _logger = logger;
-        StatusBar = new StatusBarViewModel(realtime, settings);
+        StatusBar = new StatusBarViewModel(realtime, settings, printQueue);
     }
 
     public ObservableCollection<NavItemViewModel> NavItems { get; } = new();
@@ -102,6 +107,8 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
             _readyNotifier.Start();
         }
 
+        _kotPrinter.Start();
+
         await GoHomeAsync();
         await LoadRestaurantNameAsync();
     }
@@ -118,6 +125,7 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
         _realtime.Reconnected -= OnReconnected;
         _menuCache.Stop();
         _readyNotifier.Stop();
+        _kotPrinter.Stop();
         _navigation.Detach(this);
         StatusBar.Dispose();
         (CurrentPage as IDisposable)?.Dispose();

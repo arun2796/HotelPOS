@@ -4,8 +4,10 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Kitchen;
+using HotelPOS.Contracts.Print;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Navigation;
+using HotelPOS.Desktop.Services.Printing;
 
 namespace HotelPOS.Desktop.Modules.Kitchen;
 
@@ -30,10 +32,12 @@ public sealed record CompletedTicketRow(KitchenTicketDto Ticket)
 public sealed partial class CompletedOrdersViewModel : ObservableObject, INavigationAware, IRefreshable
 {
     private readonly IKitchenApi _kitchenApi;
+    private readonly IDocumentPrinter _printer;
 
-    public CompletedOrdersViewModel(IKitchenApi kitchenApi)
+    public CompletedOrdersViewModel(IKitchenApi kitchenApi, IDocumentPrinter printer)
     {
         _kitchenApi = kitchenApi;
+        _printer = printer;
     }
 
     public ObservableCollection<CompletedTicketRow> Rows { get; } = new();
@@ -73,4 +77,8 @@ public sealed partial class CompletedOrdersViewModel : ObservableObject, INaviga
 
     [RelayCommand]
     private Task RefreshListAsync() => RefreshAsync();
+
+    [RelayCommand]
+    private Task ReprintAsync(CompletedTicketRow? row) =>
+        row is null ? Task.CompletedTask : _printer.PrintAsync(PrintDocumentType.Kot, row.Ticket.Id);
 }

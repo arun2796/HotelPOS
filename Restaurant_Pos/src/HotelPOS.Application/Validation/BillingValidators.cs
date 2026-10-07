@@ -127,3 +127,13 @@ public sealed class SavePaymentMethodRequestValidator : AbstractValidator<SavePa
         RuleFor(x => x.SortOrder).InclusiveBetween(0, 9999);
     }
 }
+
+public sealed class ReprintRequestValidator : AbstractValidator<Contracts.Print.ReprintRequest>
+{
+    public ReprintRequestValidator()
+    {
+        RuleFor(x => x.DocumentType).IsInEnum();
+        RuleFor(x => x.EntityId).GreaterThan(0);
+        RuleFor(x => x.Reason).NotEmpty().WithMessage("Enter the reason for the reprint.").MaximumLength(Contracts.Print.PrintLimits.ReasonMaxLength);
+    }
+}

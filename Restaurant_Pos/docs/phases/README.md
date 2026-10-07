@@ -17,7 +17,7 @@ documents say what to build, in which order, and how to verify it.
 | 4 | [Waiter Ordering](phase-04-waiter-ordering.md) | 2, 3 | Draft -> submit -> append -> cancel with idempotency; order builder UI; local drafts | Done (2026-10-07) |
 | 5 | [Kitchen Display](phase-05-kitchen-display.md) | 4 | Tickets per station, kitchen workflow, waiter "order ready" notifications, serve | Done (2026-10-07) |
 | 6 | [Billing & Payments](phase-06-billing-and-payments.md) | 5 | Bill request queue, discounts, tax, finalize/invoice, split payments, multi-counter safety, void/refund | Done (2026-10-07) |
-| 7 | [Printing](phase-07-printing.md) | 5, 6 | KOT, invoice, receipt via thermal/Windows/network printers behind `IPrintService` | Not started |
+| 7 | [Printing](phase-07-printing.md) | 5, 6 | KOT, invoice, receipt via thermal/Windows/network printers behind `IPrintService` | Done (2026-10-07) |
 | 8 | [Reports & Dashboard](phase-08-reports-and-dashboard.md) | 6 | Sales, items, payments, cancellations, discounts, taxes, staff and kitchen performance; dashboard | Not started |
 | 9 | [Security & Audit](phase-09-security-and-audit.md) | 1–6 | Editable permissions, lockout, rate limiting, device management, audit viewer, hardening | Not started |
 | 10 | [Production Readiness](phase-10-production-readiness.md) | all | Windows Service hosting, installers, backup/recovery, monitoring, LAN/firewall docs, go-live checklist | Not started |

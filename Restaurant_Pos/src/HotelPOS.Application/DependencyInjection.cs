@@ -6,6 +6,7 @@ using HotelPOS.Application.Floor;
 using HotelPOS.Application.Kitchen;
 using HotelPOS.Application.Menu;
 using HotelPOS.Application.Orders;
+using HotelPOS.Application.Print;
 using HotelPOS.Application.Settings;
 using HotelPOS.Application.Users;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,6 +34,7 @@ public static class DependencyInjection
         services.AddScoped<IBillingService, BillingService>();
         services.AddScoped<IDiscountService, DiscountService>();
         services.AddScoped<IPaymentMethodService, PaymentMethodService>();
+        services.AddScoped<IPrintDocumentService, PrintDocumentService>();
         services.AddScoped<MenuChanges>();
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IStationService, StationService>();

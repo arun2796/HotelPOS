@@ -163,10 +163,10 @@ Admin always has access; Manager has access wherever `M` is listed.
 
 | Method | Route | Roles | Notes |
 |---|---|---|---|
-| GET | `/api/print/kot/{ticketId}` | K, W, M | `KitchenTicketDocument` |
-| GET | `/api/print/invoice/{billId}` | C, M, W | `InvoiceDocument` (tax breakup, GSTIN, footer) |
-| GET | `/api/print/receipt/{paymentId}` | C, M | `ReceiptDocument` |
-| POST | `/api/print/reprints` | C, M | `{documentType, entityId, reason}` audit record |
+| GET | `/api/print/kot/{ticketId}` | K, W, M, A | `KitchenTicketDocument` (never prices unless `KotShowPrices`) |
+| GET | `/api/print/invoice/{billId}` | C, M, A, W (own order) | `InvoiceDocument` (header, tax breakup, payments, footer, `isCancelled` for voided bills, `copies` from `PrintInvoiceCopies`) |
+| GET | `/api/print/receipt/{paymentId}` | C, M, A | `ReceiptDocument` (refund rows print as REFUND) |
+| POST | `/api/print/reprints` | C, M, A | `{documentType, entityId, reason}` writes `Print.Reprint` to the audit log; the client then fetches and prints the document |
 
 ### 3.9 Reports (Phase 8)
 

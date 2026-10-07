@@ -6,12 +6,14 @@ using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Billing;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Enums;
+using HotelPOS.Contracts.Print;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Contracts.Security;
 using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Auth;
 using HotelPOS.Desktop.Services.Navigation;
+using HotelPOS.Desktop.Services.Printing;
 using HotelPOS.Desktop.Services.Realtime;
 using HotelPOS.Desktop.Services.Ui;
 
@@ -44,6 +46,7 @@ public sealed partial class BillDetailViewModel : ObservableObject, INavigationA
     private readonly INavigationService _navigation;
     private readonly IDialogService _dialogs;
     private readonly INotificationService _notifications;
+    private readonly IDocumentPrinter _printer;
     private readonly bool _isManager;
     private readonly List<IDisposable> _subscriptions = new();
     private IReadOnlyList<PaymentMethodDto> _methods = Array.Empty<PaymentMethodDto>();
@@ -57,8 +60,10 @@ public sealed partial class BillDetailViewModel : ObservableObject, INavigationA
         INavigationService navigation,
         IDialogService dialogs,
         INotificationService notifications,
-        IAuthSession session)
+        IAuthSession session,
+        IDocumentPrinter printer)
     {
+        _printer = printer;
         _billingApi = billingApi;
         _systemApi = systemApi;
         _realtime = realtime;
@@ -410,14 +415,30 @@ public sealed partial class BillDetailViewModel : ObservableObject, INavigationA
             return;
         }
 
-        if (Bill.Status == BillStatus.Open
-            && !await RunAsync(() => _billingApi.FinalizeAsync(Bill.Id, Bill.RowVersion), "Invoice finalized. Printing arrives in Phase 7; here is the preview."))
+        if (Bill.Status == BillStatus.Open)
         {
-            return;
+            if (!await RunAsync(() => _billingApi.FinalizeAsync(Bill.Id, Bill.RowVersion), "Invoice finalized."))
+            {
+                return;
+            }
+
+            await _printer.AutoPrintAsync(PrintDocumentType.Invoice, Bill.Id);
         }
 
         ActivePanel = BillPanel.Preview;
     }
+
+    [RelayCommand]
+    private Task PrintInvoiceAsync() => Bill is null ? Task.CompletedTask : _printer.PrintAsync(PrintDocumentType.Invoice, Bill.Id);
+
+    [RelayCommand]
+    private Task PreviewInvoiceAsync() => Bill is null ? Task.CompletedTask : _printer.PreviewAsync(PrintDocumentType.Invoice, Bill.Id, ModuleRegistry.Billing);
+
+    [RelayCommand]
+    private Task PrintReceiptAsync() =>
+        Bill?.Payments.LastOrDefault(p => p.RefundOfPaymentId is null) is { } payment
+            ? _printer.PrintAsync(PrintDocumentType.Receipt, payment.Id)
+            : Task.CompletedTask;
 
     [RelayCommand]
     private void PayCash() => OpenPayment(PaymentMode.Cash);
@@ -477,7 +498,12 @@ public sealed partial class BillDetailViewModel : ObservableObject, INavigationA
 
                 part.Line.IsPaid = true;
                 Bill = result.Data;
-                change += result.Data.Payments.LastOrDefault(p => p.RefundOfPaymentId is null)?.ChangeAmount ?? 0m;
+                var recorded = result.Data.Payments.Where(p => p.RefundOfPaymentId is null).MaxBy(p => p.Id);
+                change += recorded?.ChangeAmount ?? 0m;
+                if (recorded is not null)
+                {
+                    await _printer.AutoPrintAsync(PrintDocumentType.Receipt, recorded.Id);
+                }
             }
         }
         finally

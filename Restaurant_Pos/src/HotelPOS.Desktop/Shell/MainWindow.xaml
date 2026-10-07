@@ -91,9 +91,13 @@
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
               </Grid.ColumnDefinitions>
-              <TextBlock Text="{Binding Message}" Style="{StaticResource Text.Body}" VerticalAlignment="Center" />
-              <Button Grid.Column="1" Style="{StaticResource Button.Ghost}" Command="{Binding CloseCommand}"
+              <TextBlock Text="{Binding Message}" Style="{StaticResource Text.Body}" VerticalAlignment="Center" TextWrapping="Wrap" />
+              <Button Grid.Column="1" Content="{Binding ActionText}" Command="{Binding RunActionCommand}" Style="{StaticResource Button.Primary}"
+                      MinHeight="36" Padding="14,4" Margin="10,0,0,0" VerticalAlignment="Center"
+                      Visibility="{Binding HasAction, Converter={StaticResource BoolToVisibility}}" />
+              <Button Grid.Column="2" Style="{StaticResource Button.Ghost}" Command="{Binding CloseCommand}"
                       MinHeight="32" MinWidth="32" Padding="6" Margin="8,-4,-8,-4" ToolTip="Dismiss">
                 <TextBlock Text="&#xE711;" Style="{StaticResource Text.Icon}" FontSize="12" />
               </Button>

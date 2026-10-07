@@ -14,6 +14,9 @@ using HotelPOS.Contracts.Floor;
 using HotelPOS.Contracts.Menu;
 using HotelPOS.Contracts.Kitchen;
 using HotelPOS.Contracts.Orders;
+using HotelPOS.Contracts.Print;
+using HotelPOS.Desktop.Modules.Printing;
+using HotelPOS.Desktop.Services.Printing;
 using HotelPOS.Desktop.Modules.Billing;
 using HotelPOS.Desktop.Modules.Orders;
 using HotelPOS.Desktop.Services.Orders;
@@ -250,6 +253,16 @@ public class ScreenRenderingTests
             await setupShell.NavigateToAsync(ModuleRegistry.Discounts, null);
             ((BillingSetupViewModel)setupShell.CurrentPage!).NewDiscountCommand.Execute(null);
             rendered.Add(await RenderScreenAsync(env, setupShell, "37-discounts-and-payment-methods"));
+
+            await setupShell.NavigateToAsync(ModuleRegistry.Printers, null);
+            rendered.Add(await RenderScreenAsync(env, setupShell, "38-printer-settings"));
+            var preview = env.Create<PrintPreviewViewModel>();
+            var invoiceProfile = env.Settings.Current.Printers[PrintDocumentType.Invoice];
+            await setupShell.ShowPageAsync(preview, new PrintPreviewContext(
+                new PrintJob(PrintDocumentType.Invoice, 1, "Invoice INV-202610-000042", Environment.DemoInvoiceDocument(), invoiceProfile, 1), ModuleRegistry.ClosedBills, true));
+            env.Notifications.Error("Invoice INV-202610-000041 was not printed. Printer 192.168.1.50:9100 did not answer.", "Retry", () => { });
+            rendered.Add(await RenderScreenAsync(env, setupShell, "39-print-preview"));
+            env.Notifications.Items.Clear();
             setupShell.Dispose();
         });
 
@@ -259,7 +272,7 @@ public class ScreenRenderingTests
         }
 
         bindingErrors.Errors.Should().BeEmpty("every binding in the views must point at an existing property");
-        rendered.Should().HaveCount(37);
+        rendered.Should().HaveCount(39);
     }
 
     private static async Task<string> RenderScreenAsync(Environment env, object screen, string name)
@@ -343,6 +356,11 @@ public class ScreenRenderingTests
             {
                 ApiBaseUrl = "http://192.168.1.100:5000",
                 DeviceName = "ADMIN-01",
+                Printers = new Dictionary<PrintDocumentType, PrinterProfile>
+                {
+                    [PrintDocumentType.Kot] = new() { Kind = PrinterKind.Network, Host = "192.168.1.50", Port = 9100, PaperWidthMm = 80 },
+                    [PrintDocumentType.Invoice] = new() { Kind = PrinterKind.EscPosRaw, PrinterName = "POS-80", PaperWidthMm = 80 },
+                },
                 DeviceType = DeviceType.Admin,
             });
             Session = new AuthSession(new InMemorySecureStore());
@@ -429,6 +447,11 @@ public class ScreenRenderingTests
             services.AddSingleton(DemoBillingApi());
             services.AddSingleton(Substitute.For<ISoundPlayer>());
             services.AddSingleton(Substitute.For<IReadyNotifier>());
+            services.AddSingleton(Substitute.For<HotelPOS.Desktop.Services.Printing.IKotAutoPrinter>());
+            services.AddSingleton(Substitute.For<HotelPOS.Desktop.Services.Printing.IPrintQueue>());
+            services.AddSingleton(Substitute.For<HotelPOS.Desktop.Services.Printing.IDocumentPrinter>());
+            services.AddSingleton<HotelPOS.Desktop.Services.Printing.FlowDocumentRenderer>();
+            services.AddSingleton(Substitute.For<HotelPOS.Desktop.Services.Printing.IWindowsPrinterChannel>());
             services.AddSingleton(Substitute.For<IAuthApi>());
             services.AddSingleton(Substitute.For<IAppNavigator>());
             services.AddSingleton(Substitute.For<IUserPreferences>());
@@ -782,6 +805,44 @@ public class ScreenRenderingTests
             }));
             return api;
         }
+
+        public static InvoiceDocument DemoInvoiceDocument() => new()
+        {
+            BillId = 1,
+            BillNumber = 41,
+            InvoiceNumber = "INV-202610-000042",
+            IssuedAtUtc = DateTime.UtcNow.AddMinutes(-3),
+            PrintedAtUtc = DateTime.UtcNow,
+            RestaurantName = "Hotel Saravana Bhavan",
+            Address = "12 Anna Salai, Chennai 600002",
+            Phone = "044 2345 6789",
+            Gstin = "33ABCDE1234F1Z5",
+            CurrencySymbol = "₹",
+            TableCode = "T04",
+            OrderNumber = 1019,
+            WaiterName = "Arun",
+            GuestCount = 4,
+            Customer = new InvoiceCustomer { Name = "Kumar Traders", Gstin = "33ABCDE1234F1Z5" },
+            Lines = new[]
+            {
+                new InvoiceLine { Name = "Chicken Biryani", Quantity = 2, UnitPrice = 260m, LineSubtotal = 520m, TaxRatePercent = 5m },
+                new InvoiceLine { Name = "Butter Naan", Quantity = 4, UnitPrice = 50m, LineSubtotal = 200m, TaxRatePercent = 5m },
+                new InvoiceLine { Name = "Fresh Lime Soda", Quantity = 3, UnitPrice = 60m, LineSubtotal = 180m, TaxRatePercent = 5m },
+                new InvoiceLine { Name = "Gulab Jamun", Quantity = 2, UnitPrice = 90m, LineSubtotal = 180m, TaxRatePercent = 5m },
+            },
+            Subtotal = 1080m,
+            TaxableAmount = 1080m,
+            TaxRows = new[]
+            {
+                new TaxRow { Label = "CGST 2.5%", RatePercent = 2.5m, TaxableAmount = 1080m, TaxAmount = 27m },
+                new TaxRow { Label = "SGST 2.5%", RatePercent = 2.5m, TaxableAmount = 1080m, TaxAmount = 27m },
+            },
+            TaxAmount = 54m,
+            GrandTotal = 1134m,
+            Payments = new[] { new InvoicePaymentLine { Method = "Cash", Amount = 1134m } },
+            PaidAmount = 1134m,
+            Footer = "Thank you! Visit again.",
+        };
 
         private static TableMapDto DemoMap()
         {

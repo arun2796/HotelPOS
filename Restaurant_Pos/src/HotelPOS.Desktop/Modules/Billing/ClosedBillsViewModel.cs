@@ -4,9 +4,11 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HotelPOS.Contracts.Billing;
 using HotelPOS.Contracts.Enums;
+using HotelPOS.Contracts.Print;
 using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Navigation;
+using HotelPOS.Desktop.Services.Printing;
 using HotelPOS.Desktop.Services.Ui;
 
 namespace HotelPOS.Desktop.Modules.Billing;
@@ -43,12 +45,14 @@ public sealed partial class ClosedBillsViewModel : ObservableObject, INavigation
     private readonly IBillingApi _billingApi;
     private readonly IDialogService _dialogs;
     private readonly INotificationService _notifications;
+    private readonly IDocumentPrinter _printer;
 
-    public ClosedBillsViewModel(IBillingApi billingApi, IDialogService dialogs, INotificationService notifications)
+    public ClosedBillsViewModel(IBillingApi billingApi, IDialogService dialogs, INotificationService notifications, IDocumentPrinter printer)
     {
         _billingApi = billingApi;
         _dialogs = dialogs;
         _notifications = notifications;
+        _printer = printer;
     }
 
     public ObservableCollection<ClosedBillRow> Bills { get; } = new();
@@ -195,6 +199,40 @@ public sealed partial class ClosedBillsViewModel : ObservableObject, INavigation
                 : ApiFailures.Describe(result), result.CorrelationId);
         }
     }
+
+    [RelayCommand]
+    private async Task ReprintInvoiceAsync()
+    {
+        if (Detail is null)
+        {
+            return;
+        }
+
+        var reason = await _dialogs.PromptAsync("Reprint invoice", "Why is the invoice printed again? (recorded in the audit log)", "Reprint");
+        if (!string.IsNullOrWhiteSpace(reason))
+        {
+            await _printer.ReprintAsync(PrintDocumentType.Invoice, Detail.Id, reason.Trim());
+        }
+    }
+
+    [RelayCommand]
+    private async Task ReprintReceiptAsync(PaymentRow? row)
+    {
+        if (row is null)
+        {
+            return;
+        }
+
+        var reason = await _dialogs.PromptAsync("Reprint receipt", "Why is the receipt printed again? (recorded in the audit log)", "Reprint");
+        if (!string.IsNullOrWhiteSpace(reason))
+        {
+            await _printer.ReprintAsync(PrintDocumentType.Receipt, row.Payment.Id, reason.Trim());
+        }
+    }
+
+    [RelayCommand]
+    private Task PreviewInvoiceAsync() =>
+        Detail is null ? Task.CompletedTask : _printer.PreviewAsync(PrintDocumentType.Invoice, Detail.Id, ModuleRegistry.ClosedBills);
 
     private async Task LoadDetailAsync(int? billId)
     {

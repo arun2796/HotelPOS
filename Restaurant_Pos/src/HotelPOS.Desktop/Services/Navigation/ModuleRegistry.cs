@@ -5,6 +5,7 @@ using HotelPOS.Desktop.Modules.Config;
 using HotelPOS.Desktop.Modules.Kitchen;
 using HotelPOS.Desktop.Modules.MenuAdmin;
 using HotelPOS.Desktop.Modules.Orders;
+using HotelPOS.Desktop.Modules.Printing;
 using HotelPOS.Desktop.Modules.Tables;
 
 namespace HotelPOS.Desktop.Services.Navigation;
@@ -39,6 +40,7 @@ public static class ModuleRegistry
     public const string Settings = "settings";
     public const string Backup = "backup";
     public const string ThisDevice = "this-device";
+    public const string Printers = "printers";
 
     private static readonly string[] Management = { Roles.Admin, Roles.Manager };
     private static readonly string[] AdminOnly = { Roles.Admin };
@@ -85,6 +87,8 @@ public static class ModuleRegistry
             "Scheduled and manual database backups."),
         new(ThisDevice, "This Terminal", "", "Administration", Management, 1,
             "Server address and identity of this terminal.", typeof(ConfigurationViewModel)),
+        new(Printers, "Printers", "", "Administration", Management, 7,
+            "Kitchen, invoice and receipt printers attached to this terminal.", typeof(PrinterSettingsViewModel)),
     };
 
     public static IReadOnlyList<ModuleDefinition> ForRoles(IReadOnlyCollection<string> roles) =>

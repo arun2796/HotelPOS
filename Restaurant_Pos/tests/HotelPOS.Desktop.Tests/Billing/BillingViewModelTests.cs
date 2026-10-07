@@ -229,7 +229,7 @@ public sealed class BillingViewModelTests
         var system = Substitute.For<ISystemApi>();
         system.GetPublicSettingsAsync(Arg.Any<CancellationToken>()).Returns(ApiResult<List<Contracts.Admin.SettingDto>>.Ok(new List<Contracts.Admin.SettingDto>()));
         return new BillDetailViewModel(_api, system, new FakeRealtimeClient(), Substitute.For<INavigationService>(),
-            dialogs ?? Substitute.For<IDialogService>(), Substitute.For<INotificationService>(), session);
+            dialogs ?? Substitute.For<IDialogService>(), Substitute.For<INotificationService>(), session, Substitute.For<HotelPOS.Desktop.Services.Printing.IDocumentPrinter>());
     }
 
     private static BillSummaryDto Summary(int id, string table, string? claimedBy, int minutesAgo) => new()

@@ -5,6 +5,7 @@ using HotelPOS.Desktop.Services.Configuration;
 using HotelPOS.Desktop.Services.Menu;
 using HotelPOS.Desktop.Services.Navigation;
 using HotelPOS.Desktop.Services.Orders;
+using HotelPOS.Desktop.Services.Printing;
 using HotelPOS.Desktop.Services.Realtime;
 using HotelPOS.Desktop.Services.Ui;
 using HotelPOS.Desktop.Shell;
@@ -56,6 +57,17 @@ public static class AppHost
         services.AddSingleton<IKitchenApi, KitchenApi>();
         services.AddSingleton<IBillingApi, BillingApi>();
         services.AddSingleton<IReadyNotifier, ReadyNotifier>();
+        services.AddSingleton<IPrintApi, PrintApi>();
+        services.AddSingleton<EscPosRenderer>();
+        services.AddSingleton<FlowDocumentRenderer>();
+        services.AddSingleton<RawPrinterChannel>();
+        services.AddSingleton<NetworkPrinterChannel>();
+        services.AddSingleton<IWindowsPrinterChannel, WindowsPrinterChannel>();
+        services.AddSingleton<IPrintService, PrintService>();
+        services.AddSingleton<IPrintQueue, PrintQueue>();
+        services.AddSingleton<IPrinterProfiles, PrinterProfiles>();
+        services.AddSingleton<IDocumentPrinter, DocumentPrinter>();
+        services.AddSingleton<IKotAutoPrinter, KotAutoPrinter>();
         services.AddHttpClient(MenuCache.ImageHttpClientName, client => client.Timeout = TimeSpan.FromSeconds(15));
         services.AddSingleton<IMenuCache, MenuCache>();
 

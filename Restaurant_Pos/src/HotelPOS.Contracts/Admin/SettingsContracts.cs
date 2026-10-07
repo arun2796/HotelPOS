@@ -50,4 +50,6 @@ public static class SettingKeys
     public const string AllowAnyWaiterToEditOrders = "AllowAnyWaiterToEditOrders";
     public const string MaxCashierDiscountPercent = "MaxCashierDiscountPercent";
     public const string AllowBillBeforeReady = "AllowBillBeforeReady";
+    public const string PrintInvoiceCopies = "PrintInvoiceCopies";
+    public const string KotShowPrices = "KotShowPrices";
 }

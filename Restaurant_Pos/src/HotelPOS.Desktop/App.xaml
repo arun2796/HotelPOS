@@ -11,6 +11,7 @@
              xmlns:orders="clr-namespace:HotelPOS.Desktop.Modules.Orders"
              xmlns:kitchen="clr-namespace:HotelPOS.Desktop.Modules.Kitchen"
              xmlns:billing="clr-namespace:HotelPOS.Desktop.Modules.Billing"
+             xmlns:printing="clr-namespace:HotelPOS.Desktop.Modules.Printing"
              ShutdownMode="OnMainWindowClose">
   <Application.Resources>
     <ResourceDictionary>
@@ -73,6 +74,12 @@
       </DataTemplate>
       <DataTemplate DataType="{x:Type billing:BillingSetupViewModel}">
         <billing:BillingSetupView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type printing:PrinterSettingsViewModel}">
+        <printing:PrinterSettingsView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type printing:PrintPreviewViewModel}">
+        <printing:PrintPreviewView />
       </DataTemplate>
     </ResourceDictionary>
   </Application.Resources>

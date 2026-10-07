@@ -134,7 +134,19 @@
           <Run Text="  ·  Terminal" />
           <Run Text="{Binding DeviceName, Mode=OneWay}" />
         </TextBlock>
-        <TextBlock Grid.Column="2" Text="{Binding Version}" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
+        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+          <Border Background="{DynamicResource Brush.DangerSoft}" CornerRadius="8" Padding="8,2" Margin="0,0,16,0"
+                  Visibility="{Binding HasFailedPrints, Converter={StaticResource BoolToVisibility}}">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="&#xE749;" Style="{StaticResource Text.Icon}" FontSize="12" Foreground="{DynamicResource Brush.Danger}" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding FailedPrintText}" FontSize="12" FontWeight="SemiBold" Margin="6,0,8,0" VerticalAlignment="Center"
+                         Foreground="{DynamicResource Brush.Danger}" />
+              <Button Content="Retry" Command="{Binding RetryPrintsCommand}" Style="{StaticResource Button.Link}" FontSize="12" Padding="4,0" MinHeight="20" />
+              <Button Content="Discard" Command="{Binding DiscardPrintsCommand}" Style="{StaticResource Button.Link}" FontSize="12" Padding="4,0" MinHeight="20" Margin="4,0,0,0" />
+            </StackPanel>
+          </Border>
+          <TextBlock Text="{Binding Version}" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
+        </StackPanel>
       </Grid>
     </Border>
   </Grid>

@@ -73,12 +73,13 @@ Start the app with `--profile NAME` to run several terminals on one PC (each pro
   "StationId": null,
   "Theme": "Light",
   "Printers": {
-    "Receipt": { "Kind": "EscPosRaw", "PrinterName": "POS-80" },
-    "Kitchen": { "Kind": "Network", "Host": "192.168.1.50", "Port": 9100 }
+    "Kot": { "Kind": "Network", "Host": "192.168.1.50", "Port": 9100, "PaperWidthMm": 80, "Copies": 1, "Model": "Generic", "CurrencyFallback": "Rs." },
+    "Invoice": { "Kind": "EscPosRaw", "PrinterName": "POS-80", "PaperWidthMm": 80 },
+    "Receipt": { "Kind": "Windows", "PrinterName": "Microsoft Print to PDF" }
   },
   "AutoPrintKot": true,
   "AutoPrintInvoice": true,
-  "KitchenSound": true
+  "AutoPrintReceipt": true
 }
 ```
 

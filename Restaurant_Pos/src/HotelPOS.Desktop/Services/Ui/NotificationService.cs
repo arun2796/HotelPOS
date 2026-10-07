@@ -22,6 +22,8 @@ public interface INotificationService
     void Warning(string message);
 
     void Error(string message, string? correlationId = null);
+
+    void Error(string message, string actionText, Action action);
 }
 
 public sealed class NotificationService : INotificationService
@@ -52,12 +54,18 @@ public sealed class NotificationService : INotificationService
         Show(ToastKind.Error, text, TimeSpan.FromSeconds(8));
     }
 
-    private void Show(ToastKind kind, string message, TimeSpan duration)
+    public void Error(string message, string actionText, Action action)
+    {
+        _logger.LogWarning("Error shown to user: {Message}", message);
+        Show(ToastKind.Error, message, TimeSpan.FromSeconds(20), new ToastAction(actionText, action));
+    }
+
+    private void Show(ToastKind kind, string message, TimeSpan duration, ToastAction? action = null)
     {
         _dispatcher.Post(() =>
         {
             ToastViewModel? toast = null;
-            toast = new ToastViewModel(kind, message, () => Items.Remove(toast!));
+            toast = new ToastViewModel(kind, message, () => Items.Remove(toast!), action);
             Items.Add(toast);
             while (Items.Count > MaxVisible)
             {
@@ -75,21 +83,36 @@ public sealed class NotificationService : INotificationService
     }
 }
 
+public sealed record ToastAction(string Text, Action Run);
+
 public sealed partial class ToastViewModel : ObservableObject
 {
     private readonly Action _close;
+    private readonly ToastAction? _action;
 
-    public ToastViewModel(ToastKind kind, string message, Action close)
+    public ToastViewModel(ToastKind kind, string message, Action close, ToastAction? action = null)
     {
         Kind = kind;
         Message = message;
         _close = close;
+        _action = action;
     }
 
     public ToastKind Kind { get; }
 
     public string Message { get; }
 
+    public string? ActionText => _action?.Text;
+
+    public bool HasAction => _action is not null;
+
     [RelayCommand]
     private void Close() => _close();
+
+    [RelayCommand]
+    private void RunAction()
+    {
+        _action?.Run();
+        _close();
+    }
 }

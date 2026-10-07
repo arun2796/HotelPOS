@@ -233,7 +233,7 @@ Prices are tax-exclusive in v1 (`PricesIncludeTax` setting reserved).
   `InvoiceResetPolicy` (Yearly), `RoundOffTotals` (true), `BusinessDayStartTime` (04:00),
   `KitchenWarnMinutes` (10), `KitchenLateMinutes` (20), `AutoCloseOnFullPayment` (true),
   `ReceiptFooter`, `MenuVersion` (1), `TaxSplitDisplay` (CGST_SGST), `AllowAnyWaiterToEditOrders` (false),
-  `MaxCashierDiscountPercent` (10), `AllowBillBeforeReady` (false)
+  `MaxCashierDiscountPercent` (10), `AllowBillBeforeReady` (false), `PrintInvoiceCopies` (1), `KotShowPrices` (false)
 - Development-only seed: sample sections, tables, categories, items, a waiter/kitchen/cashier user
 
 ## 9. Migration strategy

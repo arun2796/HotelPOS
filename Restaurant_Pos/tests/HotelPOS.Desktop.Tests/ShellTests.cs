@@ -2,7 +2,9 @@ using HotelPOS.Contracts.Security;
 using HotelPOS.Desktop.Services.Navigation;
 using HotelPOS.Desktop.Services.Realtime;
 using HotelPOS.Desktop.Shell;
+using HotelPOS.Desktop.Services.Printing;
 using HotelPOS.Desktop.Tests.Support;
+using NSubstitute;
 
 namespace HotelPOS.Desktop.Tests;
 
@@ -12,7 +14,7 @@ public class StatusBarViewModelTests
     public void Indicator_FollowsTheConnection_ThroughAnOutage()
     {
         var realtime = new FakeRealtimeClient();
-        using var vm = new StatusBarViewModel(realtime, InMemorySettings.Configured());
+        using var vm = new StatusBarViewModel(realtime, InMemorySettings.Configured(), Substitute.For<IPrintQueue>());
         var changes = new List<string>();
         vm.PropertyChanged += (_, e) =>
         {
@@ -39,7 +41,7 @@ public class StatusBarViewModelTests
     public void Dispose_StopsListening()
     {
         var realtime = new FakeRealtimeClient();
-        var vm = new StatusBarViewModel(realtime, InMemorySettings.Configured());
+        var vm = new StatusBarViewModel(realtime, InMemorySettings.Configured(), Substitute.For<IPrintQueue>());
 
         vm.Dispose();
         realtime.Raise(ConnectionStatus.Connected);

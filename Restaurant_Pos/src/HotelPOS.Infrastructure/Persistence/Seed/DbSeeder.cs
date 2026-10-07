@@ -59,6 +59,8 @@ public sealed class DbSeeder
         new Setting(SettingKeys.AllowAnyWaiterToEditOrders, "false", SettingDataType.Bool, "Let any waiter change or cancel another waiter's order (managers always can).", true),
         new Setting(SettingKeys.MaxCashierDiscountPercent, "10", SettingDataType.Decimal, "Largest discount (percent of the bill) a cashier may give without manager approval.", true),
         new Setting(SettingKeys.AllowBillBeforeReady, "false", SettingDataType.Bool, "Allow requesting the bill before every kitchen ticket is ready (drinks-only tables).", true),
+        new Setting(SettingKeys.PrintInvoiceCopies, "1", SettingDataType.Int, "Copies printed when an invoice is finalized (1-5).", true),
+        new Setting(SettingKeys.KotShowPrices, "false", SettingDataType.Bool, "Print item prices on kitchen tickets.", true),
     };
 
     public async Task SeedAsync(SeedOptions options, CancellationToken cancellationToken = default)

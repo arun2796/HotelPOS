@@ -37,6 +37,15 @@
         <DataGridTextColumn Header="PREP" Binding="{Binding PrepText}" Width="0.7*" MinWidth="70" />
         <DataGridTextColumn Header="TOTAL" Binding="{Binding TotalText}" Width="0.7*" MinWidth="70" />
         <DataGridTextColumn Header="STATUS" Binding="{Binding StatusText}" Width="0.9*" MinWidth="90" />
+        <DataGridTemplateColumn Header="" Width="Auto">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate DataType="{x:Type kitchen:CompletedTicketRow}">
+              <Button Content="Reprint" Style="{StaticResource Button.Link}" Padding="6,0"
+                      Command="{Binding DataContext.ReprintCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                      CommandParameter="{Binding}" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
       </DataGrid.Columns>
     </DataGrid>
   </Grid>

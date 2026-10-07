@@ -1,0 +1,127 @@
+<UserControl x:Class="HotelPOS.Desktop.Modules.Printing.PrinterSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:printing="clr-namespace:HotelPOS.Desktop.Modules.Printing"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance printing:PrinterSettingsViewModel}"
+             d:DesignWidth="1100" d:DesignHeight="760">
+
+  <Grid Margin="24">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <StackPanel Margin="0,0,0,12">
+      <TextBlock Style="{StaticResource Text.Caption}" FontSize="14">
+        <Run Text="Printers attached to terminal" />
+        <Run Text="{Binding DeviceName, Mode=OneWay}" FontWeight="SemiBold" />
+        <Run Text="· saved on this PC only. Thermal printers on USB need the “Generic / Text Only” Windows driver." />
+      </TextBlock>
+      <Border Style="{StaticResource Banner.Error}" Margin="0,10,0,0"
+              Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibility}}">
+        <TextBlock Text="{Binding ErrorMessage}" Style="{StaticResource Text.Error}" />
+      </Border>
+    </StackPanel>
+
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+      <ItemsControl ItemsSource="{Binding Profiles}" Focusable="False">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <UniformGrid Columns="3" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate DataType="{x:Type printing:PrinterProfileEditor}">
+            <Border Style="{StaticResource Card}" Margin="0,0,16,0" Padding="20">
+              <StackPanel>
+                <Grid>
+                  <TextBlock Text="{Binding Title}" Style="{StaticResource Text.Subtitle}" />
+                  <CheckBox Content="Enabled" IsChecked="{Binding IsEnabled}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                </Grid>
+                <StackPanel IsEnabled="{Binding IsEnabled}" Margin="0,12,0,0">
+                  <TextBlock Text="Connection" Style="{StaticResource Text.Label}" />
+                  <ComboBox ItemsSource="{Binding Kinds}" SelectedItem="{Binding Kind}" Margin="0,0,0,12" />
+
+                  <StackPanel Visibility="{Binding IsSpooled, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Text="Windows printer name" Style="{StaticResource Text.Label}" />
+                    <ComboBox IsEditable="True" Text="{Binding PrinterName, UpdateSourceTrigger=PropertyChanged}"
+                              ItemsSource="{Binding DataContext.InstalledPrinters, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                              Margin="0,0,0,12" />
+                  </StackPanel>
+                  <Grid Visibility="{Binding IsNetwork, Converter={StaticResource BoolToVisibility}}" Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="8" />
+                      <ColumnDefinition Width="90" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                      <TextBlock Text="Printer IP address" Style="{StaticResource Text.Label}" />
+                      <TextBox Text="{Binding Host, UpdateSourceTrigger=PropertyChanged}" MaxLength="100" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                      <TextBlock Text="Port" Style="{StaticResource Text.Label}" />
+                      <TextBox Text="{Binding Port, UpdateSourceTrigger=PropertyChanged}" MaxLength="5" />
+                    </StackPanel>
+                  </Grid>
+
+                  <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="8" />
+                      <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                      <TextBlock Text="Paper width (mm)" Style="{StaticResource Text.Label}" />
+                      <ComboBox ItemsSource="{Binding PaperWidths}" SelectedItem="{Binding PaperWidth}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                      <TextBlock Text="Copies" Style="{StaticResource Text.Label}" />
+                      <ComboBox ItemsSource="{Binding CopyOptions}" SelectedItem="{Binding Copies}" />
+                    </StackPanel>
+                  </Grid>
+
+                  <Grid Margin="0,0,0,12" Visibility="{Binding IsThermal, Converter={StaticResource BoolToVisibility}}">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="8" />
+                      <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                      <TextBlock Text="Printer model" Style="{StaticResource Text.Label}" />
+                      <ComboBox ItemsSource="{Binding Models}" SelectedItem="{Binding Model}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                      <TextBlock Text="Print ₹ as" Style="{StaticResource Text.Label}" />
+                      <TextBox Text="{Binding CurrencyFallback, UpdateSourceTrigger=PropertyChanged}" MaxLength="5" />
+                    </StackPanel>
+                  </Grid>
+
+                  <CheckBox IsChecked="{Binding AutoPrint}">
+                    <TextBlock Text="{Binding AutoPrintText}" TextWrapping="Wrap" />
+                  </CheckBox>
+                </StackPanel>
+
+                <Border Style="{StaticResource Banner.Error}" Margin="0,12,0,0"
+                        Visibility="{Binding Error, Converter={StaticResource StringToVisibility}}">
+                  <TextBlock Text="{Binding Error}" Style="{StaticResource Text.Error}" TextWrapping="Wrap" />
+                </Border>
+                <Button Content="TEST PRINT" MinHeight="48" Margin="0,16,0,0" IsEnabled="{Binding IsEnabled}"
+                        Command="{Binding DataContext.TestPrintCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                        CommandParameter="{Binding}" />
+                <TextBlock Text="{Binding TestResult}" Style="{StaticResource Text.Caption}" TextWrapping="Wrap" Margin="0,8,0,0"
+                           Visibility="{Binding TestResult, Converter={StaticResource StringToVisibility}}" />
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+
+    <Button Grid.Row="2" Content="Save printer settings" Command="{Binding SaveCommand}" Style="{StaticResource Button.Primary}"
+            HorizontalAlignment="Right" MinWidth="200" MinHeight="48" Margin="0,16,16,0" />
+  </Grid>
+</UserControl>

@@ -84,6 +84,8 @@ public static class AuditActions
     public const string PaymentRefunded = "Payment.Refunded";
     public const string ApprovalRejected = "Approval.Rejected";
 
+    public const string PrintReprint = "Print.Reprint";
+
     public const string DiscountCreated = "Discount.Created";
     public const string DiscountUpdated = "Discount.Updated";
     public const string PaymentMethodCreated = "PaymentMethod.Created";
