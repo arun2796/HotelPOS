@@ -2,10 +2,6 @@ using HotelPOS.Contracts.Security;
 
 namespace HotelPOS.Application.Common.Security;
 
-/// <summary>
-/// Default permissions per role. Until Phase 9 makes them editable, this is the single place that
-/// decides what each role may do.
-/// </summary>
 public static class RolePermissionMap
 {
     private static readonly IReadOnlyDictionary<string, string[]> Map = new Dictionary<string, string[]>(StringComparer.Ordinal)

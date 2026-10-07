@@ -2,7 +2,6 @@ using HotelPOS.Desktop.Services.Api;
 
 namespace HotelPOS.Desktop.Modules.Common;
 
-/// <summary>Turns a failed API call into the message shown in an editor panel or toast.</summary>
 public static class ApiFailures
 {
     public static string Describe<T>(ApiResult<T> result)

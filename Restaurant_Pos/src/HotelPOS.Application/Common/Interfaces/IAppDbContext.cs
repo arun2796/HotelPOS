@@ -9,7 +9,6 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace HotelPOS.Application.Common.Interfaces;
 
-/// <summary>Unit of work over the HotelPOS database. Implemented by the EF Core context in Infrastructure.</summary>
 public interface IAppDbContext
 {
     DbSet<User> Users { get; }

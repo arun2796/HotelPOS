@@ -1,6 +1,5 @@
 namespace HotelPOS.Application.Common;
 
-/// <summary>Audit action names, formatted Entity.Verb. See docs/06-conventions-and-dod.md.</summary>
 public static class AuditActions
 {
     public const string LoginSucceeded = "Auth.LoginSucceeded";

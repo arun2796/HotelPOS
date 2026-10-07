@@ -38,7 +38,6 @@ public static class ApiServiceRegistration
             .Validate(o => o.AccessTokenMinutes > 0 && o.RefreshTokenHours > 0, "Jwt token lifetimes must be positive.")
             .ValidateOnStart();
 
-        // Uploaded files live next to the API unless Media:RootPath says otherwise.
         services.PostConfigure<MediaOptions>(o =>
         {
             if (string.IsNullOrWhiteSpace(o.RootPath))

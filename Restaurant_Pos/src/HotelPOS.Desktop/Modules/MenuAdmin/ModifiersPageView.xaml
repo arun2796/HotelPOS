@@ -21,7 +21,6 @@
       <RowDefinition Height="*" />
     </Grid.RowDefinitions>
 
-    <!-- Groups -->
     <Grid Margin="0,0,0,12">
       <TextBlock Text="Modifier groups" Style="{StaticResource Text.Subtitle}" VerticalAlignment="Center" />
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
@@ -59,7 +58,6 @@
                    Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}" />
     </Grid>
 
-    <!-- Options of the selected group -->
     <Grid Grid.Row="3" Margin="0,20,0,12">
       <TextBlock Text="Options of the selected group" Style="{StaticResource Text.Subtitle}" VerticalAlignment="Center" />
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
@@ -80,7 +78,6 @@
       </DataGrid.Columns>
     </DataGrid>
 
-    <!-- Editor panel (group or option) -->
     <Border Grid.Column="1" Grid.RowSpan="5" Style="{StaticResource Card}" Width="360" Margin="20,0,0,0"
             Visibility="{Binding IsEditorOpen, Converter={StaticResource BoolToVisibility}}">
       <Grid>

@@ -17,7 +17,6 @@
         <ResourceDictionary Source="Themes/Styles.xaml" />
       </ResourceDictionary.MergedDictionaries>
 
-      <!-- View-model first navigation: each view-model type is rendered by its view. -->
       <DataTemplate DataType="{x:Type config:ConfigurationViewModel}">
         <config:ConfigurationView />
       </DataTemplate>

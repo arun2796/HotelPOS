@@ -2,12 +2,10 @@ using HotelPOS.Contracts.Common;
 
 namespace HotelPOS.Application.Common.Results;
 
-/// <summary>An expected failure of a use case: a code, a human message and optional field errors.</summary>
 public sealed record AppError(string Code, string Message)
 {
     public IReadOnlyList<ApiError> Details { get; init; } = Array.Empty<ApiError>();
 
-    /// <summary>Optional payload returned with the failure, e.g. the current entity on a concurrency conflict.</summary>
     public object? Data { get; init; }
 }
 

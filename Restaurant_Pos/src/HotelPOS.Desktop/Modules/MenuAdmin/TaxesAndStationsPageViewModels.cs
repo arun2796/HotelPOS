@@ -9,7 +9,6 @@ using HotelPOS.Desktop.Services.Ui;
 
 namespace HotelPOS.Desktop.Modules.MenuAdmin;
 
-/// <summary>Taxes (Admin): name, code, rate. A new rate applies to items ordered from then on.</summary>
 public sealed partial class TaxesPageViewModel : ObservableObject, IMenuAdminPage
 {
     private readonly IMenuApi _menuApi;
@@ -140,7 +139,6 @@ public sealed partial class TaxesPageViewModel : ObservableObject, IMenuAdminPag
     }
 }
 
-/// <summary>Preparation stations (Admin): where items are prepared; kitchen tickets are routed by station.</summary>
 public sealed partial class StationsPageViewModel : ObservableObject, IMenuAdminPage
 {
     private readonly IMenuApi _menuApi;

@@ -5,7 +5,6 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace HotelPOS.Infrastructure.Persistence.Interceptors;
 
-/// <summary>Fills CreatedAt/CreatedBy/UpdatedAt/UpdatedBy on every save.</summary>
 public sealed class AuditableEntityInterceptor : SaveChangesInterceptor
 {
     private readonly ICurrentUser _currentUser;

@@ -30,7 +30,6 @@ public sealed record SystemInfoDto
     public DateTime ServerTimeUtc { get; init; }
 }
 
-/// <summary>Keys of the database-backed settings. Values are seeded on first start.</summary>
 public static class SettingKeys
 {
     public const string RestaurantName = "RestaurantName";

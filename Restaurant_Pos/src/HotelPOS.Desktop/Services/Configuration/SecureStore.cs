@@ -5,7 +5,6 @@ using Microsoft.Extensions.Logging;
 
 namespace HotelPOS.Desktop.Services.Configuration;
 
-/// <summary>Stores small secrets (the refresh token) encrypted for the current Windows user.</summary>
 public interface ISecureStore
 {
     void Save(string name, string value);
@@ -15,7 +14,6 @@ public interface ISecureStore
     void Delete(string name);
 }
 
-/// <summary>Windows DPAPI (CurrentUser scope): the file is useless on another account or PC.</summary>
 public sealed class DpapiSecureStore : ISecureStore
 {
     private static readonly byte[] Entropy = Encoding.UTF8.GetBytes("HotelPOS.Desktop.v1");

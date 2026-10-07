@@ -10,26 +10,18 @@ using Microsoft.Extensions.Logging;
 
 namespace HotelPOS.Desktop.Services.Menu;
 
-/// <summary>
-/// The ordering menu held in memory for the signed-in session. Loaded at sign-in, reloaded when the server
-/// announces a newer version (<c>MenuChanged</c>) or after a reconnect, and kept as-is when a reload fails.
-/// </summary>
 public interface IMenuCache
 {
-    /// <summary>The last menu received, or null before the first successful load.</summary>
     MenuDto? Menu { get; }
 
-    /// <summary>Raised after <see cref="Menu"/> was replaced by a newer version.</summary>
     event EventHandler? Changed;
 
     Task StartAsync();
 
     void Stop();
 
-    /// <summary>Asks the server for a newer version. Returns false when the server could not be reached.</summary>
     Task<bool> RefreshAsync();
 
-    /// <summary>Local file of a menu picture, downloaded once and kept on disk. Null when unavailable.</summary>
     Task<string?> GetImageFileAsync(string? imageUrl);
 }
 

@@ -18,7 +18,6 @@ public interface ISettingsService
     Task<Result<IReadOnlyList<SettingDto>>> UpdateAsync(UpdateSettingsRequest request, CancellationToken cancellationToken = default);
 }
 
-/// <summary>Anonymous information used by clients to verify the server address ("Test connection").</summary>
 public interface ISystemInfoService
 {
     Task<SystemInfoDto> GetAsync(CancellationToken cancellationToken = default);

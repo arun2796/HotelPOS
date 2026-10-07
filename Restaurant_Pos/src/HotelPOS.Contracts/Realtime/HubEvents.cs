@@ -1,12 +1,10 @@
 namespace HotelPOS.Contracts.Realtime;
 
-/// <summary>SignalR hub route and method names.</summary>
 public static class HubRoutes
 {
     public const string Restaurant = "/hubs/restaurant";
 }
 
-/// <summary>Server-to-client event names. See docs/04-realtime-events.md.</summary>
 public static class HubEvents
 {
     public const string TableStatusChanged = "TableStatusChanged";
@@ -27,7 +25,6 @@ public static class HubEvents
     public const string ServerNotice = "ServerNotice";
 }
 
-/// <summary>Client-to-server hub methods.</summary>
 public static class HubMethods
 {
     public const string Ping = "Ping";
@@ -35,10 +32,6 @@ public static class HubMethods
     public const string LeaveStation = "LeaveStation";
 }
 
-/// <summary>
-/// Base shape of every real-time payload. Events are notifications only: clients fetch the
-/// authoritative state from the REST API when they need details.
-/// </summary>
 public abstract record RealtimeEvent
 {
     public Guid EventId { get; init; } = Guid.NewGuid();

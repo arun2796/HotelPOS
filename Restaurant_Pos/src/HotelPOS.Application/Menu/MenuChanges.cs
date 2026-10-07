@@ -4,10 +4,6 @@ using Microsoft.EntityFrameworkCore.Storage;
 
 namespace HotelPOS.Application.Menu;
 
-/// <summary>
-/// The single way menu writes are committed: the change, its audit entries and the menu version bump
-/// share one transaction, and <c>MenuChanged</c> is published once per request after the commit.
-/// </summary>
 public sealed class MenuChanges
 {
     private readonly IAppDbContext _db;
@@ -26,7 +22,6 @@ public sealed class MenuChanges
     public Task<IDbContextTransaction> BeginAsync(CancellationToken cancellationToken) =>
         _db.Database.BeginTransactionAsync(cancellationToken);
 
-    /// <summary>Saves pending changes, bumps the menu version, commits, then notifies all terminals.</summary>
     public async Task<int> CommitAsync(IDbContextTransaction transaction, CancellationToken cancellationToken)
     {
         await _db.SaveChangesAsync(cancellationToken);

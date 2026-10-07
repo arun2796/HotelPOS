@@ -1,6 +1,5 @@
 namespace HotelPOS.Contracts.Common;
 
-/// <summary>Machine-readable error codes. Clients branch on these, never on message text.</summary>
 public static class ErrorCodes
 {
     public const string ValidationError = "VALIDATION_ERROR";
@@ -27,6 +26,5 @@ public static class ErrorCodes
     public const string RateLimited = "RATE_LIMITED";
     public const string ServerError = "SERVER_ERROR";
 
-    /// <summary>Client-side only: the request never reached the server or no response arrived.</summary>
     public const string ConnectionUnavailable = "CONNECTION_UNAVAILABLE";
 }

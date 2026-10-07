@@ -10,7 +10,6 @@ using HotelPOS.Desktop.Services.Ui;
 
 namespace HotelPOS.Desktop.Modules.Admin;
 
-/// <summary>Admin: staff accounts — list, search, create, edit roles, reset password, (de)activate.</summary>
 public sealed partial class UsersViewModel : ObservableObject, INavigationAware, IRefreshable
 {
     private const int PageSize = 50;

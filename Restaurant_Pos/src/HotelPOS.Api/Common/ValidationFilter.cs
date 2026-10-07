@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Mvc.Filters;
 
 namespace HotelPOS.Api.Common;
 
-/// <summary>Runs the FluentValidation validator of every action argument before the action executes.</summary>
 public sealed class ValidationFilter : IAsyncActionFilter
 {
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)

@@ -10,14 +10,8 @@ using HotelPOS.Desktop.Services.Ui;
 
 namespace HotelPOS.Desktop.Modules.Config;
 
-/// <param name="IsFirstRun">No configuration exists yet; there is nowhere to go back to.</param>
-/// <param name="InShell">Opened from the main shell by a logged-in manager/admin.</param>
 public sealed record ConfigurationContext(bool IsFirstRun, bool InShell);
 
-/// <summary>
-/// Server address and device identity of this terminal. Used as the first-run screen, from the login
-/// screen ("Server settings") and inside the shell ("This Terminal").
-/// </summary>
 public sealed partial class ConfigurationViewModel : ObservableObject, INavigationAware
 {
     private readonly IClientSettingsService _settings;
@@ -89,7 +83,6 @@ public sealed partial class ConfigurationViewModel : ObservableObject, INavigati
     {
     }
 
-    /// <summary>Returns an error message, or null when the values are valid.</summary>
     public static string? Validate(string apiBaseUrl, string deviceName, out string normalizedUrl)
     {
         if (!ApiUrl.TryNormalize(apiBaseUrl, out normalizedUrl, out var urlError))

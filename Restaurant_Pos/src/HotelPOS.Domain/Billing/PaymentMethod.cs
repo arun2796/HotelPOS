@@ -20,7 +20,6 @@ public sealed class PaymentMethod : BaseEntity
     public string Name { get; private set; } = string.Empty;
     public string Code { get; private set; } = string.Empty;
 
-    /// <summary>Card/UPI payments require a transaction reference.</summary>
     public bool RequiresReference { get; private set; }
 
     public int SortOrder { get; private set; }

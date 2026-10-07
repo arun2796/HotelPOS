@@ -5,7 +5,6 @@ using Microsoft.Extensions.Logging;
 
 namespace HotelPOS.Desktop.Services.Configuration;
 
-/// <summary>Small per-user conveniences (never passwords). Stored in the user's profile.</summary>
 public interface IUserPreferences
 {
     string? LastUsername { get; set; }

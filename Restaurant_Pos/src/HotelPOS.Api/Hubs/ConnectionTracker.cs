@@ -11,7 +11,6 @@ public sealed record HubConnectionInfo(
     string? DeviceName,
     DateTime ConnectedAtUtc);
 
-/// <summary>In-memory presence: which users and devices currently hold a hub connection.</summary>
 public sealed class ConnectionTracker
 {
     private readonly ConcurrentDictionary<string, HubConnectionInfo> _connections = new();

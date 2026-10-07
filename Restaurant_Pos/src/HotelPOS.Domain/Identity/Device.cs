@@ -3,7 +3,6 @@ using HotelPOS.Domain.Common;
 
 namespace HotelPOS.Domain.Identity;
 
-/// <summary>A registered client installation (e.g. WAITER-01), independent of who is logged in.</summary>
 public sealed class Device : IAuditable
 {
     private Device()

@@ -7,7 +7,6 @@ using HotelPOS.Desktop.Services.Ui;
 
 namespace HotelPOS.Desktop.Modules.Tables;
 
-/// <summary>Side panel of the table map: status of the selected table, occupy with a NumPad, release.</summary>
 public sealed partial class TableDetailsViewModel : ObservableObject
 {
     public const string ChangedByAnotherTerminal = "Table was changed by another terminal. The latest status is shown.";
@@ -54,7 +53,6 @@ public sealed partial class TableDetailsViewModel : ObservableObject
 
     public string OccupiedSinceText => Table?.OccupiedAtUtc is { } since ? since.ToLocalTime().ToString("HH:mm") : "—";
 
-    /// <summary>Orders arrive in Phase 4.</summary>
     public string OrderText => Table?.CurrentOrderNumber is { } number ? $"Order #{number}" : "No order";
 
     public IReadOnlyList<string> Keys { get; } = new[] { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
@@ -66,7 +64,6 @@ public sealed partial class TableDetailsViewModel : ObservableObject
         ErrorMessage = null;
     }
 
-    /// <summary>The selected table changed underneath (event or API result): refresh derived text and buttons.</summary>
     public void OnTableChanged()
     {
         OnPropertyChanged(nameof(OccupiedSinceText));

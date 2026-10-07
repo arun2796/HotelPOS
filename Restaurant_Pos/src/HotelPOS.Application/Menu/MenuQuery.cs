@@ -6,10 +6,6 @@ namespace HotelPOS.Application.Menu;
 
 public interface IMenuQuery
 {
-    /// <summary>
-    /// The active menu for ordering. When <paramref name="knownVersion"/> equals the current version the
-    /// result only says <c>NotModified</c>.
-    /// </summary>
     Task<MenuDto> GetMenuAsync(int? knownVersion, CancellationToken cancellationToken = default);
 }
 

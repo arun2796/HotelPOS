@@ -18,26 +18,18 @@ public enum ConnectionStatus
     Reconnecting,
 }
 
-/// <summary>
-/// Keeps the SignalR connection alive for as long as a user is logged in: retries the first connection,
-/// reconnects forever after drops, and raises <see cref="Reconnected"/> so screens reload their data
-/// from the API (events missed while offline are never replayed — the API is the source of truth).
-/// </summary>
 public interface IRealtimeClient
 {
     ConnectionStatus Status { get; }
 
-    /// <summary>Raised on the UI thread.</summary>
     event EventHandler<ConnectionStatus>? StatusChanged;
 
-    /// <summary>Raised on the UI thread after the connection is back following an outage.</summary>
     event EventHandler? Reconnected;
 
     Task StartAsync();
 
     Task StopAsync();
 
-    /// <summary>Handles a server event on the UI thread. Dispose the result to unsubscribe.</summary>
     IDisposable Subscribe<T>(string eventName, Action<T> handler);
 }
 

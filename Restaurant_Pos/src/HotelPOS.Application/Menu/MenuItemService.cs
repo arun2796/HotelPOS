@@ -19,10 +19,8 @@ public interface IMenuItemService
 
     Task<Result<MenuItemDto>> DeactivateAsync(int id, CancellationToken cancellationToken = default);
 
-    /// <summary>Sold-out toggle. Needs no row version from the client; a simultaneous edit still returns CONCURRENCY_CONFLICT.</summary>
     Task<Result<MenuItemDto>> SetAvailabilityAsync(int id, bool isAvailable, CancellationToken cancellationToken = default);
 
-    /// <summary>Replaces the item picture. The content must be a JPEG or PNG of at most 2 MB.</summary>
     Task<Result<MenuItemDto>> UploadImageAsync(int id, Stream content, long length, CancellationToken cancellationToken = default);
 
     Task<Result<MenuItemDto>> RemoveImageAsync(int id, CancellationToken cancellationToken = default);

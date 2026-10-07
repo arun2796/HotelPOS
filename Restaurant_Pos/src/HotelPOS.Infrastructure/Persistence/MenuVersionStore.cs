@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HotelPOS.Infrastructure.Persistence;
 
-/// <summary>The <c>MenuVersion</c> setting, incremented with a single atomic UPDATE so concurrent writes never lose a bump.</summary>
 public sealed class MenuVersionStore : IMenuVersionStore
 {
     private readonly AppDbContext _db;

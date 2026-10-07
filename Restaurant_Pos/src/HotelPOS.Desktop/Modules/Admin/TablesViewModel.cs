@@ -11,13 +11,11 @@ using HotelPOS.Desktop.Services.Ui;
 
 namespace HotelPOS.Desktop.Modules.Admin;
 
-/// <summary>A row of the admin tables grid.</summary>
 public sealed record TableRow(TableDto Table)
 {
     public string StatusText => TableTileViewModel.DescribeStatus(Table.Status);
 }
 
-/// <summary>Side panel used to create a table or edit the selected one.</summary>
 public sealed partial class TableEditorViewModel : ObservableObject
 {
     [ObservableProperty]
@@ -51,7 +49,6 @@ public sealed partial class TableEditorViewModel : ObservableObject
     [ObservableProperty]
     private string? _errorMessage;
 
-    /// <summary>Active sections a table can be placed in.</summary>
     public ObservableCollection<SectionDto> Sections { get; } = new();
 
     public string Title => IsNew ? "New table" : "Edit table";
@@ -102,7 +99,6 @@ public sealed partial class TableEditorViewModel : ObservableObject
         ErrorMessage = null;
     }
 
-    /// <summary>Quick client-side checks; the server validates everything again.</summary>
     public string? Validate()
     {
         var code = Code.Trim();
@@ -140,7 +136,6 @@ public sealed partial class TableEditorViewModel : ObservableObject
     };
 }
 
-/// <summary>Admin/Manager: tables — list by section, create, edit, (de)activate, out of service.</summary>
 public sealed partial class TablesViewModel : ObservableObject
 {
     private readonly IFloorApi _floorApi;
@@ -157,7 +152,6 @@ public sealed partial class TablesViewModel : ObservableObject
 
     public ObservableCollection<TableRow> Tables { get; } = new();
 
-    /// <summary>Section filter; the first entry ("All sections") has Id 0.</summary>
     public ObservableCollection<SectionDto> SectionFilters { get; } = new();
 
     public TableEditorViewModel Editor { get; } = new();

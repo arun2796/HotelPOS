@@ -7,7 +7,6 @@ using HotelPOS.Contracts.Users;
 
 namespace HotelPOS.Api.Tests;
 
-/// <summary>Role matrix for the Phase 1 endpoints. Extended phase by phase (Phase 9 makes it exhaustive).</summary>
 public class AuthorizationTests : IClassFixture<ApiFactory>
 {
     private readonly ApiFactory _factory;

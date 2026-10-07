@@ -6,7 +6,6 @@ namespace HotelPOS.Desktop.Services.Api;
 
 public interface IMenuApi
 {
-    /// <summary>The compact ordering menu; pass the cached version to get <c>notModified</c> when unchanged.</summary>
     Task<ApiResult<MenuDto>> GetMenuAsync(int? knownVersion, CancellationToken cancellationToken = default);
 
     Task<ApiResult<List<CategoryDto>>> GetCategoriesAsync(bool includeInactive, CancellationToken cancellationToken = default);

@@ -16,20 +16,13 @@ public sealed class SeedOptions
 {
     public const string SectionName = "Seed";
 
-    /// <summary>Initial password of the "admin" account. The user must change it at first login.</summary>
     public string AdminPassword { get; set; } = string.Empty;
 
-    /// <summary>Creates sample users (waiter1, kitchen1, cashier1, manager1) and a sample floor. Development only.</summary>
     public bool DemoData { get; set; }
 
-    /// <summary>Password of the demo users.</summary>
     public string DemoPassword { get; set; } = "Pass@123";
 }
 
-/// <summary>
-/// Inserts reference data that must always exist. Idempotent: only missing rows are added, existing
-/// values (possibly edited by an admin) are never overwritten.
-/// </summary>
 public sealed class DbSeeder
 {
     public const string DefaultAdminUsername = "admin";

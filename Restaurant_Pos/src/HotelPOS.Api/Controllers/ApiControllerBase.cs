@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace HotelPOS.Api.Controllers;
 
-/// <summary>Base controller: converts application results into the standard response envelope.</summary>
 [ApiController]
 [Produces("application/json")]
 public abstract class ApiControllerBase : ControllerBase

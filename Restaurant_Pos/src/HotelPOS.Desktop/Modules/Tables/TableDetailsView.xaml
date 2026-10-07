@@ -55,7 +55,6 @@
             <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding OrderText}" Style="{StaticResource Text.Body}" />
           </Grid>
 
-          <!-- Guests keypad, only while the table can be occupied -->
           <StackPanel Visibility="{Binding Table.IsAvailable, Converter={StaticResource BoolToVisibility}}">
             <TextBlock Text="Number of guests" Style="{StaticResource Text.Label}" />
             <Border Background="{DynamicResource Brush.InputBackground}" BorderBrush="{DynamicResource Brush.InputBorder}"

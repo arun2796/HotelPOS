@@ -7,10 +7,6 @@ using HotelPOS.Desktop.Services.Configuration;
 
 namespace HotelPOS.Desktop.Services.Api;
 
-/// <summary>
-/// Adds the device headers and the bearer token to every request. On a 401 it refreshes the session
-/// once and repeats the request; if that fails the session is ended (see <see cref="ITokenRefresher"/>).
-/// </summary>
 public sealed class AuthDelegatingHandler : DelegatingHandler
 {
     public static readonly HttpRequestOptionsKey<bool> SkipAuthentication = new("HotelPOS.SkipAuthentication");

@@ -30,6 +30,5 @@ public static class DeviceNameRules
     public const int MinLength = 2;
     public const int MaxLength = 50;
 
-    /// <summary>Letters, digits, dash and underscore, e.g. WAITER-01.</summary>
     public const string Pattern = "^[A-Za-z0-9_-]+$";
 }

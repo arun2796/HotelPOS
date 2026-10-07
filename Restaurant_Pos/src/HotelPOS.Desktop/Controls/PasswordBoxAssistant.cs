@@ -3,10 +3,6 @@ using System.Windows.Controls;
 
 namespace HotelPOS.Desktop.Controls;
 
-/// <summary>
-/// Lets a PasswordBox take part in MVVM binding (PasswordBox.Password is deliberately not bindable).
-/// Usage: controls:PasswordBoxAssistant.BoundPassword="{Binding Password, Mode=TwoWay}".
-/// </summary>
 public static class PasswordBoxAssistant
 {
     // Default is null so the first binding update ("") counts as a change and hooks the event.

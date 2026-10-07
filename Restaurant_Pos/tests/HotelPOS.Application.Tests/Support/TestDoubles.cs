@@ -2,7 +2,6 @@ using HotelPOS.Application.Common.Interfaces;
 
 namespace HotelPOS.Application.Tests.Support;
 
-/// <summary>Controllable clock. Starts at a fixed instant; tests move it forward explicitly.</summary>
 public sealed class TestClock : IClock
 {
     public static readonly DateTime Start = new(2026, 10, 7, 6, 30, 0, DateTimeKind.Utc);
@@ -14,7 +13,6 @@ public sealed class TestClock : IClock
     public void Advance(TimeSpan by) => UtcNow = UtcNow.Add(by);
 }
 
-/// <summary>Mutable stand-in for the HTTP caller. Anonymous by default.</summary>
 public sealed class TestCurrentUser : ICurrentUser
 {
     public bool IsAuthenticated => UserId is not null;
@@ -46,7 +44,6 @@ public sealed class TestCurrentUser : ICurrentUser
     }
 }
 
-/// <summary>Captures published real-time events instead of sending them.</summary>
 public sealed class RecordingRealtimeNotifier : IRealtimeNotifier
 {
     private readonly List<(string EventName, object Payload, RealtimeAudience Audience)> _events = new();

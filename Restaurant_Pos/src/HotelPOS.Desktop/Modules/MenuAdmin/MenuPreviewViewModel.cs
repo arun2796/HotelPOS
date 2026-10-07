@@ -30,10 +30,6 @@ public sealed partial class PreviewItemViewModel : ObservableObject
     private string? _imageFile;
 }
 
-/// <summary>
-/// The ordering menu exactly as terminals receive it (from <see cref="IMenuCache"/>), updated live when
-/// <c>MenuChanged</c> arrives. Phase 4's order builder uses the same data.
-/// </summary>
 public sealed partial class MenuPreviewViewModel : ObservableObject, IMenuAdminPage, IDisposable
 {
     private readonly IMenuCache _menuCache;

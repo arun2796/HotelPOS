@@ -3,10 +3,6 @@ using HotelPOS.Domain.Common;
 
 namespace HotelPOS.Domain.Menu;
 
-/// <summary>
-/// A set of choices offered with an item ("Spice level": pick exactly 1; "Add-ons": pick up to 3).
-/// Items link to groups; the same group can serve many items.
-/// </summary>
 public sealed class ModifierGroup : BaseEntity
 {
     private readonly List<ModifierOption> _options = new();
@@ -46,7 +42,6 @@ public sealed class ModifierGroup : BaseEntity
     public void Deactivate() => IsActive = false;
 }
 
-/// <summary>One choice in a modifier group, with the amount it adds to (or removes from) the item price.</summary>
 public sealed class ModifierOption : BaseEntity
 {
     private ModifierOption()

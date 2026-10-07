@@ -105,7 +105,6 @@ await app.Services.InitializeDatabaseAsync();
 app.Logger.LogInformation("HotelPOS API {Version} starting ({Environment})", ApiServiceRegistration.ApiVersion, app.Environment.EnvironmentName);
 await app.RunAsync();
 
-/// <summary>Entry point marker, used by integration tests (WebApplicationFactory).</summary>
 public partial class Program
 {
 }

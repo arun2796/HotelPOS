@@ -24,7 +24,6 @@ public interface INotificationService
     void Error(string message, string? correlationId = null);
 }
 
-/// <summary>Non-blocking toasts in the bottom-right corner. Errors stay longer than confirmations.</summary>
 public sealed class NotificationService : INotificationService
 {
     private const int MaxVisible = 4;

@@ -2,7 +2,6 @@ using System.Windows;
 
 namespace HotelPOS.Desktop.Services.Ui;
 
-/// <summary>Marshals work to the UI thread. Abstracted so view-models can be unit tested.</summary>
 public interface IUiDispatcher
 {
     void Post(Action action);

@@ -8,14 +8,12 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace HotelPOS.Api.Controllers;
 
-/// <summary>Role groups for the menu endpoints (docs/03-api-reference.md § 3.4).</summary>
 internal static class MenuRoles
 {
     public const string Managers = Roles.Admin + "," + Roles.Manager;
     public const string Availability = Roles.Admin + "," + Roles.Manager + "," + Roles.Kitchen;
 }
 
-/// <summary>Compact active menu for ordering terminals.</summary>
 [Route("api/menu")]
 [Authorize]
 public sealed class MenuController : ApiControllerBase
@@ -27,7 +25,6 @@ public sealed class MenuController : ApiControllerBase
         _menu = menu;
     }
 
-    /// <summary>The active menu. With <c>?version=N</c> equal to the current version, only <c>notModified: true</c>.</summary>
     [HttpGet]
     [ProducesResponseType<ApiResponse<MenuDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Get([FromQuery] int? version, CancellationToken cancellationToken) =>
@@ -69,7 +66,6 @@ public sealed class CategoriesController : ApiControllerBase
     public async Task<IActionResult> Update(int id, UpdateCategoryRequest request, CancellationToken cancellationToken) =>
         FromResult(await _categories.UpdateAsync(id, request, cancellationToken), message: "Category updated.");
 
-    /// <summary>Deactivates the category; with <c>deactivateItems=true</c> its active items too.</summary>
     [HttpDelete("{id:int}")]
     [Authorize(Roles = MenuRoles.Managers)]
     [ProducesResponseType<ApiResponse<CategoryDto>>(StatusCodes.Status200OK)]
@@ -122,7 +118,6 @@ public sealed class MenuItemsController : ApiControllerBase
     public async Task<IActionResult> Deactivate(int id, CancellationToken cancellationToken) =>
         FromResult(await _items.DeactivateAsync(id, cancellationToken), message: "Item deactivated.");
 
-    /// <summary>Sold-out toggle.</summary>
     [HttpPatch("{id:int}/availability")]
     [Authorize(Roles = MenuRoles.Availability)]
     [ProducesResponseType<ApiResponse<MenuItemDto>>(StatusCodes.Status200OK)]
@@ -130,7 +125,6 @@ public sealed class MenuItemsController : ApiControllerBase
         FromResult(await _items.SetAvailabilityAsync(id, request.IsAvailable, cancellationToken),
             message: request.IsAvailable ? "Item available again." : "Item marked sold out.");
 
-    /// <summary>Uploads the item picture (multipart field "file"; JPEG or PNG up to 2 MB).</summary>
     [HttpPost("{id:int}/image")]
     [Authorize(Roles = MenuRoles.Managers)]
     [Consumes("multipart/form-data")]
@@ -215,7 +209,6 @@ public sealed class ModifierGroupsController : ApiControllerBase
         FromResult(await _modifiers.DeactivateOptionAsync(id, optionId, cancellationToken), message: "Option deactivated.");
 }
 
-/// <summary>Taxes: everyone reads, only Admin writes.</summary>
 [Route("api/taxes")]
 [Authorize]
 public sealed class TaxesController : ApiControllerBase
@@ -251,7 +244,6 @@ public sealed class TaxesController : ApiControllerBase
         FromResult(await _taxes.DeactivateAsync(id, cancellationToken), message: "Tax deactivated.");
 }
 
-/// <summary>Preparation stations: everyone reads, only Admin writes.</summary>
 [Route("api/stations")]
 [Authorize]
 public sealed class StationsController : ApiControllerBase

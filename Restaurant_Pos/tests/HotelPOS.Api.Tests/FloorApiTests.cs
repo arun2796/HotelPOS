@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.SignalR.Client;
 
 namespace HotelPOS.Api.Tests;
 
-/// <summary>Phase 2 endpoints against the demo floor (Ground Floor T01–T08, First Floor T11–T14, Outdoor O01–O04).</summary>
 public class FloorApiTests : IClassFixture<ApiFactory>
 {
     private readonly ApiFactory _factory;

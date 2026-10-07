@@ -3,10 +3,6 @@ using System.Text.Json.Serialization;
 
 namespace HotelPOS.Contracts.Common;
 
-/// <summary>
-/// JSON settings shared by the API (MVC + SignalR) and the desktop client, so both sides agree on
-/// casing and enum representation.
-/// </summary>
 public static class PosJson
 {
     public static JsonSerializerOptions Options { get; } = Create();

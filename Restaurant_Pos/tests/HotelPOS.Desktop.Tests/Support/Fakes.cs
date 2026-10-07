@@ -6,7 +6,6 @@ using HotelPOS.Desktop.Services.Ui;
 
 namespace HotelPOS.Desktop.Tests.Support;
 
-/// <summary>Runs posted work immediately (no WPF dispatcher in unit tests).</summary>
 public sealed class ImmediateDispatcher : IUiDispatcher
 {
     public void Post(Action action) => action();
@@ -76,7 +75,6 @@ public sealed class FakeRealtimeClient : IRealtimeClient
         return new Unsubscriber(() => _subscriptions.Remove(subscription));
     }
 
-    /// <summary>Delivers a server event to the current subscribers, as the hub would.</summary>
     public void Publish<T>(string eventName, T payload)
         where T : notnull
     {

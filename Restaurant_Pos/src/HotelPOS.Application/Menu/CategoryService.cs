@@ -17,7 +17,6 @@ public interface ICategoryService
 
     Task<Result<CategoryDto>> UpdateAsync(int id, UpdateCategoryRequest request, CancellationToken cancellationToken = default);
 
-    /// <summary>Refused while the category has active items, unless <paramref name="deactivateItems"/> is true.</summary>
     Task<Result<CategoryDto>> DeactivateAsync(int id, bool deactivateItems, CancellationToken cancellationToken = default);
 }
 

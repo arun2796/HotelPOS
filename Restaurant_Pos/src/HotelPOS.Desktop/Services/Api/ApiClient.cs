@@ -12,19 +12,14 @@ namespace HotelPOS.Desktop.Services.Api;
 
 public sealed record ApiRequestOptions
 {
-    /// <summary>Do not attach the access token (login, refresh, logout, system info).</summary>
     public bool Anonymous { get; init; }
 
-    /// <summary>Sent as Idempotency-Key so a retried critical request is processed only once (Phase 4).</summary>
     public Guid? IdempotencyKey { get; init; }
 
-    /// <summary>Talk to another server than the configured one ("Test connection" before saving).</summary>
     public string? BaseUrlOverride { get; init; }
 
-    /// <summary>Shorter limit than the client default (15 s), for quick checks.</summary>
     public TimeSpan? Timeout { get; init; }
 
-    /// <summary>GET requests are retried on connection failures unless this is false.</summary>
     public bool RetryReads { get; init; } = true;
 }
 
@@ -40,14 +35,9 @@ public interface IApiClient
 
     Task<ApiResult<T>> DeleteAsync<T>(string path, CancellationToken cancellationToken = default, ApiRequestOptions? options = null);
 
-    /// <summary>Posts one file as multipart/form-data (field "file").</summary>
     Task<ApiResult<T>> UploadAsync<T>(string path, Stream content, string fileName, string contentType, CancellationToken cancellationToken = default);
 }
 
-/// <summary>
-/// The only way the desktop talks to the server. Wraps HttpClient, unwraps the response envelope and
-/// turns network problems into <see cref="ApiResult{T}.IsConnectionFailure"/> results instead of exceptions.
-/// </summary>
 public sealed class ApiClient : IApiClient
 {
     public const string HttpClientName = "HotelPOS.Api";

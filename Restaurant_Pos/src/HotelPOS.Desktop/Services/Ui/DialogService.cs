@@ -9,14 +9,9 @@ public interface IDialogService
 
     Task AlertAsync(string title, string message);
 
-    /// <summary>Asks for one value. Returns null when cancelled.</summary>
     Task<string?> PromptAsync(string title, string message, string confirmText = "OK", bool isPassword = false);
 }
 
-/// <summary>
-/// In-window modal overlay (touch friendly, themed) instead of OS message boxes. One dialog is shown
-/// at a time; further requests wait their turn.
-/// </summary>
 public sealed partial class DialogService : ObservableObject, IDialogService
 {
     private readonly SemaphoreSlim _oneAtATime = new(1, 1);

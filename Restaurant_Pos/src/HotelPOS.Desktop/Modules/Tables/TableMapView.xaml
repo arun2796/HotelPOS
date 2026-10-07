@@ -20,7 +20,6 @@
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
-    <!-- Section filters + refresh -->
     <Grid Margin="0,0,0,8">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="*" />
@@ -46,7 +45,6 @@
       <TextBlock Text="{Binding ErrorMessage}" Style="{StaticResource Text.Error}" />
     </Border>
 
-    <!-- Map -->
     <Grid Grid.Row="2">
       <ScrollViewer VerticalScrollBarVisibility="Auto" PanningMode="VerticalOnly">
         <ItemsControl ItemsSource="{Binding Sections}" Focusable="False">
@@ -100,7 +98,6 @@
                    Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}" />
     </Grid>
 
-    <!-- Legend -->
     <WrapPanel Grid.Row="3" Margin="0,12,0,0">
       <TextBlock Text="Legend:" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
       <Border Style="{StaticResource LegendDot}" Background="{DynamicResource Brush.Status.Available}" />
@@ -119,7 +116,6 @@
       <TextBlock Text="Out of service" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
     </WrapPanel>
 
-    <!-- Details panel -->
     <tables:TableDetailsView Grid.Column="1" Grid.RowSpan="4" Width="360" Margin="20,0,0,0"
                              DataContext="{Binding Details}"
                              Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibility}}" />

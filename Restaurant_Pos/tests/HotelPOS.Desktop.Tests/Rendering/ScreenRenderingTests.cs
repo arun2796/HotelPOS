@@ -32,11 +32,6 @@ using Xunit.Abstractions;
 
 namespace HotelPOS.Desktop.Tests.Rendering;
 
-/// <summary>
-/// Builds every screen with realistic data on a real WPF UI thread, renders it to a PNG and fails on
-/// XAML load errors or binding path errors (typos that WPF otherwise only reports in the debug output).
-/// Screenshots are written to %TEMP%\hotelpos-screens for visual review.
-/// </summary>
 public class ScreenRenderingTests
 {
     private const int Width = 1366;
@@ -68,28 +63,24 @@ public class ScreenRenderingTests
 
             var env = new Environment();
 
-            // First run configuration
             var config = env.Create<ConfigurationViewModel>();
             await config.OnNavigatedToAsync(new ConfigurationContext(IsFirstRun: true, InShell: false));
             config.ApiBaseUrl = "http://192.168.1.100:5000";
             await config.TestConnectionCommand.ExecuteAsync(null);
             rendered.Add(await RenderScreenAsync(env, config, "01-first-run-configuration"));
 
-            // Login with an error
             var login = env.Create<LoginViewModel>();
             await login.OnNavigatedToAsync("Terminal configured. Sign in to continue.");
             login.Username = "waiter1";
             login.ErrorMessage = "Invalid username or password.";
             rendered.Add(await RenderScreenAsync(env, login, "02-login"));
 
-            // Forced password change
             env.Session.Start(TestData.Login("admin", mustChange: true, roles: "Admin"));
             var change = env.Create<ChangePasswordViewModel>();
             await change.OnNavigatedToAsync(ChangePasswordMode.Forced);
             change.ErrorMessage = "The new password and its confirmation do not match.";
             rendered.Add(await RenderScreenAsync(env, change, "03-change-password"));
 
-            // Admin shell: dashboard placeholder, users, settings
             var shell = env.Create<ShellViewModel>();
             await shell.OnNavigatedToAsync(null);
             env.Realtime.Raise(ConnectionStatus.Connected);
@@ -107,7 +98,6 @@ public class ScreenRenderingTests
             await shell.NavigateToAsync(ModuleRegistry.ThisDevice, null);
             rendered.Add(await RenderScreenAsync(env, shell, "07-this-terminal"));
 
-            // Sections & Tables: tables tab with the editor open, then the sections tab
             await shell.NavigateToAsync(ModuleRegistry.Floor, null);
             var floor = (HotelPOS.Desktop.Modules.Admin.FloorViewModel)shell.CurrentPage!;
             floor.Tables.SelectedRow = floor.Tables.Tables[4];
@@ -119,7 +109,6 @@ public class ScreenRenderingTests
             floor.Sections.EditCommand.Execute(null);
             rendered.Add(await RenderScreenAsync(env, shell, "12-admin-floor-sections"));
 
-            // Menu: items with the editor open, categories, modifiers, taxes, live preview
             await shell.NavigateToAsync(ModuleRegistry.Menu, null);
             var menu = (MenuAdminViewModel)shell.CurrentPage!;
             menu.Items.SelectedItem = menu.Items.Items[0];
@@ -132,7 +121,6 @@ public class ScreenRenderingTests
                 rendered.Add(await RenderScreenAsync(env, shell, name));
             }
 
-            // Dialog and toast layers over the users page, with the connection lost
             await shell.NavigateToAsync(ModuleRegistry.Users, null);
             env.Realtime.Raise(ConnectionStatus.Reconnecting);
             env.Notifications.Success("User waiter3 created.");
@@ -142,20 +130,17 @@ public class ScreenRenderingTests
             env.Dialogs.Current?.CancelCommand.Execute(null);
             await Dispatcher.Yield(DispatcherPriority.Background);
 
-            // Dark theme
             env.Theme.Apply(ThemeService.Dark);
             rendered.Add(await RenderScreenAsync(env, shell, "09-admin-users-dark"));
             env.Theme.Apply(ThemeService.Light);
             shell.Dispose();
 
-            // Waiter shell
             env.Session.Start(TestData.Login("waiter1", roles: "Waiter"));
             var waiterShell = env.Create<ShellViewModel>();
             await waiterShell.OnNavigatedToAsync(null);
             env.Realtime.Raise(ConnectionStatus.Connected);
             rendered.Add(await RenderScreenAsync(env, waiterShell, "10-waiter-home-table-map"));
 
-            // Table details with guests typed on the keypad
             var map = (HotelPOS.Desktop.Modules.Tables.TableMapViewModel)waiterShell.CurrentPage!;
             map.SelectTableCommand.Execute(map.AllTables.Single(t => t.Code == "T05"));
             map.Details.DigitCommand.Execute("4");
@@ -248,7 +233,6 @@ public class ScreenRenderingTests
         }
     }
 
-    /// <summary>Everything the screens need, backed by fakes with realistic data.</summary>
     private sealed class Environment
     {
         private readonly ServiceProvider _provider;
@@ -444,7 +428,6 @@ public class ScreenRenderingTests
             return api;
         }
 
-        /// <summary>A floor in mid-service: every status appears at least once.</summary>
         private static TableMapDto DemoMap()
         {
             var now = DateTime.UtcNow;
@@ -514,7 +497,6 @@ public class ScreenRenderingTests
         };
     }
 
-    /// <summary>A loaded ordering menu with one real picture on disk.</summary>
     private sealed class DemoMenuCache : IMenuCache
     {
         private static readonly string Picture = WritePicture();

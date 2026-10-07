@@ -29,14 +29,8 @@ public sealed partial class TableMapSectionViewModel : ObservableObject
     private bool _isVisible = true;
 }
 
-/// <summary>A section filter chip. <see cref="SectionId"/> is null for "All".</summary>
 public sealed record SectionFilter(int? SectionId, string Name);
 
-/// <summary>
-/// Waiter/Cashier/Manager table map. Loads from the API, then stays current through
-/// <c>TableStatusChanged</c> events; the shell calls <see cref="RefreshAsync"/> after a reconnect, and the
-/// API state always wins (docs/04 § 5).
-/// </summary>
 public sealed partial class TableMapViewModel : ObservableObject, INavigationAware, IRefreshable, IDisposable
 {
     private readonly IFloorApi _floorApi;
@@ -77,7 +71,6 @@ public sealed partial class TableMapViewModel : ObservableObject, INavigationAwa
 
     public bool IsEmpty => _tiles.Count == 0 && !IsBusy && ErrorMessage is null;
 
-    /// <summary>The server's current time, estimated from the clock offset measured at the last refresh.</summary>
     public DateTime ServerNowUtc => DateTime.UtcNow + _serverClockOffset;
 
     public IReadOnlyCollection<TableTileViewModel> AllTables => _tiles.Values;
@@ -101,7 +94,6 @@ public sealed partial class TableMapViewModel : ObservableObject, INavigationAwa
         _timer = null;
     }
 
-    /// <summary>Reloads the whole map from the API. Concurrent calls collapse into the running one.</summary>
     public async Task RefreshAsync()
     {
         if (Interlocked.Exchange(ref _refreshing, 1) == 1)
@@ -132,7 +124,6 @@ public sealed partial class TableMapViewModel : ObservableObject, INavigationAwa
         }
     }
 
-    /// <summary>Replaces the map with the server's. A tile that already shows a newer event keeps it.</summary>
     public void ApplyMap(TableMapDto map)
     {
         _serverClockOffset = map.ServerTimeUtc - DateTime.UtcNow;
@@ -176,7 +167,6 @@ public sealed partial class TableMapViewModel : ObservableObject, INavigationAwa
         UpdateSummary();
     }
 
-    /// <summary>Applies a single table returned by the API (occupy/release result or conflict data).</summary>
     public void ApplyTable(TableDto table)
     {
         if (_tiles.TryGetValue(table.Id, out var tile))

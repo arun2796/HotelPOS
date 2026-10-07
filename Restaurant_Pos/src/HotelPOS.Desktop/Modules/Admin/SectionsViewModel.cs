@@ -8,7 +8,6 @@ using HotelPOS.Desktop.Services.Ui;
 
 namespace HotelPOS.Desktop.Modules.Admin;
 
-/// <summary>Side panel used to create a section or edit the selected one.</summary>
 public sealed partial class SectionEditorViewModel : ObservableObject
 {
     [ObservableProperty]
@@ -65,7 +64,6 @@ public sealed partial class SectionEditorViewModel : ObservableObject
         ErrorMessage = null;
     }
 
-    /// <summary>Quick client-side checks; the server validates everything again.</summary>
     public string? Validate()
     {
         if (string.IsNullOrWhiteSpace(Name))
@@ -83,7 +81,6 @@ public sealed partial class SectionEditorViewModel : ObservableObject
     public UpdateSectionRequest ToUpdateRequest() => new() { Name = Name.Trim(), SortOrder = int.Parse(SortOrder), IsActive = IsActive };
 }
 
-/// <summary>Admin/Manager: floor sections — list, create, rename, reorder, (de)activate.</summary>
 public sealed partial class SectionsViewModel : ObservableObject
 {
     private readonly IFloorApi _floorApi;

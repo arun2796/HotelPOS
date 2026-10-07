@@ -10,7 +10,6 @@ using HotelPOS.Desktop.Services.Ui;
 
 namespace HotelPOS.Desktop.Modules.MenuAdmin;
 
-/// <summary>A tab of the Menu page.</summary>
 public interface IMenuAdminPage
 {
     string Title { get; }
@@ -18,10 +17,6 @@ public interface IMenuAdminPage
     Task LoadAsync();
 }
 
-/// <summary>
-/// Admin/Manager "Menu" page: items, categories, modifiers, taxes and stations (the last two editable by Admin
-/// only, so only Admin sees them), and a live preview of the ordering menu.
-/// </summary>
 public sealed partial class MenuAdminViewModel : ObservableObject, INavigationAware, IRefreshable, IDisposable
 {
     public MenuAdminViewModel(
@@ -69,7 +64,6 @@ public sealed partial class MenuAdminViewModel : ObservableObject, INavigationAw
     partial void OnSelectedTabChanged(IMenuAdminPage value) => _ = value.LoadAsync();
 }
 
-/// <summary>Number parsing for the editor forms: the terminal's culture first, then "1234.50".</summary>
 internal static class FormNumbers
 {
     public static bool TryParseMoney(string text, out decimal value) =>

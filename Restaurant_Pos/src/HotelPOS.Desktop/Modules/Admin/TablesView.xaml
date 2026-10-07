@@ -20,7 +20,6 @@
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
-    <!-- Toolbar -->
     <Grid Margin="0,0,0,16">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="*" MinWidth="160" MaxWidth="300" />
@@ -48,7 +47,6 @@
       <TextBlock Text="{Binding ErrorMessage}" Style="{StaticResource Text.Error}" />
     </Border>
 
-    <!-- List -->
     <Grid Grid.Row="2">
       <DataGrid ItemsSource="{Binding Tables}" SelectedItem="{Binding SelectedRow}" HorizontalScrollBarVisibility="Disabled">
         <DataGrid.InputBindings>
@@ -67,13 +65,11 @@
                    Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}" />
     </Grid>
 
-    <!-- Actions -->
     <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,12,0,0">
       <Button Content="Edit" Command="{Binding EditCommand}" MinWidth="90" />
       <Button Content="{Binding ServiceToggleText}" Command="{Binding ToggleServiceCommand}" Margin="8,0,0,0" MinWidth="170" />
     </StackPanel>
 
-    <!-- Editor panel -->
     <Border Grid.Column="1" Grid.RowSpan="4" Style="{StaticResource Card}" Width="360" Margin="20,0,0,0"
             DataContext="{Binding Editor}"
             Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibility}}">

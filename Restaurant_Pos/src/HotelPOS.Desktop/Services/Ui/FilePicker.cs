@@ -2,10 +2,8 @@ using Microsoft.Win32;
 
 namespace HotelPOS.Desktop.Services.Ui;
 
-/// <summary>Opens the Windows file dialog. Behind an interface so view-models can be tested.</summary>
 public interface IFilePicker
 {
-    /// <summary>Full path of the chosen JPEG/PNG picture, or null when cancelled.</summary>
     string? PickImage();
 }
 

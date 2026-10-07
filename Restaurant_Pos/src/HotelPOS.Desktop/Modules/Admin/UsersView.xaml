@@ -21,7 +21,6 @@
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
-    <!-- Toolbar -->
     <Grid Margin="0,0,0,16">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="*" MinWidth="160" MaxWidth="340" />
@@ -56,7 +55,6 @@
       <TextBlock Text="{Binding ErrorMessage}" Style="{StaticResource Text.Error}" />
     </Border>
 
-    <!-- List -->
     <Grid Grid.Row="2">
       <DataGrid ItemsSource="{Binding Users}" SelectedItem="{Binding SelectedUser}" HorizontalScrollBarVisibility="Disabled">
         <DataGrid.InputBindings>
@@ -74,7 +72,6 @@
                    Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}" />
     </Grid>
 
-    <!-- Actions + paging -->
     <Grid Grid.Row="3" Margin="0,12,0,0">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="Auto" />
@@ -97,7 +94,6 @@
       </StackPanel>
     </Grid>
 
-    <!-- Editor panel -->
     <Border Grid.Column="1" Grid.RowSpan="4" Style="{StaticResource Card}" Width="380" Margin="20,0,0,0"
             DataContext="{Binding Editor}"
             Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibility}}">

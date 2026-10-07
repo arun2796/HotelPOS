@@ -3,10 +3,6 @@ using HotelPOS.Contracts.Common;
 
 namespace HotelPOS.Desktop.Services.Api;
 
-/// <summary>
-/// Outcome of an API call as seen by view-models: success with data, a server-side failure with the
-/// server's message and error codes, or a connection failure (the request may not have reached the server).
-/// </summary>
 public sealed class ApiResult<T>
 {
     public bool Success { get; init; }
@@ -16,7 +12,6 @@ public sealed class ApiResult<T>
     public HttpStatusCode? StatusCode { get; init; }
     public string? CorrelationId { get; init; }
 
-    /// <summary>True when no response was received (Wi-Fi down, server stopped, timeout).</summary>
     public bool IsConnectionFailure { get; init; }
 
     public string? ErrorCode => Errors.FirstOrDefault()?.Code;

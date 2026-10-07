@@ -3,7 +3,6 @@ using HotelPOS.Domain.Common;
 
 namespace HotelPOS.Domain.Menu;
 
-/// <summary>Shared invariants of menu master data.</summary>
 internal static class MenuGuard
 {
     public static string Name(string? value, string what)
@@ -19,7 +18,6 @@ internal static class MenuGuard
             : throw new DomainException($"{what} can have at most {MenuLimits.NameMaxLength} characters.");
     }
 
-    /// <summary>Upper-cased code, or null when blank.</summary>
     public static string? Code(string? value, string what)
     {
         if (string.IsNullOrWhiteSpace(value))

@@ -4,10 +4,6 @@ using Serilog.Context;
 
 namespace HotelPOS.Api.Common;
 
-/// <summary>
-/// Reads X-Correlation-Id (or creates one), exposes it as HttpContext.TraceIdentifier, echoes it in the
-/// response and attaches it to every log line written during the request.
-/// </summary>
 public sealed partial class CorrelationIdMiddleware
 {
     private readonly RequestDelegate _next;

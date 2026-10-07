@@ -1,6 +1,5 @@
 namespace HotelPOS.Contracts.Security;
 
-/// <summary>System role names. These are seeded and cannot be renamed.</summary>
 public static class Roles
 {
     public const string Admin = "Admin";
@@ -9,7 +8,6 @@ public static class Roles
     public const string Kitchen = "Kitchen";
     public const string Cashier = "Cashier";
 
-    /// <summary>Comma-separated lists for <c>[Authorize(Roles = ...)]</c>.</summary>
     public const string AdminOrManager = Admin + "," + Manager;
 
     public static IReadOnlyList<string> All { get; } = new[] { Admin, Manager, Waiter, Kitchen, Cashier };

@@ -6,7 +6,6 @@ using HotelPOS.Desktop.Modules.Tables;
 
 namespace HotelPOS.Desktop.Services.Navigation;
 
-/// <summary>A sidebar entry. Modules without a view-model yet show a "coming in phase N" page.</summary>
 public sealed record ModuleDefinition(
     string Key,
     string Title,
@@ -17,7 +16,6 @@ public sealed record ModuleDefinition(
     string Description,
     Type? ViewModelType = null);
 
-/// <summary>All modules of the application and the roles that may open them (docs/00 § 3).</summary>
 public static class ModuleRegistry
 {
     public const string Dashboard = "dashboard";
@@ -91,7 +89,6 @@ public static class ModuleRegistry
 
     public static ModuleDefinition? Find(string key) => All.FirstOrDefault(m => m.Key == key);
 
-    /// <summary>The screen a user lands on after login: the one they use most.</summary>
     public static string HomeFor(IReadOnlyCollection<string> roles)
     {
         if (roles.Contains(Roles.Admin) || roles.Contains(Roles.Manager))

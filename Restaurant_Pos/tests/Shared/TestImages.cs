@@ -4,10 +4,8 @@ using System.Text;
 
 namespace HotelPOS.Testing;
 
-/// <summary>Builds real image files in memory for upload tests, without an imaging library.</summary>
 internal static class TestImages
 {
-    /// <summary>A solid-colour RGB PNG of the given size.</summary>
     public static byte[] Png(int width, int height)
     {
         var row = new byte[1 + (width * 3)];
@@ -41,7 +39,6 @@ internal static class TestImages
         return png.ToArray();
     }
 
-    /// <summary>Bytes that are not an image, of the given size.</summary>
     public static byte[] Garbage(int length) => Enumerable.Repeat((byte)'x', length).ToArray();
 
     private static void WriteChunk(Stream stream, string type, byte[] data)

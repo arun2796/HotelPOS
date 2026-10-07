@@ -2,7 +2,6 @@ using System.Globalization;
 
 namespace HotelPOS.Api.Hubs;
 
-/// <summary>SignalR group names. See docs/04-realtime-events.md § 2.</summary>
 public static class HubGroups
 {
     public static string Role(string role) => "role:" + role.ToLowerInvariant();

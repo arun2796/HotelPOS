@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Identity;
 
 namespace HotelPOS.Infrastructure.Identity;
 
-/// <summary>PBKDF2 (HMAC-SHA512, 100,000 iterations) via ASP.NET Core Identity's password hasher.</summary>
 public sealed class PasswordHasherAdapter : IPasswordHasher
 {
     private static readonly object HashUser = new();

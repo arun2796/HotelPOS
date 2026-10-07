@@ -13,7 +13,6 @@ public sealed record UserDto
     public DateTime? LastLoginAtUtc { get; init; }
     public DateTime CreatedAtUtc { get; init; }
 
-    /// <summary>Base64 row version; send it back on updates for optimistic concurrency.</summary>
     public string RowVersion { get; init; } = string.Empty;
 }
 

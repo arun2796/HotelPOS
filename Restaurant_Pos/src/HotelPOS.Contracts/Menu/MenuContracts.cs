@@ -1,6 +1,5 @@
 namespace HotelPOS.Contracts.Menu;
 
-/// <summary>Business limits shared by the server validators and the client forms.</summary>
 public static class MenuLimits
 {
     public const int NameMaxLength = 100;
@@ -14,15 +13,12 @@ public static class MenuLimits
     public const int ImageMaxPixels = 512;
 }
 
-/// <summary>Where menu pictures are served (anonymous static files).</summary>
 public static class MenuImageRoutes
 {
     public const string RequestPath = "/images/menu";
 
     public static string UrlFor(string fileName) => RequestPath + "/" + fileName;
 }
-
-// ===== Categories =====
 
 public sealed record CategoryDto
 {
@@ -31,7 +27,6 @@ public sealed record CategoryDto
     public int SortOrder { get; init; }
     public bool IsActive { get; init; }
 
-    /// <summary>Number of active items in the category.</summary>
     public int ItemCount { get; init; }
 }
 
@@ -47,11 +42,8 @@ public sealed record UpdateCategoryRequest
     public int SortOrder { get; init; }
     public bool IsActive { get; init; } = true;
 
-    /// <summary>When deactivating, also deactivate the category's items instead of refusing.</summary>
     public bool DeactivateItems { get; init; }
 }
-
-// ===== Stations and taxes =====
 
 public sealed record StationDto
 {
@@ -86,8 +78,6 @@ public sealed record SaveTaxRequest
     public decimal RatePercent { get; init; }
     public bool IsActive { get; init; } = true;
 }
-
-// ===== Modifiers =====
 
 public sealed record ModifierGroupDto
 {
@@ -125,8 +115,6 @@ public sealed record SaveModifierOptionRequest
     public bool IsActive { get; init; } = true;
 }
 
-// ===== Menu items =====
-
 public sealed record MenuItemDto
 {
     public int Id { get; init; }
@@ -144,13 +132,11 @@ public sealed record MenuItemDto
     public bool IsAvailable { get; init; }
     public bool IsActive { get; init; }
 
-    /// <summary>Relative URL of the picture (e.g. /images/menu/12-3f2a.jpg), or null.</summary>
     public string? ImageUrl { get; init; }
 
     public int SortOrder { get; init; }
     public IReadOnlyList<int> ModifierGroupIds { get; init; } = Array.Empty<int>();
 
-    /// <summary>Opaque row version; send it back on updates for optimistic concurrency.</summary>
     public string RowVersion { get; init; } = string.Empty;
 }
 
@@ -191,18 +177,11 @@ public sealed record UpdateMenuItemRequest
     public string RowVersion { get; init; } = string.Empty;
 }
 
-/// <summary>Sold-out toggle (kitchen, manager, admin).</summary>
 public sealed record SetAvailabilityRequest
 {
     public bool IsAvailable { get; init; }
 }
 
-// ===== Compact menu for ordering =====
-
-/// <summary>
-/// The active menu, as compact as possible for fast loading on terminals. When the caller already holds
-/// <see cref="Version"/>, the server answers with <see cref="NotModified"/> and empty lists.
-/// </summary>
 public sealed record MenuDto
 {
     public int Version { get; init; }

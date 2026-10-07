@@ -5,10 +5,6 @@ using HotelPOS.Domain.Common;
 
 namespace HotelPOS.Domain.Floor;
 
-/// <summary>
-/// A table on the floor. Its status is stored and only changed through the methods below, which
-/// enforce the transitions of docs/02 § 4.3. From Phase 4 order transitions also set it.
-/// </summary>
 public sealed class Table : BaseEntity, IHasRowVersion
 {
     private Table()
@@ -36,7 +32,6 @@ public sealed class Table : BaseEntity, IHasRowVersion
 
     public static string NormalizeCode(string code) => code.Trim().ToUpperInvariant();
 
-    /// <summary>A table can be deactivated only when nobody is seated at it.</summary>
     public bool CanBeDeactivated => Status is TableStatus.Available or TableStatus.OutOfService;
 
     public void Update(string code, string? name, int sectionId, int capacity)
@@ -63,7 +58,6 @@ public sealed class Table : BaseEntity, IHasRowVersion
         Capacity = capacity;
     }
 
-    /// <summary>Guests are seated: Available -> Occupied.</summary>
     public void Occupy(int guestCount, DateTime nowUtc)
     {
         if (!IsActive || Status != TableStatus.Available)
@@ -81,7 +75,6 @@ public sealed class Table : BaseEntity, IHasRowVersion
         OccupiedAt = nowUtc;
     }
 
-    /// <summary>Guests left without an active order: Occupied -> Available.</summary>
     public void Release()
     {
         if (Status != TableStatus.Occupied)
@@ -99,7 +92,6 @@ public sealed class Table : BaseEntity, IHasRowVersion
         OccupiedAt = null;
     }
 
-    /// <summary>Admin flag (broken table, reserved area): Available -> OutOfService.</summary>
     public void SetOutOfService()
     {
         if (Status != TableStatus.Available)
@@ -110,7 +102,6 @@ public sealed class Table : BaseEntity, IHasRowVersion
         Status = TableStatus.OutOfService;
     }
 
-    /// <summary>OutOfService -> Available.</summary>
     public void ReturnToService()
     {
         if (Status != TableStatus.OutOfService)

@@ -14,10 +14,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace HotelPOS.Api.Tests.Support;
 
-/// <summary>
-/// Runs the real API in memory against its own throw-away PostgreSQL database (see <see cref="TestPostgres"/>).
-/// The database is migrated and seeded by the API's startup code.
-/// </summary>
 public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     public const string AdminPassword = "Admin@123";
@@ -25,7 +21,6 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     private readonly string _connectionString;
 
-    /// <summary>Throw-away folder for uploaded pictures.</summary>
     public string MediaPath { get; } = Path.Combine(Path.GetTempPath(), "hotelpos-apitests-media-" + Guid.NewGuid().ToString("N"));
 
     public ApiFactory()

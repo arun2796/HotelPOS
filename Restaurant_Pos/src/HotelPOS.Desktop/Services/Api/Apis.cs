@@ -44,7 +44,6 @@ public sealed class AuthApi : IAuthApi
 
 public interface ISystemApi
 {
-    /// <summary>Anonymous server check. Pass a base URL to test an address before saving it.</summary>
     Task<ApiResult<SystemInfoDto>> GetInfoAsync(string? baseUrlOverride = null, CancellationToken cancellationToken = default);
 
     Task<ApiResult<List<SettingDto>>> GetPublicSettingsAsync(CancellationToken cancellationToken = default);

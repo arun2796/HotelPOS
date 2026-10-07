@@ -1,6 +1,5 @@
 namespace HotelPOS.Contracts.Common;
 
-/// <summary>Custom HTTP headers exchanged between clients and the API.</summary>
 public static class PosHeaders
 {
     public const string CorrelationId = "X-Correlation-Id";

@@ -6,10 +6,6 @@ using HotelPOS.Contracts.Realtime;
 
 namespace HotelPOS.Desktop.Modules.Tables;
 
-/// <summary>
-/// One table on the map. Updated in place from REST results and <c>TableStatusChanged</c> events; the
-/// server timestamp of the state it shows decides whether a late event is stale.
-/// </summary>
 public sealed partial class TableTileViewModel : ObservableObject
 {
     public TableTileViewModel(TableDto table, DateTime stateTimestampUtc)
@@ -59,7 +55,6 @@ public sealed partial class TableTileViewModel : ObservableObject
     [ObservableProperty]
     private bool _isSelected;
 
-    /// <summary>Server time of the state shown; older events are ignored.</summary>
     public DateTime StateTimestampUtc { get; private set; }
 
     public bool IsAvailable => Status == TableStatus.Available;
@@ -100,7 +95,6 @@ public sealed partial class TableTileViewModel : ObservableObject
         }
     }
 
-    /// <summary>Applies a status event unless the tile already shows a newer state. Idempotent.</summary>
     public bool Apply(TableStatusChangedEvent change)
     {
         if (change.OccurredAtUtc < StateTimestampUtc)

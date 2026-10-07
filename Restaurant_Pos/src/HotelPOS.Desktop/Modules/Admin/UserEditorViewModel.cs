@@ -22,7 +22,6 @@ public sealed partial class RoleOptionViewModel : ObservableObject
     private bool _isSelected;
 }
 
-/// <summary>Side panel used to create a user or edit the selected one.</summary>
 public sealed partial class UserEditorViewModel : ObservableObject
 {
     [ObservableProperty]
@@ -109,7 +108,6 @@ public sealed partial class UserEditorViewModel : ObservableObject
         ErrorMessage = null;
     }
 
-    /// <summary>Quick client-side checks; the server validates everything again.</summary>
     public string? Validate()
     {
         if (IsNew && (Username.Trim().Length < 3 || Username.Any(char.IsWhiteSpace)))

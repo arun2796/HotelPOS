@@ -3,7 +3,6 @@ using HotelPOS.Domain.Common;
 
 namespace HotelPOS.Domain.Menu;
 
-/// <summary>Something a guest can order. Orders snapshot name, price, tax rate and station.</summary>
 public sealed class MenuItem : BaseEntity, IHasRowVersion
 {
     private readonly List<MenuItemModifierGroup> _modifierGroups = new();
@@ -30,12 +29,10 @@ public sealed class MenuItem : BaseEntity, IHasRowVersion
     public int PreparationStationId { get; private set; }
     public PreparationStation? PreparationStation { get; private set; }
 
-    /// <summary>False while sold out. Unavailable items stay on the menu, greyed out.</summary>
     public bool IsAvailable { get; private set; }
 
     public bool IsActive { get; private set; }
 
-    /// <summary>File name under the menu image folder (served at /images/menu/{ImagePath}), or null.</summary>
     public string? ImagePath { get; private set; }
 
     public int SortOrder { get; private set; }
@@ -76,7 +73,6 @@ public sealed class MenuItem : BaseEntity, IHasRowVersion
 
     public void Deactivate() => IsActive = false;
 
-    /// <summary>Links exactly the given groups, in the given order (adds missing, removes extra, renumbers).</summary>
     public void SetModifierGroups(IReadOnlyList<int> modifierGroupIds)
     {
         if (modifierGroupIds.Distinct().Count() != modifierGroupIds.Count)
@@ -100,7 +96,6 @@ public sealed class MenuItem : BaseEntity, IHasRowVersion
     }
 }
 
-/// <summary>Link between an item and a modifier group offered with it.</summary>
 public sealed class MenuItemModifierGroup
 {
     public int MenuItemId { get; set; }

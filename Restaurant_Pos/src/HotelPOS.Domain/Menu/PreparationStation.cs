@@ -2,7 +2,6 @@ using HotelPOS.Domain.Common;
 
 namespace HotelPOS.Domain.Menu;
 
-/// <summary>Where an item is prepared: Main Kitchen, Bar, Bakery... Kitchen tickets are routed by station.</summary>
 public sealed class PreparationStation : BaseEntity
 {
     private PreparationStation()
@@ -29,6 +28,5 @@ public sealed class PreparationStation : BaseEntity
 
     public void Activate() => IsActive = true;
 
-    /// <summary>The caller checks first that no active item is prepared here.</summary>
     public void Deactivate() => IsActive = false;
 }

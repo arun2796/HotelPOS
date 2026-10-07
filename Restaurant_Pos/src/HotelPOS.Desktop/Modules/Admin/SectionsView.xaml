@@ -20,7 +20,6 @@
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
-    <!-- Toolbar -->
     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,16">
       <Button Command="{Binding RefreshListCommand}" ToolTip="Reload from the server">
         <TextBlock Text="&#xE72C;" Style="{StaticResource Text.Icon}" />
@@ -38,7 +37,6 @@
       <TextBlock Text="{Binding ErrorMessage}" Style="{StaticResource Text.Error}" />
     </Border>
 
-    <!-- List -->
     <Grid Grid.Row="2">
       <DataGrid ItemsSource="{Binding Sections}" SelectedItem="{Binding SelectedSection}" HorizontalScrollBarVisibility="Disabled">
         <DataGrid.InputBindings>
@@ -59,7 +57,6 @@
       <Button Content="Edit" Command="{Binding EditCommand}" MinWidth="90" />
     </StackPanel>
 
-    <!-- Editor panel -->
     <Border Grid.Column="1" Grid.RowSpan="4" Style="{StaticResource Card}" Width="360" Margin="20,0,0,0"
             DataContext="{Binding Editor}"
             Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibility}}">

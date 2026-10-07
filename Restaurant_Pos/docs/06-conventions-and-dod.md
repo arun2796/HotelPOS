@@ -14,7 +14,7 @@ Last updated: 2026-10-07
   share a file in Contracts (`UserContracts.cs`).
 - No `DateTime.Now` in Domain/Application (inject `IClock`); UTC everywhere except display.
 - No `decimal` arithmetic in view-models beyond display; the server computes money.
-- Comments explain *why*, not *what*.
+- Comments explain *why*, not *what*, and only where the reason is not obvious from the code. No `/// <summary>` doc comments that restate a name, no section-marker comments in C# or XAML.
 
 ## 2. Naming
 

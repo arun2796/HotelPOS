@@ -6,7 +6,6 @@ using Microsoft.Extensions.Logging;
 
 namespace HotelPOS.Desktop.Shell;
 
-/// <summary>Decides the first screen: configuration (first run), the resumed session, or login.</summary>
 public sealed class StartupFlow
 {
     private readonly IClientSettingsService _settings;

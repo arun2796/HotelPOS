@@ -3,7 +3,6 @@ using HotelPOS.Desktop.Services.Configuration;
 
 namespace HotelPOS.Desktop.Services.Ui;
 
-/// <summary>Switches between the light and dark colour dictionaries at runtime.</summary>
 public sealed class ThemeService
 {
     public const string Light = "Light";

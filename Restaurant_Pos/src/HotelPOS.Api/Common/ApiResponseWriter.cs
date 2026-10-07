@@ -3,7 +3,6 @@ using HotelPOS.Contracts.Common;
 
 namespace HotelPOS.Api.Common;
 
-/// <summary>Writes the standard envelope from middleware, where MVC result types are not available.</summary>
 public static class ApiResponseWriter
 {
     public static async Task WriteErrorAsync(

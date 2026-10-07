@@ -10,10 +10,8 @@ namespace HotelPOS.Desktop.Modules.Auth;
 
 public enum ChangePasswordMode
 {
-    /// <summary>First login or after a reset: the user cannot continue without a new password.</summary>
     Forced,
 
-    /// <summary>Opened by the user from the shell.</summary>
     Voluntary,
 }
 
@@ -79,7 +77,6 @@ public sealed partial class ChangePasswordViewModel : ObservableObject, INavigat
 
     public void OnNavigatedFrom() => CurrentPassword = NewPassword = ConfirmPassword = string.Empty;
 
-    /// <summary>Client-side checks that save a round trip; the server validates again.</summary>
     public static string? Validate(string current, string next, string confirm)
     {
         if (string.IsNullOrEmpty(current))

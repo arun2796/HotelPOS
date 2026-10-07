@@ -2,7 +2,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace HotelPOS.Desktop.Services.Navigation;
 
-/// <summary>Implemented by view-models that load data when they are shown.</summary>
 public interface INavigationAware
 {
     Task OnNavigatedToAsync(object? parameter);
@@ -10,13 +9,11 @@ public interface INavigationAware
     void OnNavigatedFrom();
 }
 
-/// <summary>Implemented by pages that can reload their data from the API (e.g. after a reconnect).</summary>
 public interface IRefreshable
 {
     Task RefreshAsync();
 }
 
-/// <summary>The window's top-level screens: configuration, login, password change, main shell.</summary>
 public interface IAppNavigator
 {
     Task ShowConfigurationAsync(bool isFirstRun);
@@ -30,7 +27,6 @@ public interface IAppNavigator
     Task LogoutAsync(string? message = null);
 }
 
-/// <summary>Page navigation inside the shell (sidebar modules and sub-pages).</summary>
 public interface INavigationService
 {
     Task NavigateToAsync(string moduleKey, object? parameter = null);
@@ -41,7 +37,6 @@ public interface INavigationService
     Task GoHomeAsync();
 }
 
-/// <summary>The shell registers itself here so pages can navigate without referencing it.</summary>
 public interface INavigationHost
 {
     Task NavigateToAsync(string moduleKey, object? parameter);

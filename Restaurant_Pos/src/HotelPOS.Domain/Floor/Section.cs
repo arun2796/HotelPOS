@@ -2,7 +2,6 @@ using HotelPOS.Domain.Common;
 
 namespace HotelPOS.Domain.Floor;
 
-/// <summary>An area of the floor (Ground Floor, Terrace...). Groups tables on the waiter's map.</summary>
 public sealed class Section : BaseEntity
 {
     private Section()
@@ -32,6 +31,5 @@ public sealed class Section : BaseEntity
 
     public void Activate() => IsActive = true;
 
-    /// <summary>The caller checks first that the section has no active tables.</summary>
     public void Deactivate() => IsActive = false;
 }

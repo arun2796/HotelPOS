@@ -9,7 +9,6 @@ public sealed record PagedResult<T>
     public int TotalPages => PageSize <= 0 ? 0 : (int)Math.Ceiling(TotalCount / (double)PageSize);
 }
 
-/// <summary>Common paging parameters, bound from the query string.</summary>
 public record PagedQuery
 {
     public const int DefaultPageSize = 50;

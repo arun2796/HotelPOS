@@ -2,7 +2,6 @@ using HotelPOS.Contracts.Common;
 
 namespace HotelPOS.Api.Common;
 
-/// <summary>Maps application error codes to HTTP status codes (docs/03-api-reference.md § 2).</summary>
 public static class ErrorStatusCodes
 {
     private static readonly IReadOnlyDictionary<string, int> Map = new Dictionary<string, int>(StringComparer.Ordinal)

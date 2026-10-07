@@ -10,7 +10,6 @@ using Microsoft.Extensions.Logging;
 
 namespace HotelPOS.Desktop.Shell;
 
-/// <summary>Switches the window between configuration, login, password change and the main shell.</summary>
 public sealed class AppNavigator : IAppNavigator
 {
     private readonly MainViewModel _main;

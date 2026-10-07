@@ -12,10 +12,6 @@ public interface IDeviceService
 {
     Task<Result<DeviceDto>> RegisterAsync(RegisterDeviceRequest request, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Finds the device by name or creates it, and refreshes its registration details. Does not save;
-    /// the caller saves as part of its own unit of work.
-    /// </summary>
     Task<Device> UpsertAsync(
         string name,
         DeviceType type,
@@ -24,7 +20,6 @@ public interface IDeviceService
         int? stationId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Updates the last-seen time (called on hub connect/disconnect).</summary>
     Task TouchAsync(Guid deviceId, CancellationToken cancellationToken = default);
 }
 

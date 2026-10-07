@@ -2,10 +2,6 @@ using System.Buffers.Binary;
 
 namespace HotelPOS.Application.Common;
 
-/// <summary>
-/// Converts row versions (PostgreSQL xmin values) to and from the opaque base64 strings used in DTOs.
-/// Clients only echo the string back; they never interpret it.
-/// </summary>
 public static class RowVersions
 {
     public static string Encode(uint rowVersion)

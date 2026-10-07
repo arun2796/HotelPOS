@@ -17,10 +17,6 @@ using Microsoft.Extensions.Logging;
 
 namespace HotelPOS.Desktop.Shell;
 
-/// <summary>
-/// The logged-in workspace: role-filtered sidebar, top bar, current page and status bar. One instance
-/// per login; disposed at logout.
-/// </summary>
 public sealed partial class ShellViewModel : ObservableObject, INavigationAware, INavigationHost, IDisposable
 {
     private readonly IServiceProvider _services;

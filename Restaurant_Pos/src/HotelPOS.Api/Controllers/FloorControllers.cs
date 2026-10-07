@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace HotelPOS.Api.Controllers;
 
-/// <summary>Floor sections (docs/03-api-reference.md § 3.3). Everyone reads; Admin and Manager edit.</summary>
 [Route("api/sections")]
 [Authorize]
 public sealed class SectionsController : ApiControllerBase
@@ -51,7 +50,6 @@ public sealed class SectionsController : ApiControllerBase
     public async Task<IActionResult> Update(int id, UpdateSectionRequest request, CancellationToken cancellationToken) =>
         FromResult(await _sections.UpdateAsync(id, request, cancellationToken), message: "Section updated.");
 
-    /// <summary>Deactivates the section (master data is never deleted).</summary>
     [HttpDelete("{id:int}")]
     [Authorize(Roles = FloorManagers)]
     [ProducesResponseType<ApiResponse<SectionDto>>(StatusCodes.Status200OK)]
@@ -61,7 +59,6 @@ public sealed class SectionsController : ApiControllerBase
     private bool CanManageFloor() => User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Manager);
 }
 
-/// <summary>Tables and the live table map (docs/03-api-reference.md § 3.3).</summary>
 [Route("api/tables")]
 [Authorize]
 public sealed class TablesController : ApiControllerBase
@@ -78,7 +75,6 @@ public sealed class TablesController : ApiControllerBase
         _tables = tables;
     }
 
-    /// <summary>Table map: active sections with their active tables (all of them with includeInactive).</summary>
     [HttpGet]
     [ProducesResponseType<ApiResponse<TableMapDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Map([FromQuery] bool includeInactive, CancellationToken cancellationToken)
@@ -108,7 +104,6 @@ public sealed class TablesController : ApiControllerBase
     public async Task<IActionResult> Update(int id, UpdateTableRequest request, CancellationToken cancellationToken) =>
         FromResult(await _tables.UpdateAsync(id, request, cancellationToken), message: "Table updated.");
 
-    /// <summary>Deactivates the table (master data is never deleted).</summary>
     [HttpDelete("{id:int}")]
     [Authorize(Roles = FloorManagers)]
     [ProducesResponseType<ApiResponse<TableDto>>(StatusCodes.Status200OK)]

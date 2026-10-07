@@ -11,10 +11,6 @@ using Microsoft.Extensions.Options;
 
 namespace HotelPOS.Application.Tests.Support;
 
-/// <summary>
-/// Creates a throw-away PostgreSQL database for the test run (see <see cref="TestPostgres"/>), applies the
-/// real migrations, and resets the data before every test.
-/// </summary>
 public sealed class DatabaseFixture : IAsyncLifetime
 {
     public const string AdminPassword = "Admin@123";
@@ -26,7 +22,6 @@ public sealed class DatabaseFixture : IAsyncLifetime
 
     public string ConnectionString { get; }
 
-    /// <summary>Throw-away folder for uploaded pictures.</summary>
     public string MediaPath { get; } = Path.Combine(Path.GetTempPath(), "hotelpos-apptests-media-" + Guid.NewGuid().ToString("N"));
 
     public TestClock Clock { get; } = new();
@@ -71,7 +66,6 @@ public sealed class DatabaseFixture : IAsyncLifetime
         await db.Database.MigrateAsync();
     }
 
-    /// <summary>Deletes all rows and re-seeds the reference data (roles, admin, settings...).</summary>
     public async Task ResetAsync()
     {
         Clock.Reset();

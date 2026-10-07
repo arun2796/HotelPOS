@@ -24,7 +24,6 @@ public sealed partial class SettingItemViewModel : ObservableObject
 
     public string Key { get; }
 
-    /// <summary>"KitchenWarnMinutes" -> "Kitchen warn minutes".</summary>
     public string DisplayName => Humanize(Key);
 
     public string? Description { get; }
@@ -78,7 +77,6 @@ public sealed partial class SettingItemViewModel : ObservableObject
     }
 }
 
-/// <summary>Admin: restaurant settings stored on the server (name, invoice details, thresholds...).</summary>
 public sealed partial class SettingsViewModel : ObservableObject, INavigationAware, IRefreshable
 {
     private readonly IAdminSettingsApi _api;

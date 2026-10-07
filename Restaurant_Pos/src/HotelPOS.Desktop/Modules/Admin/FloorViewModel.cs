@@ -5,7 +5,6 @@ using HotelPOS.Desktop.Services.Ui;
 
 namespace HotelPOS.Desktop.Modules.Admin;
 
-/// <summary>Admin/Manager "Sections &amp; Tables" page: a Tables tab and a Sections tab.</summary>
 public sealed partial class FloorViewModel : ObservableObject, INavigationAware, IRefreshable
 {
     public const int TablesTab = 0;

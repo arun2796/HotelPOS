@@ -10,7 +10,6 @@ using Microsoft.AspNetCore.SignalR.Client;
 
 namespace HotelPOS.Api.Tests;
 
-/// <summary>Phase 3 endpoints against the demo menu (Starters, Biryani, Breads, Beverages, Desserts).</summary>
 public class MenuApiTests : IClassFixture<ApiFactory>
 {
     private readonly ApiFactory _factory;

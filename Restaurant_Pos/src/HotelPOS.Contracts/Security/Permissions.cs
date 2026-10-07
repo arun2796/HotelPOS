@@ -1,9 +1,5 @@
 namespace HotelPOS.Contracts.Security;
 
-/// <summary>
-/// Permission names carried in the access token. In v1 they are derived from roles on the server;
-/// Phase 9 makes them editable per role.
-/// </summary>
 public static class Permissions
 {
     public const string UsersManage = "users.manage";

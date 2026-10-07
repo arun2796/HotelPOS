@@ -14,7 +14,6 @@ using Serilog.Events;
 
 namespace HotelPOS.Desktop.Startup;
 
-/// <summary>Composition root of the desktop application.</summary>
 public static class AppHost
 {
     public static IHost Build(string[] args)
@@ -34,12 +33,10 @@ public static class AppHost
     {
         services.AddSingleton(paths);
 
-        // Configuration and local storage
         services.AddSingleton<IClientSettingsService, ClientSettingsService>();
         services.AddSingleton<IUserPreferences, UserPreferences>();
         services.AddSingleton<ISecureStore, DpapiSecureStore>();
 
-        // Session and API
         services.AddSingleton<IAuthSession, AuthSession>();
         services.AddSingleton<ITokenRefresher, TokenRefresher>();
         services.AddTransient<AuthDelegatingHandler>();
@@ -55,10 +52,8 @@ public static class AppHost
         services.AddHttpClient(MenuCache.ImageHttpClientName, client => client.Timeout = TimeSpan.FromSeconds(15));
         services.AddSingleton<IMenuCache, MenuCache>();
 
-        // Real-time
         services.AddSingleton<IRealtimeClient, RealtimeClient>();
 
-        // UI infrastructure
         services.AddSingleton<IUiDispatcher, WpfUiDispatcher>();
         services.AddSingleton<DialogService>();
         services.AddSingleton<IDialogService>(sp => sp.GetRequiredService<DialogService>());

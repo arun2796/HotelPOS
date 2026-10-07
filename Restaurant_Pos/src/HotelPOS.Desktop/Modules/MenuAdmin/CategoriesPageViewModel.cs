@@ -71,7 +71,6 @@ public sealed partial class CategoryEditorViewModel : ObservableObject
         : $"Sort order must be a number from 0 to {MenuLimits.MaxSortOrder}.";
 }
 
-/// <summary>Menu categories: order, rename, (de)activate (optionally with their items).</summary>
 public sealed partial class CategoriesPageViewModel : ObservableObject, IMenuAdminPage
 {
     private readonly IMenuApi _menuApi;
@@ -140,7 +139,6 @@ public sealed partial class CategoriesPageViewModel : ObservableObject, IMenuAdm
                 ? await _menuApi.CreateCategoryAsync(new CreateCategoryRequest { Name = Editor.Name.Trim(), SortOrder = int.Parse(Editor.SortOrder) })
                 : await _menuApi.UpdateCategoryAsync(Editor.CategoryId, Request(deactivateItems: false));
 
-            // Deactivating a category that still has items: ask, then deactivate them together.
             if (!Editor.IsNew && !Editor.IsActive && result.HasError(ErrorCodes.BusinessRule)
                 && await _dialogs.ConfirmAsync("Deactivate category", $"{result.Message}\n\nDeactivate the category and all its items?", "Deactivate all", destructive: true))
             {

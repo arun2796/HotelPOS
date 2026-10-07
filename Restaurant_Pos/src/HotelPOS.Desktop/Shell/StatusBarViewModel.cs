@@ -4,7 +4,6 @@ using HotelPOS.Desktop.Services.Realtime;
 
 namespace HotelPOS.Desktop.Shell;
 
-/// <summary>Bottom bar: live connection indicator (green / amber / red), server, terminal and version.</summary>
 public sealed partial class StatusBarViewModel : ObservableObject, IDisposable
 {
     private readonly IRealtimeClient _realtime;

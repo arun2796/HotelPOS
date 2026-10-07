@@ -6,7 +6,6 @@ using HotelPOS.Contracts.Common;
 
 namespace HotelPOS.Api.Common;
 
-/// <summary>Reads the caller's identity from the JWT claims and the device headers.</summary>
 public sealed class HttpCurrentUser : ICurrentUser
 {
     private readonly IHttpContextAccessor _accessor;

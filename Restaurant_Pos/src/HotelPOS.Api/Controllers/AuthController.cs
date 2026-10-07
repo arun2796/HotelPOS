@@ -16,21 +16,18 @@ public sealed class AuthController : ApiControllerBase
         _auth = auth;
     }
 
-    /// <summary>Username/password login. Returns an access token, a refresh token and the user profile.</summary>
     [HttpPost("login")]
     [AllowAnonymous]
     [ProducesResponseType<ApiResponse<LoginResponse>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Login(LoginRequest request, CancellationToken cancellationToken) =>
         FromResult(await _auth.LoginAsync(request, cancellationToken));
 
-    /// <summary>Exchanges a refresh token for a new token pair (the old refresh token is revoked).</summary>
     [HttpPost("refresh")]
     [AllowAnonymous]
     [ProducesResponseType<ApiResponse<LoginResponse>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Refresh(RefreshTokenRequest request, CancellationToken cancellationToken) =>
         FromResult(await _auth.RefreshAsync(request, cancellationToken));
 
-    /// <summary>Revokes the given refresh token. Possession of the token is the authorization.</summary>
     [HttpPost("logout")]
     [AllowAnonymous]
     public async Task<IActionResult> Logout(LogoutRequest request, CancellationToken cancellationToken) =>

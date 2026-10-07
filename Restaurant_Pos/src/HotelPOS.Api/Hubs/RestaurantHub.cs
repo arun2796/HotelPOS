@@ -7,10 +7,6 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace HotelPOS.Api.Hubs;
 
-/// <summary>
-/// Real-time notification channel. It never performs business operations: clients change state
-/// through the REST API and the server pushes notifications here after the change is committed.
-/// </summary>
 [Authorize]
 public sealed class RestaurantHub : Hub
 {
@@ -81,7 +77,6 @@ public sealed class RestaurantHub : Hub
         await base.OnDisconnectedAsync(exception);
     }
 
-    /// <summary>Presence/latency check. Returns the server time in UTC.</summary>
     public DateTime Ping() => DateTime.UtcNow;
 
     private async Task TouchDeviceAsync(Guid deviceId)

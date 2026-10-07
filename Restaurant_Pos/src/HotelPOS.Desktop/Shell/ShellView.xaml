@@ -18,7 +18,6 @@
       <RowDefinition Height="34" />
     </Grid.RowDefinitions>
 
-    <!-- ===== Sidebar ===== -->
     <Grid Background="{DynamicResource Brush.Sidebar}">
       <Grid.RowDefinitions>
         <RowDefinition Height="Auto" />
@@ -38,7 +37,6 @@
                Style="{StaticResource NavList}"
                ItemContainerStyle="{StaticResource NavItem}" />
 
-      <!-- Signed-in user -->
       <Border Grid.Row="2" BorderBrush="{DynamicResource Brush.SidebarHover}" BorderThickness="0,1,0,0" Padding="16,14">
         <Grid>
           <Grid.ColumnDefinitions>
@@ -59,14 +57,12 @@
       </Border>
     </Grid>
 
-    <!-- ===== Main area ===== -->
     <Grid Grid.Column="1" Background="{DynamicResource Brush.Background}">
       <Grid.RowDefinitions>
         <RowDefinition Height="64" />
         <RowDefinition Height="*" />
       </Grid.RowDefinitions>
 
-      <!-- Top bar -->
       <Border Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,0,0,1"
               Padding="24,0,12,0">
         <Grid>
@@ -99,11 +95,9 @@
         </Grid>
       </Border>
 
-      <!-- Current page (resolved through the DataTemplates in App.xaml) -->
       <ContentControl Grid.Row="1" Content="{Binding CurrentPage}" Focusable="False" />
     </Grid>
 
-    <!-- ===== Status bar ===== -->
     <Border Grid.Row="1" Grid.ColumnSpan="2" Background="{DynamicResource Brush.Surface}"
             BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,1,0,0" Padding="16,0"
             DataContext="{Binding StatusBar}">

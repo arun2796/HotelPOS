@@ -2,11 +2,9 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:conv="clr-namespace:HotelPOS.Desktop.Converters">
 
-  <!-- ===== Fonts ===== -->
   <FontFamily x:Key="Font.Body">Segoe UI</FontFamily>
   <FontFamily x:Key="Font.Icons">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
 
-  <!-- ===== Converters ===== -->
   <conv:BoolToVisibilityConverter x:Key="BoolToVisibility" />
   <conv:BoolToVisibilityConverter x:Key="InverseBoolToVisibility" Invert="True" />
   <conv:NullToVisibilityConverter x:Key="NullToVisibility" />
@@ -18,7 +16,6 @@
   <conv:ActiveTextConverter x:Key="ActiveText" />
   <conv:ImageFileConverter x:Key="ImageFile" />
 
-  <!-- ===== Text ===== -->
   <Style x:Key="Text.Display" TargetType="TextBlock">
     <Setter Property="FontSize" Value="30" />
     <Setter Property="FontWeight" Value="SemiBold" />
@@ -64,7 +61,6 @@
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
 
-  <!-- ===== Containers ===== -->
   <Style x:Key="Card" TargetType="Border">
     <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
@@ -85,7 +81,6 @@
     <Setter Property="Padding" Value="14,10" />
   </Style>
 
-  <!-- ===== Buttons ===== -->
   <Style x:Key="Button.Base" TargetType="Button">
     <Setter Property="FontSize" Value="15" />
     <Setter Property="FontWeight" Value="SemiBold" />
@@ -161,7 +156,6 @@
     <Setter Property="MinHeight" Value="32" />
   </Style>
 
-  <!-- ===== Inputs ===== -->
   <Style TargetType="TextBox">
     <Setter Property="FontSize" Value="15" />
     <Setter Property="MinHeight" Value="44" />
@@ -309,7 +303,6 @@
     <Setter Property="BorderThickness" Value="0" />
   </Style>
 
-  <!-- ===== Data grid ===== -->
   <Style TargetType="DataGrid">
     <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
     <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
@@ -363,8 +356,6 @@
     </Style.Triggers>
   </Style>
 
-  <!-- ===== Table map ===== -->
-  <!-- Status colours come from Brush.Status.* so they follow the theme. DataContext: an object with a Status (TableStatus). -->
   <Style x:Key="TableTile" TargetType="Button">
     <Setter Property="Width" Value="148" />
     <Setter Property="Height" Value="112" />
@@ -459,7 +450,6 @@
     <Setter Property="Margin" Value="16,0,6,0" />
   </Style>
 
-  <!-- ===== Chips (section filters, sub-page tabs) ===== -->
   <Style x:Key="Chip" TargetType="ListBoxItem">
     <Setter Property="FocusVisualStyle" Value="{x:Null}" />
     <Setter Property="Cursor" Value="Hand" />
@@ -502,20 +492,17 @@
     </Setter>
   </Style>
 
-  <!-- ===== Touch number pad ===== -->
   <Style x:Key="NumPadKey" TargetType="Button" BasedOn="{StaticResource Button.Base}">
     <Setter Property="Height" Value="52" />
     <Setter Property="Margin" Value="4" />
     <Setter Property="FontSize" Value="22" />
   </Style>
 
-  <!-- ===== Sidebar navigation ===== -->
   <Style x:Key="NavList" TargetType="ListBox">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="Padding" Value="0" />
     <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
-    <!-- Long menus scroll by touch or mouse wheel; a light system scrollbar would clash with the dark sidebar. -->
     <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Hidden" />
     <Setter Property="ScrollViewer.PanningMode" Value="VerticalOnly" />
   </Style>

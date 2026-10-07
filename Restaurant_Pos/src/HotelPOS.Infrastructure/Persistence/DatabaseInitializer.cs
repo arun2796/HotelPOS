@@ -10,16 +10,13 @@ public sealed class DatabaseOptions
 {
     public const string SectionName = "Database";
 
-    /// <summary>Apply pending EF Core migrations when the API starts.</summary>
     public bool AutoMigrate { get; set; } = true;
 
-    /// <summary>Insert reference data (roles, admin, settings...) when missing.</summary>
     public bool Seed { get; set; } = true;
 }
 
 public static class DatabaseInitializer
 {
-    /// <summary>Migrates the database (when enabled) and seeds reference data. Called once at startup.</summary>
     public static async Task InitializeDatabaseAsync(this IServiceProvider services, CancellationToken cancellationToken = default)
     {
         await using var scope = services.CreateAsyncScope();

@@ -8,7 +8,6 @@ using HotelPOS.Desktop.Services.Ui;
 
 namespace HotelPOS.Desktop.Modules.MenuAdmin;
 
-/// <summary>A row of the modifier groups grid.</summary>
 public sealed record ModifierGroupRow(ModifierGroupDto Group)
 {
     public string SelectionText => Group.MinSelections == 0
@@ -18,9 +17,6 @@ public sealed record ModifierGroupRow(ModifierGroupDto Group)
     public int OptionCount => Group.Options.Count(o => o.IsActive);
 }
 
-/// <summary>
-/// Modifier groups on the left, options of the selected group below; one side panel edits either a group or an option.
-/// </summary>
 public sealed partial class ModifiersPageViewModel : ObservableObject, IMenuAdminPage
 {
     private readonly IMenuApi _menuApi;
@@ -52,8 +48,6 @@ public sealed partial class ModifiersPageViewModel : ObservableObject, IMenuAdmi
 
     [ObservableProperty]
     private string? _errorMessage;
-
-    // ----- Editor (group or option) -----
 
     [ObservableProperty]
     private bool _isEditorOpen;

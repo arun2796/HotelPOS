@@ -19,7 +19,6 @@ public sealed class SystemController : ApiControllerBase
         _systemInfo = systemInfo;
     }
 
-    /// <summary>Anonymous: lets a client verify the server address before logging in.</summary>
     [HttpGet("info")]
     [AllowAnonymous]
     [ProducesResponseType<ApiResponse<SystemInfoDto>>(StatusCodes.Status200OK)]
@@ -38,7 +37,6 @@ public sealed class SettingsController : ApiControllerBase
         _settings = settings;
     }
 
-    /// <summary>Settings every terminal needs (restaurant name, currency, kitchen thresholds...).</summary>
     [HttpGet]
     [ProducesResponseType<ApiResponse<IReadOnlyList<SettingDto>>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPublic(CancellationToken cancellationToken) =>
@@ -78,7 +76,6 @@ public sealed class DevicesController : ApiControllerBase
         _devices = devices;
     }
 
-    /// <summary>Registers this installation (idempotent by device name) and returns its id.</summary>
     [HttpPost("register")]
     [ProducesResponseType<ApiResponse<DeviceDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Register(RegisterDeviceRequest request, CancellationToken cancellationToken) =>

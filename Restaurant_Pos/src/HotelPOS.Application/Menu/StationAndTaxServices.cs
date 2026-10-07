@@ -15,7 +15,6 @@ public interface IStationService
 
     Task<Result<StationDto>> UpdateAsync(int id, SaveStationRequest request, CancellationToken cancellationToken = default);
 
-    /// <summary>Refused while an active item is prepared at the station.</summary>
     Task<Result<StationDto>> DeactivateAsync(int id, CancellationToken cancellationToken = default);
 }
 
@@ -153,7 +152,6 @@ public interface ITaxService
 
     Task<Result<TaxDto>> UpdateAsync(int id, SaveTaxRequest request, CancellationToken cancellationToken = default);
 
-    /// <summary>Refused while an active item uses the tax.</summary>
     Task<Result<TaxDto>> DeactivateAsync(int id, CancellationToken cancellationToken = default);
 }
 

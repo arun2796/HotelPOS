@@ -20,10 +20,8 @@
         TextOptions.TextFormattingMode="Display">
 
   <Grid>
-    <!-- Current screen: configuration, login, password change or the shell -->
     <ContentControl Content="{Binding CurrentScreen}" Focusable="False" />
 
-    <!-- Modal dialog layer -->
     <Grid Background="{DynamicResource Brush.Overlay}"
           Visibility="{Binding Dialogs.Current, Converter={StaticResource NullToVisibility}}">
       <Border Style="{StaticResource Card}" Width="480" VerticalAlignment="Center" HorizontalAlignment="Center" Padding="28"
@@ -57,7 +55,6 @@
       </Border>
     </Grid>
 
-    <!-- Toast layer -->
     <ItemsControl ItemsSource="{Binding Notifications.Items}"
                   HorizontalAlignment="Right" VerticalAlignment="Bottom"
                   Margin="0,0,24,52" Width="380" Focusable="False">

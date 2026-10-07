@@ -21,9 +21,7 @@ public sealed partial class NavItemViewModel : ObservableObject
 
     public string Group => Module.Group;
 
-    /// <summary>True for the first item of each group, which draws the group caption above it.</summary>
     public bool ShowGroupHeader { get; }
 
-    /// <summary>Modules planned for a later phase are listed but show a placeholder page.</summary>
     public bool IsAvailable => Module.ViewModelType is not null;
 }

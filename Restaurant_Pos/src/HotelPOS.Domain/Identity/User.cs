@@ -26,7 +26,6 @@ public sealed class User : BaseEntity, IHasRowVersion
 
     public string Username { get; private set; } = string.Empty;
 
-    /// <summary>Upper-case invariant form used for case-insensitive uniqueness and lookups.</summary>
     public string NormalizedUsername { get; private set; } = string.Empty;
 
     public string DisplayName { get; private set; } = string.Empty;
@@ -68,7 +67,6 @@ public sealed class User : BaseEntity, IHasRowVersion
         PasswordChangedAt = changedAt;
     }
 
-    /// <summary>Replaces the stored hash after a successful login with an outdated hash format.</summary>
     public void UpgradePasswordHash(string passwordHash) => PasswordHash = passwordHash;
 
     public void Activate() => IsActive = true;
@@ -89,7 +87,6 @@ public sealed class User : BaseEntity, IHasRowVersion
     public bool HasRole(string roleName) =>
         RoleNames.Contains(roleName, StringComparer.Ordinal);
 
-    /// <summary>Synchronises role membership with the given roles (adds missing, removes extra).</summary>
     public void SetRoles(IEnumerable<Role> roles)
     {
         var target = roles.ToList();

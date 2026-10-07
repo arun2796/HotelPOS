@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace HotelPOS.Api.Hubs;
 
-/// <summary>Publishes application events to SignalR groups. Failures are logged, never thrown.</summary>
 public sealed class SignalRRealtimeNotifier : IRealtimeNotifier
 {
     private readonly IHubContext<RestaurantHub> _hub;

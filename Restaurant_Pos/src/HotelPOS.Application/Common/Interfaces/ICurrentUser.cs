@@ -1,6 +1,5 @@
 namespace HotelPOS.Application.Common.Interfaces;
 
-/// <summary>Who is making the current request, and from which device. Empty for background work.</summary>
 public interface ICurrentUser
 {
     bool IsAuthenticated { get; }

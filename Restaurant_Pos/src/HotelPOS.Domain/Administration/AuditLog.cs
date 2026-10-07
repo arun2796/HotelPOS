@@ -1,6 +1,5 @@
 namespace HotelPOS.Domain.Administration;
 
-/// <summary>Append-only record of a critical operation. Never updated or deleted.</summary>
 public sealed class AuditLog
 {
     public long Id { get; set; }

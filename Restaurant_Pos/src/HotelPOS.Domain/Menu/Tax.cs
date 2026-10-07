@@ -2,7 +2,6 @@ using HotelPOS.Domain.Common;
 
 namespace HotelPOS.Domain.Menu;
 
-/// <summary>A tax rate applied to items (e.g. GST 5%). Orders snapshot the rate when items are added.</summary>
 public sealed class Tax : BaseEntity
 {
     private Tax()
@@ -29,6 +28,5 @@ public sealed class Tax : BaseEntity
 
     public void Activate() => IsActive = true;
 
-    /// <summary>The caller checks first that no active item uses the tax.</summary>
     public void Deactivate() => IsActive = false;
 }

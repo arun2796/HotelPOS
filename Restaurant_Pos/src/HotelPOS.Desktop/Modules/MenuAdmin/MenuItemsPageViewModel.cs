@@ -11,7 +11,6 @@ using HotelPOS.Desktop.Services.Ui;
 
 namespace HotelPOS.Desktop.Modules.MenuAdmin;
 
-/// <summary>A choice in a picker that may be "none" (tax).</summary>
 public sealed record LookupOption(int? Id, string Name);
 
 public sealed partial class ModifierChoiceViewModel : ObservableObject
@@ -33,7 +32,6 @@ public sealed partial class ModifierChoiceViewModel : ObservableObject
     private bool _isSelected;
 }
 
-/// <summary>Side panel to create an item or edit the selected one.</summary>
 public sealed partial class MenuItemEditorViewModel : ObservableObject
 {
     [ObservableProperty]
@@ -103,7 +101,6 @@ public sealed partial class MenuItemEditorViewModel : ObservableObject
 
     public bool HasPicture => ImageUrl is not null;
 
-    /// <summary>Pictures are attached to saved items only.</summary>
     public bool CanEditPicture => !IsNew;
 
     public void SetLookups(IEnumerable<CategoryDto> categories, IEnumerable<TaxDto> taxes, IEnumerable<StationDto> stations, IEnumerable<ModifierGroupDto> groups)
@@ -170,7 +167,6 @@ public sealed partial class MenuItemEditorViewModel : ObservableObject
         ErrorMessage = null;
     }
 
-    /// <summary>Quick client-side checks; the server validates everything again.</summary>
     public string? Validate()
     {
         if (string.IsNullOrWhiteSpace(Name))
@@ -243,7 +239,6 @@ public sealed partial class MenuItemEditorViewModel : ObservableObject
     }
 }
 
-/// <summary>Menu items: search and filter, create/edit with modifiers, picture, sold-out toggle.</summary>
 public sealed partial class MenuItemsPageViewModel : ObservableObject, IMenuAdminPage
 {
     private readonly IMenuApi _menuApi;
@@ -265,7 +260,6 @@ public sealed partial class MenuItemsPageViewModel : ObservableObject, IMenuAdmi
 
     public ObservableCollection<MenuItemDto> Items { get; } = new();
 
-    /// <summary>Category filter; the first entry ("All categories") has Id 0.</summary>
     public ObservableCollection<CategoryDto> CategoryFilters { get; } = new();
 
     public MenuItemEditorViewModel Editor { get; } = new();

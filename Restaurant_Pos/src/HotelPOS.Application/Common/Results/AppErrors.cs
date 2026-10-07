@@ -2,7 +2,6 @@ using HotelPOS.Contracts.Common;
 
 namespace HotelPOS.Application.Common.Results;
 
-/// <summary>Factory methods for the common <see cref="AppError"/> cases.</summary>
 public static class AppErrors
 {
     public static AppError NotFound(string entity, object id) =>

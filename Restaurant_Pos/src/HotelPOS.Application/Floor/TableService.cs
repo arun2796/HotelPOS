@@ -11,7 +11,6 @@ namespace HotelPOS.Application.Floor;
 
 public interface ITableService
 {
-    /// <summary>Sections in display order with their tables. Inactive sections/tables only when asked.</summary>
     Task<TableMapDto> GetMapAsync(bool includeInactive, CancellationToken cancellationToken = default);
 
     Task<Result<TableDetailDto>> GetAsync(int id, CancellationToken cancellationToken = default);
@@ -22,13 +21,10 @@ public interface ITableService
 
     Task<Result<TableDto>> DeactivateAsync(int id, CancellationToken cancellationToken = default);
 
-    /// <summary>Available -> Occupied. Fails with CONCURRENCY_CONFLICT or TABLE_NOT_AVAILABLE (current table in Data).</summary>
     Task<Result<TableDto>> OccupyAsync(int id, OccupyTableRequest request, CancellationToken cancellationToken = default);
 
-    /// <summary>Occupied (no active order) -> Available.</summary>
     Task<Result<TableDto>> ReleaseAsync(int id, CancellationToken cancellationToken = default);
 
-    /// <summary>Available -> OutOfService, or OutOfService -> Available.</summary>
     Task<Result<TableDto>> SetServiceStateAsync(int id, bool outOfService, CancellationToken cancellationToken = default);
 }
 
@@ -315,10 +311,6 @@ public sealed class TableService : ITableService
         }
     }
 
-    /// <summary>
-    /// Saves with the row-version check. If another terminal changed the table since it was loaded, returns
-    /// CONCURRENCY_CONFLICT with the fresh state; otherwise publishes the status change after the commit.
-    /// </summary>
     private async Task<Result<TableDto>> SaveAsync(Table table, string sectionName, bool publish, CancellationToken cancellationToken)
     {
         try

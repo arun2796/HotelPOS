@@ -3,7 +3,6 @@ using HotelPOS.Desktop.Services.Configuration;
 
 namespace HotelPOS.Desktop.Services.Auth;
 
-/// <summary>The logged-in user and their tokens. The access token lives in memory only.</summary>
 public interface IAuthSession
 {
     bool IsAuthenticated { get; }
@@ -16,7 +15,6 @@ public interface IAuthSession
 
     string? RefreshToken { get; }
 
-    /// <summary>Raised (on any thread) when the server rejected the session; the argument is the reason.</summary>
     event EventHandler<string>? Expired;
 
     event EventHandler? Changed;
@@ -33,7 +31,6 @@ public interface IAuthSession
 
     bool HasAnyRole(IEnumerable<string> roles);
 
-    /// <summary>Refresh token kept from a previous run (DPAPI-protected), used to resume after a restart.</summary>
     string? LoadPersistedRefreshToken();
 }
 
