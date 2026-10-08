@@ -170,10 +170,11 @@ Admin always has access; Manager has access wherever `M` is listed.
 
 ### 3.9 Reports (Phase 8)
 
-All `GET`, roles A/M, params `from`, `to` (business days), optional `format=csv`.
+All `GET`, roles A/M, params `from`, `to` (business days, default today, at most 366 days), optional `format=csv`
+(UTF-8 with BOM, `text/csv` attachment, totals row at the end).
 
 ```
-/api/reports/dashboard
+/api/reports/dashboard          /api/reports/my-day   (any signed-in user: own orders, sales and tables today)
 /api/reports/sales/daily        /api/reports/sales/monthly?year=
 /api/reports/sales/items        /api/reports/sales/categories
 /api/reports/payments           /api/reports/cancellations

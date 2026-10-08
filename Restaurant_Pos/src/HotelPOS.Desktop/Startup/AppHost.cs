@@ -58,6 +58,7 @@ public static class AppHost
         services.AddSingleton<IBillingApi, BillingApi>();
         services.AddSingleton<IReadyNotifier, ReadyNotifier>();
         services.AddSingleton<IPrintApi, PrintApi>();
+        services.AddSingleton<IReportsApi, ReportsApi>();
         services.AddSingleton<EscPosRenderer>();
         services.AddSingleton<FlowDocumentRenderer>();
         services.AddSingleton<RawPrinterChannel>();

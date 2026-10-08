@@ -69,6 +69,19 @@ public sealed class UtcToLocalConverter : IValueConverter
         throw new NotSupportedException();
 }
 
+// Scales a 0..1 ratio to a pixel height given as the converter parameter.
+public sealed class BarHeightConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var ratio = value is double d ? Math.Clamp(d, 0, 1) : 0;
+        var max = double.TryParse(parameter?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var m) ? m : 100;
+        return Math.Max(2, ratio * max);
+    }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException();
+}
+
 public sealed class ActiveTextConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>

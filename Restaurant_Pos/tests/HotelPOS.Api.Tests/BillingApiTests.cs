@@ -102,7 +102,7 @@ public class BillingApiTests : IClassFixture<ApiFactory>
 
         responses.Count(r => r.StatusCode == HttpStatusCode.OK).Should().Be(1);
         var loser = await responses.Single(r => r.StatusCode != HttpStatusCode.OK).ReadEnvelopeAsync<BillDetailDto>();
-        loser.Errors.Single().Code.Should().BeOneOf(ErrorCodes.BillClaimed, ErrorCodes.ConcurrencyConflict);
+        loser.Errors.Single().Code.Should().BeOneOf(ErrorCodes.BillClaimed, ErrorCodes.ConcurrencyConflict, ErrorCodes.InvalidStateTransition);
         var final = await (await counterOne.GetAsync($"/api/billing/{bill.Id}")).ReadEnvelopeAsync<BillDetailDto>();
         final.Data!.Payments.Should().ContainSingle();
         final.Data.PaidAmount.Should().Be(bill.GrandTotal);

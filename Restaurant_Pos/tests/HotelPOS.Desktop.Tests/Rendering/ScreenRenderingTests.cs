@@ -15,6 +15,8 @@ using HotelPOS.Contracts.Menu;
 using HotelPOS.Contracts.Kitchen;
 using HotelPOS.Contracts.Orders;
 using HotelPOS.Contracts.Print;
+using HotelPOS.Contracts.Reports;
+using HotelPOS.Desktop.Modules.Reports;
 using HotelPOS.Desktop.Modules.Printing;
 using HotelPOS.Desktop.Services.Printing;
 using HotelPOS.Desktop.Modules.Billing;
@@ -93,7 +95,7 @@ public class ScreenRenderingTests
             var shell = env.Create<ShellViewModel>();
             await shell.OnNavigatedToAsync(null);
             env.Realtime.Raise(ConnectionStatus.Connected);
-            rendered.Add(await RenderScreenAsync(env, shell, "04-admin-dashboard-placeholder"));
+            rendered.Add(await RenderScreenAsync(env, shell, "04-admin-dashboard"));
 
             await shell.NavigateToAsync(ModuleRegistry.Users, null);
             var users = (HotelPOS.Desktop.Modules.Admin.UsersViewModel)shell.CurrentPage!;
@@ -254,6 +256,12 @@ public class ScreenRenderingTests
             ((BillingSetupViewModel)setupShell.CurrentPage!).NewDiscountCommand.Execute(null);
             rendered.Add(await RenderScreenAsync(env, setupShell, "37-discounts-and-payment-methods"));
 
+            await setupShell.NavigateToAsync(ModuleRegistry.Reports, null);
+            rendered.Add(await RenderScreenAsync(env, setupShell, "40-reports-daily-sales"));
+            ((ReportsViewModel)setupShell.CurrentPage!).SelectedReport = ReportsViewModel.Catalogue.Single(r => r.Key == ReportKeys.ItemSales);
+            await Dispatcher.Yield(DispatcherPriority.Background);
+            rendered.Add(await RenderScreenAsync(env, setupShell, "41-reports-item-sales"));
+
             await setupShell.NavigateToAsync(ModuleRegistry.Printers, null);
             rendered.Add(await RenderScreenAsync(env, setupShell, "38-printer-settings"));
             var preview = env.Create<PrintPreviewViewModel>();
@@ -272,7 +280,7 @@ public class ScreenRenderingTests
         }
 
         bindingErrors.Errors.Should().BeEmpty("every binding in the views must point at an existing property");
-        rendered.Should().HaveCount(39);
+        rendered.Should().HaveCount(41);
     }
 
     private static async Task<string> RenderScreenAsync(Environment env, object screen, string name)
@@ -445,6 +453,7 @@ public class ScreenRenderingTests
             services.AddSingleton<IOrderSubmitter>(new OrderSubmitter(NullLogger<OrderSubmitter>.Instance));
             services.AddSingleton(DemoKitchenApi());
             services.AddSingleton(DemoBillingApi());
+            services.AddSingleton(DemoReportsApi());
             services.AddSingleton(Substitute.For<ISoundPlayer>());
             services.AddSingleton(Substitute.For<IReadyNotifier>());
             services.AddSingleton(Substitute.For<HotelPOS.Desktop.Services.Printing.IKotAutoPrinter>());
@@ -843,6 +852,56 @@ public class ScreenRenderingTests
             PaidAmount = 1134m,
             Footer = "Thank you! Visit again.",
         };
+
+        private static IReportsApi DemoReportsApi()
+        {
+            var today = new DateOnly(2026, 10, 7);
+            var api = Substitute.For<IReportsApi>();
+            api.GetDashboardAsync(Arg.Any<CancellationToken>()).Returns(ApiResult<DashboardDto>.Ok(new DashboardDto
+            {
+                BusinessDay = today,
+                TodaySales = 48230m,
+                BillsToday = 41,
+                OrdersToday = 47,
+                OpenOrders = 6,
+                ActiveTables = 7,
+                TotalTables = 15,
+                PendingKitchenTickets = 5,
+                PendingBills = 3,
+                AverageTicketMinutes = 14.2m,
+                TopItems = new[]
+                {
+                    new DashboardTopItem { ItemName = "Chicken Biryani", Quantity = 38, Amount = 9880m },
+                    new DashboardTopItem { ItemName = "Butter Naan", Quantity = 64, Amount = 3200m },
+                    new DashboardTopItem { ItemName = "Paneer Tikka", Quantity = 21, Amount = 4620m },
+                    new DashboardTopItem { ItemName = "Fresh Lime Soda", Quantity = 33, Amount = 1980m },
+                    new DashboardTopItem { ItemName = "Gulab Jamun", Quantity = 19, Amount = 1710m },
+                },
+                LastDays = new[] { 31200m, 28750m, 35100m, 41900m, 52300m, 61050m, 48230m }
+                    .Select((v, i) => new DashboardDayPoint { Day = today.AddDays(i - 6), NetSales = v }).ToList(),
+                GeneratedAtUtc = DateTime.UtcNow,
+            }));
+            api.GetMyDayAsync(Arg.Any<CancellationToken>()).Returns(ApiResult<WaiterDashboardDto>.Ok(new WaiterDashboardDto
+            {
+                BusinessDay = today, OrdersToday = 11, OpenOrders = 3, SalesToday = 9870m, TablesServing = 3, CoversToday = 27, GeneratedAtUtc = DateTime.UtcNow,
+            }));
+            api.GetRowsAsync<DailySalesRowDto>(Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+                .Returns(ApiResult<List<DailySalesRowDto>>.Ok(Enumerable.Range(0, 7).Select(i => new DailySalesRowDto
+                {
+                    Day = today.AddDays(i - 6), Bills = 30 + i * 2, Covers = 90 + i * 5, Subtotal = 30000m + i * 2500m, Discounts = 800m + i * 50m,
+                    Tax = 1460m + i * 120m, GrossSales = 30660m + i * 2570m, Refunds = i == 3 ? 450m : 0m, NetSales = 30660m + i * 2570m - (i == 3 ? 450m : 0m),
+                }).ToList()));
+            api.GetRowsAsync<ItemSalesRowDto>(Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+                .Returns(ApiResult<List<ItemSalesRowDto>>.Ok(new List<ItemSalesRowDto>
+                {
+                    new() { ItemName = "Chicken Biryani", Category = "Main Course", Quantity = 238, Amount = 61880m, SharePercent = 31.4m },
+                    new() { ItemName = "Paneer Tikka", Category = "Starters", Quantity = 121, Amount = 26620m, SharePercent = 13.5m },
+                    new() { ItemName = "Butter Naan", Category = "Breads", Quantity = 402, Amount = 20100m, SharePercent = 10.2m },
+                    new() { ItemName = "Mutton Biryani", Category = "Main Course", Quantity = 64, Amount = 19200m, SharePercent = 9.7m },
+                    new() { ItemName = "Fresh Lime Soda", Category = "Drinks", Quantity = 210, Amount = 12600m, SharePercent = 6.4m },
+                }));
+            return api;
+        }
 
         private static TableMapDto DemoMap()
         {

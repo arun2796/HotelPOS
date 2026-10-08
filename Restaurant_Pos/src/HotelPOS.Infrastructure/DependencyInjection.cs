@@ -1,5 +1,6 @@
 using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Interfaces;
+using HotelPOS.Application.Reports;
 using HotelPOS.Infrastructure.Identity;
 using HotelPOS.Infrastructure.Media;
 using HotelPOS.Infrastructure.Persistence;
@@ -45,6 +46,7 @@ public static class DependencyInjection
         services.AddScoped<IAuditService, AuditService>();
         services.AddScoped<IMenuVersionStore, MenuVersionStore>();
         services.AddScoped<IInvoiceNumberService, InvoiceNumberService>();
+        services.AddScoped<IReportQueries, ReportQueries>();
         services.AddHostedService<BillClaimCleanupService>();
         services.AddSingleton<IIdempotencyStore, IdempotencyStore>();
         services.AddHostedService<IdempotencyCleanupService>();

@@ -36,6 +36,8 @@ public interface IApiClient
     Task<ApiResult<T>> DeleteAsync<T>(string path, CancellationToken cancellationToken = default, ApiRequestOptions? options = null);
 
     Task<ApiResult<T>> UploadAsync<T>(string path, Stream content, string fileName, string contentType, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<byte[]>> DownloadAsync(string path, CancellationToken cancellationToken = default);
 }
 
 public sealed class ApiClient : IApiClient
@@ -92,6 +94,38 @@ public sealed class ApiClient : IApiClient
         file.Headers.ContentType = new MediaTypeHeaderValue(contentType);
         var form = new MultipartFormDataContent { { file, "file", fileName } };
         return SendAsync<T>(HttpMethod.Post, path, form, new ApiRequestOptions { Timeout = TimeSpan.FromSeconds(60) }, cancellationToken);
+    }
+
+    // Files (CSV exports) come back as an attachment; errors still arrive as the usual JSON envelope.
+    public async Task<ApiResult<byte[]>> DownloadAsync(string path, CancellationToken cancellationToken = default)
+    {
+        var baseUrl = _settings.Current.ApiBaseUrl;
+        if (string.IsNullOrWhiteSpace(baseUrl) || !Uri.TryCreate(baseUrl.TrimEnd('/') + "/", UriKind.Absolute, out var baseUri))
+        {
+            return ApiResult<byte[]>.ConnectionFailure("The server address is not configured.");
+        }
+
+        try
+        {
+            var client = _httpClientFactory.CreateClient(HttpClientName);
+            using var response = await client.GetAsync(new Uri(baseUri, path.TrimStart('/')), cancellationToken);
+            if (response.IsSuccessStatusCode && response.Content.Headers.ContentType?.MediaType?.Contains("json", StringComparison.OrdinalIgnoreCase) != true)
+            {
+                return ApiResult<byte[]>.Ok(await response.Content.ReadAsByteArrayAsync(cancellationToken));
+            }
+
+            var envelope = await ReadAsync<object?>(response, HttpMethod.Get, path, cancellationToken);
+            return new ApiResult<byte[]> { Success = false, Message = envelope.Message, Errors = envelope.Errors, StatusCode = envelope.StatusCode, CorrelationId = envelope.CorrelationId };
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning("API GET {Path} failed: {Error}", path, ex.Message);
+            return ApiResult<byte[]>.ConnectionFailure(ConnectionUnavailableMessage);
+        }
+        catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            return ApiResult<byte[]>.ConnectionFailure("The server did not respond in time. Check the connection and try again.");
+        }
     }
 
     private async Task<ApiResult<T>> SendAsync<T>(HttpMethod method, string path, object? body, ApiRequestOptions? options, CancellationToken cancellationToken)
