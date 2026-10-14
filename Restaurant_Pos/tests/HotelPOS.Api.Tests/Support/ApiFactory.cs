@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using HotelPOS.Contracts.Auth;
+using HotelPOS.Contracts.Cash;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Infrastructure.Persistence;
@@ -103,6 +104,23 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
         var client = CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return client;
+    }
+
+    // A billing terminal: the user signed in on a named device with a cash shift open there (cash needs one since
+    // phase 13). An open shift left by an earlier test of the class is reused.
+    public async Task<HttpClient> CreateTerminalClientAsync(string username, string password, string deviceName)
+    {
+        var login = await LoginAsync(username, password, deviceName);
+        var client = CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", login.AccessToken);
+        var current = await (await client.GetAsync("/api/shifts/current")).ReadEnvelopeAsync<CashShiftDto?>();
+        if (current.Data is null)
+        {
+            var opened = await (await client.PostAsJsonAsync("/api/shifts", new OpenShiftRequest(), PosJson.Options)).ReadEnvelopeAsync<CashShiftDto>();
+            opened.Success.Should().BeTrue(opened.Message);
+        }
+
         return client;
     }
 

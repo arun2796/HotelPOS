@@ -91,8 +91,9 @@ public class BillingApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task TwoCountersSettlingTheSameBill_OnlyOneSucceeds()
     {
-        var counterOne = Client(await _factory.LoginAsync("cashier1", ApiFactory.DemoPassword, deviceName: "BILLING-01"));
-        var counterTwo = Client(await _factory.LoginAsync("cashier1", ApiFactory.DemoPassword, deviceName: "BILLING-02"));
+        // Each counter takes cash into its own open shift, and a cashier holds one shift at a time (phase 13).
+        var counterOne = await _factory.CreateTerminalClientAsync("cashier1", ApiFactory.DemoPassword, "BILLING-01");
+        var counterTwo = await _factory.CreateTerminalClientAsync("manager1", ApiFactory.DemoPassword, "BILLING-02");
         var order = await ServedOrderAsync("T06", "Chicken Biryani");
         var bill = await RequestBillAsync(order.Id);
 

@@ -8,8 +8,10 @@ namespace HotelPOS.Application.Features.Billing.Commands;
 
 // Assigns the gap-free invoice number.
 public sealed record FinalizeBillCommand(int Id, BillActionRequest Input)
-    : ICommand<BillDetailDto>, IHasInput<BillActionRequest>, IRequirePermission, IAuditedCommand
+    : ICommand<BillDetailDto>, IHasInput<BillActionRequest>, IRequirePermission, IAuditedCommand, IBusinessDayGuarded
 {
+    public BusinessDayScope BusinessDayScope => new(Id);
+
     public string Permission => Permissions.BillingOperate;
 }
 

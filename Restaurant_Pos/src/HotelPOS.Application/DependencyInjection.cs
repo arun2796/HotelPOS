@@ -4,6 +4,7 @@ using HotelPOS.Application.Common.Behaviors;
 using HotelPOS.Application.Common.Cqrs;
 using HotelPOS.Application.Features.Auth;
 using HotelPOS.Application.Features.Billing;
+using HotelPOS.Application.Features.DayEnd;
 using HotelPOS.Application.Features.Devices;
 using HotelPOS.Application.Features.Floor;
 using HotelPOS.Application.Features.Kitchen;
@@ -12,6 +13,7 @@ using HotelPOS.Application.Features.Orders;
 using HotelPOS.Application.Features.Print;
 using HotelPOS.Application.Features.Reports;
 using HotelPOS.Application.Features.Security;
+using HotelPOS.Application.Features.Shifts;
 using HotelPOS.Application.Features.Users;
 using HotelPOS.Application.Security;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,6 +36,7 @@ public static class DependencyInjection
             cfg.AddOpenBehavior(typeof(AuthorizationBehavior<,>));
             cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
             cfg.AddOpenBehavior(typeof(TransactionBehavior<,>));
+            cfg.AddOpenBehavior(typeof(BusinessDayLockBehavior<,>));
             cfg.AddOpenBehavior(typeof(AuditBehavior<,>));
         });
         services.AddScoped<AuditTrail>();
@@ -69,6 +72,12 @@ public static class DependencyInjection
         services.AddScoped<PrintSources>();
         services.AddScoped<IBusinessDays, BusinessDays>();
         services.AddScoped<ReportRanges>();
+        services.AddScoped<ShiftSteps>();
+        services.AddScoped<ShiftClosing>();
+        services.AddScoped<ShiftEvents>();
+        services.AddScoped<DayEndChecks>();
+        services.AddScoped<DayEndPack>();
+        services.AddScoped<DayEndRecords>();
 
         // Read by the access middleware on every request.
         services.AddSingleton<IDeviceAccessCache, DeviceAccessCache>();

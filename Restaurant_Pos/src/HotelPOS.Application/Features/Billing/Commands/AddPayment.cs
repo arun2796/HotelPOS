@@ -4,6 +4,7 @@ using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Cqrs;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
+using HotelPOS.Application.Features.Shifts;
 using HotelPOS.Contracts.Billing;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Realtime;
@@ -16,8 +17,10 @@ namespace HotelPOS.Application.Features.Billing.Commands;
 // Finalizes an open bill first; the payment that covers the balance settles it. The idempotency key makes a
 // retried payment return the bill instead of charging twice.
 public sealed record AddPaymentCommand(int Id, AddPaymentRequest Input, Guid IdempotencyKey)
-    : ICommand<BillDetailDto>, IHasInput<AddPaymentRequest>, IRequirePermission, IAuditedCommand
+    : ICommand<BillDetailDto>, IHasInput<AddPaymentRequest>, IRequirePermission, IAuditedCommand, IBusinessDayGuarded
 {
+    public BusinessDayScope BusinessDayScope => new(Id);
+
     public string Permission => Permissions.BillingOperate;
 }
 
@@ -45,6 +48,7 @@ internal sealed class AddPaymentHandler : ICommandHandler<AddPaymentCommand, Bil
     private readonly BillWorkflow _workflow;
     private readonly BillSteps _bills;
     private readonly BillEvents _events;
+    private readonly ShiftSteps _shifts;
 
     public AddPaymentHandler(
         IAppDbContext db,
@@ -54,8 +58,10 @@ internal sealed class AddPaymentHandler : ICommandHandler<AddPaymentCommand, Bil
         IClock clock,
         BillWorkflow workflow,
         BillSteps bills,
-        BillEvents events)
+        BillEvents events,
+        ShiftSteps shifts)
     {
+        _shifts = shifts;
         _db = db;
         _audit = audit;
         _afterCommit = afterCommit;
@@ -75,11 +81,24 @@ internal sealed class AddPaymentHandler : ICommandHandler<AddPaymentCommand, Bil
         }
 
         PaymentMethod? method = null;
+        int? shiftId = null;
         return await _workflow.RunAsync(id, request.RowVersion, claim: true,
             prepare: async _ =>
             {
                 method = await _db.PaymentMethods.AsNoTracking().FirstOrDefaultAsync(m => m.Id == request.PaymentMethodId, cancellationToken);
-                return method is null ? AppErrors.Validation("paymentMethodId", "Choose a payment method.") : null;
+                if (method is null)
+                {
+                    return AppErrors.Validation("paymentMethodId", "Choose a payment method.");
+                }
+
+                // Cash goes into a drawer: the terminal's open shift, recorded in the same transaction.
+                if (method.IsCash)
+                {
+                    shiftId = _currentUser.DeviceId is { } deviceId ? await _shifts.LockOpenShiftOfDeviceAsync(deviceId, cancellationToken) : null;
+                    return shiftId is null ? AppErrors.ShiftRequired() : null;
+                }
+
+                return null;
             },
             step: async scope =>
             {
@@ -91,6 +110,11 @@ internal sealed class AddPaymentHandler : ICommandHandler<AddPaymentCommand, Bil
 
                 var payment = bill.AddPayment(method!, request.Amount, request.Tendered, request.Reference,
                     _bills.UserId, _currentUser.DeviceId, idempotencyKey, _clock.UtcNow);
+                if (shiftId is { } cashShiftId)
+                {
+                    payment.RecordInShift(cashShiftId);
+                }
+
                 _audit.Add(AuditActions.PaymentReceived, nameof(Bill), bill.Id.ToString(CultureInfo.InvariantCulture), newValues: new
                 {
                     bill.InvoiceNumber,
@@ -100,6 +124,7 @@ internal sealed class AddPaymentHandler : ICommandHandler<AddPaymentCommand, Bil
                     payment.ChangeAmount,
                     Reference = Mask(payment.Reference),
                     BalanceDue = bill.BalanceDue,
+                    CashShiftId = shiftId,
                 });
 
                 if (bill.Status == BillStatus.Settled)

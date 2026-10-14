@@ -491,6 +491,10 @@ public class BillingTests : DatabaseTestBase
             (await CreateUserAsync("cook", "secret1", Roles.Kitchen)).Id,
             admin);
         await SetSettingAsync(SettingKeys.AllowBillBeforeReady, allowBillBeforeReady ? "true" : "false");
+
+        // Cash needs an open shift on the counter that takes it (phase 13).
+        await OpenShiftAsync(CounterOne, setup.Cashier, "cashier1", Roles.Cashier);
+        await OpenShiftAsync(CounterTwo, setup.CashierTwo, "cashier2", Roles.Cashier);
         AsWaiter(setup);
         Realtime.Reset();
         return setup;

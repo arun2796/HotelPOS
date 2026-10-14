@@ -15,8 +15,10 @@ namespace HotelPOS.Application.Features.Billing.Commands;
 
 // Cancels the bill and its order. Cashiers may send it too: it then needs a manager's approval in the request.
 public sealed record VoidBillCommand(int Id, VoidBillRequest Input)
-    : ICommand<BillDetailDto>, IHasInput<VoidBillRequest>, IRequirePermission, IAuditedCommand
+    : ICommand<BillDetailDto>, IHasInput<VoidBillRequest>, IRequirePermission, IAuditedCommand, IBusinessDayGuarded
 {
+    public BusinessDayScope BusinessDayScope => new(Id);
+
     public string Permission => Permissions.BillingOperate;
 }
 

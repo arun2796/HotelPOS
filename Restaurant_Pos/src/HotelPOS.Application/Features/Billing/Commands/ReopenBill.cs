@@ -17,8 +17,10 @@ namespace HotelPOS.Application.Features.Billing.Commands;
 // Lets the order be changed again. A finalized bill has an invoice number; reopening cancels that invoice and needs
 // an approval.
 public sealed record ReopenBillCommand(int Id, ReopenBillRequest Input)
-    : ICommand<BillDetailDto>, IHasInput<ReopenBillRequest>, IRequirePermission, IAuditedCommand
+    : ICommand<BillDetailDto>, IHasInput<ReopenBillRequest>, IRequirePermission, IAuditedCommand, IBusinessDayGuarded
 {
+    public BusinessDayScope BusinessDayScope => new(Id);
+
     public string Permission => Permissions.BillingOperate;
 }
 
