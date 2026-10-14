@@ -1,3 +1,4 @@
+using HotelPOS.Contracts.Admin;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace HotelPOS.Desktop.Services.Navigation;
@@ -21,6 +22,8 @@ public interface IAppNavigator
     Task ShowLoginAsync(string? message = null);
 
     Task ShowChangePasswordAsync();
+
+    Task ShowUpdateRequiredAsync(SystemInfoDto info);
 
     Task ShowShellAsync();
 

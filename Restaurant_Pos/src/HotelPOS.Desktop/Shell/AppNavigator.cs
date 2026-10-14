@@ -1,3 +1,4 @@
+using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Desktop.Modules.Auth;
@@ -28,6 +29,7 @@ public sealed class AppNavigator : IAppNavigator
         IRealtimeClient realtime,
         IAuthApi authApi,
         IUiDispatcher dispatcher,
+        INotificationService notifications,
         ILogger<AppNavigator> logger)
     {
         _main = main;
@@ -47,6 +49,22 @@ public sealed class AppNavigator : IAppNavigator
             if (notice.Code == ErrorCodes.DeviceDisabled)
             {
                 _session.Expire(notice.Message);
+                return;
+            }
+
+            // An administrator's broadcast, e.g. "Server restarting in 2 minutes for maintenance".
+            var text = string.IsNullOrWhiteSpace(notice.SentBy) ? notice.Message : $"{notice.Message} ({notice.SentBy})";
+            switch (notice.Level)
+            {
+                case NoticeLevel.Critical:
+                    notifications.Error(text);
+                    break;
+                case NoticeLevel.Warning:
+                    notifications.Warning(text);
+                    break;
+                default:
+                    notifications.Info(text);
+                    break;
             }
         });
     }
@@ -59,6 +77,9 @@ public sealed class AppNavigator : IAppNavigator
 
     public Task ShowChangePasswordAsync() =>
         ShowAsync(ActivatorUtilities.CreateInstance<ChangePasswordViewModel>(_services), ChangePasswordMode.Forced);
+
+    public Task ShowUpdateRequiredAsync(SystemInfoDto info) =>
+        ShowAsync(ActivatorUtilities.CreateInstance<UpdateRequiredViewModel>(_services), info);
 
     public Task ShowShellAsync() =>
         ShowAsync(ActivatorUtilities.CreateInstance<ShellViewModel>(_services), null);

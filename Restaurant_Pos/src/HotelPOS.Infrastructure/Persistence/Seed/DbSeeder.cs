@@ -64,7 +64,7 @@ public sealed class DbSeeder
         new Setting(SettingKeys.LockoutThreshold, "5", SettingDataType.Int, "Consecutive failed login attempts before account lockout.", true),
         new Setting(SettingKeys.AuditRetentionDays, "0", SettingDataType.Int, "Delete audit entries older than this many days (0 keeps everything).", false),
         new Setting(SettingKeys.BackupEnabled, "true", SettingDataType.Bool, "Take the daily database backup automatically.", false),
-        new Setting(SettingKeys.BackupTime, "03:30", SettingDataType.String, "Local time of the daily backup (HH:mm), before the business day starts.", false),
+        new Setting(SettingKeys.BackupTime, "03:30", SettingDataType.Time, "Local time of the daily backup (HH:mm), before the business day starts.", false),
         new Setting(SettingKeys.BackupRetentionDays, "14", SettingDataType.Int, "Delete backups older than this many days (at least 1).", false),
         new Setting(SettingKeys.BackupPath, "", SettingDataType.String, "Folder for backups; empty uses the server default (Backup:DefaultPath in appsettings).", false),
         new Setting(SettingKeys.LockoutMinutes, "15", SettingDataType.Int, "Duration in minutes an account remains locked out.", true),

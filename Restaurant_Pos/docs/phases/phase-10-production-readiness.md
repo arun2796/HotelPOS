@@ -173,3 +173,15 @@ prefer the table for the admin list and audit (`Backup.Completed/Failed`). Migra
   `scripts/backup-now.ps1` (direct `pg_dump` when the API is down), `scripts/create-firewall-rule.ps1`.
   **Rehearsed on 2026-10-14**: the development database was dumped and restored into a scratch database with
   `restore-db.ps1`; all 30 tables had identical row counts.
+
+**10.3 Desktop (2026-10-14)**
+
+- Version gate (`VersionGate`): at start-up (`StartupFlow`) and on the login screen (catches a server upgraded while
+  the terminal kept running), a client below `minClientVersion` gets the **Update required** screen with installed,
+  required and server versions and CHECK AGAIN. An unreachable server never blocks (the connection handling does).
+- **Backup** screen (`backup.manage`): BACKUP NOW (10-minute request timeout), last-failure banner until a newer
+  backup succeeds, history grid, and the four backup settings edited in place.
+- **Server** screen (`server.manage`, new module): API log newest first with level and size filters; notice
+  sender (level + message, confirmation before broadcasting).
+- Every terminal shows `ServerNotice` broadcasts as a toast (Info / Warning / Critical as error) with the sender;
+  `DEVICE_DISABLED` still signs the terminal out.

@@ -41,6 +41,7 @@ public static class ModuleRegistry
     public const string Audit = "audit";
     public const string Settings = "settings";
     public const string Backup = "backup";
+    public const string Server = "server";
     public const string ThisDevice = "this-device";
     public const string Printers = "printers";
 
@@ -86,7 +87,9 @@ public static class ModuleRegistry
         new(Settings, "Restaurant Settings", "", "Administration", AdminOnly, 1,
             "Restaurant name, invoice details, kitchen thresholds and other settings.", typeof(SettingsViewModel)),
         new(Backup, "Backup", "", "Administration", AdminOnly, 10,
-            "Scheduled and manual database backups."),
+            "Scheduled and manual database backups.", typeof(BackupViewModel)),
+        new(Server, "Server", "", "Administration", AdminOnly, 10,
+            "Server log and notices to every terminal.", typeof(ServerViewModel)),
         new(ThisDevice, "This Terminal", "", "Administration", Management, 1,
             "Server address and identity of this terminal.", typeof(ConfigurationViewModel)),
         new(Printers, "Printers", "", "Administration", Management, 7,
@@ -113,6 +116,7 @@ public static class ModuleRegistry
         [Devices] = Permissions.DevicesManage,
         [Settings] = Permissions.SettingsManage,
         [Backup] = Permissions.BackupManage,
+        [Server] = Permissions.ServerManage,
     };
 
     public static IReadOnlyList<ModuleDefinition> ForRoles(IReadOnlyCollection<string> roles) =>

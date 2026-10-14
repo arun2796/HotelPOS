@@ -166,6 +166,13 @@ public sealed partial class LoginViewModel : ObservableObject, INavigationAware
         var result = await _systemApi.GetInfoAsync();
         if (result.Success && result.Data is not null)
         {
+            // The server may have been upgraded while this terminal kept running.
+            if (!VersionGate.IsSupported(AppInfo.Version, result.Data.MinClientVersion))
+            {
+                await _navigator.ShowUpdateRequiredAsync(result.Data);
+                return;
+            }
+
             RestaurantName = result.Data.RestaurantName;
             ServerState = ServerState.Reachable;
         }

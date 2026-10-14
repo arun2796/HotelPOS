@@ -26,6 +26,9 @@
       <DataTemplate DataType="{x:Type config:ConfigurationViewModel}">
         <config:ConfigurationView />
       </DataTemplate>
+      <DataTemplate DataType="{x:Type auth:UpdateRequiredViewModel}">
+        <auth:UpdateRequiredView />
+      </DataTemplate>
       <DataTemplate DataType="{x:Type auth:LoginViewModel}">
         <auth:LoginView />
       </DataTemplate>
@@ -46,6 +49,12 @@
       </DataTemplate>
       <DataTemplate DataType="{x:Type admin:DevicesViewModel}">
         <admin:DevicesView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type admin:BackupViewModel}">
+        <admin:BackupView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type admin:ServerViewModel}">
+        <admin:ServerView />
       </DataTemplate>
       <DataTemplate DataType="{x:Type admin:AuditLogsViewModel}">
         <admin:AuditLogsView />

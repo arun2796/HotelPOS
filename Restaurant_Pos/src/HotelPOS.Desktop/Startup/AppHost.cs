@@ -50,6 +50,7 @@ public static class AppHost
         services.AddSingleton<IUsersApi, UsersApi>();
         services.AddSingleton<IDevicesApi, DevicesApi>();
         services.AddSingleton<IAuditApi, AuditApi>();
+        services.AddSingleton<IOperationsApi, OperationsApi>();
         services.AddSingleton<IAdminSettingsApi, AdminSettingsApi>();
         services.AddSingleton<IFloorApi, FloorApi>();
         services.AddSingleton<IMenuApi, MenuApi>();

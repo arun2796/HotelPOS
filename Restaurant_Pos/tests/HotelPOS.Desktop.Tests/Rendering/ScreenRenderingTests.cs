@@ -277,6 +277,13 @@ public class ScreenRenderingTests
             var audit = (AuditLogsViewModel)setupShell.CurrentPage!;
             audit.SelectedEntry = audit.AuditEntries.First();
             rendered.Add(await RenderScreenAsync(env, setupShell, "44-audit-log"));
+            await setupShell.NavigateToAsync(ModuleRegistry.Backup, null);
+            rendered.Add(await RenderScreenAsync(env, setupShell, "45-backup"));
+            await setupShell.NavigateToAsync(ModuleRegistry.Server, null);
+            rendered.Add(await RenderScreenAsync(env, setupShell, "46-server"));
+            var update = env.Create<UpdateRequiredViewModel>();
+            await setupShell.ShowPageAsync(update, new SystemInfoDto { MinClientVersion = "1.2.0", ApiVersion = "1.2.3" });
+            rendered.Add(await RenderScreenAsync(env, setupShell, "47-update-required"));
 
             await setupShell.NavigateToAsync(ModuleRegistry.Printers, null);
             rendered.Add(await RenderScreenAsync(env, setupShell, "38-printer-settings"));
@@ -296,7 +303,7 @@ public class ScreenRenderingTests
         }
 
         bindingErrors.Errors.Should().BeEmpty("every binding in the views must point at an existing property");
-        rendered.Should().HaveCount(44);
+        rendered.Should().HaveCount(47);
     }
 
     private static async Task<string> RenderScreenAsync(Environment env, object screen, string name)
@@ -478,6 +485,7 @@ public class ScreenRenderingTests
             services.AddSingleton(DemoKitchenApi());
             services.AddSingleton(DemoDevicesApi());
             services.AddSingleton(DemoAuditApi());
+            services.AddSingleton(DemoOperationsApi());
             services.AddSingleton(DemoBillingApi());
             services.AddSingleton(DemoReportsApi());
             services.AddSingleton(Substitute.For<ISoundPlayer>());
@@ -947,6 +955,36 @@ public class ScreenRenderingTests
                 Device("KITCHEN-01", DeviceType.Kitchen, "KITCHEN-PC", true, 0, station: 1),
                 Device("BILLING-01", DeviceType.Billing, "COUNTER-PC", true, 2),
                 Device("BILLING-02", DeviceType.Billing, "OLD-COUNTER", false, 4000, active: false),
+            }));
+            return api;
+        }
+
+        private static IOperationsApi DemoOperationsApi()
+        {
+            var now = DateTime.UtcNow;
+            BackupDto Backup(int id, int hoursAgo, BackupStatus status, BackupTrigger trigger, string? error = null) => new()
+            {
+                Id = id, FileName = $"hotelpos-{now.AddHours(-hoursAgo):yyyyMMdd-HHmmss}.dump", MediaFileName = status == BackupStatus.Succeeded ? "media.zip" : null,
+                SizeBytes = status == BackupStatus.Succeeded ? 18_400_000 : 0, Status = status, Trigger = trigger,
+                TriggeredBy = trigger == BackupTrigger.Manual ? "admin" : "schedule",
+                StartedAtUtc = now.AddHours(-hoursAgo), FinishedAtUtc = now.AddHours(-hoursAgo).AddSeconds(14), Error = error,
+            };
+            var failed = Backup(3, 2, BackupStatus.Failed, BackupTrigger.Schedule, "pg_dump exited with code 1: could not connect to server");
+            var api = Substitute.For<IOperationsApi>();
+            api.GetBackupsAsync(Arg.Any<CancellationToken>()).Returns(ApiResult<BackupOverviewDto>.Ok(new BackupOverviewDto
+            {
+                Folder = @"C:\ProgramData\HotelPOS\Backups", Enabled = true, Time = "03:30", RetentionDays = 14, LastFailure = failed,
+                Backups = new[] { failed, Backup(2, 26, BackupStatus.Succeeded, BackupTrigger.Schedule), Backup(1, 30, BackupStatus.Succeeded, BackupTrigger.Manual) },
+            }));
+            api.GetLogsAsync(Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(ApiResult<LogTailDto>.Ok(new LogTailDto
+            {
+                FileName = "api-20261014.log", LastWriteUtc = now,
+                Lines = new[]
+                {
+                    "2026-10-14 13:58:02.114 +05:30 [INF] 7f2c admin HotelPOS.Application.Auth.AuthService: User admin logged in on device ADMIN-01",
+                    "2026-10-14 13:59:40.008 +05:30 [WRN] 81aa waiter2 HotelPOS.Application.Auth.AuthService: Login failed for user waiter2: wrong password",
+                    "2026-10-14 14:00:00.501 +05:30 [ERR]  HotelPOS.Infrastructure.Services.BackupService: Backup hotelpos-20261014-140000.dump failed\nSystem.InvalidOperationException: pg_dump exited with code 1: could not connect to server",
+                },
             }));
             return api;
         }
