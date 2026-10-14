@@ -31,6 +31,8 @@ public static class AuditActions
     public const string AuditPurged = "Audit.Purged";
 
     public const string ServerNoticeSent = "Server.NoticeSent";
+    public const string BackupCompleted = "Backup.Completed";
+    public const string BackupFailed = "Backup.Failed";
 
     public const string SectionCreated = "Section.Created";
     public const string SectionUpdated = "Section.Updated";

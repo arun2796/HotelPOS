@@ -195,7 +195,7 @@ All `GET`, roles A/M, params `from`, `to` (business days, default today, at most
 | GET | `/api/admin/audit-logs` (paged, filters: user, device, action, entity, dates); GET `.../export` (CSV) | A, M | 9 |
 | GET | `/api/admin/devices` | A | 9 |
 | PUT | `/api/admin/devices/{id}` ; POST `.../deactivate` / `activate` | A | 9 |
-| POST | `/api/admin/backup` ; GET `/api/admin/backups` | A | 10 |
+| POST | `/api/admin/backup` ; GET `/api/admin/backups` | A (`backup.manage`) | 10 — runs a verified backup now (409/422 `BUSINESS_RULE` if one is running or it fails); the list returns folder, schedule, retention, last unresolved failure and the latest 100 backups |
 | GET | `/api/admin/logs?lines=500&level=WRN` | A (`server.manage`) | 10 — newest entries of the newest `api-*.log` (1–2000; stack traces stay with their entry) |
 | POST | `/api/admin/notice` `{level: Info/Warning/Critical, message}` | A (`server.manage`) | 10 — broadcast `ServerNotice` to every terminal; audited `Server.NoticeSent` |
 

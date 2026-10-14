@@ -43,6 +43,8 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             ["Security:RateLimit:MaxPerIp"] = "100",
             ["Security:RateLimit:MaxPerUser"] = "100",
             ["Monitoring:MinFreeDiskMb"] = "0",
+            ["Backup:Scheduler"] = "false",
+            ["Backup:DefaultPath"] = Path.Combine(MediaPath, "backups"),
         }));
     }
 

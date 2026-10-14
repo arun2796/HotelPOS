@@ -27,6 +27,7 @@ public sealed class AppDbContext : DbContext, IAppDbContext
     public DbSet<Device> Devices => Set<Device>();
     public DbSet<Setting> Settings => Set<Setting>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<Backup> Backups => Set<Backup>();
     public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
     public DbSet<PreparationStation> PreparationStations => Set<PreparationStation>();
     public DbSet<PaymentMethod> PaymentMethods => Set<PaymentMethod>();

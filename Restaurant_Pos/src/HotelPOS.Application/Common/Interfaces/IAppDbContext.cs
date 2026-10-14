@@ -21,6 +21,7 @@ public interface IAppDbContext
     DbSet<Device> Devices { get; }
     DbSet<Setting> Settings { get; }
     DbSet<AuditLog> AuditLogs { get; }
+    DbSet<Backup> Backups { get; }
     DbSet<IdempotencyRecord> IdempotencyRecords { get; }
     DbSet<PreparationStation> PreparationStations { get; }
     DbSet<PaymentMethod> PaymentMethods { get; }

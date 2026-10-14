@@ -24,6 +24,7 @@ public static class DependencyInjection
         services.Configure<DatabaseOptions>(configuration.GetSection(DatabaseOptions.SectionName));
         services.Configure<SeedOptions>(configuration.GetSection(SeedOptions.SectionName));
         services.Configure<MediaOptions>(configuration.GetSection(MediaOptions.SectionName));
+        services.Configure<BackupOptions>(configuration.GetSection(BackupOptions.SectionName));
 
         services.AddScoped<AuditableEntityInterceptor>();
         services.AddDbContext<AppDbContext>((sp, options) =>
@@ -49,6 +50,8 @@ public static class DependencyInjection
         services.AddScoped<IReportQueries, ReportQueries>();
         services.AddHostedService<BillClaimCleanupService>();
         services.AddHostedService<AuditRetentionService>();
+        services.AddScoped<IBackupService, BackupService>();
+        services.AddHostedService<BackupHostedService>();
         services.AddSingleton<IIdempotencyStore, IdempotencyStore>();
         services.AddHostedService<IdempotencyCleanupService>();
         services.AddSingleton<IMenuImageStore, MenuImageStore>();

@@ -119,6 +119,27 @@ public class OperationsApiTests : IClassFixture<ApiFactory>
         audit.Items.Should().ContainSingle(a => a.NewValues!.Contains("maintenance"));
     }
 
+    [Fact]
+    public async Task BackupNow_WritesAVerifiedBackup_ShownInTheOverview()
+    {
+        if (Infrastructure.Services.PostgresTools.Find("pg_dump", null) is null)
+        {
+            return;
+        }
+
+        var admin = await _factory.CreateAuthenticatedClientAsync("admin", ApiFactory.AdminPassword);
+
+        var run = await admin.PostAsync("/api/admin/backup", null);
+        var overview = (await (await admin.GetAsync("/api/admin/backups")).ReadEnvelopeAsync<BackupOverviewDto>()).Data!;
+
+        run.StatusCode.Should().Be(HttpStatusCode.OK);
+        var backup = (await run.ReadEnvelopeAsync<BackupDto>()).Data!;
+        backup.Status.Should().Be(Contracts.Enums.BackupStatus.Succeeded);
+        File.Exists(Path.Combine(overview.Folder, backup.FileName)).Should().BeTrue();
+        overview.Backups.Should().Contain(b => b.Id == backup.Id);
+        overview.LastFailure.Should().BeNull();
+    }
+
     // The database initializer outside any web host, so a failing check surfaces as an exception instead of a
     // process exit.
     private static ServiceProvider InfrastructureOnly(string connectionString, bool autoMigrate)

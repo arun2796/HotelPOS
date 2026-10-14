@@ -60,3 +60,20 @@ internal sealed class PreparationStationConfiguration : IEntityTypeConfiguration
         builder.HasIndex(s => s.Code).IsUnique();
     }
 }
+
+internal sealed class BackupConfiguration : IEntityTypeConfiguration<Backup>
+{
+    public void Configure(EntityTypeBuilder<Backup> builder)
+    {
+        builder.ToTable("Backups", t =>
+        {
+            t.HasCheckConstraint("CK_Backups_Status", ConfigurationHelpers.EnumCheck<BackupStatus>("Status"));
+            t.HasCheckConstraint("CK_Backups_Trigger", ConfigurationHelpers.EnumCheck<BackupTrigger>("Trigger"));
+        });
+        builder.Property(b => b.FileName).HasMaxLength(200).IsRequired();
+        builder.Property(b => b.MediaFileName).HasMaxLength(200);
+        builder.Property(b => b.TriggeredBy).HasMaxLength(50);
+        builder.Property(b => b.Error).HasMaxLength(1000);
+        builder.HasIndex(b => b.StartedAt);
+    }
+}

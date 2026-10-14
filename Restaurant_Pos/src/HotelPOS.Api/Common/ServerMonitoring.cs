@@ -42,6 +42,19 @@ public interface IExtraMonitoredPath
     string Path { get; }
 }
 
+// The backup folder comes from a database setting; the backup service records the one it last used.
+public sealed class BackupFolderPath : IExtraMonitoredPath
+{
+    private readonly IOptions<Infrastructure.Services.BackupOptions> _options;
+
+    public BackupFolderPath(IOptions<Infrastructure.Services.BackupOptions> options)
+    {
+        _options = options;
+    }
+
+    public string Path => Infrastructure.Services.BackupFolder.Current ?? _options.Value.DefaultPath;
+}
+
 public sealed record DriveSpace(string Drive, long FreeMb);
 
 public static class DiskSpace

@@ -55,4 +55,9 @@ public static class SettingKeys
     public const string LockoutThreshold = "LockoutThreshold";
     public const string AuditRetentionDays = "AuditRetentionDays";
     public const string LockoutMinutes = "LockoutMinutes";
+
+    public const string BackupEnabled = "BackupEnabled";
+    public const string BackupTime = "BackupTime";
+    public const string BackupRetentionDays = "BackupRetentionDays";
+    public const string BackupPath = "BackupPath";
 }

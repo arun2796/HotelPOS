@@ -69,6 +69,7 @@ public static class ApiServiceRegistration
 
         services.AddOptions<MonitoringOptions>().Bind(configuration.GetSection(MonitoringOptions.SectionName));
         services.AddSingleton<LogTailReader>();
+        services.AddSingleton<IExtraMonitoredPath, BackupFolderPath>();
         services.AddHealthChecks()
             .AddDbContextCheck<AppDbContext>("database")
             .AddCheck<DiskSpaceHealthCheck>("disk");

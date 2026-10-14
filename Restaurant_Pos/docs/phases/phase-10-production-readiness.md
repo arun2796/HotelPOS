@@ -154,3 +154,22 @@ prefer the table for the admin list and audit (`Backup.Completed/Failed`). Migra
   default). `ServerNoticeEvent` gained `level` and `sentBy`.
 - `appsettings.Production.template.json`: the installer copies it to `appsettings.Production.json` (gitignored,
   it holds the connection string and JWT key) with logs and media under `C:\ProgramData\HotelPOS\Api`.
+
+**10.2 Backup and restore (2026-10-14)**
+
+- `Backups` table (migration `Phase10_Ops`): file, pictures zip, size, status, trigger, who, start/finish, error.
+- `BackupService`: `pg_dump --format=custom --no-owner` (password via `PGPASSWORD`, never on the command line),
+  verified with `pg_restore --list`, menu pictures zipped next to it, retention cleanup of files and rows, audit
+  `Backup.Completed` / `Backup.Failed`; one backup at a time; rows left `Running` by a server stop are closed as
+  interrupted. Tools come from `Backup:PgBinPath`, else PATH, else the newest `Program Files\PostgreSQL\*\bin`.
+- `BackupHostedService`: one scheduled attempt per day once `BackupTime` (local) has passed, so a server that was
+  off at 03:30 catches up when it starts; a failure is reported, not retried every minute. `Backup:Scheduler=false`
+  in test hosts.
+- Settings `BackupEnabled`, `BackupTime`, `BackupRetentionDays`, `BackupPath` (empty = `Backup:DefaultPath`,
+  `C:\ProgramData\HotelPOS\Backups`); the folder joins the `/health` disk check.
+- "Failure raises an admin notice at next login" is met by the Backup screen's last-failure banner (10.3) and the
+  audit entry rather than a login-time popup.
+- Scripts: `scripts/restore-db.ps1` (verify, stop service, drop/create, `pg_restore`, pictures, start),
+  `scripts/backup-now.ps1` (direct `pg_dump` when the API is down), `scripts/create-firewall-rule.ps1`.
+  **Rehearsed on 2026-10-14**: the development database was dumped and restored into a scratch database with
+  `restore-db.ps1`; all 30 tables had identical row counts.

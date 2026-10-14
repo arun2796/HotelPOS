@@ -2,6 +2,8 @@
 # review every change. A = Admin, M = Manager, W = Waiter, K = Kitchen, C = Cashier, '-' = 403.
 AM---  GET    api/admin/audit-logs
 AM---  GET    api/admin/audit-logs/export
+A----  POST   api/admin/backup
+A----  GET    api/admin/backups
 A----  GET    api/admin/devices
 A----  GET    api/admin/devices/{id:guid}
 A----  PUT    api/admin/devices/{id:guid}

@@ -95,6 +95,58 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                     b.ToTable("AuditLogs", (string)null);
                 });
 
+            modelBuilder.Entity("HotelPOS.Domain.Administration.Backup", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime?>("FinishedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<string>("MediaFileName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Trigger")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TriggeredBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StartedAt");
+
+                    b.ToTable("Backups", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Backups_Status", "\"Status\" IN (1, 2, 3)");
+
+                            t.HasCheckConstraint("CK_Backups_Trigger", "\"Trigger\" IN (1, 2)");
+                        });
+                });
+
             modelBuilder.Entity("HotelPOS.Domain.Administration.IdempotencyRecord", b =>
                 {
                     b.Property<Guid>("Key")
