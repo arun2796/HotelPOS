@@ -54,4 +54,7 @@ public interface IOnlineDeviceTracker
 {
     IReadOnlySet<Guid> OnlineDeviceIds();
     bool IsDeviceOnline(Guid deviceId);
+
+    // Closes every open real-time connection of the device; returns how many were closed.
+    Task<int> DisconnectDeviceAsync(Guid deviceId, CancellationToken cancellationToken = default);
 }

@@ -11,7 +11,7 @@ namespace HotelPOS.Application.Billing;
 
 public interface IManagerApprovalService
 {
-    // Returns the approving manager's user id. A manager or admin approves their own actions.
+    // Returns the approver's user id. A caller who holds the action's permission (ApprovalRules) approves their own.
     Task<Result<int>> ApproveAsync(ManagerApprovalDto? approval, string actionType, string description, CancellationToken cancellationToken = default);
 }
 
@@ -22,6 +22,7 @@ public sealed class ManagerApprovalService : IManagerApprovalService
     private readonly IPasswordHasher _hasher;
     private readonly IAuditService _audit;
     private readonly IApprovalTokenService _approvalTokens;
+    private readonly IPermissionService _permissions;
     private readonly IClock _clock;
 
     public ManagerApprovalService(
@@ -30,6 +31,7 @@ public sealed class ManagerApprovalService : IManagerApprovalService
         IPasswordHasher hasher,
         IAuditService audit,
         IApprovalTokenService approvalTokens,
+        IPermissionService permissions,
         IClock clock)
     {
         _db = db;
@@ -37,12 +39,13 @@ public sealed class ManagerApprovalService : IManagerApprovalService
         _hasher = hasher;
         _audit = audit;
         _approvalTokens = approvalTokens;
+        _permissions = permissions;
         _clock = clock;
     }
 
     public async Task<Result<int>> ApproveAsync(ManagerApprovalDto? approval, string actionType, string description, CancellationToken cancellationToken = default)
     {
-        if (IsManager(_currentUser) && _currentUser.UserId is { } self)
+        if (ApprovalRules.CallerMayAct(_currentUser, actionType) && _currentUser.UserId is { } self)
         {
             return self;
         }
@@ -71,17 +74,21 @@ public sealed class ManagerApprovalService : IManagerApprovalService
         }
 
         var normalized = User.Normalize(approval.ApproverUsername);
-        var approver = await _db.Users.AsNoTracking()
+        var approver = await _db.Users
             .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
             .FirstOrDefaultAsync(u => u.NormalizedUsername == normalized, cancellationToken);
-        var accepted = approver is not null
-            && approver.IsActive
-            && !approver.IsLockedOut(_clock.UtcNow)
-            && (approver.HasRole(Roles.Manager) || approver.HasRole(Roles.Admin))
-            && _hasher.Verify(approver.PasswordHash, approval.ApproverPassword) != PasswordCheck.Failed;
-        if (accepted)
+        var now = _clock.UtcNow;
+        var canTry = approver is not null && !approver.IsLockedOut(now);
+        var passwordOk = canTry && _hasher.Verify(approver!.PasswordHash, approval.ApproverPassword) != PasswordCheck.Failed;
+        if (canTry && !passwordOk)
         {
-            return approver!.Id;
+            // Any signed-in terminal can send credentials here, so wrong ones count towards the approver's lockout.
+            await LoginFailures.RecordAsync(_db, _audit, approver!, now, "ApprovalWrongPassword", _currentUser.DeviceName, cancellationToken);
+        }
+
+        if (passwordOk && approver!.IsActive && await ApprovalRules.MayApproveAsync(approver, actionType, _permissions, cancellationToken))
+        {
+            return approver.Id;
         }
 
         // Saved at once so a rejected attempt is on record even though the action itself is not carried out.

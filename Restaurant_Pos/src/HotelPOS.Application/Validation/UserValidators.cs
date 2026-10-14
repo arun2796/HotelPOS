@@ -60,6 +60,17 @@ public sealed class UpdateSettingsRequestValidator : AbstractValidator<UpdateSet
     }
 }
 
+public sealed class UpdateRolePermissionsRequestValidator : AbstractValidator<UpdateRolePermissionsRequest>
+{
+    public UpdateRolePermissionsRequestValidator()
+    {
+        RuleFor(x => x.Permissions).NotNull();
+        RuleForEach(x => x.Permissions)
+            .Must(p => HotelPOS.Contracts.Security.Permissions.All.Contains(p, StringComparer.Ordinal))
+            .WithMessage("'{PropertyValue}' is not a known permission.");
+    }
+}
+
 internal static class RoleRuleExtensions
 {
     public static IRuleBuilderOptions<T, IReadOnlyList<string>> ValidRoles<T>(this IRuleBuilder<T, IReadOnlyList<string>> rule) =>

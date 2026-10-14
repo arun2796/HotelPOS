@@ -23,7 +23,8 @@ public static class RolePermissionMap
         },
         [Roles.Kitchen] = new[]
         {
-            Permissions.MenuView, Permissions.MenuAvailability, Permissions.KitchenOperate,
+            // The table map has been readable by every role since Phase 2.
+            Permissions.TablesView, Permissions.MenuView, Permissions.MenuAvailability, Permissions.KitchenOperate,
         },
         [Roles.Cashier] = new[]
         {

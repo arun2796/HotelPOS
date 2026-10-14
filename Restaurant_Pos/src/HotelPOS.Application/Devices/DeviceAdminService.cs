@@ -2,6 +2,7 @@ using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Security;
 using HotelPOS.Application.Common.Results;
+using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Devices;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Contracts.Security;
@@ -142,10 +143,13 @@ public sealed class DeviceAdminService : IDeviceAdminService
             new ServerNoticeEvent
             {
                 Message = "This terminal has been disabled by an administrator.",
-                Code = "DEVICE_DISABLED",
+                Code = ErrorCodes.DeviceDisabled,
             },
             new RealtimeAudience { DeviceIds = new[] { id } },
             cancellationToken);
+
+        // Refusing new connections is not enough: an open connection would keep receiving every broadcast.
+        var dropped = await _onlineTracker.DisconnectDeviceAsync(id, cancellationToken);
 
         // Broadcast status change to admins and managers
         await _realtime.PublishAsync(
@@ -161,7 +165,7 @@ public sealed class DeviceAdminService : IDeviceAdminService
             RealtimeAudience.ForRoles(Roles.Admin, Roles.Manager),
             cancellationToken);
 
-        _logger.LogInformation("Device '{DeviceName}' ({DeviceId}) was deactivated", device.Name, id);
+        _logger.LogInformation("Device '{DeviceName}' ({DeviceId}) was deactivated; {Dropped} connection(s) closed", device.Name, id, dropped);
         return Result.Success();
     }
 

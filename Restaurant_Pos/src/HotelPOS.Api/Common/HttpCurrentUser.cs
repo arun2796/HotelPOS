@@ -61,4 +61,8 @@ public sealed class HttpCurrentUser : ICurrentUser
     public string? CorrelationId => Context?.TraceIdentifier;
 
     public bool IsInRole(string role) => Principal?.IsInRole(role) == true;
+
+    public bool HasPermission(string permission) =>
+        IsInRole(Contracts.Security.Roles.Admin)
+        || Principal?.HasClaim(c => c.Type == PosClaimTypes.Permission && string.Equals(c.Value, permission, StringComparison.Ordinal)) == true;
 }

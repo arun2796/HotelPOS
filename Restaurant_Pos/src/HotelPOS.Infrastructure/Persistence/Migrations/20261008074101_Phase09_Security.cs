@@ -58,7 +58,7 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                     ('Manager', 'billing.operate'), ('Manager', 'billing.discount'), ('Manager', 'billing.void'), ('Manager', 'billing.refund'),
                     ('Manager', 'reports.view'),
                     ('Waiter', 'tables.view'), ('Waiter', 'tables.operate'), ('Waiter', 'menu.view'), ('Waiter', 'orders.create'),
-                    ('Kitchen', 'menu.view'), ('Kitchen', 'menu.availability'), ('Kitchen', 'kitchen.operate'),
+                    ('Kitchen', 'tables.view'), ('Kitchen', 'menu.view'), ('Kitchen', 'menu.availability'), ('Kitchen', 'kitchen.operate'),
                     ('Cashier', 'tables.view'), ('Cashier', 'tables.operate'), ('Cashier', 'menu.view'),
                     ('Cashier', 'billing.operate'), ('Cashier', 'billing.discount')
                 ) AS p(role, permission) ON p.role = r."Name";

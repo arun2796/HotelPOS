@@ -22,6 +22,9 @@ logs/
 # case-insensitively, and a bare "media/" also hid the src/HotelPOS.Infrastructure/Media source folder.
 /src/HotelPOS.Api/media/
 
+# Written by AuthorizationMatrixTests when the matrix differs from the reviewed snapshot
+*.actual.txt
+
 # Local secrets and machine configuration (never commit)
 appsettings.Local.json
 appsettings.Production.json

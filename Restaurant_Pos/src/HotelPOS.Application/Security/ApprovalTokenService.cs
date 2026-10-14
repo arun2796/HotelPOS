@@ -17,6 +17,7 @@ public sealed class ApprovalTokenService : IApprovalTokenService
     private readonly IAppDbContext _db;
     private readonly IPasswordHasher _hasher;
     private readonly IAuditService _audit;
+    private readonly IPermissionService _permissions;
     private readonly IClock _clock;
     private readonly ILogger<ApprovalTokenService> _logger;
 
@@ -24,12 +25,14 @@ public sealed class ApprovalTokenService : IApprovalTokenService
         IAppDbContext db,
         IPasswordHasher hasher,
         IAuditService audit,
+        IPermissionService permissions,
         IClock clock,
         ILogger<ApprovalTokenService> logger)
     {
         _db = db;
         _hasher = hasher;
         _audit = audit;
+        _permissions = permissions;
         _clock = clock;
         _logger = logger;
     }
@@ -57,7 +60,7 @@ public sealed class ApprovalTokenService : IApprovalTokenService
 
         var accepted = passwordOk
             && approver!.IsActive
-            && (approver.HasRole(Roles.Manager) || approver.HasRole(Roles.Admin));
+            && await ApprovalRules.MayApproveAsync(approver, request.ActionType, _permissions, cancellationToken);
 
         if (!accepted)
         {

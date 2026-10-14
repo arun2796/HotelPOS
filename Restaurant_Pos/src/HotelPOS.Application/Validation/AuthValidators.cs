@@ -74,10 +74,23 @@ public sealed class RegisterDeviceRequestValidator : AbstractValidator<RegisterD
     }
 }
 
+public sealed class UpdateDeviceRequestValidator : AbstractValidator<UpdateDeviceRequest>
+{
+    public UpdateDeviceRequestValidator()
+    {
+        RuleFor(x => x.Name)
+            .NotEmpty()
+            .Length(DeviceNameRules.MinLength, DeviceNameRules.MaxLength)
+            .Matches(DeviceNameRules.Pattern).WithMessage("Device name may contain letters, digits, '-' and '_' only.");
+        RuleFor(x => x.StationId).GreaterThan(0).When(x => x.StationId is not null);
+    }
+}
+
 internal static class PasswordRuleExtensions
 {
     public static IRuleBuilderOptions<T, string> ValidPassword<T>(this IRuleBuilder<T, string> rule) =>
         rule.NotEmpty()
             .MinimumLength(PasswordPolicy.MinLength)
-            .MaximumLength(PasswordPolicy.MaxLength);
+            .MaximumLength(PasswordPolicy.MaxLength)
+            .Must(PasswordPolicy.MeetsComplexity).WithMessage("Password must contain both letters and digits.");
 }

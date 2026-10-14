@@ -13,4 +13,7 @@ public interface ICurrentUser
     string? CorrelationId { get; }
 
     bool IsInRole(string role);
+
+    // Admin always holds every permission; other roles hold what the token carries (loaded from RolePermissions).
+    bool HasPermission(string permission);
 }

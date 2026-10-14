@@ -56,13 +56,13 @@ public sealed class BillingController : ApiControllerBase
     public async Task<IActionResult> Release(int id, CancellationToken cancellationToken) =>
         FromResult(await _billing.ReleaseAsync(id, cancellationToken));
 
-    [Authorize(Policy = Permissions.BillingOperate)]
+    [Authorize(Policy = Permissions.BillingDiscount)]
     [HttpPut("{id:int}/discount")]
     [ProducesResponseType<ApiResponse<BillDetailDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> SetDiscount(int id, ApplyDiscountRequest request, CancellationToken cancellationToken) =>
         FromResult(await _billing.SetDiscountAsync(id, request, cancellationToken), message: "Discount applied.");
 
-    [Authorize(Policy = Permissions.BillingOperate)]
+    [Authorize(Policy = Permissions.BillingDiscount)]
     [HttpDelete("{id:int}/discount")]
     [ProducesResponseType<ApiResponse<BillDetailDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> ClearDiscount(int id, [FromQuery] string? rowVersion, CancellationToken cancellationToken) =>

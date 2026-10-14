@@ -1,4 +1,5 @@
 using HotelPOS.Application.Common.Interfaces;
+using HotelPOS.Application.Common.Security;
 
 namespace HotelPOS.Application.Tests.Support;
 
@@ -25,13 +26,20 @@ public sealed class TestCurrentUser : ICurrentUser
     public string? IpAddress { get; set; } = "127.0.0.1";
     public string? CorrelationId { get; set; } = "test-correlation";
 
+    // Defaults of the signed-in roles, as a fresh token would carry; tests may narrow it.
+    public IReadOnlyList<string> Permissions { get; set; } = Array.Empty<string>();
+
     public bool IsInRole(string role) => Roles.Contains(role);
+
+    public bool HasPermission(string permission) =>
+        Roles.Contains(Contracts.Security.Roles.Admin) || Permissions.Contains(permission);
 
     public void SignIn(int userId, string userName, params string[] roles)
     {
         UserId = userId;
         UserName = userName;
         Roles = roles;
+        Permissions = RolePermissionMap.For(roles);
     }
 
     public void Reset()
@@ -39,6 +47,7 @@ public sealed class TestCurrentUser : ICurrentUser
         UserId = null;
         UserName = null;
         Roles = Array.Empty<string>();
+        Permissions = Array.Empty<string>();
         DeviceId = null;
         DeviceName = null;
     }

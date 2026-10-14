@@ -109,8 +109,7 @@ device before dropping its connection.
 - [x] All endpoints require authentication except login, refresh, approval, health, system info
       (fallback policy `RequireAuthenticatedUser`; `AuthorizationTests` covers unknown routes).
 - [x] Waiter cannot reach admin/settings/users; Kitchen cannot reach billing; Cashier cannot write
-      menu (hand-written rows in `AuthorizationTests`, `BillingApiTests`, `PrintApiTests`, `ReportsApiTests`;
-      the generated every-endpoint × every-role matrix is still open, see § 15).
+      menu (`AuthorizationMatrixTests`: every endpoint × every role against `authorization-matrix.txt`).
 - [x] Passwords hashed with ASP.NET Core Identity PBKDF2 (100k iterations); never stored or logged in plain
       text; approval passwords never logged; refresh tokens stored hashed.
 - [x] JWT key ≥ 256 bits from `Jwt:SigningKey` (installer-generated in Phase 10; dev key only in
@@ -122,10 +121,10 @@ device before dropping its connection.
 
 ## 12. Acceptance criteria
 
-- [ ] Permission matrix editable and enforced — editable yes; `billing.discount/void/refund`,
-      `orders.edit.any/cancel.any`, `tables.view`, `menu.view`, `backup.manage` are not yet enforced anywhere.
+- [x] Permission matrix editable and enforced (every defined permission is checked; `backup.manage` waits for
+      the Phase 10 backup endpoints). Guarded by `AuthorizationMatrixTests` + `authorization-matrix.txt`.
 - [x] Lockout and rate limiting working (fixes of 2026-10-14 in § 14).
-- [ ] Device control — REST 403 and new hub connects refused; open hub connections are not yet dropped.
+- [x] Device control — REST 403, new hub connects refused, open hub connections closed after `ServerNotice`.
 - [ ] Audit viewer shows a complete trail for the end-to-end scenario — the completeness test checks only
       six actions and not "exactly once".
 - [x] Security checklist completed and recorded in this document (one item deferred to the install checklist).
@@ -184,21 +183,35 @@ branch `phase-09-security-and-audit`, reviewed against this document, and these 
 - **Privilege escalation**: a non-Admin holding `users.manage` could create an Admin account or reset an
   admin's password. Admin accounts and the Admin role can now be managed by Admins only.
 
+**Second round, 2026-10-14** (items closed from § 15):
+
+- **Disabled devices lose live connections.** `ConnectionTracker` keeps each connection's context; deactivation
+  sends `ServerNotice`, waits 500 ms and aborts the device's connections. The hub tracks a connection before
+  checking its device, so a deactivation committed during the check still closes it.
+- **Presence**: `DeviceStatusChanged` also fires when a device's first connection opens or its last one closes,
+  with `isActive` read back from the database (a disconnect caused by deactivation is not announced as active).
+- **Permissions are enforced, not just stored.** `ICurrentUser.HasPermission` (Admin always true).
+  `orders.cancel.any` and `orders.edit.any` replace the Manager role checks in `OrderService`; `billing.discount`
+  guards applying/clearing a discount; `tables.view` and `menu.view` guard the floor and menu reads.
+  `ApprovalRules`: a caller holding `billing.void` voids or reopens without approval and only holders may approve
+  it; the same for `billing.refund`. An over-limit discount has no permission of its own, so its approval stays with
+  the Manager and Admin roles.
+- Kitchen's default set gained `tables.view`: the table map has been readable by every role since Phase 2.
+- **Matrix test**: `AuthorizationMatrixTests` derives who may call each of the ~130 controller endpoints from the
+  `[Authorize]` metadata and the default sets, compares it with the reviewed `authorization-matrix.txt`, calls every
+  denied cell over HTTP (must be 403) and checks every allowed cell with the real authorization service.
+- Inline manager credentials count towards lockout like login and approval tokens.
+- Password complexity (letters and digits) on create, reset and change; validators for `UpdateDeviceRequest`
+  and `UpdateRolePermissionsRequest` (unknown permissions are rejected, not silently dropped).
+- Audit retention runs one minute after start, then every six hours, and records `Audit.Purged`.
+
 ## 15. Remaining work (open)
 
 Server
-- [ ] Enforce the permissions that are defined but checked nowhere: `billing.discount`, `billing.void`,
-      `billing.refund` (approval is still decided by role), `orders.edit.any`, `orders.cancel.any`,
-      `tables.view`, `menu.view`, `backup.manage` (Phase 10). Protected core set for system roles.
-- [ ] Deactivating a device must abort its open hub connections (after `ServerNotice`), not only refuse new ones.
-- [ ] `DeviceStatusChanged` on hub connect/disconnect (today only on update/activate/deactivate), audience per
-      `docs/04` (admins).
 - [ ] A disabled terminal can log in under a different device name (device identity is self-declared). Decide:
       bind devices to a registration secret, or document as accepted v1 risk.
-- [ ] Inline manager credentials (`ManagerApprovalService`) do not count failures towards lockout yet.
-- [ ] Password complexity applied on create/reset too (today only on change-password) and made configurable.
-- [ ] Validators for `UpdateDeviceRequest` and `UpdateRolePermissionsRequest`.
-- [ ] Audit retention job: first run at start-up, and record the deletion itself in the audit log.
+- [ ] Protected core permission set for the non-Admin system roles (spec § 3); today only Admin is protected.
+- [ ] Password complexity configurable (fixed at letters + digits, minimum 8).
 
 Desktop
 - [ ] Manager approval dialog requests and sends approval tokens instead of credentials.
@@ -209,9 +222,7 @@ Desktop
 - [ ] Navigation driven by permissions, not roles.
 
 Tests
-- [ ] Authorization matrix generated from a table for every endpoint × every role (incl. Phase 9 endpoints).
 - [ ] Audit completeness test: correct `From` filter, all pages, every § 8 action, "exactly once".
-- [ ] Deactivating a device closes an already-open hub connection.
 - [ ] Static checks: raw-SQL concatenation grep, secret scan, `dotnet list package --vulnerable`.
 
 Manual

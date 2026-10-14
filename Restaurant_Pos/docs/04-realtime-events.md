@@ -57,7 +57,7 @@ it receives only its station's ticket events; `LeaveStation` puts it back. The c
 | `BillRequested` | role:cashier, manager | `billId, billNumber, orderId, orderNumber, tableCode, waiterName, grandTotal` | request-bill | 6 |
 | `BillUpdated` | role:cashier, manager, user:{waiter} | `billId, status, paymentStatus, claimedByDevice?, grandTotal, paidAmount, changeType` | claim/release/discount/finalize/partial payment/reopen/void | 6 |
 | `PaymentCompleted` | role:cashier, role:waiter, manager, admin | `billId, orderId, tableCode, invoiceNumber, grandTotal` | bill settled | 6 |
-| `DeviceStatusChanged` | role:admin, role:manager | `deviceId, deviceName, isOnline, isActive, timestampUtc` | device update/activate/deactivate (hub connect/disconnect: still open, phase 9 § 15) | 9 |
+| `DeviceStatusChanged` | role:admin, role:manager | `deviceId, deviceName, isOnline, isActive, timestampUtc` | device update/activate/deactivate; first hub connection of a device opens / its last one closes | 9 |
 | `ServerNotice` | `device:{id}` (Phase 9); all (Phase 10) | `message, code?` | device deactivated (`code = DEVICE_DISABLED`); admin broadcast and shutdown warning in Phase 10 | 9, 10 |
 
 Event names are constants in `HotelPOS.Contracts.Realtime.HubEvents`.
@@ -110,6 +110,10 @@ fetch). Handlers are idempotent: applying the same event twice has no effect.
 ## 6. Presence
 
 `ConnectionTracker` (in-memory, singleton) maps connection id -> (userId, deviceId, roles, stationId).
-`OnConnected/OnDisconnected` update `Devices.LastSeenAt` (throttled) and emit `DeviceStatusChanged` to
-admins (Phase 9). Admin "Connected devices" screen reads `GET /api/admin/devices`, which merges the DB
-list with the tracker's online set.
+`OnConnected/OnDisconnected` update `Devices.LastSeenAt` and emit `DeviceStatusChanged` to admins and
+managers when a device's first connection opens or its last one closes (Phase 9). Admin "Connected devices"
+screen reads `GET /api/admin/devices`, which merges the DB list with the tracker's online set.
+
+Deactivating a device (Phase 9) sends `ServerNotice` (`code = DEVICE_DISABLED`) to `device:{id}`, waits
+500 ms, then aborts every open connection of that device. A connection is put in the tracker before its device
+is checked, so a deactivation that commits during the check still finds and closes it.

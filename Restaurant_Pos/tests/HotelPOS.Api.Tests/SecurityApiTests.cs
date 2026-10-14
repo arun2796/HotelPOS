@@ -14,6 +14,7 @@ using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Floor;
 using HotelPOS.Contracts.Menu;
 using HotelPOS.Contracts.Orders;
+using HotelPOS.Contracts.Realtime;
 using HotelPOS.Contracts.Security;
 using HotelPOS.Contracts.Users;
 using Microsoft.AspNetCore.SignalR.Client;
@@ -310,6 +311,68 @@ public class SecurityApiTests : IClassFixture<ApiFactory>
         // REST calls work again
         var afterReactivate = await deviceClient.GetAsync("/api/auth/me");
         afterReactivate.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task DeactivatingDevice_ClosesItsOpenHubConnection_AfterServerNotice_AndAnnouncesPresence()
+    {
+        var deviceName = "POS-TERMINAL-LIVE-" + Guid.NewGuid().ToString("N")[..6];
+        var login = await _factory.LoginAsync("waiter1", ApiFactory.DemoPassword, deviceName: deviceName);
+        var deviceId = login.DeviceId!.Value;
+        var adminLogin = await _factory.LoginAsync("admin", ApiFactory.AdminPassword);
+
+        await using var adminHub = _factory.CreateHubConnection(adminLogin.AccessToken);
+        var presence = new List<DeviceStatusChangedEvent>();
+        adminHub.On<DeviceStatusChangedEvent>(HubEvents.DeviceStatusChanged, e =>
+        {
+            lock (presence)
+            {
+                presence.Add(e);
+            }
+        });
+        await adminHub.StartAsync();
+
+        await using var deviceHub = _factory.CreateHubConnection(login.AccessToken);
+        var notice = new TaskCompletionSource<ServerNoticeEvent>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var closed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        deviceHub.On<ServerNoticeEvent>(HubEvents.ServerNotice, e => notice.TrySetResult(e));
+        deviceHub.Closed += _ =>
+        {
+            closed.TrySetResult();
+            return Task.CompletedTask;
+        };
+        await deviceHub.StartAsync();
+
+        var admin = await _factory.CreateAuthenticatedClientAsync("admin", ApiFactory.AdminPassword);
+        (await admin.PostAsync($"/api/admin/devices/{deviceId}/deactivate", null)).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        (await notice.Task.WaitAsync(TimeSpan.FromSeconds(10))).Code.Should().Be(ErrorCodes.DeviceDisabled);
+        await closed.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        await WaitUntilAsync(() =>
+        {
+            lock (presence)
+            {
+                return presence.Any(e => e.DeviceId == deviceId && !e.IsOnline);
+            }
+        });
+
+        lock (presence)
+        {
+            presence.Should().Contain(e => e.DeviceId == deviceId && e.IsOnline && e.IsActive);
+            presence.Where(e => e.DeviceId == deviceId && !e.IsOnline).Should().OnlyContain(e => !e.IsActive);
+        }
+
+        await admin.PostAsync($"/api/admin/devices/{deviceId}/activate", null);
+    }
+
+    private static async Task WaitUntilAsync(Func<bool> condition)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (!condition())
+        {
+            DateTime.UtcNow.Should().BeBefore(deadline, "the expected real-time event should arrive");
+            await Task.Delay(50);
+        }
     }
 
     [Fact]

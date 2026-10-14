@@ -82,7 +82,9 @@ public sealed class OrderService : IOrderService
 
     private int UserId => _currentUser.UserId ?? throw new InvalidOperationException("Orders require a signed-in user.");
 
-    private bool IsManager => _currentUser.IsInRole(Roles.Manager) || _currentUser.IsInRole(Roles.Admin);
+    private bool MayCancelAny => _currentUser.HasPermission(Permissions.OrdersCancelAny);
+
+    private bool MayEditAny => _currentUser.HasPermission(Permissions.OrdersEditAny);
 
     public async Task<Result<OrderDetailDto>> CreateAsync(CreateOrderRequest request, CancellationToken cancellationToken = default)
     {
@@ -383,7 +385,7 @@ public sealed class OrderService : IOrderService
         }
 
         var isOwner = order.WaiterId == _currentUser.UserId || await AnyWaiterMayEditAsync(cancellationToken);
-        switch (OrderStateMachine.CanCancel(order.Status, IsManager, isOwner))
+        switch (OrderStateMachine.CanCancel(order.Status, MayCancelAny, isOwner))
         {
             case CancelPermission.NotOwner:
                 return AppErrors.Forbidden("Only the waiter who took this order or a manager can cancel it.");
@@ -490,9 +492,9 @@ public sealed class OrderService : IOrderService
         var isOwner = order.WaiterId == _currentUser.UserId || await AnyWaiterMayEditAsync(cancellationToken);
         switch (ticket.Status)
         {
-            case KitchenOrderStatus.New or KitchenOrderStatus.Accepted when !IsManager && !isOwner:
+            case KitchenOrderStatus.New or KitchenOrderStatus.Accepted when !MayCancelAny && !isOwner:
                 return AppErrors.Forbidden("Only the waiter who took this order or a manager can cancel its items.");
-            case KitchenOrderStatus.Preparing when !IsManager:
+            case KitchenOrderStatus.Preparing when !MayCancelAny:
                 return AppErrors.Forbidden($"{item.ItemName} is already being prepared. Only a manager can cancel it.");
             case KitchenOrderStatus.Ready or KitchenOrderStatus.Completed or KitchenOrderStatus.Cancelled:
                 return AppErrors.InvalidState($"{item.ItemName} is already {ticket.Status} and cannot be cancelled.", await GetDetailAsync(id, cancellationToken));
@@ -533,7 +535,7 @@ public sealed class OrderService : IOrderService
     }
 
     private async Task<bool> CanModifyAsync(Order order, CancellationToken cancellationToken) =>
-        IsManager || order.WaiterId == _currentUser.UserId || await AnyWaiterMayEditAsync(cancellationToken);
+        MayEditAny || order.WaiterId == _currentUser.UserId || await AnyWaiterMayEditAsync(cancellationToken);
 
     private async Task<bool> AnyWaiterMayEditAsync(CancellationToken cancellationToken)
     {

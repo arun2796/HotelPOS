@@ -22,6 +22,7 @@ public sealed class SectionsController : ApiControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = Permissions.TablesView)]
     [ProducesResponseType<ApiResponse<IReadOnlyList<SectionDto>>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> List([FromQuery] bool includeInactive, CancellationToken cancellationToken)
     {
@@ -34,6 +35,7 @@ public sealed class SectionsController : ApiControllerBase
     }
 
     [HttpGet("{id:int}")]
+    [Authorize(Policy = Permissions.TablesView)]
     [ProducesResponseType<ApiResponse<SectionDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Get(int id, CancellationToken cancellationToken) =>
         FromResult(await _sections.GetAsync(id, cancellationToken));
@@ -76,6 +78,7 @@ public sealed class TablesController : ApiControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = Permissions.TablesView)]
     [ProducesResponseType<ApiResponse<TableMapDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Map([FromQuery] bool includeInactive, CancellationToken cancellationToken)
     {
@@ -88,6 +91,7 @@ public sealed class TablesController : ApiControllerBase
     }
 
     [HttpGet("{id:int}")]
+    [Authorize(Policy = Permissions.TablesView)]
     [ProducesResponseType<ApiResponse<TableDetailDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Get(int id, CancellationToken cancellationToken) =>
         FromResult(await _tables.GetAsync(id, cancellationToken));

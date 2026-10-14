@@ -6,6 +6,10 @@ This is the target REST surface. Each endpoint lists the roles allowed and the p
 `M` = Manager, `A` = Admin, `W` = Waiter, `K` = Kitchen, `C` = Cashier, `*` = any authenticated user.
 Admin always has access; Manager has access wherever `M` is listed.
 
+Since Phase 9 most endpoints check a permission (`Permissions` constants) rather than a role, and the role
+letters below are the **default** permission sets. The authoritative, test-enforced list of who may call every
+endpoint is `tests/HotelPOS.Api.Tests/authorization-matrix.txt`; `AuthorizationMatrixTests` fails when it changes.
+
 ## 1. General
 
 | Item | Value |
@@ -58,7 +62,7 @@ Admin always has access; Manager has access wherever `M` is listed.
 |---|---|---|---|
 | POST | `/api/auth/login` | anon | `{username, password, deviceName?, deviceType?, machineName?, appVersion?}` -> access + refresh tokens, user, roles, permissions, `deviceId` (the device is registered or updated during login) |
 | POST | `/api/auth/refresh` | anon | Rotates refresh token |
-| POST | `/api/auth/approval` | anon | `{approverUsername, approverPassword, actionType}` -> 2-minute single-use approval token (Manager/Admin only) for `discount`, `void`, `refund`, `reopen` |
+| POST | `/api/auth/approval` | anon | `{approverUsername, approverPassword, actionType}` -> 2-minute single-use approval token for `discount`, `void`, `refund`, `reopen`. The approver must hold the action's permission (`billing.void` for void and reopen, `billing.refund` for refund; Manager or Admin role for an over-limit discount). Wrong passwords count towards lockout; rate-limited |
 | POST | `/api/auth/logout` | anon | Revokes the given refresh token (possession is the authorization, so it works with an expired access token) |
 | GET | `/api/auth/me` | * | Current user, roles, permissions |
 | POST | `/api/auth/change-password` | * | |
@@ -87,10 +91,10 @@ Admin always has access; Manager has access wherever `M` is listed.
 
 | Method | Route | Roles | Notes |
 |---|---|---|---|
-| GET | `/api/sections` | * | Active sections |
+| GET | `/api/sections` | * (`tables.view`) | Active sections |
 | POST / PUT / DELETE | `/api/sections`, `/api/sections/{id}` | A, M | DELETE = deactivate |
-| GET | `/api/tables` | * | Table map: sections with tables, status, current order summary (`?includeInactive` for admin) |
-| GET | `/api/tables/{id}` | * | Table details + active order summary |
+| GET | `/api/tables` | * (`tables.view`, in every default set) | Table map: sections with tables, status, current order summary (`?includeInactive` for admin) |
+| GET | `/api/tables/{id}` | * (`tables.view`) | Table details + active order summary |
 | POST / PUT / DELETE | `/api/tables`, `/api/tables/{id}` | A, M | |
 | POST | `/api/tables/{id}/occupy` | A, W, C, M | `{guestCount, rowVersion}` Available -> Occupied |
 | POST | `/api/tables/{id}/release` | A, W, C, M | Occupied (no order) -> Available; with order: Manager only |
@@ -149,8 +153,8 @@ Admin always has access; Manager has access wherever `M` is listed.
 | GET | `/api/billing/closed` | C, M | `?date=&search=` settled/voided |
 | POST | `/api/billing/{id}/claim` | C, M | Soft lock (5 min, refreshed by every cashier action); 409 `BILL_CLAIMED` naming the holder. `{override:true}` lets a manager take over (audited) |
 | POST | `/api/billing/{id}/release` | C, M | |
-| PUT | `/api/billing/{id}/discount` | C, M | `{discountId? | type,value, reason, approval?}`; recalculates |
-| DELETE | `/api/billing/{id}/discount?rowVersion=` | C, M | |
+| PUT | `/api/billing/{id}/discount` | C, M (`billing.discount`) | `{discountId? | type,value, reason, approval?}`; recalculates |
+| DELETE | `/api/billing/{id}/discount?rowVersion=` | C, M (`billing.discount`) | |
 | PUT | `/api/billing/{id}/customer` | C, M | name/phone/GSTIN for invoice |
 | POST | `/api/billing/{id}/finalize` | C, M | Assigns invoice number, locks discount; Order -> Billed |
 | POST **[I]** | `/api/billing/{id}/payments` | C, M | `{paymentMethodId, amount, tendered?, reference?}`; implicit finalize; settles when fully paid |

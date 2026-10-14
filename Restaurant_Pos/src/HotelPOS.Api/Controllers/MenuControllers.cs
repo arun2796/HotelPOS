@@ -26,6 +26,7 @@ public sealed class MenuController : ApiControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = Permissions.MenuView)]
     [ProducesResponseType<ApiResponse<MenuDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Get([FromQuery] int? version, CancellationToken cancellationToken) =>
         Envelope(await _menu.GetMenuAsync(version, cancellationToken));
@@ -43,6 +44,7 @@ public sealed class CategoriesController : ApiControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = Permissions.MenuView)]
     [ProducesResponseType<ApiResponse<IReadOnlyList<CategoryDto>>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> List([FromQuery] bool includeInactive, CancellationToken cancellationToken) =>
         includeInactive && !IsManager()
@@ -50,6 +52,7 @@ public sealed class CategoriesController : ApiControllerBase
             : Envelope(await _categories.ListAsync(includeInactive, cancellationToken));
 
     [HttpGet("{id:int}")]
+    [Authorize(Policy = Permissions.MenuView)]
     [ProducesResponseType<ApiResponse<CategoryDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Get(int id, CancellationToken cancellationToken) =>
         FromResult(await _categories.GetAsync(id, cancellationToken));
@@ -89,6 +92,7 @@ public sealed class MenuItemsController : ApiControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = Permissions.MenuView)]
     [ProducesResponseType<ApiResponse<IReadOnlyList<MenuItemDto>>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> List([FromQuery] MenuItemQuery query, CancellationToken cancellationToken) =>
         query.IncludeInactive && !(User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Manager))
@@ -96,6 +100,7 @@ public sealed class MenuItemsController : ApiControllerBase
             : Envelope(await _items.ListAsync(query, cancellationToken));
 
     [HttpGet("{id:int}")]
+    [Authorize(Policy = Permissions.MenuView)]
     [ProducesResponseType<ApiResponse<MenuItemDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Get(int id, CancellationToken cancellationToken) =>
         FromResult(await _items.GetAsync(id, cancellationToken));
@@ -161,6 +166,7 @@ public sealed class ModifierGroupsController : ApiControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = Permissions.MenuView)]
     [ProducesResponseType<ApiResponse<IReadOnlyList<ModifierGroupDto>>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> List([FromQuery] bool includeInactive, CancellationToken cancellationToken) =>
         includeInactive && !(User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Manager))
@@ -168,6 +174,7 @@ public sealed class ModifierGroupsController : ApiControllerBase
             : Envelope(await _modifiers.ListAsync(includeInactive, cancellationToken));
 
     [HttpGet("{id:int}")]
+    [Authorize(Policy = Permissions.MenuView)]
     [ProducesResponseType<ApiResponse<ModifierGroupDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Get(int id, CancellationToken cancellationToken) =>
         FromResult(await _modifiers.GetAsync(id, cancellationToken));
@@ -221,6 +228,7 @@ public sealed class TaxesController : ApiControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = Permissions.MenuView)]
     [ProducesResponseType<ApiResponse<IReadOnlyList<TaxDto>>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> List([FromQuery] bool includeInactive, CancellationToken cancellationToken) =>
         Envelope(await _taxes.ListAsync(includeInactive, cancellationToken));
@@ -256,6 +264,7 @@ public sealed class StationsController : ApiControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = Permissions.MenuView)]
     [ProducesResponseType<ApiResponse<IReadOnlyList<StationDto>>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> List([FromQuery] bool includeInactive, CancellationToken cancellationToken) =>
         Envelope(await _stations.ListAsync(includeInactive, cancellationToken));

@@ -1,4 +1,5 @@
 using HotelPOS.Application.Auth;
+using HotelPOS.Application.Billing;
 using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Security;
@@ -265,6 +266,53 @@ public class AuthServiceTests : DatabaseTestBase
         (await approvals.IssueApprovalTokenAsync(Request("Pass@1234"))).Error!.Code.Should().Be(ErrorCodes.ApprovalInvalid);
         var lockedOut = await QueryAsync(db => db.AuditLogs.AnyAsync(a => a.Action == AuditActions.UserLockedOut));
         lockedOut.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task InlineApproval_WrongPasswords_CountTowardsLockout()
+    {
+        var manager = await CreateUserAsync("mgr", "Pass@1234", Roles.Manager);
+        var cashier = await CreateUserAsync("cash", "Pass@1234", Roles.Cashier);
+        CurrentUser.SignIn(cashier.Id, "cash", Roles.Cashier);
+        var approvals = Get<IManagerApprovalService>();
+
+        for (var i = 0; i < 5; i++)
+        {
+            await approvals.ApproveAsync(
+                new ManagerApprovalDto { ApproverUsername = "mgr", ApproverPassword = "wrong-password" }, ApprovalActions.Void, "a void");
+        }
+
+        var correct = await approvals.ApproveAsync(
+            new ManagerApprovalDto { ApproverUsername = "mgr", ApproverPassword = "Pass@1234" }, ApprovalActions.Void, "a void");
+
+        correct.Error!.Code.Should().Be(ErrorCodes.ApprovalInvalid);
+        var lockedUntil = await QueryAsync(db => db.Users.Where(u => u.Id == manager.Id).Select(u => u.LockedUntil).SingleAsync());
+        lockedUntil.Should().BeAfter(Clock.UtcNow);
+    }
+
+    [Fact]
+    public async Task Approval_FollowsPermissions_NotRoles()
+    {
+        var cashier = await CreateUserAsync("cash", "Pass@1234", Roles.Cashier);
+        await CreateUserAsync("mgr", "Pass@1234", Roles.Manager);
+        var approvals = Get<IManagerApprovalService>();
+
+        // A cashier granted billing.void voids without asking anyone.
+        CurrentUser.SignIn(cashier.Id, "cash", Roles.Cashier);
+        CurrentUser.Permissions = CurrentUser.Permissions.Append(Permissions.BillingVoid).ToList();
+        (await approvals.ApproveAsync(null, ApprovalActions.Void, "a void")).Value.Should().Be(cashier.Id);
+        (await approvals.ApproveAsync(null, ApprovalActions.Refund, "a refund")).Error!.Code.Should().Be(ErrorCodes.ApprovalRequired);
+
+        // A manager whose role lost billing.refund can no longer approve refunds, but still approves voids.
+        var managerRole = await QueryAsync(db => db.Roles.Where(r => r.Name == Roles.Manager).Select(r => r.Id).SingleAsync());
+        await QueryAsync(db => db.RolePermissions
+            .Where(p => p.RoleId == managerRole && p.Permission == Permissions.BillingRefund)
+            .ExecuteDeleteAsync());
+        CurrentUser.SignIn(cashier.Id, "cash", Roles.Cashier);
+        var credentials = new ManagerApprovalDto { ApproverUsername = "mgr", ApproverPassword = "Pass@1234" };
+
+        (await approvals.ApproveAsync(credentials, ApprovalActions.Refund, "a refund")).Error!.Code.Should().Be(ErrorCodes.ApprovalInvalid);
+        (await approvals.ApproveAsync(credentials, ApprovalActions.Void, "a void")).IsSuccess.Should().BeTrue();
     }
 
     [Fact]
