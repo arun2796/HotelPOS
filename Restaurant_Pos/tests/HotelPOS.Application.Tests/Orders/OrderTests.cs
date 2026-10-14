@@ -3,7 +3,8 @@ using HotelPOS.Application.Common.Results;
 using HotelPOS.Application.Features.Floor.Commands;
 using HotelPOS.Application.Features.Menu.Commands;
 using HotelPOS.Application.Features.Menu.Queries;
-using HotelPOS.Application.Orders;
+using HotelPOS.Application.Features.Orders.Commands;
+using HotelPOS.Application.Features.Orders.Queries;
 using HotelPOS.Application.Tests.Support;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Enums;
@@ -17,9 +18,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace HotelPOS.Application.Tests.Orders;
 
-public class OrderServiceTests : DatabaseTestBase
+public class OrderTests : DatabaseTestBase
 {
-    public OrderServiceTests(DatabaseFixture fixture)
+    public OrderTests(DatabaseFixture fixture)
         : base(fixture)
     {
     }
@@ -32,7 +33,7 @@ public class OrderServiceTests : DatabaseTestBase
         var order = await CreateAsync(s, submit: true, Line(s.Biryani, 2, s.Spicy));
 
         await ChangePriceAsync(s.Biryani, 999m);
-        var reloaded = await Call<IOrderService, OrderDetailDto>(o => o.GetAsync(order.Id));
+        var reloaded = await SendAsync(new GetOrderQuery(order.Id));
 
         var item = reloaded.Value.Items.Single();
         item.UnitPrice.Should().Be(260m);
@@ -82,15 +83,15 @@ public class OrderServiceTests : DatabaseTestBase
         await AsWaiterAsync(s.WaiterA);
         var draft = await CreateAsync(s, submit: false);
 
-        var empty = await Call<IOrderService, OrderDetailDto>(o => o.SubmitAsync(draft.Id));
+        var empty = await SendAsync(new SubmitOrderCommand(draft.Id));
         empty.Error!.Code.Should().Be(ErrorCodes.BusinessRule);
 
-        var replaced = await Call<IOrderService, OrderDetailDto>(o => o.ReplaceItemsAsync(draft.Id, new ReplaceOrderItemsRequest
+        var replaced = await SendAsync(new ReplaceOrderItemsCommand(draft.Id, new ReplaceOrderItemsRequest
         {
             Items = new[] { Line(s.Naan, 3) },
             RowVersion = draft.RowVersion,
         }));
-        var submitted = await Call<IOrderService, OrderDetailDto>(o => o.SubmitAsync(draft.Id));
+        var submitted = await SendAsync(new SubmitOrderCommand(draft.Id));
 
         replaced.IsSuccess.Should().BeTrue(replaced.Error?.Message);
         submitted.Value.Status.Should().Be(OrderStatus.Submitted);
@@ -109,8 +110,8 @@ public class OrderServiceTests : DatabaseTestBase
         var draft = await CreateAsync(s, submit: false, Line(s.Naan, 1));
 
         var results = await Task.WhenAll(
-            Call<IOrderService, OrderDetailDto>(o => o.SubmitAsync(draft.Id)),
-            Call<IOrderService, OrderDetailDto>(o => o.SubmitAsync(draft.Id)));
+            SendAsync(new SubmitOrderCommand(draft.Id)),
+            SendAsync(new SubmitOrderCommand(draft.Id)));
 
         results.Count(r => r.IsSuccess).Should().Be(1);
         results.Single(r => r.IsFailure).Error!.Code.Should().BeOneOf(ErrorCodes.ConcurrencyConflict, ErrorCodes.InvalidStateTransition);
@@ -124,9 +125,9 @@ public class OrderServiceTests : DatabaseTestBase
         await AsWaiterAsync(s.WaiterA);
         var order = await CreateAsync(s, submit: true, Line(s.Naan, 1));
 
-        var appended = await Call<IOrderService, OrderDetailDto>(o => o.AppendItemsAsync(order.Id, new AppendOrderItemsRequest { Items = new[] { Line(s.Naan, 2) } }));
+        var appended = await SendAsync(new AppendOrderItemsCommand(order.Id, new AppendOrderItemsRequest { Items = new[] { Line(s.Naan, 2) } }));
         await QueryAsync(db => db.Database.ExecuteSqlInterpolatedAsync($"UPDATE \"Orders\" SET \"Status\" = {(int)OrderStatus.BillRequested} WHERE \"Id\" = {order.Id}"));
-        var locked = await Call<IOrderService, OrderDetailDto>(o => o.AppendItemsAsync(order.Id, new AppendOrderItemsRequest { Items = new[] { Line(s.Naan, 1) } }));
+        var locked = await SendAsync(new AppendOrderItemsCommand(order.Id, new AppendOrderItemsRequest { Items = new[] { Line(s.Naan, 1) } }));
 
         appended.Value.Items.Select(i => i.BatchNumber).Should().Equal(1, 2);
         appended.Value.Items.Should().OnlyContain(i => i.Status == OrderItemStatus.Sent);
@@ -141,11 +142,11 @@ public class OrderServiceTests : DatabaseTestBase
         var order = await CreateAsync(s, submit: true, Line(s.Naan, 1));
 
         await AsWaiterAsync(s.WaiterB);
-        var byOtherWaiter = await Call<IOrderService, OrderDetailDto>(o => o.CancelAsync(order.Id, new CancelOrderRequest()));
-        var appendByOther = await Call<IOrderService, OrderDetailDto>(o => o.AppendItemsAsync(order.Id, new AppendOrderItemsRequest { Items = new[] { Line(s.Naan, 1) } }));
+        var byOtherWaiter = await SendAsync(new CancelOrderCommand(order.Id, new CancelOrderRequest()));
+        var appendByOther = await SendAsync(new AppendOrderItemsCommand(order.Id, new AppendOrderItemsRequest { Items = new[] { Line(s.Naan, 1) } }));
 
         CurrentUser.SignIn(s.Manager, "manager", Roles.Manager);
-        var byManager = await Call<IOrderService, OrderDetailDto>(o => o.CancelAsync(order.Id, new CancelOrderRequest { Reason = "Wrong table" }));
+        var byManager = await SendAsync(new CancelOrderCommand(order.Id, new CancelOrderRequest { Reason = "Wrong table" }));
 
         byOtherWaiter.Error!.Code.Should().Be(ErrorCodes.Forbidden);
         appendByOther.Error!.Code.Should().Be(ErrorCodes.Forbidden);
@@ -161,10 +162,10 @@ public class OrderServiceTests : DatabaseTestBase
         var order = await CreateAsync(s, submit: true, Line(s.Naan, 1));
         await QueryAsync(db => db.Database.ExecuteSqlInterpolatedAsync($"UPDATE \"Orders\" SET \"Status\" = {(int)OrderStatus.Preparing} WHERE \"Id\" = {order.Id}"));
 
-        var byWaiter = await Call<IOrderService, OrderDetailDto>(o => o.CancelAsync(order.Id, new CancelOrderRequest { Reason = "Too slow" }));
+        var byWaiter = await SendAsync(new CancelOrderCommand(order.Id, new CancelOrderRequest { Reason = "Too slow" }));
         CurrentUser.SignIn(s.Manager, "manager", Roles.Manager);
-        var withoutReason = await Call<IOrderService, OrderDetailDto>(o => o.CancelAsync(order.Id, new CancelOrderRequest()));
-        var withReason = await Call<IOrderService, OrderDetailDto>(o => o.CancelAsync(order.Id, new CancelOrderRequest { Reason = "Guest allergy" }));
+        var withoutReason = await SendAsync(new CancelOrderCommand(order.Id, new CancelOrderRequest()));
+        var withReason = await SendAsync(new CancelOrderCommand(order.Id, new CancelOrderRequest { Reason = "Guest allergy" }));
 
         byWaiter.Error!.Code.Should().Be(ErrorCodes.Forbidden);
         withoutReason.Error!.Code.Should().Be(ErrorCodes.ValidationError);
@@ -184,7 +185,7 @@ public class OrderServiceTests : DatabaseTestBase
         }));
         var order = await CreateAsync(s, submit: true, Line(s.Naan, 1));
 
-        await Call<IOrderService, OrderDetailDto>(o => o.CancelAsync(order.Id, new CancelOrderRequest()));
+        await SendAsync(new CancelOrderCommand(order.Id, new CancelOrderRequest()));
 
         var after = await TableAsync(s.TableId);
         after.Status.Should().Be(TableStatus.Occupied);
@@ -274,7 +275,7 @@ public class OrderServiceTests : DatabaseTestBase
         new() { MenuItemId = menuItemId, Quantity = quantity, ModifierOptionIds = options };
 
     private Task<Result<OrderDetailDto>> TryCreateAsync(Setup s, bool submit, params OrderItemInput[] items) =>
-        Call<IOrderService, OrderDetailDto>(o => o.CreateAsync(new CreateOrderRequest { TableId = s.TableId, GuestCount = 2, Items = items, Submit = submit }));
+        SendAsync(new CreateOrderCommand(new CreateOrderRequest { TableId = s.TableId, GuestCount = 2, Items = items, Submit = submit }));
 
     private async Task<OrderDetailDto> CreateAsync(Setup s, bool submit, params OrderItemInput[] items)
     {

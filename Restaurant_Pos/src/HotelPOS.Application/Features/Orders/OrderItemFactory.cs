@@ -4,9 +4,9 @@ using HotelPOS.Contracts.Orders;
 using HotelPOS.Domain.Orders;
 using Microsoft.EntityFrameworkCore;
 
-namespace HotelPOS.Application.Orders;
+namespace HotelPOS.Application.Features.Orders;
 
-public sealed class OrderItemFactory
+internal sealed class OrderItemFactory
 {
     private readonly IAppDbContext _db;
 

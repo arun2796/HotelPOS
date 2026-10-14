@@ -151,3 +151,18 @@ because Phase 11 is reworking the desktop at the same time; it will be done once
 - `MenuServiceTests` → `Menu/MenuTests` (signed in as admin). Order tests that change a price or mark an item sold
   out while a waiter is signed in now do that step as the admin (`SendAsAdminAsync`): a waiter has never had
   `menu.manage` / `menu.availability` over HTTP.
+
+**12.4 Orders (2026-10-14)**
+
+- `OrderService` dissolved into `Features/Orders`: queries `GetOrder`, `ListOrders`, `ListActiveOrders` (no
+  permission: their endpoints are open to every signed-in role); commands `CreateOrder`, `ReplaceOrderItems`,
+  `SubmitOrder`, `AppendOrderItems`, `UpdateOrder`, `CancelOrder`, `ServeOrder`, `CancelOrderItem`
+  (`orders.create`, as their endpoints). Helpers `OrderSteps` (loading, ownership, save with concurrency and
+  domain-rule mapping, detail and summary projections) and `OrderEvents` (OrderCreated / Updated / Cancelled);
+  `OrderItemFactory` moved beside them.
+- Create order lost its explicit transaction; tickets and the `Order.Submitted` entry still need the generated
+  number, so it still saves twice inside the command's transaction. Table, order and kitchen events are queued in
+  the order the service published them and go out after the commit.
+- `KitchenSync`, `TicketFactory` and `TableEvents` stay shared and publish immediately; the order handlers queue
+  their calls. `request-bill` on the orders controller still calls the billing service until Billing moves.
+- `OrderServiceTests` → `Orders/OrderTests`; no other test change was needed.

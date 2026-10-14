@@ -4,7 +4,8 @@ using HotelPOS.Application.Features.Floor.Commands;
 using HotelPOS.Application.Kitchen;
 using HotelPOS.Application.Features.Menu.Commands;
 using HotelPOS.Application.Features.Menu.Queries;
-using HotelPOS.Application.Orders;
+using HotelPOS.Application.Features.Orders.Commands;
+using HotelPOS.Application.Features.Orders.Queries;
 using HotelPOS.Application.Print;
 using HotelPOS.Application.Tests.Support;
 using HotelPOS.Contracts.Admin;
@@ -174,7 +175,7 @@ public class PrintDocumentServiceTests : DatabaseTestBase
     private async Task<OrderDetailDto> SendAsync(Setup s, params OrderItemInput[] items)
     {
         CurrentUser.SignIn(s.Waiter, "waiter1", Roles.Waiter);
-        var result = await Call<IOrderService, OrderDetailDto>(o => o.CreateAsync(new CreateOrderRequest { TableId = s.TableId, GuestCount = 2, Items = items, Submit = true }));
+        var result = await SendAsync(new CreateOrderCommand(new CreateOrderRequest { TableId = s.TableId, GuestCount = 2, Items = items, Submit = true }));
         result.IsSuccess.Should().BeTrue(result.Error?.Message);
         return result.Value;
     }

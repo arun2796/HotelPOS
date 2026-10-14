@@ -9,7 +9,7 @@ using HotelPOS.Application.Devices;
 using HotelPOS.Application.Features.Floor;
 using HotelPOS.Application.Kitchen;
 using HotelPOS.Application.Features.Menu;
-using HotelPOS.Application.Orders;
+using HotelPOS.Application.Features.Orders;
 using HotelPOS.Application.Print;
 using HotelPOS.Application.Reports;
 using HotelPOS.Application.Security;
@@ -49,7 +49,8 @@ public static class DependencyInjection
         services.AddScoped<TableEvents>();
         services.AddScoped<FloorTables>();
         services.AddScoped<OrderItemFactory>();
-        services.AddScoped<IOrderService, OrderService>();
+        services.AddScoped<OrderSteps>();
+        services.AddScoped<OrderEvents>();
         services.AddScoped<TicketFactory>();
         services.AddScoped<KitchenSync>();
         services.AddScoped<IKitchenService, KitchenService>();

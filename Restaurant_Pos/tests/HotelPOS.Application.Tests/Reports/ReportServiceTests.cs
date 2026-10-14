@@ -5,7 +5,8 @@ using HotelPOS.Application.Features.Floor.Commands;
 using HotelPOS.Application.Kitchen;
 using HotelPOS.Application.Features.Menu.Commands;
 using HotelPOS.Application.Features.Menu.Queries;
-using HotelPOS.Application.Orders;
+using HotelPOS.Application.Features.Orders.Commands;
+using HotelPOS.Application.Features.Orders.Queries;
 using HotelPOS.Application.Reports;
 using HotelPOS.Application.Tests.Support;
 using HotelPOS.Contracts.Admin;
@@ -89,7 +90,7 @@ public class ReportServiceTests : DatabaseTestBase
         var s = await SetupAsync();
         var order = await SendAsync(s, s.Tables[0], Line(s.Biryani, 1), Line(s.Naan, 2), Line(s.Kulfi, 1));
         var kulfi = order.Items.Single(i => i.MenuItemId == s.Kulfi).Id;
-        await Orders(o => o.CancelItemAsync(order.Id, kulfi, new CancelOrderItemRequest { Reason = "No dessert" }));
+        await SendAsync(new CancelOrderItemCommand(order.Id, kulfi, new CancelOrderItemRequest { Reason = "No dessert" }));
         await SettleAsync(s, order.Id);
 
         var items = await Call<IReportService, IReadOnlyList<ItemSalesRowDto>>(r => r.ItemSalesAsync(new ReportQuery()));
@@ -131,7 +132,7 @@ public class ReportServiceTests : DatabaseTestBase
     {
         var s = await SetupAsync();
         var cancelled = await SendAsync(s, s.Tables[0], Line(s.Naan, 3));
-        await Orders(o => o.CancelAsync(cancelled.Id, new CancelOrderRequest { Reason = "Guests left" }));
+        await SendAsync(new CancelOrderCommand(cancelled.Id, new CancelOrderRequest { Reason = "Guests left" }));
         var order = await SendAsync(s, s.Tables[1], Line(s.Biryani, 1));
         var ticket = order.Tickets.Single().Id;
         CurrentUser.SignIn(s.Cook, "cook", Roles.Kitchen);
@@ -264,7 +265,7 @@ public class ReportServiceTests : DatabaseTestBase
     private async Task<OrderDetailDto> SendAsync(Setup s, int tableId, params OrderItemInput[] items)
     {
         AsWaiter(s);
-        var result = await Orders(o => o.CreateAsync(new CreateOrderRequest { TableId = tableId, GuestCount = 2, Items = items, Submit = true }));
+        var result = await SendAsync(new CreateOrderCommand(new CreateOrderRequest { TableId = tableId, GuestCount = 2, Items = items, Submit = true }));
         result.IsSuccess.Should().BeTrue(result.Error?.Message);
         return result.Value;
     }
@@ -292,7 +293,6 @@ public class ReportServiceTests : DatabaseTestBase
 
     private Task<Result<T>> Billing<T>(Func<IBillingService, Task<Result<T>>> call) => Call(call);
 
-    private Task<Result<T>> Orders<T>(Func<IOrderService, Task<Result<T>>> call) => Call(call);
 
     private async Task<Result<T>> Call<TService, T>(Func<TService, Task<Result<T>>> call)
         where TService : notnull

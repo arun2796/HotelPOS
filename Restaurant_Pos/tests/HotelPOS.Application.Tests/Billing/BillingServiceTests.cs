@@ -4,7 +4,8 @@ using HotelPOS.Application.Features.Floor.Commands;
 using HotelPOS.Application.Kitchen;
 using HotelPOS.Application.Features.Menu.Commands;
 using HotelPOS.Application.Features.Menu.Queries;
-using HotelPOS.Application.Orders;
+using HotelPOS.Application.Features.Orders.Commands;
+using HotelPOS.Application.Features.Orders.Queries;
 using HotelPOS.Application.Tests.Support;
 using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Billing;
@@ -52,11 +53,11 @@ public class BillingServiceTests : DatabaseTestBase
         requested.Audience.Roles.Should().Contain(Roles.Cashier);
         ((BillRequestedEvent)requested.Payload).GrandTotal.Should().Be(630m);
 
-        var append = await Orders(o => o.AppendItemsAsync(order.Id, new AppendOrderItemsRequest { Items = new[] { Line(s.Naan, 1) } }));
+        var append = await SendAsync(new AppendOrderItemsCommand(order.Id, new AppendOrderItemsRequest { Items = new[] { Line(s.Naan, 1) } }));
         append.Error!.Code.Should().Be(ErrorCodes.OrderLocked);
         var again = await Billing(b => b.RequestBillAsync(order.Id));
         again.Error!.Code.Should().Be(ErrorCodes.InvalidStateTransition);
-        (await Orders(o => o.GetAsync(order.Id))).Value.Bill!.Id.Should().Be(bill.Value.Id);
+        (await SendAsync(new GetOrderQuery(order.Id))).Value.Bill!.Id.Should().Be(bill.Value.Id);
     }
 
     [Fact]
@@ -329,7 +330,7 @@ public class BillingServiceTests : DatabaseTestBase
         (await TableStatusAsync(s.Tables[0])).Should().Be(TableStatus.Occupied);
 
         AsWaiter(s);
-        var appended = await Orders(o => o.AppendItemsAsync(order.Id, new AppendOrderItemsRequest { Items = new[] { Line(s.Naan, 2) } }));
+        var appended = await SendAsync(new AppendOrderItemsCommand(order.Id, new AppendOrderItemsRequest { Items = new[] { Line(s.Naan, 2) } }));
         appended.IsSuccess.Should().BeTrue(appended.Error?.Message);
         await ServeAllAsync(s, order.Id);
         var second = (await Billing(b => b.RequestBillAsync(order.Id))).Value;
@@ -507,7 +508,7 @@ public class BillingServiceTests : DatabaseTestBase
     private async Task<OrderDetailDto> SendAsync(Setup s, int tableId, params OrderItemInput[] items)
     {
         AsWaiter(s);
-        var result = await Orders(o => o.CreateAsync(new CreateOrderRequest { TableId = tableId, GuestCount = 2, Items = items, Submit = true }));
+        var result = await SendAsync(new CreateOrderCommand(new CreateOrderRequest { TableId = tableId, GuestCount = 2, Items = items, Submit = true }));
         result.IsSuccess.Should().BeTrue(result.Error?.Message);
         return result.Value;
     }
@@ -521,7 +522,7 @@ public class BillingServiceTests : DatabaseTestBase
 
     private async Task ServeAllAsync(Setup s, int orderId)
     {
-        var order = (await Orders(o => o.GetAsync(orderId))).Value;
+        var order = (await SendAsync(new GetOrderQuery(orderId))).Value;
         CurrentUser.SignIn(s.Cook, "cook", Roles.Kitchen);
         foreach (var ticket in order.Tickets.Where(t => t.Status == KitchenOrderStatus.New))
         {
@@ -530,7 +531,7 @@ public class BillingServiceTests : DatabaseTestBase
         }
 
         AsWaiter(s);
-        (await Orders(o => o.ServeAsync(orderId))).Value.Status.Should().Be(OrderStatus.Served);
+        (await SendAsync(new ServeOrderCommand(orderId))).Value.Status.Should().Be(OrderStatus.Served);
     }
 
     private async Task<BillDetailDto> BillAsync(Setup s, int tableId, params OrderItemInput[] items)
@@ -556,7 +557,6 @@ public class BillingServiceTests : DatabaseTestBase
 
     private Task<T> Billing<T>(Func<IBillingService, Task<T>> call) => Call(call);
 
-    private Task<Result<T>> Orders<T>(Func<IOrderService, Task<Result<T>>> call) => Call(call);
 
     private async Task<Result<T>> Call<TService, T>(Func<TService, Task<Result<T>>> call)
         where TService : notnull
