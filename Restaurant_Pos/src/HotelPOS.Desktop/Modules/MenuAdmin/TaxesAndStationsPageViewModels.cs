@@ -9,7 +9,7 @@ using HotelPOS.Desktop.Services.Ui;
 
 namespace HotelPOS.Desktop.Modules.MenuAdmin;
 
-public sealed partial class TaxesPageViewModel : ObservableObject, IMenuAdminPage
+public sealed partial class TaxesPageViewModel : ViewModelBase, IMenuAdminPage
 {
     private readonly IMenuApi _menuApi;
     private readonly INotificationService _notifications;
@@ -27,12 +27,6 @@ public sealed partial class TaxesPageViewModel : ObservableObject, IMenuAdminPag
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(EditCommand))]
     private TaxDto? _selectedTax;
-
-    [ObservableProperty]
-    private bool _isBusy;
-
-    [ObservableProperty]
-    private string? _errorMessage;
 
     [ObservableProperty]
     private bool _isEditorOpen;
@@ -58,33 +52,23 @@ public sealed partial class TaxesPageViewModel : ObservableObject, IMenuAdminPag
     [ObservableProperty]
     private string? _editorError;
 
-    public async Task LoadAsync()
+    public Task LoadAsync() => ExecuteAsync(async () =>
     {
-        IsBusy = true;
-        ErrorMessage = null;
-        try
+        var taxes = await FetchAsync(_menuApi.GetTaxesAsync(includeInactive: true));
+        if (taxes is null)
         {
-            var result = await _menuApi.GetTaxesAsync(includeInactive: true);
-            if (!result.Success || result.Data is null)
-            {
-                ErrorMessage = result.Message;
-                return;
-            }
-
-            var keep = SelectedTax?.Id;
-            Taxes.Clear();
-            foreach (var tax in result.Data)
-            {
-                Taxes.Add(tax);
-            }
-
-            SelectedTax = Taxes.FirstOrDefault(t => t.Id == keep);
+            return;
         }
-        finally
+
+        var keep = SelectedTax?.Id;
+        Taxes.Clear();
+        foreach (var tax in taxes)
         {
-            IsBusy = false;
+            Taxes.Add(tax);
         }
-    }
+
+        SelectedTax = Taxes.FirstOrDefault(t => t.Id == keep);
+    });
 
     [RelayCommand]
     private void NewTax() => Open(null);
@@ -139,7 +123,7 @@ public sealed partial class TaxesPageViewModel : ObservableObject, IMenuAdminPag
     }
 }
 
-public sealed partial class StationsPageViewModel : ObservableObject, IMenuAdminPage
+public sealed partial class StationsPageViewModel : ViewModelBase, IMenuAdminPage
 {
     private readonly IMenuApi _menuApi;
     private readonly INotificationService _notifications;
@@ -157,12 +141,6 @@ public sealed partial class StationsPageViewModel : ObservableObject, IMenuAdmin
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(EditCommand))]
     private StationDto? _selectedStation;
-
-    [ObservableProperty]
-    private bool _isBusy;
-
-    [ObservableProperty]
-    private string? _errorMessage;
 
     [ObservableProperty]
     private bool _isEditorOpen;
@@ -188,33 +166,23 @@ public sealed partial class StationsPageViewModel : ObservableObject, IMenuAdmin
     [ObservableProperty]
     private string? _editorError;
 
-    public async Task LoadAsync()
+    public Task LoadAsync() => ExecuteAsync(async () =>
     {
-        IsBusy = true;
-        ErrorMessage = null;
-        try
+        var stations = await FetchAsync(_menuApi.GetStationsAsync(includeInactive: true));
+        if (stations is null)
         {
-            var result = await _menuApi.GetStationsAsync(includeInactive: true);
-            if (!result.Success || result.Data is null)
-            {
-                ErrorMessage = result.Message;
-                return;
-            }
-
-            var keep = SelectedStation?.Id;
-            Stations.Clear();
-            foreach (var station in result.Data)
-            {
-                Stations.Add(station);
-            }
-
-            SelectedStation = Stations.FirstOrDefault(s => s.Id == keep);
+            return;
         }
-        finally
+
+        var keep = SelectedStation?.Id;
+        Stations.Clear();
+        foreach (var station in stations)
         {
-            IsBusy = false;
+            Stations.Add(station);
         }
-    }
+
+        SelectedStation = Stations.FirstOrDefault(s => s.Id == keep);
+    });
 
     [RelayCommand]
     private void NewStation() => Open(null);

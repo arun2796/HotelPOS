@@ -71,7 +71,7 @@ public sealed partial class CategoryEditorViewModel : ObservableObject
         : $"Sort order must be a number from 0 to {MenuLimits.MaxSortOrder}.";
 }
 
-public sealed partial class CategoriesPageViewModel : ObservableObject, IMenuAdminPage
+public sealed partial class CategoriesPageViewModel : ViewModelBase, IMenuAdminPage
 {
     private readonly IMenuApi _menuApi;
     private readonly IDialogService _dialogs;
@@ -94,12 +94,6 @@ public sealed partial class CategoriesPageViewModel : ObservableObject, IMenuAdm
     [NotifyPropertyChangedFor(nameof(HasSelection))]
     [NotifyCanExecuteChangedFor(nameof(EditCommand))]
     private CategoryDto? _selectedCategory;
-
-    [ObservableProperty]
-    private bool _isBusy;
-
-    [ObservableProperty]
-    private string? _errorMessage;
 
     public bool HasSelection => SelectedCategory is not null;
 
@@ -132,8 +126,7 @@ public sealed partial class CategoriesPageViewModel : ObservableObject, IMenuAdm
             return;
         }
 
-        IsBusy = true;
-        try
+        await ExecuteAsync(async () =>
         {
             var result = Editor.IsNew
                 ? await _menuApi.CreateCategoryAsync(new CreateCategoryRequest { Name = Editor.Name.Trim(), SortOrder = int.Parse(Editor.SortOrder) })
@@ -154,11 +147,7 @@ public sealed partial class CategoriesPageViewModel : ObservableObject, IMenuAdm
             }
 
             Editor.ErrorMessage = ApiFailures.Describe(result);
-        }
-        finally
-        {
-            IsBusy = false;
-        }
+        });
     }
 
     private UpdateCategoryRequest Request(bool deactivateItems) => new()
@@ -169,31 +158,21 @@ public sealed partial class CategoriesPageViewModel : ObservableObject, IMenuAdm
         DeactivateItems = deactivateItems,
     };
 
-    private async Task LoadAsync(int? selectId)
+    private Task LoadAsync(int? selectId) => ExecuteAsync(async () =>
     {
-        IsBusy = true;
-        ErrorMessage = null;
-        try
+        var categories = await FetchAsync(_menuApi.GetCategoriesAsync(includeInactive: true));
+        if (categories is null)
         {
-            var result = await _menuApi.GetCategoriesAsync(includeInactive: true);
-            if (!result.Success || result.Data is null)
-            {
-                ErrorMessage = result.Message;
-                return;
-            }
-
-            var keep = selectId ?? SelectedCategory?.Id;
-            Categories.Clear();
-            foreach (var category in result.Data)
-            {
-                Categories.Add(category);
-            }
-
-            SelectedCategory = Categories.FirstOrDefault(c => c.Id == keep);
+            return;
         }
-        finally
+
+        var keep = selectId ?? SelectedCategory?.Id;
+        Categories.Clear();
+        foreach (var category in categories)
         {
-            IsBusy = false;
+            Categories.Add(category);
         }
-    }
+
+        SelectedCategory = Categories.FirstOrDefault(c => c.Id == keep);
+    });
 }

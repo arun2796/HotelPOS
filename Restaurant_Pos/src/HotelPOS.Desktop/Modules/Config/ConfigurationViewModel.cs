@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HotelPOS.Contracts.Devices;
 using HotelPOS.Contracts.Enums;
+using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Configuration;
 using HotelPOS.Desktop.Services.Navigation;
@@ -14,7 +15,7 @@ public sealed record ConfigurationContext(bool IsFirstRun, bool InShell);
 
 public sealed record DensityOption(string Value, string Label);
 
-public sealed partial class ConfigurationViewModel : ObservableObject, INavigationAware
+public sealed partial class ConfigurationViewModel : ViewModelBase, INavigationAware
 {
     public const string AutomaticDensity = "";
 
@@ -66,10 +67,6 @@ public sealed partial class ConfigurationViewModel : ObservableObject, INavigati
 
     [ObservableProperty]
     private bool _testSucceeded;
-
-    [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(SaveCommand), nameof(TestConnectionCommand))]
-    private bool _isBusy;
 
     public string Title => Context.IsFirstRun ? "Connect this terminal" : "This terminal";
 
@@ -143,6 +140,12 @@ public sealed partial class ConfigurationViewModel : ObservableObject, INavigati
         DeviceType.Admin => "ADMIN-01",
         _ => "WAITER-01",
     };
+
+    protected override void OnBusyChanged()
+    {
+        SaveCommand.NotifyCanExecuteChanged();
+        TestConnectionCommand.NotifyCanExecuteChanged();
+    }
 
     private bool CanRun() => !IsBusy;
 
