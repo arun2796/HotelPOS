@@ -14,6 +14,9 @@ public interface IReportsApi
     Task<ApiResult<List<MonthlySalesRowDto>>> GetMonthlyAsync(int year, CancellationToken cancellationToken = default);
 
     Task<ApiResult<byte[]>> DownloadCsvAsync(string reportKey, DateOnly? from, DateOnly? to, int? year, CancellationToken cancellationToken = default);
+
+    // Phase 14: "xlsx" or "pdf".
+    Task<ApiResult<byte[]>> DownloadAsync(string reportKey, DateOnly? from, DateOnly? to, int? year, string format, CancellationToken cancellationToken = default);
 }
 
 public sealed class ReportsApi : IReportsApi
@@ -39,6 +42,9 @@ public sealed class ReportsApi : IReportsApi
 
     public Task<ApiResult<byte[]>> DownloadCsvAsync(string reportKey, DateOnly? from, DateOnly? to, int? year, CancellationToken cancellationToken = default) =>
         _api.DownloadAsync(Path(reportKey, from, to, year, csv: true), cancellationToken);
+
+    public Task<ApiResult<byte[]>> DownloadAsync(string reportKey, DateOnly? from, DateOnly? to, int? year, string format, CancellationToken cancellationToken = default) =>
+        _api.DownloadAsync(Path(reportKey, from, to, year, csv: false) + (from is null && to is null && year is null ? "?" : "&") + "format=" + Uri.EscapeDataString(format), cancellationToken);
 
     private static string Path(string key, DateOnly? from, DateOnly? to, int? year, bool csv)
     {

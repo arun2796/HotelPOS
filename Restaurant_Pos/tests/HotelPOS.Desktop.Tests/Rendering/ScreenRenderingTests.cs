@@ -123,6 +123,10 @@ public class ScreenRenderingTests
 
             await shell.NavigateToAsync(ModuleRegistry.Settings, null);
             rendered.Add(await RenderScreenAsync(env, shell, "06-admin-settings"));
+            var settingsHub = (SettingsHubViewModel)shell.CurrentPage!;
+            settingsHub.SelectedTab = SettingsHubViewModel.TemplatesTab;
+            await settingsHub.Templates.LoadAsync();
+            rendered.Add(await RenderScreenAsync(env, shell, "53-print-templates"));
 
             await shell.NavigateToAsync(ModuleRegistry.ThisDevice, null);
             rendered.Add(await RenderScreenAsync(env, shell, "07-this-terminal"));
@@ -346,7 +350,7 @@ public class ScreenRenderingTests
         }
 
         bindingErrors.Errors.Should().BeEmpty("every binding in the views must point at an existing property");
-        rendered.Should().HaveCount(52);
+        rendered.Should().HaveCount(53);
         bodyFontFiles.Should().Equal("inter-regular.ttf", "inter-medium.ttf", "inter-semibold.ttf", "inter-bold.ttf");
     }
 
@@ -358,6 +362,12 @@ public class ScreenRenderingTests
         // A FlowDocument stays attached to the viewer of the first pass, so the print preview cannot be shown twice.
         if (!env.Theme.IsDark && screen is not ShellViewModel { CurrentPage: PrintPreviewViewModel })
         {
+            // The Template Studio builds a fresh preview document for the second pass.
+            if (screen is ShellViewModel { CurrentPage: SettingsHubViewModel { IsTemplatesTab: true } hub })
+            {
+                await hub.Templates.PreviewAsync();
+            }
+
             env.Theme.Apply(ThemeService.Dark);
             await RenderOnceAsync(env, screen, name + "-dark");
             env.Theme.Apply(ThemeService.Light);
@@ -550,11 +560,14 @@ public class ScreenRenderingTests
             services.AddSingleton(DemoOperationsApi());
             services.AddSingleton(DemoBillingApi());
             services.AddSingleton(DemoReportsApi());
+            services.AddSingleton(DemoPrintApi());
+            services.AddSingleton(DemoTemplatesApi());
             services.AddSingleton(Substitute.For<ISoundPlayer>());
             services.AddSingleton(Substitute.For<IReadyNotifier>());
             services.AddSingleton(Substitute.For<HotelPOS.Desktop.Services.Printing.IKotAutoPrinter>());
             services.AddSingleton(Substitute.For<HotelPOS.Desktop.Services.Printing.IPrintQueue>());
             services.AddSingleton(Substitute.For<HotelPOS.Desktop.Services.Printing.IDocumentPrinter>());
+            services.AddSingleton(Substitute.For<HotelPOS.Desktop.Services.Printing.IPrinterProfiles>());
             services.AddSingleton<HotelPOS.Desktop.Services.Printing.FlowDocumentRenderer>();
             services.AddSingleton(Substitute.For<HotelPOS.Desktop.Services.Printing.IWindowsPrinterChannel>());
             services.AddSingleton(Substitute.For<IAuthApi>());
@@ -910,6 +923,47 @@ public class ScreenRenderingTests
                 new() { Id = 2, Name = "Card", Code = "CARD", RequiresReference = true, SortOrder = 2, IsActive = true },
                 new() { Id = 3, Name = "UPI", Code = "UPI", RequiresReference = true, SortOrder = 3, IsActive = true },
             }));
+            return api;
+        }
+
+        private static IPrintApi DemoPrintApi()
+        {
+            var api = Substitute.For<IPrintApi>();
+            var at = DateTime.UtcNow.Date.AddHours(6);
+            api.GetHistoryAsync(Arg.Any<PrintDocumentType>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(ApiResult<List<PrintLogDto>>.Ok(new List<PrintLogDto>
+            {
+                new() { Id = 1, CopyNumber = 1, Output = PrintOutput.Printer, DeviceName = "BILLING-01", CreatedAtUtc = at, Result = PrintResult.Printed },
+                new() { Id = 2, CopyNumber = 2, CopyLabel = "DUPLICATE", Output = PrintOutput.Pdf, CreatedAtUtc = at.AddMinutes(27), Result = PrintResult.Printed },
+            }));
+            return api;
+        }
+
+        private static ITemplatesApi DemoTemplatesApi()
+        {
+            var api = Substitute.For<ITemplatesApi>();
+            var at = DateTime.UtcNow.AddDays(-3);
+            var custom = new TemplateLayout
+            {
+                Paper = PaperSize.Mm58,
+                ShowWaiter = false,
+                ShowUpiQr = true,
+                FooterLines = new[] { "Follow us @saravanabhavan" },
+                Columns = new[] { TemplateColumn.Item, TemplateColumn.Quantity, TemplateColumn.Amount },
+            };
+            api.ListAsync(Arg.Any<CancellationToken>()).Returns(ApiResult<List<DocumentTemplateDto>>.Ok(new List<DocumentTemplateDto>
+            {
+                new() { Id = 1, DocumentType = PrintDocumentType.Invoice, Version = 1, Name = "Standard", Layout = new TemplateLayout(), CreatedAtUtc = at },
+                new() { Id = 4, DocumentType = PrintDocumentType.Invoice, Version = 2, Name = "58 mm, no waiter", Layout = custom, IsActive = true, CreatedAtUtc = at.AddDays(1), ActivatedAtUtc = at.AddDays(1), ActivatedBy = "Administrator" },
+                new() { Id = 2, DocumentType = PrintDocumentType.Kot, Version = 1, Name = "Standard", Layout = new TemplateLayout(), IsActive = true, CreatedAtUtc = at },
+                new() { Id = 3, DocumentType = PrintDocumentType.Receipt, Version = 1, Name = "Standard", Layout = new TemplateLayout(), IsActive = true, CreatedAtUtc = at },
+            }));
+            api.PreviewAsync(Arg.Any<TemplatePreviewRequest>(), Arg.Any<CancellationToken>()).Returns(call =>
+                ApiResult<TemplatePreviewDto>.Ok(new TemplatePreviewDto
+                {
+                    DocumentType = PrintDocumentType.Invoice,
+                    IsSample = true,
+                    Invoice = DemoInvoiceDocument() with { Template = call.Arg<TemplatePreviewRequest>().Layout, CopyNumber = 2, CopyLabel = "DUPLICATE" },
+                }));
             return api;
         }
 

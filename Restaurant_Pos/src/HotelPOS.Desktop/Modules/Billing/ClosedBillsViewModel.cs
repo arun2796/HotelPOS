@@ -46,13 +46,17 @@ public sealed partial class ClosedBillsViewModel : ViewModelBase, INavigationAwa
     private readonly IDialogService _dialogs;
     private readonly INotificationService _notifications;
     private readonly IDocumentPrinter _printer;
+    private readonly IPrintApi _printApi;
+    private readonly IFilePicker _files;
 
-    public ClosedBillsViewModel(IBillingApi billingApi, IDialogService dialogs, INotificationService notifications, IDocumentPrinter printer)
+    public ClosedBillsViewModel(IBillingApi billingApi, IDialogService dialogs, INotificationService notifications, IDocumentPrinter printer, IPrintApi printApi, IFilePicker files)
     {
         _billingApi = billingApi;
         _dialogs = dialogs;
         _notifications = notifications;
         _printer = printer;
+        _printApi = printApi;
+        _files = files;
     }
 
     public ObservableCollection<ClosedBillRow> Bills { get; } = new();
@@ -228,16 +232,69 @@ public sealed partial class ClosedBillsViewModel : ViewModelBase, INavigationAwa
     private Task PreviewInvoiceAsync() =>
         Detail is null ? Task.CompletedTask : _printer.PreviewAsync(PrintDocumentType.Invoice, Detail.Id, ModuleRegistry.ClosedBills);
 
+    // Phase 14: every printed or PDF copy of the invoice ("Original 12:04 BILLING-01 · Copy 2 12:31 ...").
+    [ObservableProperty]
+    private string _printHistoryText = string.Empty;
+
+    // The invoice as a PDF: the same document as the printed one, taking the next copy number.
+    [RelayCommand]
+    private async Task SaveInvoicePdfAsync()
+    {
+        if (Detail is null)
+        {
+            return;
+        }
+
+        var path = _files.PickSavePath($"invoice-{(Detail.InvoiceNumber ?? "bill-" + Detail.BillNumber).Replace('/', '-')}.pdf", "PDF document|*.pdf");
+        if (path is null)
+        {
+            return;
+        }
+
+        var result = await _printApi.DownloadPdfAsync(PrintDocumentType.Invoice, Detail.Id, null);
+        if (!result.Success || result.Data is null)
+        {
+            _notifications.Error(ApiFailures.Describe(result), result.CorrelationId);
+            return;
+        }
+
+        try
+        {
+            await System.IO.File.WriteAllBytesAsync(path, result.Data);
+            _notifications.Success($"Saved {System.IO.Path.GetFileName(path)}.");
+            await LoadHistoryAsync(Detail.Id);
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
+        {
+            _notifications.Error($"Could not save the file: {ex.Message}");
+        }
+    }
+
+    public static string DescribeHistory(IReadOnlyList<PrintLogDto> copies) => copies.Count == 0
+        ? "Not printed yet"
+        : string.Join(" · ", copies.Select(c =>
+            $"{(c.CopyNumber == 1 ? "Original" : "Copy " + c.CopyNumber.ToString(CultureInfo.CurrentCulture))} {c.CreatedAtUtc.ToLocalTime().ToString("HH:mm", CultureInfo.CurrentCulture)}"
+            + $" {(c.Output == PrintOutput.Pdf ? "PDF" : c.DeviceName ?? c.PrinterName ?? string.Empty)}"
+            + (c.Result == PrintResult.Failed ? " (failed)" : string.Empty)).Select(s => s.TrimEnd()));
+
+    private async Task LoadHistoryAsync(int billId)
+    {
+        var history = await _printApi.GetHistoryAsync(PrintDocumentType.Invoice, billId);
+        PrintHistoryText = history.Data is { } copies ? DescribeHistory(copies) : string.Empty;
+    }
+
     private async Task LoadDetailAsync(int? billId)
     {
         if (billId is not { } id)
         {
             ShowDetail(null);
+            PrintHistoryText = string.Empty;
             return;
         }
 
         var result = await _billingApi.GetAsync(id);
         ShowDetail(result.Data);
+        await LoadHistoryAsync(id);
     }
 
     private void ShowDetail(BillDetailDto? detail)

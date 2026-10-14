@@ -35,12 +35,26 @@
       </Grid.RowDefinitions>
 
       <controls:PageHeader Title="{Binding SelectedReport.Title}" Description="{Binding Description}">
+        <StackPanel Orientation="Horizontal">
         <Button Command="{Binding ExportCsvCommand}" MinWidth="140">
           <StackPanel Orientation="Horizontal">
             <TextBlock Text="&#xE74E;" Style="{StaticResource Text.Icon}" FontSize="14" />
             <TextBlock Text="Export CSV" Margin="8,0,0,0" />
           </StackPanel>
         </Button>
+        <Button Command="{Binding ExportExcelCommand}" MinWidth="140" Margin="8,0,0,0">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Text="&#xE9F9;" Style="{StaticResource Text.Icon}" FontSize="14" />
+            <TextBlock Text="Export Excel" Margin="8,0,0,0" />
+          </StackPanel>
+        </Button>
+        <Button Command="{Binding SavePdfCommand}" MinWidth="120" Margin="8,0,0,0">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Text="&#xE749;" Style="{StaticResource Text.Icon}" FontSize="14" />
+            <TextBlock Text="Save PDF" Margin="8,0,0,0" />
+          </StackPanel>
+        </Button>
+        </StackPanel>
       </controls:PageHeader>
 
       <controls:ReportFilterBar Grid.Row="1" Presets="{Binding Presets}" SelectedPreset="{Binding Preset}"

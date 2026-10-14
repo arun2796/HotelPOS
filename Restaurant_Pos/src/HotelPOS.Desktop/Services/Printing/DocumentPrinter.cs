@@ -73,13 +73,24 @@ public sealed class DocumentPrinter : IDocumentPrinter
             return false;
         }
 
-        var job = await FetchAsync(type, entityId, profile);
+        // Every physical copy is a logged copy with its own number (Phase 14): the first one ever printed is the
+        // original, every later one says DUPLICATE.
+        var job = await ReserveAsync(type, entityId, profile);
         if (job is null)
         {
             return false;
         }
 
         _queue.Enqueue(job);
+        var copies = Math.Clamp(Math.Max(profile.Copies, job.Document is InvoiceDocument invoice ? invoice.Copies : 1), 1, PrintLimits.MaxCopies);
+        for (var copy = 1; copy < copies; copy++)
+        {
+            if (await ReserveAsync(type, entityId, profile) is { } next)
+            {
+                _queue.Enqueue(next);
+            }
+        }
+
         return true;
     }
 
@@ -116,7 +127,26 @@ public sealed class DocumentPrinter : IDocumentPrinter
         }
     }
 
-    public void Print(PrintJob job) => _queue.Enqueue(job);
+    // A previewed document carries no copy number; printing it reserves the next copy first (Phase 14), so the paper
+    // says DUPLICATE when it is not the first copy.
+    public void Print(PrintJob job)
+    {
+        if (job.PrintLogId is null && job.EntityId > 0 && job.Document is KitchenTicketDocument or InvoiceDocument or ReceiptDocument)
+        {
+            _ = PrintReservedAsync(job);
+            return;
+        }
+
+        _queue.Enqueue(job);
+    }
+
+    private async Task PrintReservedAsync(PrintJob preview)
+    {
+        if (await ReserveAsync(preview.Type, preview.EntityId, preview.Profile) is { } job)
+        {
+            _queue.Enqueue(job with { NotifyOnSuccess = preview.NotifyOnSuccess });
+        }
+    }
 
     public Task TestPrintAsync(PrintDocumentType type, PrinterProfile profile) =>
         _printer.PrintAsync(new PrintJob(type, 0, "Test page", new TestPrintDocument
@@ -156,6 +186,39 @@ public sealed class DocumentPrinter : IDocumentPrinter
                     : Fail(receipt);
         }
     }
+
+    // Reserves the next copy on the server and makes it a one-copy job that reports its result to the print log.
+    private async Task<PrintJob?> ReserveAsync(PrintDocumentType type, int entityId, PrinterProfile profile)
+    {
+        var request = new ReserveCopyRequest { PrinterName = profile.Target };
+        var key = Guid.NewGuid();
+        PrintJob? job;
+        switch (type)
+        {
+            case PrintDocumentType.Kot:
+                var kot = await _api.ReserveCopyAsync<KitchenTicketDocument>(type, entityId, request, key);
+                job = kot.Data is { } ticket
+                    ? new PrintJob(type, entityId, Titled($"KOT {ticket.TicketNumber}", ticket.CopyNumber), ticket, profile, 1) { PrintLogId = ticket.PrintLogId }
+                    : Fail(kot);
+                break;
+            case PrintDocumentType.Invoice:
+                var invoice = await _api.ReserveCopyAsync<InvoiceDocument>(type, entityId, request, key);
+                job = invoice.Data is { } bill
+                    ? new PrintJob(type, entityId, Titled($"Invoice {bill.InvoiceNumber ?? "#" + bill.BillNumber}", bill.CopyNumber), bill, profile, 1) { PrintLogId = bill.PrintLogId }
+                    : Fail(invoice);
+                break;
+            default:
+                var receipt = await _api.ReserveCopyAsync<ReceiptDocument>(type, entityId, request, key);
+                job = receipt.Data is { } payment
+                    ? new PrintJob(type, entityId, Titled($"Receipt {payment.InvoiceNumber ?? "#" + payment.BillId}", payment.CopyNumber), payment, profile, 1) { PrintLogId = payment.PrintLogId }
+                    : Fail(receipt);
+                break;
+        }
+
+        return job is null ? null : job with { Renew = () => ReserveAsync(type, entityId, profile) };
+    }
+
+    private static string Titled(string title, int copyNumber) => copyNumber > 1 ? $"{title} (copy {copyNumber})" : title;
 
     private PrintJob? Fail<T>(ApiResult<T> result)
     {

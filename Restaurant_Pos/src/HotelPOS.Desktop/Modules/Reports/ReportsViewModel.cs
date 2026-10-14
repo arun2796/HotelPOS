@@ -213,6 +213,44 @@ public sealed partial class ReportsViewModel : ViewModelBase, INavigationAware
         }
     }
 
+    [RelayCommand]
+    private Task ExportExcelAsync() => DownloadAsync("xlsx", "Excel workbook|*.xlsx");
+
+    [RelayCommand]
+    private Task SavePdfAsync() => DownloadAsync("pdf", "PDF document|*.pdf");
+
+    // Phase 14: the same columns and totals as the grid and the CSV, as an Excel workbook or a PDF with letterhead.
+    private async Task DownloadAsync(string format, string filter)
+    {
+        var from = IsMonthly ? (DateOnly?)null : DateOnly.FromDateTime(FromDate);
+        var to = IsMonthly ? (DateOnly?)null : DateOnly.FromDateTime(ToDate);
+        var suggested = IsMonthly
+            ? $"{SelectedReport.Key.Replace('/', '-')}-{Year}.{format}"
+            : $"{SelectedReport.Key.Replace('/', '-')}-{from:yyyy-MM-dd}-to-{to:yyyy-MM-dd}.{format}";
+        var path = _files.PickSavePath(suggested, filter);
+        if (path is null)
+        {
+            return;
+        }
+
+        var result = await _api.DownloadAsync(SelectedReport.Key, from, to, IsMonthly ? Year : null, format);
+        if (!result.Success || result.Data is null)
+        {
+            _notifications.Error(ApiFailures.Describe(result), result.CorrelationId);
+            return;
+        }
+
+        try
+        {
+            await File.WriteAllBytesAsync(path, result.Data);
+            _notifications.Success($"Saved {Path.GetFileName(path)}.");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _notifications.Error($"Could not save the file: {ex.Message}");
+        }
+    }
+
     private void ApplyPreset(RangePreset preset)
     {
         if (preset == RangePreset.Custom)

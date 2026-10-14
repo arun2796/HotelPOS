@@ -85,7 +85,7 @@ public static class ModuleRegistry
         new(Devices, "Devices", "", "Administration", AdminOnly, 9,
             "Registered terminals and which are online.", typeof(DevicesViewModel)),
         new(Settings, "Restaurant Settings", "", "Administration", AdminOnly, 1,
-            "Restaurant name, invoice details, kitchen thresholds and other settings.", typeof(SettingsViewModel)),
+            "Restaurant name, invoice details, print templates and other settings.", typeof(SettingsHubViewModel)),
         new(Backup, "Backup", "", "Administration", AdminOnly, 10,
             "Scheduled and manual database backups.", typeof(BackupViewModel)),
         new(Server, "Server", "", "Administration", AdminOnly, 10,

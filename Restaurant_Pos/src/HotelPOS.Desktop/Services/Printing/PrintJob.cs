@@ -1,5 +1,7 @@
 using HotelPOS.Contracts.Print;
+using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace HotelPOS.Desktop.Services.Printing;
 
@@ -8,6 +10,47 @@ public sealed record PrintJob(PrintDocumentType Type, int EntityId, string Title
     public Guid Id { get; } = Guid.NewGuid();
 
     public bool NotifyOnSuccess { get; init; }
+
+    // Phase 14: the server's print log entry of this copy; the queue reports whether it came out.
+    public long? PrintLogId { get; init; }
+
+    // Reserves the next copy for a manual retry: a failed copy keeps its number, the retry takes the next one.
+    public Func<Task<PrintJob?>>? Renew { get; init; }
+}
+
+public interface IPrintCopyReporter
+{
+    Task ReportAsync(long printLogId, bool succeeded, string? error);
+}
+
+// Tells the server how a reserved copy went. A report that does not arrive only leaves the copy "reserved" in the log;
+// printing never waits for it.
+public sealed class PrintCopyReporter : IPrintCopyReporter
+{
+    private readonly IPrintApi _api;
+    private readonly ILogger<PrintCopyReporter> _logger;
+
+    public PrintCopyReporter(IPrintApi api, ILogger<PrintCopyReporter> logger)
+    {
+        _api = api;
+        _logger = logger;
+    }
+
+    public async Task ReportAsync(long printLogId, bool succeeded, string? error)
+    {
+        try
+        {
+            var result = await _api.CompleteCopyAsync(printLogId, new CompletePrintRequest { Succeeded = succeeded, Error = error });
+            if (!result.Success)
+            {
+                _logger.LogWarning("Print log entry {Id} was not updated: {Message}", printLogId, result.Message);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Print log entry {Id} was not updated", printLogId);
+        }
+    }
 }
 
 public sealed class PrintException : Exception

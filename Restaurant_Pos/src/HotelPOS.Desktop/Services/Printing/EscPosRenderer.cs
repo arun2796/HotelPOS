@@ -18,11 +18,19 @@ public enum LineStyle
 
 public sealed record PrintedLine(string Text, LineStyle Style = LineStyle.None)
 {
+    // A UPI payment link: thermal printers draw it with their own QR command, screens show QrImagePng.
+    public string? QrPayload { get; init; }
+
+    // The logo (raster on thermal printers) or the QR code as an image for the screen and Windows printers.
+    public byte[]? ImagePng { get; init; }
+
     public bool Is(LineStyle style) => (Style & style) == style;
 }
 
-// Lays a document out as fixed-width lines (32 or 48 columns) and encodes them as ESC/POS. The same lines feed the
-// on-screen preview, so what the cashier sees is what the thermal printer cuts.
+// Lays a document out as fixed-width lines (32 or 48 columns on rolls, wider on sheets) and encodes them as ESC/POS.
+// The same lines feed the on-screen preview, so what the cashier sees is what the thermal printer cuts. Since Phase 14
+// the document's template (sent by the server with every document) decides what is shown; a document without one
+// prints the Phase 7 layout.
 public sealed class EscPosRenderer
 {
     private const byte Esc = 0x1B;
@@ -30,18 +38,52 @@ public sealed class EscPosRenderer
 
     public static int ColumnsFor(int paperWidthMm) => paperWidthMm <= 58 ? 32 : 48;
 
+    public static int ColumnsFor(PaperSize paper) => paper switch
+    {
+        PaperSize.Mm58 => 32,
+        PaperSize.Mm80 => 48,
+        PaperSize.A5 => 64,
+        _ => 90,
+    };
+
+    // The template's roll never prints wider than the printer's paper; sheet templates (A4/A5) use the sheet on
+    // Windows printers and the roll width on thermal printers.
+    public static int ColumnsFor(PrinterProfile profile, TemplateLayout? template)
+    {
+        var printer = ColumnsFor(profile.PaperWidthMm);
+        if (template is null || !Enum.IsDefined(template.Paper))
+        {
+            return printer;
+        }
+
+        if (TemplateLayout.IsThermal(template.Paper))
+        {
+            return Math.Min(printer, ColumnsFor(template.Paper));
+        }
+
+        return profile.Kind == PrinterKind.Windows ? ColumnsFor(template.Paper) : printer;
+    }
+
+    public static TemplateLayout? TemplateOf(object document) => document switch
+    {
+        KitchenTicketDocument kot => kot.Template,
+        InvoiceDocument invoice => invoice.Template,
+        ReceiptDocument receipt => receipt.Template,
+        _ => null,
+    };
+
     public byte[] Render(object document, PrinterProfile profile)
     {
-        var lines = Layout(document, ColumnsFor(profile.PaperWidthMm), profile.CurrencyFallback);
+        var lines = Layout(document, ColumnsFor(profile, TemplateOf(document)), profile.CurrencyFallback);
         return Encode(lines, profile.Model);
     }
 
     public static IReadOnlyList<PrintedLine> Layout(object document, int columns, string? currencyFallback) => document switch
     {
-        KitchenTicketDocument kot => new Layouter(columns, currencyFallback).Kot(kot),
-        InvoiceDocument invoice => new Layouter(columns, currencyFallback).Invoice(invoice),
-        ReceiptDocument receipt => new Layouter(columns, currencyFallback).Receipt(receipt),
-        TestPrintDocument test => new Layouter(columns, currencyFallback).TestPage(test),
+        KitchenTicketDocument kot => new Layouter(columns, currencyFallback, kot.Template ?? TemplateLayout.DefaultFor(PrintDocumentType.Kot)).Kot(kot),
+        InvoiceDocument invoice => new Layouter(columns, currencyFallback, invoice.Template ?? TemplateLayout.DefaultFor(PrintDocumentType.Invoice)).Invoice(invoice),
+        ReceiptDocument receipt => new Layouter(columns, currencyFallback, receipt.Template ?? TemplateLayout.DefaultFor(PrintDocumentType.Receipt)).Receipt(receipt),
+        TestPrintDocument test => new Layouter(columns, currencyFallback, new TemplateLayout()).TestPage(test),
         _ => throw new PrintException($"Cannot print a {document.GetType().Name}."),
     };
 
@@ -49,6 +91,7 @@ public sealed class EscPosRenderer
     {
         var output = new List<byte> { Esc, (byte)'@' };
         var currentStyle = LineStyle.None;
+        var dots = lines.Count == 0 ? 576 : Math.Max(lines.Max(l => l.Text.Length), 32) <= 32 ? 384 : 576;
         foreach (var line in lines)
         {
             if (line.Style != currentStyle)
@@ -60,6 +103,19 @@ public sealed class EscPosRenderer
                 currentStyle = line.Style;
             }
 
+            if (line.QrPayload is not null)
+            {
+                output.AddRange(QrCode(line.QrPayload));
+                output.Add((byte)'\n');
+                continue;
+            }
+
+            if (line.ImagePng is not null)
+            {
+                output.AddRange(EscPosRaster.Encode(line.ImagePng, dots / 2));
+                continue;
+            }
+
             output.AddRange(Encoding.ASCII.GetBytes(Ascii(line.Text)));
             output.Add((byte)'\n');
         }
@@ -68,6 +124,23 @@ public sealed class EscPosRenderer
         output.AddRange(new[] { Esc, (byte)'d', (byte)4 });
         output.AddRange(model == PrinterModel.Xprinter ? new[] { Gs, (byte)'V', (byte)1 } : new[] { Gs, (byte)'V', (byte)66, (byte)0 });
         return output.ToArray();
+    }
+
+    // GS ( k: QR model 2, module size 6, error correction M, store the payload, print it.
+    public static byte[] QrCode(string payload)
+    {
+        var data = Encoding.ASCII.GetBytes(Ascii(payload));
+        var length = data.Length + 3;
+        var bytes = new List<byte>
+        {
+            Gs, (byte)'(', (byte)'k', 4, 0, 49, 65, 50, 0,
+            Gs, (byte)'(', (byte)'k', 3, 0, 49, 67, 6,
+            Gs, (byte)'(', (byte)'k', 3, 0, 49, 69, 49,
+            Gs, (byte)'(', (byte)'k', (byte)(length % 256), (byte)(length / 256), 49, 80, 48,
+        };
+        bytes.AddRange(data);
+        bytes.AddRange(new byte[] { Gs, (byte)'(', (byte)'k', 3, 0, 49, 81, 48 });
+        return bytes.ToArray();
     }
 
     // Thermal printers speak single-byte code pages; anything outside ASCII is mapped to a close equivalent.
@@ -83,6 +156,7 @@ public sealed class EscPosRenderer
                 '“' or '”' => '"',
                 '‘' or '’' => '\'',
                 '·' => '.',
+                '•' => '-',
                 < (char)128 => ch,
                 _ => '?',
             });
@@ -95,24 +169,35 @@ public sealed class EscPosRenderer
     {
         private readonly int _columns;
         private readonly string? _currencyFallback;
+        private readonly TemplateLayout _template;
         private readonly List<PrintedLine> _lines = new();
 
-        public Layouter(int columns, string? currencyFallback)
+        public Layouter(int columns, string? currencyFallback, TemplateLayout template)
         {
             _columns = columns;
             _currencyFallback = currencyFallback;
+            _template = template;
         }
 
         private int Wide => _columns / 2;
 
+        private bool LargeText => _template.FontSize == TemplateFontSize.Large;
+
         public IReadOnlyList<PrintedLine> Kot(KitchenTicketDocument kot)
         {
             Add("KITCHEN TICKET", LineStyle.Center | LineStyle.Bold);
+            if (_template.KotStationHeading && !string.IsNullOrWhiteSpace(kot.StationName))
+            {
+                Add(kot.StationName, LineStyle.Center | LineStyle.Large, Wide);
+            }
+
             Add(kot.IsAddition ? $"{kot.TicketNumber}  +ADD" : kot.TicketNumber, LineStyle.Center | LineStyle.Large, Wide);
+            Duplicate(kot.CopyLabel);
             Pair($"Table {kot.TableCode}", $"Order #{kot.OrderNumber}");
-            Pair($"Waiter {kot.WaiterName}", $"Guests {kot.GuestCount}");
+            Pair(_template.ShowWaiter ? $"Waiter {kot.WaiterName}" : string.Empty, _template.ShowGuests ? $"Guests {kot.GuestCount}" : string.Empty);
             Pair($"Station {kot.StationCode}", Time(kot.CreatedAtUtc));
             Rule();
+            var itemStyle = LargeText ? LineStyle.Large : LineStyle.DoubleHeight | LineStyle.Bold;
             foreach (var item in kot.Items)
             {
                 var quantity = item.Quantity.ToString(CultureInfo.InvariantCulture).PadLeft(2);
@@ -121,7 +206,7 @@ public sealed class EscPosRenderer
                 foreach (var (text, index) in Wrap(name, Wide - 4).Select((t, i) => (t, i)))
                 {
                     var head = index == 0 ? quantity + "  " : "    ";
-                    Add(index == 0 && price.Length > 0 ? Columns(head + text, price, Wide) : head + text, LineStyle.DoubleHeight | LineStyle.Bold);
+                    Add(index == 0 && price.Length > 0 ? Columns(head + text, price, Wide) : head + text, itemStyle);
                 }
 
                 if (item.Modifiers.Count > 0)
@@ -131,18 +216,23 @@ public sealed class EscPosRenderer
 
                 if (!string.IsNullOrWhiteSpace(item.Notes))
                 {
-                    Wrapped("    * ", item.Notes, "      ", LineStyle.Bold);
+                    Wrapped("    * ", item.Notes, "      ", _template.KotNotesBold ? LineStyle.Bold : LineStyle.None);
                 }
             }
 
             if (!string.IsNullOrWhiteSpace(kot.OrderNotes))
             {
                 Rule();
-                Wrapped("Note: ", kot.OrderNotes, "      ", LineStyle.Bold);
+                Wrapped("Note: ", kot.OrderNotes, "      ", _template.KotNotesBold ? LineStyle.Bold : LineStyle.None);
             }
 
             Rule();
-            Add($"Printed {Time(kot.PrintedAtUtc)}", LineStyle.Center);
+            Closing();
+            if (_template.ShowPrintedAt)
+            {
+                Add($"Printed {Time(kot.PrintedAtUtc)}", LineStyle.Center);
+            }
+
             return _lines;
         }
 
@@ -154,37 +244,26 @@ public sealed class EscPosRenderer
                 Add("*** CANCELLED ***", LineStyle.Center | LineStyle.Large, Wide);
             }
 
-            Header(invoice.RestaurantName, invoice.Address, invoice.Phone, invoice.Gstin);
+            Logo(invoice.LogoPng);
+            Header(invoice.RestaurantName,
+                _template.ShowAddress ? invoice.Address : null,
+                _template.ShowPhone ? invoice.Phone : null,
+                _template.ShowGstin ? invoice.Gstin : null);
             Add("TAX INVOICE", LineStyle.Center | LineStyle.Bold);
+            Duplicate(invoice.CopyLabel);
             Rule();
             Add($"Invoice {invoice.InvoiceNumber ?? "(not finalized)"}", LineStyle.Bold);
             Pair($"Date {DateAndTime(invoice.IssuedAtUtc)}", $"Table {invoice.TableCode}");
-            Pair($"Order #{invoice.OrderNumber}  {invoice.WaiterName}", $"Guests {invoice.GuestCount}");
-            if (invoice.Customer is { } customer)
+            Pair(_template.ShowWaiter ? $"Order #{invoice.OrderNumber}  {invoice.WaiterName}" : $"Order #{invoice.OrderNumber}",
+                _template.ShowGuests ? $"Guests {invoice.GuestCount}" : string.Empty);
+            if (_template.ShowCustomer && invoice.Customer is { } customer)
             {
                 Wrapped("Customer: ", string.Join(" / ", new[] { customer.Name, customer.Phone, customer.Gstin is null ? null : "GSTIN " + customer.Gstin }
                     .Where(s => !string.IsNullOrWhiteSpace(s))), "  ");
             }
 
             Rule();
-            var amountW = _columns >= 48 ? 11 : 8;
-            var rateW = _columns >= 48 ? 9 : 7;
-            var qtyW = _columns >= 48 ? 4 : 3;
-            var nameW = _columns - amountW - rateW - qtyW;
-            Add("Item".PadRight(nameW) + "Qty".PadLeft(qtyW) + "Rate".PadLeft(rateW) + "Amount".PadLeft(amountW), LineStyle.Bold);
-            foreach (var line in invoice.Lines)
-            {
-                var parts = Wrap(line.Name, nameW).ToList();
-                Add(parts[0].PadRight(nameW)
-                    + line.Quantity.ToString(CultureInfo.InvariantCulture).PadLeft(qtyW)
-                    + Amount(line.UnitPrice).PadLeft(rateW)
-                    + Amount(line.LineSubtotal).PadLeft(amountW));
-                foreach (var rest in parts.Skip(1))
-                {
-                    Add(rest);
-                }
-            }
-
+            ItemTable(invoice);
             Rule();
             Total("Subtotal", Amount(invoice.Subtotal));
             if (invoice.DiscountAmount > 0)
@@ -192,9 +271,16 @@ public sealed class EscPosRenderer
                 Total(invoice.DiscountLabel ?? "Discount", "-" + Amount(invoice.DiscountAmount));
             }
 
-            foreach (var tax in invoice.TaxRows)
+            if (_template.GstBreakup == GstBreakupStyle.RateTable && invoice.TaxRates.Count > 0)
             {
-                Total(tax.Label, Amount(tax.TaxAmount));
+                RateTable(invoice);
+            }
+            else
+            {
+                foreach (var tax in invoice.TaxRows)
+                {
+                    Total(tax.Label, Amount(tax.TaxAmount));
+                }
             }
 
             if (invoice.RoundOff != 0)
@@ -203,7 +289,17 @@ public sealed class EscPosRenderer
             }
 
             Add(Columns("TOTAL", Money(invoice.GrandTotal, symbol), Wide), LineStyle.Large);
-            if (invoice.Payments.Count > 0)
+            if (_template.Columns.Contains(TemplateColumn.HsnSac) && invoice.HsnSummary.Count > 0)
+            {
+                Rule();
+                Add("HSN/SAC summary", LineStyle.Bold);
+                foreach (var row in invoice.HsnSummary)
+                {
+                    Total($"{row.HsnSac} @ {Rate(row.RatePercent)}", $"{Amount(row.TaxableAmount)} / {Amount(row.TaxAmount)}");
+                }
+            }
+
+            if (_template.ShowPayments && invoice.Payments.Count > 0)
             {
                 Rule();
                 foreach (var payment in invoice.Payments)
@@ -219,6 +315,13 @@ public sealed class EscPosRenderer
                 }
             }
 
+            if (invoice.UpiQrPayload is not null)
+            {
+                Rule();
+                _lines.Add(new PrintedLine(string.Empty, LineStyle.Center) { QrPayload = invoice.UpiQrPayload, ImagePng = invoice.UpiQrPng });
+                Add($"Scan to pay {Money(invoice.BalanceDue, symbol)} by UPI", LineStyle.Center);
+            }
+
             Rule();
             if (invoice.IsCancelled)
             {
@@ -230,14 +333,21 @@ public sealed class EscPosRenderer
                 Wrapped(string.Empty, invoice.Footer, string.Empty, LineStyle.Center);
             }
 
-            Add($"Printed {DateAndTime(invoice.PrintedAtUtc)}", LineStyle.Center);
+            Closing();
+            if (_template.ShowPrintedAt)
+            {
+                Add($"Printed {DateAndTime(invoice.PrintedAtUtc)}", LineStyle.Center);
+            }
+
             return _lines;
         }
 
         public IReadOnlyList<PrintedLine> Receipt(ReceiptDocument receipt)
         {
+            Logo(receipt.LogoPng);
             Header(receipt.RestaurantName, null, null, null);
             Add(receipt.IsRefund ? "REFUND" : "PAYMENT RECEIPT", LineStyle.Center | LineStyle.Bold);
+            Duplicate(receipt.CopyLabel);
             Rule();
             Pair($"Invoice {receipt.InvoiceNumber ?? "-"}", $"Table {receipt.TableCode}");
             Pair($"Order #{receipt.OrderNumber}", DateAndTime(receipt.PaidAtUtc));
@@ -274,6 +384,7 @@ public sealed class EscPosRenderer
                 Wrapped(string.Empty, receipt.Footer, string.Empty, LineStyle.Center);
             }
 
+            Closing();
             return _lines;
         }
 
@@ -297,6 +408,106 @@ public sealed class EscPosRenderer
             return _lines;
         }
 
+        // The item table in the template's column order; the item name takes the room the other columns leave. On a
+        // narrow roll with many columns the name gets a line of its own and the figures go on the next one.
+        private void ItemTable(InvoiceDocument invoice)
+        {
+            var columns = _template.Columns.Where(Enum.IsDefined).Distinct().ToList();
+            if (!columns.Contains(TemplateColumn.Item))
+            {
+                columns.Insert(0, TemplateColumn.Item);
+            }
+
+            var figures = columns.Where(c => c != TemplateColumn.Item).ToList();
+            var widths = figures.ToDictionary(c => c, Width);
+            var nameW = _columns - widths.Values.Sum();
+            var ownLine = nameW < 10;
+            var style = LargeText ? LineStyle.DoubleHeight : LineStyle.None;
+            string Figures(Func<TemplateColumn, string> cell) => string.Concat(figures.Select(c => cell(c).PadLeft(widths[c])));
+
+            if (ownLine)
+            {
+                Add("Item", LineStyle.Bold);
+                Add(Figures(Heading).PadLeft(_columns), LineStyle.Bold);
+            }
+            else
+            {
+                Add("Item".PadRight(nameW) + Figures(Heading), LineStyle.Bold);
+            }
+
+            foreach (var line in invoice.Lines)
+            {
+                if (ownLine)
+                {
+                    foreach (var part in Wrap(line.Name, _columns))
+                    {
+                        Add(part, style);
+                    }
+
+                    Add(Figures(c => Cell(c, line)).PadLeft(_columns), style);
+                    continue;
+                }
+
+                var parts = Wrap(line.Name, nameW).ToList();
+                Add(parts[0].PadRight(nameW) + Figures(c => Cell(c, line)), style);
+                foreach (var rest in parts.Skip(1))
+                {
+                    Add(rest, style);
+                }
+            }
+        }
+
+        private int Width(TemplateColumn column) => (column, _columns >= 48) switch
+        {
+            (TemplateColumn.Quantity, true) => 4,
+            (TemplateColumn.Quantity, false) => 3,
+            (TemplateColumn.Rate, true) => 9,
+            (TemplateColumn.Rate, false) => 7,
+            (TemplateColumn.Amount, true) => 11,
+            (TemplateColumn.Amount, false) => 8,
+            (TemplateColumn.HsnSac, true) => 8,
+            (TemplateColumn.HsnSac, false) => 7,
+            (TemplateColumn.Discount, true) => 8,
+            (TemplateColumn.Discount, false) => 7,
+            (TemplateColumn.TaxPercent, _) => 5,
+            _ => 0,
+        };
+
+        private static string Heading(TemplateColumn column) => column switch
+        {
+            TemplateColumn.Quantity => "Qty",
+            TemplateColumn.Rate => "Rate",
+            TemplateColumn.Amount => "Amount",
+            TemplateColumn.HsnSac => "HSN",
+            TemplateColumn.Discount => "Disc",
+            TemplateColumn.TaxPercent => "GST%",
+            _ => "Item",
+        };
+
+        private string Cell(TemplateColumn column, InvoiceLine line) => column switch
+        {
+            TemplateColumn.Quantity => line.Quantity.ToString(CultureInfo.InvariantCulture),
+            TemplateColumn.Rate => Amount(line.UnitPrice),
+            TemplateColumn.Amount => Amount(line.LineSubtotal),
+            TemplateColumn.HsnSac => line.HsnSac ?? string.Empty,
+            TemplateColumn.Discount => line.DiscountAmount == 0 ? "-" : Amount(line.DiscountAmount),
+            TemplateColumn.TaxPercent => Rate(line.TaxRatePercent),
+            _ => line.Name,
+        };
+
+        private void RateTable(InvoiceDocument invoice)
+        {
+            var w = _columns >= 48 ? 10 : 7;
+            var rateW = _columns - (3 * w);
+            Add("GST%".PadRight(rateW) + "Taxable".PadLeft(w) + "CGST".PadLeft(w) + "SGST".PadLeft(w), LineStyle.Bold);
+            foreach (var rate in invoice.TaxRates)
+            {
+                Add(Rate(rate.RatePercent).PadRight(rateW) + Amount(rate.TaxableAmount).PadLeft(w) + Amount(rate.CentralTax).PadLeft(w) + Amount(rate.StateTax).PadLeft(w));
+            }
+
+            Total("Total tax", Amount(invoice.TaxAmount));
+        }
+
         private void Header(string name, string? address, string? phone, string? gstin)
         {
             Add(name, LineStyle.Center | LineStyle.Bold | LineStyle.DoubleHeight);
@@ -313,6 +524,46 @@ public sealed class EscPosRenderer
             if (!string.IsNullOrWhiteSpace(gstin))
             {
                 Add("GSTIN " + gstin, LineStyle.Center);
+            }
+
+            foreach (var line in _template.HeaderLines.Where(l => !string.IsNullOrWhiteSpace(l)))
+            {
+                Wrapped(string.Empty, line, string.Empty, LineStyle.Center);
+            }
+        }
+
+        private void Logo(byte[]? png)
+        {
+            if (_template.ShowLogo && png is { Length: > 0 })
+            {
+                _lines.Add(new PrintedLine(string.Empty, LineStyle.Center) { ImagePng = png });
+            }
+        }
+
+        private void Duplicate(string? copyLabel)
+        {
+            if (!string.IsNullOrWhiteSpace(copyLabel))
+            {
+                Add($"** {copyLabel} **", LineStyle.Center | LineStyle.Large, Wide);
+            }
+        }
+
+        // Template footer lines and terms, after the document's own footer.
+        private void Closing()
+        {
+            foreach (var line in _template.FooterLines.Where(l => !string.IsNullOrWhiteSpace(l)))
+            {
+                Wrapped(string.Empty, line, string.Empty, LineStyle.Center);
+            }
+
+            var terms = _template.Terms.Where(l => !string.IsNullOrWhiteSpace(l)).ToList();
+            if (terms.Count > 0)
+            {
+                Add("Terms", LineStyle.Bold);
+                foreach (var term in terms)
+                {
+                    Wrapped("- ", term, "  ");
+                }
             }
         }
 
@@ -339,7 +590,9 @@ public sealed class EscPosRenderer
             }
         }
 
-        private string Amount(decimal value) => value.ToString("N2", CultureInfo.InvariantCulture);
+        private static string Amount(decimal value) => value.ToString("N2", CultureInfo.InvariantCulture);
+
+        private static string Rate(decimal percent) => percent.ToString("0.##", CultureInfo.InvariantCulture) + "%";
 
         private string Money(decimal value, string symbol)
         {

@@ -60,6 +60,7 @@
           <StackPanel>
             <TextBlock Text="{Binding DetailTitle}" Style="{StaticResource Text.Subtitle}" TextWrapping="Wrap" />
             <TextBlock Text="{Binding DetailTotals}" Style="{StaticResource Text.Caption}" TextWrapping="Wrap" Margin="0,4,0,10" />
+            <TextBlock Text="{Binding PrintHistoryText}" Style="{StaticResource Text.Caption}" TextWrapping="Wrap" Margin="0,0,0,10" ToolTip="Printed copies of this invoice" />
             <ItemsControl ItemsSource="{Binding DetailLines}" Focusable="False">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
@@ -101,6 +102,7 @@
             <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
               <Button Content="REPRINT INVOICE" Command="{Binding ReprintInvoiceCommand}" MinHeight="44" />
               <Button Content="PREVIEW" Command="{Binding PreviewInvoiceCommand}" MinHeight="44" Margin="8,0,0,0" />
+              <Button Content="SAVE PDF" Command="{Binding SaveInvoicePdfCommand}" MinHeight="44" Margin="8,0,0,0" />
             </StackPanel>
           </StackPanel>
         </ScrollViewer>

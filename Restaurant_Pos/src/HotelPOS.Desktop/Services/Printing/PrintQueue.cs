@@ -84,12 +84,15 @@ public sealed class PrintQueue : IPrintQueue, IDisposable
     private readonly CancellationTokenSource _stopping = new();
     private readonly Task _worker;
 
-    public PrintQueue(IPrintService printer, INotificationService notifications, ILogger<PrintQueue> logger, PrintQueueOptions? options = null)
+    private readonly IPrintCopyReporter? _copies;
+
+    public PrintQueue(IPrintService printer, INotificationService notifications, ILogger<PrintQueue> logger, PrintQueueOptions? options = null, IPrintCopyReporter? copies = null)
     {
         _printer = printer;
         _notifications = notifications;
         _logger = logger;
         _options = options ?? new PrintQueueOptions();
+        _copies = copies;
         _worker = Task.Run(() => RunAsync(_stopping.Token));
     }
 
@@ -126,7 +129,29 @@ public sealed class PrintQueue : IPrintQueue, IDisposable
     public void Retry(FailedPrintJob failed)
     {
         Remove(failed);
+        if (failed.Job.Renew is { } renew)
+        {
+            // A logged copy that failed keeps its number; the retry prints the next copy (DUPLICATE).
+            _ = RenewAsync(renew);
+            return;
+        }
+
         _jobs.Writer.TryWrite(failed.Job with { NotifyOnSuccess = true });
+    }
+
+    private async Task RenewAsync(Func<Task<PrintJob?>> renew)
+    {
+        try
+        {
+            if (await renew() is { } job)
+            {
+                _jobs.Writer.TryWrite(job with { NotifyOnSuccess = true });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Could not reserve a new copy for the retry");
+        }
     }
 
     public void RetryAll()
@@ -191,6 +216,7 @@ public sealed class PrintQueue : IPrintQueue, IDisposable
                     _notifications.Success($"{job.Title} printed.");
                 }
 
+                Report(job, true, null);
                 return;
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -211,8 +237,18 @@ public sealed class PrintQueue : IPrintQueue, IDisposable
         }
 
         _logger.LogError("{Title} could not be printed on {Printer}: {Error}", job.Title, job.Profile.Target, failed.Error);
+        Report(job, false, failed.Error);
         _notifications.Error($"{job.Title} was not printed. {failed.Error}", "Retry", () => Retry(failed));
         Changed?.Invoke(this, EventArgs.Empty);
+    }
+
+    // The server's print log learns whether the copy came out; the report never holds up the next job.
+    private void Report(PrintJob job, bool succeeded, string? error)
+    {
+        if (_copies is not null && job.PrintLogId is { } logId)
+        {
+            _ = _copies.ReportAsync(logId, succeeded, error);
+        }
     }
 
     private void Remove(FailedPrintJob failed)

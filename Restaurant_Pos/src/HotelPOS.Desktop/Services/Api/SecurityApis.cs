@@ -46,6 +46,9 @@ public interface IAuditApi
     Task<ApiResult<PagedResult<AuditLogDto>>> QueryAsync(AuditLogQuery query, CancellationToken cancellationToken = default);
 
     Task<ApiResult<byte[]>> ExportCsvAsync(AuditLogQuery query, CancellationToken cancellationToken = default);
+
+    // Phase 14: the same rows as an Excel workbook.
+    Task<ApiResult<byte[]>> ExportExcelAsync(AuditLogQuery query, CancellationToken cancellationToken = default);
 }
 
 public sealed class AuditApi : IAuditApi
@@ -64,6 +67,9 @@ public sealed class AuditApi : IAuditApi
     // Same filters as the screen, so the file contains exactly what the grid shows (every page of it).
     public Task<ApiResult<byte[]>> ExportCsvAsync(AuditLogQuery query, CancellationToken cancellationToken = default) =>
         _api.DownloadAsync("api/admin/audit-logs/export?" + QueryString(query, includePaging: false), cancellationToken);
+
+    public Task<ApiResult<byte[]>> ExportExcelAsync(AuditLogQuery query, CancellationToken cancellationToken = default) =>
+        _api.DownloadAsync("api/admin/audit-logs/export?format=xlsx&" + QueryString(query, includePaging: false), cancellationToken);
 
     internal static string QueryString(AuditLogQuery query, bool includePaging)
     {
