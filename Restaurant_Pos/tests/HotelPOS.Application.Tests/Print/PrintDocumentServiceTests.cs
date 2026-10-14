@@ -1,7 +1,8 @@
 using HotelPOS.Application.Billing;
 using HotelPOS.Application.Common.Results;
 using HotelPOS.Application.Features.Floor.Commands;
-using HotelPOS.Application.Kitchen;
+using HotelPOS.Application.Features.Kitchen.Commands;
+using HotelPOS.Application.Features.Kitchen.Queries;
 using HotelPOS.Application.Features.Menu.Commands;
 using HotelPOS.Application.Features.Menu.Queries;
 using HotelPOS.Application.Features.Orders.Commands;

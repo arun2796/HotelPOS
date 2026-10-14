@@ -1,6 +1,7 @@
 using HotelPOS.Application.Common.Results;
 using HotelPOS.Application.Features.Floor.Commands;
-using HotelPOS.Application.Kitchen;
+using HotelPOS.Application.Features.Kitchen.Commands;
+using HotelPOS.Application.Features.Kitchen.Queries;
 using HotelPOS.Application.Features.Menu.Commands;
 using HotelPOS.Application.Features.Menu.Queries;
 using HotelPOS.Application.Features.Orders.Commands;
@@ -19,9 +20,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace HotelPOS.Application.Tests.Kitchen;
 
-public class KitchenServiceTests : DatabaseTestBase
+public class KitchenTests : DatabaseTestBase
 {
-    public KitchenServiceTests(DatabaseFixture fixture)
+    public KitchenTests(DatabaseFixture fixture)
         : base(fixture)
     {
     }
@@ -32,7 +33,7 @@ public class KitchenServiceTests : DatabaseTestBase
         var s = await SetupAsync();
         var order = await SendAsync(s, Line(s.Biryani, 2), Line(s.Soda, 3));
 
-        var tickets = await Call<IKitchenService, KitchenTicketListDto>(k => k.ListAsync(new KitchenTicketQuery()));
+        var tickets = (await SendAsAdminAsync(new ListKitchenTicketsQuery(new KitchenTicketQuery()))).Value;
         var mine = tickets.Tickets.Where(t => t.OrderId == order.Id).OrderBy(t => t.StationCode).ToList();
 
         mine.Select(t => t.TicketNumber).Should().Equal($"{order.OrderNumber}-1-BAR", $"{order.OrderNumber}-1-MAIN");
@@ -40,7 +41,7 @@ public class KitchenServiceTests : DatabaseTestBase
         mine[1].Items.Should().ContainSingle().Which.Name.Should().Be("Chicken Biryani");
         mine.Should().OnlyContain(t => t.Status == KitchenOrderStatus.New && t.TableCode == "T05");
         Realtime.Events.Count(e => e.EventName == HubEvents.KitchenTicketCreated).Should().Be(2);
-        (await Call<IKitchenService, KitchenTicketListDto>(k => k.ListAsync(new KitchenTicketQuery { StationId = s.Bar })))
+        (await SendAsAdminAsync(new ListKitchenTicketsQuery(new KitchenTicketQuery { StationId = s.Bar }))).Value
             .Tickets.Should().OnlyContain(t => t.StationCode == "BAR");
     }
 
@@ -52,12 +53,12 @@ public class KitchenServiceTests : DatabaseTestBase
         var ticketId = await TicketIdAsync(order.Id, "MAIN");
         AsKitchen(s);
 
-        await Call<IKitchenService, KitchenTicketDto>(k => k.AcceptAsync(ticketId));
+        await SendAsync(new AcceptKitchenTicketCommand(ticketId));
         Clock.Advance(TimeSpan.FromMinutes(2));
-        await Call<IKitchenService, KitchenTicketDto>(k => k.StartAsync(ticketId));
+        await SendAsync(new StartKitchenTicketCommand(ticketId));
         (await OrderStatusAsync(order.Id)).Should().Be(OrderStatus.Preparing);
         Clock.Advance(TimeSpan.FromMinutes(10));
-        var ready = await Call<IKitchenService, KitchenTicketDto>(k => k.ReadyAsync(ticketId));
+        var ready = await SendAsync(new MarkKitchenTicketReadyCommand(ticketId));
 
         ready.Value.AcceptedAtUtc.Should().Be(TestClock.Start);
         ready.Value.StartedAtUtc.Should().Be(TestClock.Start.AddMinutes(2));
@@ -68,7 +69,7 @@ public class KitchenServiceTests : DatabaseTestBase
         readyEvent.Audience.UserIds.Should().Contain(s.WaiterA);
         ((OrderProgressEvent)readyEvent.Payload).ReadyTicketNumbers.Should().Equal($"{order.OrderNumber}-1");
 
-        var recalled = await Call<IKitchenService, KitchenTicketDto>(k => k.RecallAsync(ticketId));
+        var recalled = await SendAsync(new RecallKitchenTicketCommand(ticketId));
         recalled.Value.Status.Should().Be(KitchenOrderStatus.Preparing);
         recalled.Value.ReadyAtUtc.Should().BeNull();
         (await TableStatusAsync(s.TableId)).Should().Be(TableStatus.Preparing);
@@ -82,8 +83,8 @@ public class KitchenServiceTests : DatabaseTestBase
         var bar = await TicketIdAsync(order.Id, "BAR");
         var main = await TicketIdAsync(order.Id, "MAIN");
         AsKitchen(s);
-        await Call<IKitchenService, KitchenTicketDto>(k => k.StartAsync(bar));
-        await Call<IKitchenService, KitchenTicketDto>(k => k.ReadyAsync(bar));
+        await SendAsync(new StartKitchenTicketCommand(bar));
+        await SendAsync(new MarkKitchenTicketReadyCommand(bar));
         (await OrderStatusAsync(order.Id)).Should().Be(OrderStatus.Submitted);
         (await TableStatusAsync(s.TableId)).Should().Be(TableStatus.Ready);
 
@@ -95,8 +96,8 @@ public class KitchenServiceTests : DatabaseTestBase
         nothingReady.Error!.Code.Should().Be(ErrorCodes.InvalidStateTransition);
 
         AsKitchen(s);
-        await Call<IKitchenService, KitchenTicketDto>(k => k.StartAsync(main));
-        await Call<IKitchenService, KitchenTicketDto>(k => k.ReadyAsync(main));
+        await SendAsync(new StartKitchenTicketCommand(main));
+        await SendAsync(new MarkKitchenTicketReadyCommand(main));
         AsWaiter(s.WaiterB);
         var served = await SendAsync(new ServeOrderCommand(order.Id));
 
@@ -112,9 +113,9 @@ public class KitchenServiceTests : DatabaseTestBase
         var order = await SendAsync(s, Line(s.Soda, 1));
         var bar = await TicketIdAsync(order.Id, "BAR");
         AsKitchen(s);
-        await Call<IKitchenService, KitchenTicketDto>(k => k.StartAsync(bar));
-        await Call<IKitchenService, KitchenTicketDto>(k => k.ReadyAsync(bar));
-        await Call<IKitchenService, KitchenTicketDto>(k => k.CompleteAsync(bar));
+        await SendAsync(new StartKitchenTicketCommand(bar));
+        await SendAsync(new MarkKitchenTicketReadyCommand(bar));
+        await SendAsync(new CompleteKitchenTicketCommand(bar));
         (await OrderStatusAsync(order.Id)).Should().Be(OrderStatus.Served);
 
         AsWaiter(s.WaiterA);
@@ -136,7 +137,7 @@ public class KitchenServiceTests : DatabaseTestBase
         var cancelled = await SendAsync(new CancelOrderCommand(order.Id, new CancelOrderRequest { Reason = "Guests left" }));
 
         cancelled.Value.Tickets.Should().HaveCount(2).And.OnlyContain(t => t.Status == KitchenOrderStatus.Cancelled);
-        (await Call<IKitchenService, KitchenTicketListDto>(k => k.ListAsync(new KitchenTicketQuery()))).Tickets.Should().BeEmpty();
+        (await SendAsAdminAsync(new ListKitchenTicketsQuery(new KitchenTicketQuery()))).Value.Tickets.Should().BeEmpty();
         Realtime.Events.Count(e => e.EventName == HubEvents.KitchenTicketUpdated).Should().Be(2);
     }
 
@@ -157,15 +158,15 @@ public class KitchenServiceTests : DatabaseTestBase
         var first = await SendAsync(new CancelOrderItemCommand(order.Id, kulfi, new CancelOrderItemRequest { Reason = "No dessert" }));
 
         AsKitchen(s);
-        await Call<IKitchenService, KitchenTicketDto>(k => k.StartAsync(main));
+        await SendAsync(new StartKitchenTicketCommand(main));
         AsWaiter(s.WaiterA);
         var preparingByWaiter = await SendAsync(new CancelOrderItemCommand(order.Id, biryani, new CancelOrderItemRequest()));
         CurrentUser.SignIn(s.Manager, "manager", Roles.Manager);
         var preparingByManager = await SendAsync(new CancelOrderItemCommand(order.Id, biryani, new CancelOrderItemRequest { Reason = "Allergy" }));
 
         AsKitchen(s);
-        await Call<IKitchenService, KitchenTicketDto>(k => k.StartAsync(bar));
-        await Call<IKitchenService, KitchenTicketDto>(k => k.ReadyAsync(bar));
+        await SendAsync(new StartKitchenTicketCommand(bar));
+        await SendAsync(new MarkKitchenTicketReadyCommand(bar));
         CurrentUser.SignIn(s.Manager, "manager", Roles.Manager);
         var ready = await SendAsync(new CancelOrderItemCommand(order.Id, soda, new CancelOrderItemRequest()));
 
@@ -186,13 +187,13 @@ public class KitchenServiceTests : DatabaseTestBase
         var bar = await TicketIdAsync(order.Id, "BAR");
         var main = await TicketIdAsync(order.Id, "MAIN");
         AsKitchen(s);
-        await Call<IKitchenService, KitchenTicketDto>(k => k.StartAsync(bar));
-        await Call<IKitchenService, KitchenTicketDto>(k => k.ReadyAsync(bar));
-        await Call<IKitchenService, KitchenTicketDto>(k => k.CompleteAsync(bar));
+        await SendAsync(new StartKitchenTicketCommand(bar));
+        await SendAsync(new MarkKitchenTicketReadyCommand(bar));
+        await SendAsync(new CompleteKitchenTicketCommand(bar));
         AsWaiter(s.WaiterA);
         await SendAsync(new CancelOrderItemCommand(order.Id, order.Items.Single(i => i.MenuItemId == s.Biryani).Id, new CancelOrderItemRequest()));
 
-        var done = await Call<IKitchenService, KitchenTicketListDto>(k => k.ListCompletedAsync(null));
+        var done = (await SendAsAdminAsync(new ListCompletedKitchenTicketsQuery(null))).Value;
 
         done.Tickets.Select(t => (t.Id, t.Status)).Should().BeEquivalentTo(new[]
         {

@@ -1,7 +1,8 @@
 using HotelPOS.Application.Billing;
 using HotelPOS.Application.Common.Results;
 using HotelPOS.Application.Features.Floor.Commands;
-using HotelPOS.Application.Kitchen;
+using HotelPOS.Application.Features.Kitchen.Commands;
+using HotelPOS.Application.Features.Kitchen.Queries;
 using HotelPOS.Application.Features.Menu.Commands;
 using HotelPOS.Application.Features.Menu.Queries;
 using HotelPOS.Application.Features.Orders.Commands;
@@ -526,8 +527,8 @@ public class BillingServiceTests : DatabaseTestBase
         CurrentUser.SignIn(s.Cook, "cook", Roles.Kitchen);
         foreach (var ticket in order.Tickets.Where(t => t.Status == KitchenOrderStatus.New))
         {
-            await Call<IKitchenService, KitchenTicketDto>(k => k.StartAsync(ticket.Id));
-            await Call<IKitchenService, KitchenTicketDto>(k => k.ReadyAsync(ticket.Id));
+            await SendAsync(new StartKitchenTicketCommand(ticket.Id));
+            await SendAsync(new MarkKitchenTicketReadyCommand(ticket.Id));
         }
 
         AsWaiter(s);

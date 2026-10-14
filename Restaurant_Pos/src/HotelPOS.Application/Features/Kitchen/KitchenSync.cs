@@ -9,7 +9,7 @@ using HotelPOS.Domain.Kitchen;
 using HotelPOS.Domain.Orders;
 using Microsoft.EntityFrameworkCore;
 
-namespace HotelPOS.Application.Kitchen;
+namespace HotelPOS.Application.Features.Kitchen;
 
 public sealed record KitchenChange(OrderStatus OrderBefore, OrderStatus OrderAfter, TableStatus TableBefore, TableStatus TableAfter);
 

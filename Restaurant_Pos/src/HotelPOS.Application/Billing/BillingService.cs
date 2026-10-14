@@ -3,7 +3,7 @@ using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
 using HotelPOS.Application.Features.Floor;
-using HotelPOS.Application.Kitchen;
+using HotelPOS.Application.Features.Kitchen;
 using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Billing;
 using HotelPOS.Contracts.Common;

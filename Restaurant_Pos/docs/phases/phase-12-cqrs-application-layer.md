@@ -166,3 +166,13 @@ because Phase 11 is reworking the desktop at the same time; it will be done once
 - `KitchenSync`, `TicketFactory` and `TableEvents` stay shared and publish immediately; the order handlers queue
   their calls. `request-bill` on the orders controller still calls the billing service until Billing moves.
 - `OrderServiceTests` → `Orders/OrderTests`; no other test change was needed.
+
+**12.5 Kitchen (2026-10-14)**
+
+- `KitchenService` dissolved into `Features/Kitchen`: queries `ListKitchenTickets`, `ListCompletedKitchenTickets`
+  (`kitchen.operate`), `GetKitchenTicket` (role-gated endpoint, no permission); commands `AcceptKitchenTicket`,
+  `StartKitchenTicket`, `MarkKitchenTicketReady`, `RecallKitchenTicket` (`kitchen.operate`) and
+  `CompleteKitchenTicket` (role-gated, no permission). The shared state-machine step is `KitchenTickets.ChangeAsync`;
+  `KitchenSync` / `TicketFactory` moved to `Features/Kitchen` (billing still uses them).
+- `KitchenServiceTests` → `Kitchen/KitchenTests`. Three tests read the kitchen display while a waiter is signed in;
+  that read now runs as the admin (a waiter has never had `kitchen.operate` over HTTP).

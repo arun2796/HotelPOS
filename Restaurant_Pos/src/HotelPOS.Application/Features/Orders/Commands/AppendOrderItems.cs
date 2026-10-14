@@ -3,7 +3,7 @@ using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Cqrs;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
-using HotelPOS.Application.Kitchen;
+using HotelPOS.Application.Features.Kitchen;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Orders;
 using HotelPOS.Contracts.Realtime;
