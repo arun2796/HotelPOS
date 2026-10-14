@@ -1,0 +1,69 @@
+<UserControl x:Class="HotelPOS.Desktop.Modules.Cash.ShiftsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:HotelPOS.Desktop.Controls"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:cash="clr-namespace:HotelPOS.Desktop.Modules.Cash"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance cash:ShiftsViewModel}"
+             d:DesignWidth="1100" d:DesignHeight="700">
+
+  <Grid>
+    <Grid Margin="24">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+        <RowDefinition Height="Auto" />
+      </Grid.RowDefinitions>
+
+      <controls:PageHeader Title="{Binding DayText}" Description="Every cash shift of the business day: float, expected, counted and the difference." Margin="0,0,0,12">
+        <StackPanel Orientation="Horizontal">
+          <Button Command="{Binding PreviousDayCommand}" Style="{StaticResource Button.Icon}" ToolTip="Previous day" AutomationProperties.Name="Previous day">
+            <TextBlock Text="&#xE76B;" Style="{StaticResource Text.Icon}" FontSize="14" />
+          </Button>
+          <Button Content="Today" Command="{Binding TodayCommand}" Margin="6,0" />
+          <Button Command="{Binding NextDayCommand}" Style="{StaticResource Button.Icon}" ToolTip="Next day" AutomationProperties.Name="Next day">
+            <TextBlock Text="&#xE76C;" Style="{StaticResource Text.Icon}" FontSize="14" />
+          </Button>
+        </StackPanel>
+      </controls:PageHeader>
+
+      <Border Grid.Row="1" Style="{StaticResource Banner.Error}" Margin="0,0,0,12"
+              Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibility}}">
+        <TextBlock Text="{Binding ErrorMessage}" Style="{StaticResource Text.Error}" />
+      </Border>
+
+      <DataGrid Grid.Row="2" ItemsSource="{Binding Shifts}" SelectedItem="{Binding SelectedShift}" HorizontalScrollBarVisibility="Disabled">
+        <DataGrid.InputBindings>
+          <MouseBinding Gesture="LeftDoubleClick" Command="{Binding ShowReportCommand}" />
+        </DataGrid.InputBindings>
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="TERMINAL" Binding="{Binding Shift.DeviceName}" Width="1.2*" MinWidth="110" />
+          <DataGridTextColumn Header="CASHIER" Binding="{Binding Shift.CashierName}" Width="1.4*" MinWidth="120" />
+          <DataGridTextColumn Header="OPENED" Binding="{Binding Opened}" Width="0.7*" MinWidth="70" />
+          <DataGridTextColumn Header="CLOSED" Binding="{Binding Closed}" Width="0.7*" MinWidth="70" />
+          <DataGridTextColumn Header="FLOAT" Binding="{Binding FloatText}" Width="0.9*" MinWidth="90" HeaderStyle="{StaticResource DataGrid.NumberHeader}" ElementStyle="{StaticResource Text.GridNumber}" />
+          <DataGridTextColumn Header="EXPECTED" Binding="{Binding ExpectedText}" Width="0.9*" MinWidth="90" HeaderStyle="{StaticResource DataGrid.NumberHeader}" ElementStyle="{StaticResource Text.GridNumber}" />
+          <DataGridTextColumn Header="COUNTED" Binding="{Binding CountedText}" Width="0.9*" MinWidth="90" HeaderStyle="{StaticResource DataGrid.NumberHeader}" ElementStyle="{StaticResource Text.GridNumber}" />
+          <DataGridTextColumn Header="VARIANCE" Binding="{Binding VarianceText}" Width="0.9*" MinWidth="90" HeaderStyle="{StaticResource DataGrid.NumberHeader}" ElementStyle="{StaticResource Text.GridNumber}" />
+          <DataGridTextColumn Header="STATUS" Binding="{Binding StatusText}" Width="0.9*" MinWidth="100" />
+        </DataGrid.Columns>
+      </DataGrid>
+      <controls:EmptyState Grid.Row="2" Glyph="&#xE8C7;" Title="No shifts on this day" Message="Cashiers open shifts from the bar on their billing terminal."
+                           Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}" />
+
+      <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+        <Button Content="X / Z report" Command="{Binding ShowReportCommand}" IsEnabled="{Binding HasSelection}" MinHeight="{DynamicResource Size.Control}" Margin="0,0,8,0" />
+        <Button Content="Reopen…" Command="{Binding ReopenCommand}" IsEnabled="{Binding CanReopen}" MinHeight="{DynamicResource Size.Control}" Margin="0,0,8,0" />
+        <Button Content="Force close…" Command="{Binding ForceCloseCommand}" IsEnabled="{Binding CanForceClose}" Style="{StaticResource Button.Danger}"
+                MinHeight="{DynamicResource Size.Control}" />
+      </StackPanel>
+    </Grid>
+
+    <Grid Background="{DynamicResource Brush.Overlay}" Visibility="{Binding IsPanelOpen, Converter={StaticResource BoolToVisibility}}">
+      <ContentControl Content="{Binding Panel}" HorizontalAlignment="Center" VerticalAlignment="Center" Focusable="False" />
+    </Grid>
+  </Grid>
+</UserControl>

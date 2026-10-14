@@ -12,6 +12,8 @@ using HotelPOS.Contracts.Devices;
 using HotelPOS.Contracts.Security;
 using HotelPOS.Desktop.Modules.Admin;
 using HotelPOS.Contracts.Billing;
+using HotelPOS.Contracts.Cash;
+using HotelPOS.Desktop.Modules.Cash;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Floor;
@@ -248,6 +250,9 @@ public class ScreenRenderingTests
 
             env.Theme.ApplyDensity(ThemeService.Compact);
             env.Session.Start(TestData.Login("cashier1", roles: "Cashier"));
+            var billingTerminal = env.Settings.Current;
+            billingTerminal.DeviceType = DeviceType.Billing;
+            env.Settings.Save(billingTerminal);
             var cashierShell = env.Create<ShellViewModel>();
             await cashierShell.OnNavigatedToAsync(null);
             cashierShell.HandleShortcut(Key.R, ModifierKeys.Control).Should().BeFalse("a cashier has no Reports module");
@@ -293,7 +298,40 @@ public class ScreenRenderingTests
             closed.SelectedBill = closed.Bills[0];
             await Dispatcher.Yield(DispatcherPriority.Background);
             rendered.Add(await RenderScreenAsync(env, cashierShell, "36-closed-bills"));
+
+            // Phase 13: the shift bar and its dialogs on a billing terminal, in Comfort density (touch).
+            env.Theme.ApplyDensity(ThemeService.Comfort);
+            await cashierShell.NavigateToAsync(ModuleRegistry.Billing, null);
+            cashierShell.ShiftBar.IsVisible.Should().BeTrue("a cashier on a billing terminal sees the shift bar");
+            rendered.Add(await RenderScreenAsync(env, cashierShell, "53-shift-bar"));
+            await cashierShell.ShiftBar.CloseShiftCommand.ExecuteAsync(null);
+            var count = (ShiftCountPanelViewModel)cashierShell.ShiftBar.Panel!;
+            count.Sheet.Notes[1].Quantity = 8;
+            count.Sheet.Notes[3].Quantity = 7;
+            count.Sheet.Notes[5].Quantity = 3;
+            count.Sheet.Coins[2].Quantity = 2;
+            count.Reason = "Change given twice";
+            rendered.Add(await RenderScreenAsync(env, cashierShell, "54-shift-close-count"));
+            count.CancelCommand.Execute(null);
+            await cashierShell.ShiftBar.XReportCommand.ExecuteAsync(null);
+            rendered.Add(await RenderScreenAsync(env, cashierShell, "55-shift-x-report"));
+            cashierShell.ShiftBar.ClosePanelCommand.Execute(null);
+            cashierShell.ShiftBar.PayInOutCommand.Execute(null);
+            ((CashMovementPanelViewModel)cashierShell.ShiftBar.Panel!).AmountText = "450";
+            ((CashMovementPanelViewModel)cashierShell.ShiftBar.Panel!).Reason = "Vegetables from the market";
+            rendered.Add(await RenderScreenAsync(env, cashierShell, "56-shift-pay-out"));
+            cashierShell.ShiftBar.ClosePanelCommand.Execute(null);
+            env.Get<ICashApi>().GetCurrentShiftAsync(Arg.Any<CancellationToken>()).Returns(ApiResult<CashShiftDto?>.Ok(null));
+            await cashierShell.ShiftBar.RefreshAsync();
+            await cashierShell.ShiftBar.OpenShiftCommand.ExecuteAsync(null);
+            ((ShiftCountPanelViewModel)cashierShell.ShiftBar.Panel!).Sheet.Notes[1].Quantity = 4;
+            rendered.Add(await RenderScreenAsync(env, cashierShell, "57-shift-open"));
+            cashierShell.ShiftBar.ClosePanelCommand.Execute(null);
+            env.Get<ICashApi>().GetCurrentShiftAsync(Arg.Any<CancellationToken>()).Returns(ApiResult<CashShiftDto?>.Ok(Environment.DemoShift()));
+            env.Theme.ApplyDensity(ThemeService.Compact);
             cashierShell.Dispose();
+            billingTerminal.DeviceType = DeviceType.Admin;
+            env.Settings.Save(billingTerminal);
 
             env.Session.Start(TestData.Login("admin", roles: "Admin"));
             var setupShell = env.Create<ShellViewModel>();
@@ -301,6 +339,33 @@ public class ScreenRenderingTests
             await setupShell.NavigateToAsync(ModuleRegistry.Discounts, null);
             ((BillingSetupViewModel)setupShell.CurrentPage!).NewDiscountCommand.Execute(null);
             rendered.Add(await RenderScreenAsync(env, setupShell, "37-discounts-and-payment-methods"));
+            var billingSetup = (BillingSetupViewModel)setupShell.CurrentPage!;
+            billingSetup.SelectedTab = BillingSetupViewModel.DenominationsTab;
+            await billingSetup.Denominations.LoadAsync();
+            rendered.Add(await RenderScreenAsync(env, setupShell, "58-billing-setup-denominations"));
+
+            await setupShell.NavigateToAsync(ModuleRegistry.Shifts, null);
+            var shifts = (ShiftsViewModel)setupShell.CurrentPage!;
+            shifts.SelectedShift = shifts.Shifts[1];
+            rendered.Add(await RenderScreenAsync(env, setupShell, "59-cash-shifts"));
+            await shifts.ShowReportCommand.ExecuteAsync(null);
+            rendered.Add(await RenderScreenAsync(env, setupShell, "60-cash-shifts-z-report"));
+            shifts.Panel = null;
+
+            await setupShell.NavigateToAsync(ModuleRegistry.DayEnd, null);
+            var dayEnd = (DayEndViewModel)setupShell.CurrentPage!;
+            dayEnd.EditOverrideCommand.Execute(dayEnd.Items[1]);
+            dayEnd.Items[1].OverrideReason = "Night counter stays open until 01:00";
+            rendered.Add(await RenderScreenAsync(env, setupShell, "61-day-end-checks"));
+            dayEnd.Items[0].OverrideReason = "Table T04 settles tomorrow";
+            dayEnd.ContinueCommand.Execute(null);
+            rendered.Add(await RenderScreenAsync(env, setupShell, "62-day-end-summary"));
+            await dayEnd.RunCommand.ExecuteAsync(null);
+            env.Notifications.Items.Clear();
+            rendered.Add(await RenderScreenAsync(env, setupShell, "63-day-end-done"));
+
+            await setupShell.NavigateToAsync(ModuleRegistry.DayEndHistory, null);
+            rendered.Add(await RenderScreenAsync(env, setupShell, "64-day-end-history"));
 
             await setupShell.NavigateToAsync(ModuleRegistry.Reports, null);
             rendered.Add(await RenderScreenAsync(env, setupShell, "40-reports-daily-sales"));
@@ -346,7 +411,7 @@ public class ScreenRenderingTests
         }
 
         bindingErrors.Errors.Should().BeEmpty("every binding in the views must point at an existing property");
-        rendered.Should().HaveCount(52);
+        rendered.Should().HaveCount(64);
         bodyFontFiles.Should().Equal("inter-regular.ttf", "inter-medium.ttf", "inter-semibold.ttf", "inter-bold.ttf");
     }
 
@@ -550,6 +615,9 @@ public class ScreenRenderingTests
             services.AddSingleton(DemoOperationsApi());
             services.AddSingleton(DemoBillingApi());
             services.AddSingleton(DemoReportsApi());
+            services.AddSingleton(DemoCashApi());
+            services.AddSingleton<HotelPOS.Desktop.Services.Printing.IPrinterProfiles, HotelPOS.Desktop.Services.Printing.PrinterProfiles>();
+            services.AddSingleton<ShiftReportPrinting>();
             services.AddSingleton(Substitute.For<ISoundPlayer>());
             services.AddSingleton(Substitute.For<IReadyNotifier>());
             services.AddSingleton(Substitute.For<HotelPOS.Desktop.Services.Printing.IKotAutoPrinter>());
@@ -582,6 +650,9 @@ public class ScreenRenderingTests
         public MainViewModel Main { get; }
 
         public T Create<T>() => ActivatorUtilities.CreateInstance<T>(_provider);
+
+        public T Get<T>()
+            where T : notnull => _provider.GetRequiredService<T>();
 
         private static IMenuApi DemoMenuApi()
         {
@@ -950,6 +1021,135 @@ public class ScreenRenderingTests
             PaidAmount = 1134m,
             Footer = "Thank you! Visit again.",
         };
+
+        public static CashShiftDto DemoShift(int id = 7, string device = "BILLING-01", string cashier = "Priya (Cashier)", CashShiftStatus status = CashShiftStatus.Open) => new()
+        {
+            Id = id,
+            DeviceId = Guid.NewGuid(),
+            DeviceName = device,
+            BusinessDay = DateOnly.FromDateTime(DateTime.Now),
+            CashierUserId = id,
+            CashierName = cashier,
+            Status = status,
+            OpenedAtUtc = DateTime.UtcNow.AddHours(-5),
+            OpenedByName = cashier,
+            FloatAmount = 2000m,
+            ExpectedCash = 4820m,
+            CountedCash = status == CashShiftStatus.Open ? null : 4770m,
+            Variance = status == CashShiftStatus.Open ? null : -50m,
+            VarianceReason = status == CashShiftStatus.Open ? null : "Change given twice",
+            ClosedAtUtc = status == CashShiftStatus.Open ? null : DateTime.UtcNow.AddHours(-1),
+            RowVersion = "AAAAAQ==",
+        };
+
+        private static ICashApi DemoCashApi()
+        {
+            var denominations = new (decimal Value, string Label, DenominationKind Kind)[]
+            {
+                (2000m, "₹2000", DenominationKind.Note), (500m, "₹500", DenominationKind.Note), (200m, "₹200", DenominationKind.Note),
+                (100m, "₹100", DenominationKind.Note), (50m, "₹50", DenominationKind.Note), (20m, "₹20", DenominationKind.Note),
+                (10m, "₹10", DenominationKind.Note), (20m, "₹20 coin", DenominationKind.Coin), (10m, "₹10 coin", DenominationKind.Coin),
+                (5m, "₹5 coin", DenominationKind.Coin), (2m, "₹2 coin", DenominationKind.Coin), (1m, "₹1 coin", DenominationKind.Coin),
+            }.Select((d, i) => new DenominationDto { Id = i + 1, Value = d.Value, Label = d.Label, Kind = d.Kind, SortOrder = i + 1, IsActive = d.Value != 2000m }).ToList();
+            var report = new ShiftReportDto
+            {
+                Shift = DemoShift(),
+                GeneratedAtUtc = DateTime.UtcNow,
+                RestaurantName = "Hotel Saravana Bhavan",
+                CurrencySymbol = "₹",
+                FloatAmount = 2000m,
+                CashSales = 3420m,
+                CashRefunds = 100m,
+                PayIns = 0m,
+                PayOuts = 450m,
+                TillVouchers = 50m,
+                ExpectedCash = 4820m,
+                Payments = new[]
+                {
+                    new ShiftPaymentRowDto { Method = "Cash", IsCash = true, Payments = 14, Amount = 3420m, Refunds = 1, RefundAmount = 100m, Net = 3320m },
+                    new ShiftPaymentRowDto { Method = "Card", Payments = 6, Amount = 5240m, Net = 5240m },
+                    new ShiftPaymentRowDto { Method = "UPI", Payments = 9, Amount = 3880m, Net = 3880m },
+                },
+                Movements = new[]
+                {
+                    new CashMovementDto { Id = 1, Type = CashMovementType.PayOut, Amount = 450m, Reason = "Vegetables from the market", CreatedAtUtc = DateTime.UtcNow.AddHours(-3), CreatedByName = "Priya (Cashier)" },
+                    new CashMovementDto { Id = 2, Type = CashMovementType.TillVoucher, Amount = 50m, Reason = "Auto fare", CreatedAtUtc = DateTime.UtcNow.AddHours(-2), CreatedByName = "Priya (Cashier)" },
+                },
+            };
+            var summary = new DayEndSummaryDto
+            {
+                Bills = 41, GrossSales = 24860m, Discounts = 620m, Tax = 1184m, Refunds = 100m, NetSales = 24760m,
+                Payments = new[]
+                {
+                    new DayEndPaymentRowDto { Method = "Cash", Payments = 22, Amount = 9120m, RefundAmount = 100m, Net = 9020m },
+                    new DayEndPaymentRowDto { Method = "Card", Payments = 9, Amount = 8600m, Net = 8600m },
+                    new DayEndPaymentRowDto { Method = "UPI", Payments = 11, Amount = 7140m, Net = 7140m },
+                },
+                NonTillCollections = new[] { new NonTillCollectionDto { Id = 1, Method = "Owner UPI", Amount = 1200m, Reference = "UPI-88213", RecordedByName = "Meena (Manager)" } },
+                NonTillTotal = 1200m,
+                Shifts = new[]
+                {
+                    new DayEndShiftRowDto { ShiftId = 7, DeviceName = "BILLING-01", CashierName = "Priya (Cashier)", Status = CashShiftStatus.Closed, FloatAmount = 2000m, ExpectedCash = 4820m, CountedCash = 4770m, Variance = -50m },
+                    new DayEndShiftRowDto { ShiftId = 8, DeviceName = "BILLING-02", CashierName = "Karthik (Cashier)", Status = CashShiftStatus.Open, FloatAmount = 1000m, ExpectedCash = 3240m },
+                },
+                CashVariance = -50m,
+            };
+            var precheck = new DayEndPrecheckDto
+            {
+                BusinessDay = DateOnly.FromDateTime(DateTime.Now),
+                DefaultDay = DateOnly.FromDateTime(DateTime.Now),
+                BlockingItems = new[]
+                {
+                    new DayEndCheckItemDto { Code = DayEndCheckCodes.OpenOrders, Title = "Open orders", Count = 1, Details = new[] { "Order 1043 · T04 · Served" } },
+                    new DayEndCheckItemDto { Code = DayEndCheckCodes.OpenShifts, Title = "Open cash shifts", Count = 1, Details = new[] { "BILLING-02 · Karthik (Cashier) since 17:05" } },
+                },
+                Summary = summary,
+            };
+            BusinessDayCloseDto Close(int daysAgo, BusinessDayStatus status) => new()
+            {
+                BusinessDay = DateOnly.FromDateTime(DateTime.Now.AddDays(-daysAgo)),
+                Status = status,
+                ClosedAtUtc = DateTime.UtcNow.AddDays(-daysAgo).AddHours(-1),
+                ClosedByName = "Meena (Manager)",
+                BackupFile = "hotelpos-20261013-232811.dump",
+                PackFolder = @"C:\ProgramData\HotelPOS\Backups\dayend-2026-10-13-232840",
+                Overrides = new[] { new DayEndOverrideRecordDto { Code = DayEndCheckCodes.OpenShifts, Count = 1, Reason = "Night counter stays open" } },
+                Summary = summary,
+                ReopenReason = status == BusinessDayStatus.Reopened ? "Late card payment for T02" : null,
+                ReopenedByName = status == BusinessDayStatus.Reopened ? "Meena (Manager)" : null,
+            };
+
+            var api = Substitute.For<ICashApi>();
+            api.GetDenominationsAsync(Arg.Any<CancellationToken>()).Returns(ApiResult<List<DenominationDto>>.Ok(denominations));
+            api.GetCurrentShiftAsync(Arg.Any<CancellationToken>()).Returns(ApiResult<CashShiftDto?>.Ok(DemoShift()));
+            api.GetReportAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(ApiResult<ShiftReportDto>.Ok(report));
+            api.GetCashiersAsync(Arg.Any<CancellationToken>()).Returns(ApiResult<List<CashierDto>>.Ok(new List<CashierDto>
+            {
+                new() { UserId = 9, Username = "cashier2", DisplayName = "Karthik (Cashier)" },
+            }));
+            api.GetShiftsAsync(Arg.Any<DateOnly?>(), Arg.Any<CancellationToken>()).Returns(ApiResult<List<CashShiftDto>>.Ok(new List<CashShiftDto>
+            {
+                DemoShift(5, "BILLING-01", "Divya (Cashier)", CashShiftStatus.HandedOver),
+                DemoShift(7, "BILLING-01", "Priya (Cashier)", CashShiftStatus.Closed),
+                DemoShift(8, "BILLING-02", "Karthik (Cashier)"),
+            }));
+            api.GetPrecheckAsync(Arg.Any<DateOnly?>(), Arg.Any<CancellationToken>()).Returns(ApiResult<DayEndPrecheckDto>.Ok(precheck));
+            api.RunDayEndAsync(Arg.Any<RunDayEndRequest>(), Arg.Any<CancellationToken>()).Returns(ApiResult<DayEndResultDto>.Ok(new DayEndResultDto
+            {
+                BusinessDay = precheck.BusinessDay,
+                ClosedAtUtc = DateTime.UtcNow,
+                BackupFile = "hotelpos-20261014-233002.dump",
+                PackFolder = @"C:\ProgramData\HotelPOS\Backups\dayend-2026-10-14-233010",
+                PackFiles = new[] { "daily-sales-2026-10-14.csv", "payments-2026-10-14.csv", "items-2026-10-14.csv", "shifts-2026-10-14.csv" },
+                Summary = summary,
+            }));
+            api.GetDayEndHistoryAsync(Arg.Any<CancellationToken>()).Returns(ApiResult<List<BusinessDayCloseDto>>.Ok(new List<BusinessDayCloseDto>
+            {
+                Close(1, BusinessDayStatus.Closed),
+                Close(2, BusinessDayStatus.Reopened),
+            }));
+            return api;
+        }
 
         private static IReportsApi DemoReportsApi()
         {

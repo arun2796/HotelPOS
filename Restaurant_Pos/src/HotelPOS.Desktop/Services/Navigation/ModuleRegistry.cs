@@ -1,6 +1,7 @@
 using HotelPOS.Contracts.Security;
 using HotelPOS.Desktop.Modules.Admin;
 using HotelPOS.Desktop.Modules.Billing;
+using HotelPOS.Desktop.Modules.Cash;
 using HotelPOS.Desktop.Modules.Config;
 using HotelPOS.Desktop.Modules.Dashboard;
 using HotelPOS.Desktop.Modules.Kitchen;
@@ -44,6 +45,9 @@ public static class ModuleRegistry
     public const string Server = "server";
     public const string ThisDevice = "this-device";
     public const string Printers = "printers";
+    public const string Shifts = "shifts";
+    public const string DayEnd = "day-end";
+    public const string DayEndHistory = "day-end-history";
 
     private static readonly string[] Management = { Roles.Admin, Roles.Manager };
     private static readonly string[] AdminOnly = { Roles.Admin };
@@ -66,6 +70,12 @@ public static class ModuleRegistry
             "Pending bills, discounts, tax and split payments.", typeof(BillingQueueViewModel)),
         new(ClosedBills, "Closed Bills", "", "Billing", new[] { Roles.Admin, Roles.Manager, Roles.Cashier }, 6,
             "Settled and voided bills, reprints and refunds.", typeof(ClosedBillsViewModel)),
+        new(Shifts, "Cash Shifts", "\uE8C7", "Billing", Management, 13,
+            "Every cash shift of the day: float, expected, counted and variance; X/Z reports and force close.", typeof(ShiftsViewModel)),
+        new(DayEnd, "Day End", "\uE930", "Billing", Management, 13,
+            "Close the business day: checks, totals, a verified backup, the lock and the report pack.", typeof(DayEndViewModel)),
+        new(DayEndHistory, "Day End History", "\uE81C", "Billing", Management, 13,
+            "Closed business days with their totals, backups and report packs; reopen a day.", typeof(DayEndHistoryViewModel)),
 
         new(Reports, "Reports", "", "Management", Management, 8,
             "Sales, items, payments, taxes, staff and kitchen performance.", typeof(ReportsViewModel)),
@@ -107,6 +117,9 @@ public static class ModuleRegistry
         [KitchenCompleted] = Permissions.KitchenOperate,
         [Billing] = Permissions.BillingOperate,
         [ClosedBills] = Permissions.BillingOperate,
+        [Shifts] = Permissions.ShiftManage,
+        [DayEnd] = Permissions.DayEndRun,
+        [DayEndHistory] = Permissions.DayEndRun,
         [Reports] = Permissions.ReportsView,
         [Floor] = Permissions.TablesManage,
         [Menu] = Permissions.MenuManage,

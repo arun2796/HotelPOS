@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 using HotelPOS.Contracts.Admin;
 using HotelPOS.Desktop.Modules.Admin;
 using HotelPOS.Desktop.Modules.Auth;
+using HotelPOS.Desktop.Modules.Cash;
 using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Auth;
@@ -73,6 +74,7 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
         Notices = notices;
         StatusBar = new StatusBarViewModel(realtime, settings, printQueue);
         Palette = ActivatorUtilities.CreateInstance<CommandPaletteViewModel>(services);
+        ShiftBar = services.GetService<ShiftBarViewModel>() ?? ActivatorUtilities.CreateInstance<ShiftBarViewModel>(services);
         _isSidebarCollapsed = settings.Current.SidebarCollapsed;
     }
 
@@ -81,6 +83,8 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
     public StatusBarViewModel StatusBar { get; }
 
     public CommandPaletteViewModel Palette { get; }
+
+    public ShiftBarViewModel ShiftBar { get; }
 
     public NoticeCenter Notices { get; }
 
@@ -130,6 +134,7 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
 
         _kotPrinter.Start();
 
+        await ShiftBar.StartAsync();
         await GoHomeAsync();
         await LoadRestaurantNameAsync();
     }
@@ -149,6 +154,7 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
         _kotPrinter.Stop();
         _navigation.Detach(this);
         StatusBar.Dispose();
+        ShiftBar.Stop();
         (CurrentPage as IDisposable)?.Dispose();
     }
 

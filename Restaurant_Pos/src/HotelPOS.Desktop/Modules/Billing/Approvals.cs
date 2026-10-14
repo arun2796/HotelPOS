@@ -63,7 +63,8 @@ public static class Approvals
         || result.HasError(ErrorCodes.ValidationError);
 
     public static bool IsApprovalError<T>(ApiResult<T> result) =>
-        result.HasError(ErrorCodes.ApprovalRequired) || result.HasError(ErrorCodes.ApprovalInvalid);
+        result.HasError(ErrorCodes.ApprovalRequired) || result.HasError(ErrorCodes.ApprovalInvalid)
+        || result.HasError(ErrorCodes.VarianceApprovalRequired);
 }
 
 public static class Money
