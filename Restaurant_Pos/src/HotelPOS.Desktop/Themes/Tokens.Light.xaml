@@ -1,0 +1,75 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- Light theme tokens (BillingHub palette: zinc neutrals, blue accent). ThemeService swaps this dictionary for
+       Tokens.Dark.xaml; both define exactly the same keys. Views and styles use them only through DynamicResource. -->
+
+  <!-- Surfaces and layers -->
+  <SolidColorBrush x:Key="Brush.Background" Color="#FAFAFA" />
+  <SolidColorBrush x:Key="Brush.Surface" Color="#FFFFFF" />
+  <SolidColorBrush x:Key="Brush.SurfaceAlt" Color="#F7F7F8" />
+  <SolidColorBrush x:Key="Brush.SurfaceSubtle" Color="#F4F4F5" />
+  <SolidColorBrush x:Key="Brush.LayerHover" Color="#F4F4F5" />
+  <SolidColorBrush x:Key="Brush.LayerPressed" Color="#EEEFF1" />
+  <SolidColorBrush x:Key="Brush.HoverOverlay" Color="#0D000000" />
+  <SolidColorBrush x:Key="Brush.PressedOverlay" Color="#1A000000" />
+  <SolidColorBrush x:Key="Brush.Overlay" Color="#8009090B" />
+
+  <!-- Borders -->
+  <SolidColorBrush x:Key="Brush.Border" Color="#E4E4E7" />
+  <SolidColorBrush x:Key="Brush.BorderSubtle" Color="#EFF0F2" />
+  <SolidColorBrush x:Key="Brush.BorderStrong" Color="#D4D4D8" />
+
+  <!-- Text -->
+  <SolidColorBrush x:Key="Brush.TextPrimary" Color="#09090B" />
+  <SolidColorBrush x:Key="Brush.TextSecondary" Color="#52525B" />
+  <SolidColorBrush x:Key="Brush.TextTertiary" Color="#A1A1AA" />
+
+  <!-- Inputs -->
+  <SolidColorBrush x:Key="Brush.InputBackground" Color="#F1F2F5" />
+  <SolidColorBrush x:Key="Brush.InputBackgroundFocus" Color="#FFFFFF" />
+  <SolidColorBrush x:Key="Brush.InputBorder" Color="#E4E4E7" />
+  <SolidColorBrush x:Key="Brush.Focus" Color="#2563EB" />
+
+  <!-- Accent and semantic colours. "Soft" fills sit behind text of the matching colour. -->
+  <SolidColorBrush x:Key="Brush.Primary" Color="#2563EB" />
+  <SolidColorBrush x:Key="Brush.PrimaryHover" Color="#1D4ED8" />
+  <SolidColorBrush x:Key="Brush.PrimaryText" Color="#FFFFFF" />
+  <SolidColorBrush x:Key="Brush.PrimarySoft" Color="#DBEAFE" />
+  <SolidColorBrush x:Key="Brush.Link" Color="#2563EB" />
+  <SolidColorBrush x:Key="Brush.Info" Color="#2563EB" />
+  <SolidColorBrush x:Key="Brush.InfoSoft" Color="#EFF6FF" />
+  <SolidColorBrush x:Key="Brush.Danger" Color="#DC2626" />
+  <SolidColorBrush x:Key="Brush.DangerText" Color="#B91C1C" />
+  <SolidColorBrush x:Key="Brush.DangerSoft" Color="#FEF2F2" />
+  <SolidColorBrush x:Key="Brush.Success" Color="#059669" />
+  <SolidColorBrush x:Key="Brush.SuccessSoft" Color="#ECFDF5" />
+  <SolidColorBrush x:Key="Brush.Warning" Color="#D97706" />
+  <SolidColorBrush x:Key="Brush.WarningSoft" Color="#FFFBEB" />
+  <SolidColorBrush x:Key="Brush.Purple" Color="#7C3AED" />
+  <SolidColorBrush x:Key="Brush.Teal" Color="#0D9488" />
+
+  <!-- Sidebar: near-black in both themes -->
+  <SolidColorBrush x:Key="Brush.Sidebar" Color="#0A0A0B" />
+  <SolidColorBrush x:Key="Brush.SidebarText" Color="#D4D4D8" />
+  <SolidColorBrush x:Key="Brush.SidebarTextActive" Color="#FFFFFF" />
+  <SolidColorBrush x:Key="Brush.SidebarTextMuted" Color="#82828C" />
+  <SolidColorBrush x:Key="Brush.SidebarHover" Color="#18181B" />
+  <SolidColorBrush x:Key="Brush.SidebarSelected" Color="#27272A" />
+  <SolidColorBrush x:Key="Brush.SidebarAccent" Color="#3B82F6" />
+  <SolidColorBrush x:Key="Brush.SidebarDivider" Color="#27272A" />
+
+  <!-- Table and ticket states. Same meaning as before; shades chosen so white text on them meets WCAG AA (4.5:1). -->
+  <SolidColorBrush x:Key="Brush.Status.Available" Color="#047857" />
+  <SolidColorBrush x:Key="Brush.Status.Occupied" Color="#2563EB" />
+  <SolidColorBrush x:Key="Brush.Status.Ordering" Color="#7C3AED" />
+  <SolidColorBrush x:Key="Brush.Status.Preparing" Color="#B45309" />
+  <SolidColorBrush x:Key="Brush.Status.Ready" Color="#DC2626" />
+  <SolidColorBrush x:Key="Brush.Status.Billing" Color="#0F766E" />
+  <SolidColorBrush x:Key="Brush.Status.OutOfService" Color="#71717A" />
+
+  <!-- Elevation: only floating layers (dialogs, menus, toasts) cast a shadow; cards stay flat so busy screens
+       (kitchen tickets, table map) render cheaply on low-end tablets. -->
+  <DropShadowEffect x:Key="Shadow.Popup" BlurRadius="18" ShadowDepth="3" Direction="270" Opacity="0.10" Color="#000000" />
+
+</ResourceDictionary>

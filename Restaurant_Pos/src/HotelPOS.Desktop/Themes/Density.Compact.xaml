@@ -1,0 +1,28 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+
+  <!-- Compact density: desk terminals (billing counters, back office) used with mouse and keyboard.
+       Same keys as Density.Comfort.xaml. -->
+
+  <sys:Double x:Key="Font.Size.Body">14</sys:Double>
+  <sys:Double x:Key="Font.Size.Caption">12</sys:Double>
+  <sys:Double x:Key="Font.Size.Label">12</sys:Double>
+  <sys:Double x:Key="Font.Size.Button">13</sys:Double>
+  <sys:Double x:Key="Font.Size.GridHeader">11</sys:Double>
+
+  <sys:Double x:Key="Size.Control">38</sys:Double>
+  <sys:Double x:Key="Size.CheckBox">16</sys:Double>
+  <sys:Double x:Key="Size.GridRow">40</sys:Double>
+  <sys:Double x:Key="Size.GridHeader">36</sys:Double>
+  <sys:Double x:Key="Size.NavItem">38</sys:Double>
+  <sys:Double x:Key="Size.ListItem">36</sys:Double>
+  <sys:Double x:Key="Size.ScrollBar">8</sys:Double>
+
+  <Thickness x:Key="Padding.Button">16,8</Thickness>
+  <Thickness x:Key="Padding.Input">12,0</Thickness>
+  <Thickness x:Key="Padding.Card">22</Thickness>
+  <Thickness x:Key="Padding.Cell">14,0</Thickness>
+  <Thickness x:Key="Padding.ListItem">10,6</Thickness>
+
+</ResourceDictionary>

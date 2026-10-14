@@ -101,9 +101,49 @@ All screens are restyled. New: command palette, notices panel, hub pages. Change
 - MaterialDesign's implicit styles restyle every control: views that relied on WPF defaults must be checked in the
   rendering screenshots, not only for binding errors.
 - LiveChartsCore 2 is a release candidate; keep the chart area replaceable (charts are a view concern only).
-- Inter is bundled only if its font files are in the repository (OFL licence); otherwise the stack falls back to
-  Segoe UI Variable, which ships with Windows 11.
+- Inter is bundled as static TTFs (OFL licence, `Resources/Fonts`); Segoe UI Variable / Segoe UI are the fallbacks.
 
 ## 14. Changes during implementation
 
-(fill in while building)
+### 11.1 Foundation (2026-10-14)
+
+Built: `Themes/Tokens.Light.xaml`, `Tokens.Dark.xaml` (same keys; replace `Colors.*.xaml`),
+`Density.Comfort.xaml`, `Density.Compact.xaml`, `DesignSystem.xaml` (replaces `Styles.xaml`; every old style key
+kept, so all 47 screens took the new look without view changes), Inter Regular/Medium/SemiBold/Bold in
+`Resources/Fonts`, `ThemeService` (theme + density + MaterialDesign base theme), `WindowBackdrop` (dark title bar,
+Mica), `TransitioningContentControl` (page motion), `Startup/IndianCulture`, `ClientSettings.Density` with a
+"Display density" choice on This Terminal. Packages: MaterialDesignThemes 5.1.0, MaterialDesignColors 3.1.0.
+
+Decisions and deviations:
+- **MaterialDesign palette is defined** (`CustomColorTheme`, accent `#2563EB`), unlike BillingHub, which merges only
+  the defaults and so renders MaterialDesign checkboxes invisible. An empty implicit `ScrollViewer` style replaces
+  MaterialDesign's, so it does not pad and re-template our scroll areas.
+- **Cards are flat** (border, no shadow). A `DropShadowEffect` rasterises everything inside it, which blurs text and
+  costs frame time on low-end tablets with many tickets or tables. Only floating layers (dialog, toasts, dropdowns)
+  have a shadow, and it is drawn by a separate layer behind the content.
+- **Status colours** keep their meaning and hue, with darker shades where white text failed WCAG AA: Available
+  `#047857`, Preparing `#B45309`, Billing `#0F766E`. They are identical in both themes.
+- **Dark theme**: fills that carry white text (primary `#2E6FF0`, danger `#E11D48`) stay dark enough for AA. Text-only
+  colours get their own lighter tokens (`Brush.Link`, `Brush.DangerText`).
+- **Hover and press** draw a translucent overlay rather than a fixed colour, so view-local coloured buttons (pay,
+  ticket, table tiles) get the same feedback. The focus ring is a `FocusVisualStyle`, so it shows only for keyboard
+  navigation, never after a tap.
+- **Placeholders** use `md:HintAssist.Hint` through `TemplateBinding`; a `Binding` path with the `md:` prefix does
+  not resolve inside dictionary templates (the rendering test caught the binding error).
+- **Comfort controls are 48 px** (the old theme used 44 px everywhere, below the `docs/05` § 9 rule).
+- **Mica** changes the window frame only; content keeps solid token surfaces, so contrast does not depend on the
+  wallpaper.
+- **Culture** is applied at startup, not in the test process; `Money.Format` follows it.
+
+Fixed on the way:
+- TextBox and PasswordBox padding was applied twice (by the template and by WPF's text host), so text started
+  about 28 px in; it now starts 16 px in.
+- `Brush.SurfaceSubtle` was used by three views but never defined; it is now a token.
+
+Tests: the rendering test now checks that Inter backs all four weights and renders waiter and kitchen screens in
+Comfort. New `IndianCultureTests` (grouping up to crores, parsing, dates) and `DensityTests` (automatic and
+chosen density; changing it never signs the user out). Suite: 733 passed, 1 skipped (+16).
+
+Left for later steps: report grids and totals format amounts without `Money.Format` (no grouping), to fix with the
+report filter bar (11.3); the Users command bar clips "Log out everywhere" at 1366 px (11.3 command bars); sidebar
+collapse, top bar and command palette (11.2).

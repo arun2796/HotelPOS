@@ -12,22 +12,39 @@ namespace HotelPOS.Desktop.Modules.Config;
 
 public sealed record ConfigurationContext(bool IsFirstRun, bool InShell);
 
+public sealed record DensityOption(string Value, string Label);
+
 public sealed partial class ConfigurationViewModel : ObservableObject, INavigationAware
 {
+    public const string AutomaticDensity = "";
+
     private readonly IClientSettingsService _settings;
     private readonly ISystemApi _systemApi;
     private readonly IAppNavigator _navigator;
     private readonly IDialogService _dialogs;
+    private readonly ThemeService _theme;
 
-    public ConfigurationViewModel(IClientSettingsService settings, ISystemApi systemApi, IAppNavigator navigator, IDialogService dialogs)
+    public ConfigurationViewModel(IClientSettingsService settings, ISystemApi systemApi, IAppNavigator navigator, IDialogService dialogs,
+        ThemeService theme)
     {
         _settings = settings;
         _systemApi = systemApi;
         _navigator = navigator;
         _dialogs = dialogs;
+        _theme = theme;
     }
 
     public IReadOnlyList<DeviceType> DeviceTypes { get; } = Enum.GetValues<DeviceType>();
+
+    public IReadOnlyList<DensityOption> DensityOptions { get; } = new[]
+    {
+        new DensityOption(AutomaticDensity, "Automatic (from terminal type)"),
+        new DensityOption(ThemeService.Comfort, "Comfort — large touch targets"),
+        new DensityOption(ThemeService.Compact, "Compact — mouse and keyboard"),
+    };
+
+    [ObservableProperty]
+    private string _density = AutomaticDensity;
 
     [ObservableProperty]
     private ConfigurationContext _context = new(IsFirstRun: false, InShell: false);
@@ -71,6 +88,8 @@ public sealed partial class ConfigurationViewModel : ObservableObject, INavigati
         ApiBaseUrl = current.ApiBaseUrl;
         DeviceName = current.DeviceName;
         DeviceType = current.DeviceType;
+        Density = DensityOptions.FirstOrDefault(o => string.Equals(o.Value, current.Density, StringComparison.OrdinalIgnoreCase))?.Value
+            ?? AutomaticDensity;
         if (string.IsNullOrWhiteSpace(DeviceName))
         {
             DeviceName = SuggestDeviceName(DeviceType);
@@ -181,6 +200,8 @@ public sealed partial class ConfigurationViewModel : ObservableObject, INavigati
         var updated = current.Clone();
         updated.ApiBaseUrl = url;
         updated.DeviceType = DeviceType;
+        // Density is only appearance: it applies at once and never needs a new sign-in.
+        updated.Density = string.IsNullOrEmpty(Density) ? null : Density;
         if (updated.DeviceName != name)
         {
             // A new name is a new device identity; the server assigns a new id at the next login.
@@ -189,6 +210,7 @@ public sealed partial class ConfigurationViewModel : ObservableObject, INavigati
         }
 
         _settings.Save(updated);
+        _theme.ApplyDensity(ThemeService.ResolveDensity(updated));
         ApiBaseUrl = url;
         DeviceName = name;
 

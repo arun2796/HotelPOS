@@ -63,6 +63,12 @@
         <TextBlock Text="Each terminal needs a unique name, e.g. WAITER-01, KITCHEN-01, BILLING-02."
                    Style="{StaticResource Text.Caption}" Margin="0,6,0,0" />
 
+        <TextBlock Text="Display density" Style="{StaticResource Text.Label}" Margin="0,20,0,6" />
+        <ComboBox ItemsSource="{Binding DensityOptions}" DisplayMemberPath="Label" SelectedValuePath="Value"
+                  SelectedValue="{Binding Density}" />
+        <TextBlock Text="Waiter and kitchen terminals use large touch targets; billing and admin desks fit more on screen."
+                   Style="{StaticResource Text.Caption}" Margin="0,6,0,0" />
+
         <Border Style="{StaticResource Banner.Error}" Margin="0,20,0,0"
                 Visibility="{Binding ValidationMessage, Converter={StaticResource StringToVisibility}}">
           <TextBlock Text="{Binding ValidationMessage}" Style="{StaticResource Text.Error}" />

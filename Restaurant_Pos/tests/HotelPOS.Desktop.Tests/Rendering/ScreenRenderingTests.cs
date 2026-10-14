@@ -64,6 +64,7 @@ public class ScreenRenderingTests
     {
         var bindingErrors = new BindingErrorListener();
         var rendered = new List<string>();
+        var bodyFontFiles = new List<string>();
 
         RunOnUiThread(async () =>
         {
@@ -74,6 +75,14 @@ public class ScreenRenderingTests
             var app = new App();
             app.InitializeComponent();
             Directory.CreateDirectory(OutputDirectory);
+
+            // The bundled Inter files must back every weight the styles use (no silent fallback to Segoe UI).
+            var body = (FontFamily)app.Resources["Font.Body"];
+            foreach (var weight in new[] { FontWeights.Normal, FontWeights.Medium, FontWeights.SemiBold, FontWeights.Bold })
+            {
+                new Typeface(body, FontStyles.Normal, weight, FontStretches.Normal).TryGetGlyphTypeface(out var glyphs);
+                bodyFontFiles.Add(Path.GetFileName(glyphs?.FontUri.LocalPath ?? "none").ToLowerInvariant());
+            }
 
             var env = new Environment();
 
@@ -149,6 +158,8 @@ public class ScreenRenderingTests
             env.Theme.Apply(ThemeService.Light);
             shell.Dispose();
 
+            // Waiter and kitchen screens render as on their touch terminals.
+            env.Theme.ApplyDensity(ThemeService.Comfort);
             env.Session.Start(TestData.Login("waiter1", roles: "Waiter"));
             var waiterShell = env.Create<ShellViewModel>();
             await waiterShell.OnNavigatedToAsync(null);
@@ -206,6 +217,7 @@ public class ScreenRenderingTests
             rendered.Add(await RenderScreenAsync(env, kitchenShell, "25-kitchen-completed"));
             kitchenShell.Dispose();
 
+            env.Theme.ApplyDensity(ThemeService.Compact);
             env.Session.Start(TestData.Login("cashier1", roles: "Cashier"));
             var cashierShell = env.Create<ShellViewModel>();
             await cashierShell.OnNavigatedToAsync(null);
@@ -304,6 +316,7 @@ public class ScreenRenderingTests
 
         bindingErrors.Errors.Should().BeEmpty("every binding in the views must point at an existing property");
         rendered.Should().HaveCount(47);
+        bodyFontFiles.Should().Equal("inter-regular.ttf", "inter-medium.ttf", "inter-semibold.ttf", "inter-bold.ttf");
     }
 
     private static async Task<string> RenderScreenAsync(Environment env, object screen, string name)

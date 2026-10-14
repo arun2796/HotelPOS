@@ -31,7 +31,9 @@ HotelPOS.Desktop/
     Logging/                    Serilog setup
   Controls/                     touch-friendly reusable controls (NumPad, QuantityStepper, StatusChip,
                                 TicketCard, TableTile, ConnectionIndicator)
-  Themes/                       Colors.xaml, Typography.xaml, Buttons.xaml, Light.xaml, Dark.xaml
+  Themes/                       Tokens.Light/Dark.xaml (colours), Density.Comfort/Compact.xaml (sizes),
+                                DesignSystem.xaml (fonts, converters, every style) — Phase 11
+  Resources/Fonts/              Inter (SIL OFL), the design system typeface
   Converters/, Behaviors/
   Assets/                       icons (Segoe Fluent Icons / Material icon font), sounds
 ```
@@ -72,6 +74,7 @@ Start the app with `--profile NAME` to run several terminals on one PC (each pro
   "DeviceType": "Waiter",
   "StationId": null,
   "Theme": "Light",
+  "Density": null,
   "Printers": {
     "Kot": { "Kind": "Network", "Host": "192.168.1.50", "Port": 9100, "PaperWidthMm": 80, "Copies": 1, "Model": "Generic", "CurrencyFallback": "Rs." },
     "Invoice": { "Kind": "EscPosRaw", "PrinterName": "POS-80", "PaperWidthMm": 80 },
@@ -177,12 +180,18 @@ Since Phase 9:
 ## 9. UX guidelines
 
 - Minimum touch target 48 x 48 px; primary action buttons at least 56 px tall.
-- Base font 16 px; kitchen cards 20-24 px; table tiles show code at 28 px.
+- Base font 15 px (Comfort) / 14 px (Compact), Inter; kitchen cards 20-24 px; table tiles show code at 28 px.
 - Status colours (same on all screens): Available green, Occupied blue, Ordering purple,
   Preparing amber, Ready red-accent (needs attention), Billing teal, OutOfService grey.
 - One primary action per screen, placed bottom-right. Destructive actions need confirmation.
 - No modal dialogs in the ordering flow except manager approval and cancellation reason.
-- Light and dark themes via swapped resource dictionaries; high contrast; no decorative animation.
+- Light and dark themes via swapped resource dictionaries; text contrast at least WCAG AA.
+- Density per terminal (Phase 11): **Comfort** (waiter, kitchen; controls 48 px) or **Compact** (billing, admin;
+  controls 38 px), chosen from the terminal type unless set in This Terminal (`Density` in `settings.json`,
+  `null` = automatic).
+- Motion is limited to a 160 ms fade-and-slide when the page changes, skipped when Windows animation effects are
+  off or the PC renders in software.
+- One culture on every terminal: Indian digit grouping (`1,23,456.00`), `dd-MM-yyyy` dates, 24-hour times.
 - Keyboard shortcuts for cashier (F2 cash, F3 card, F4 UPI, F9 split, Esc back).
 - Every list that may exceed 200 rows is paged or virtualised.
 
