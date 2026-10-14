@@ -1,4 +1,4 @@
-using HotelPOS.Application.Reports;
+using HotelPOS.Application.Features.Reports;
 using HotelPOS.Contracts.Reports;
 using Microsoft.EntityFrameworkCore;
 

@@ -1,8 +1,10 @@
 using FluentValidation;
+using HotelPOS.Contracts.Reports;
 
-namespace HotelPOS.Application.Validation;
+namespace HotelPOS.Application.Features.Reports;
 
-public sealed class ReportQueryValidator : AbstractValidator<Contracts.Reports.ReportQuery>
+// The query string of every date-range report.
+public sealed class ReportQueryValidator : AbstractValidator<ReportQuery>
 {
     public ReportQueryValidator()
     {

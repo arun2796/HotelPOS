@@ -11,7 +11,7 @@ using HotelPOS.Application.Features.Kitchen;
 using HotelPOS.Application.Features.Menu;
 using HotelPOS.Application.Features.Orders;
 using HotelPOS.Application.Features.Print;
-using HotelPOS.Application.Reports;
+using HotelPOS.Application.Features.Reports;
 using HotelPOS.Application.Security;
 using HotelPOS.Application.Settings;
 using HotelPOS.Application.Users;
@@ -62,7 +62,7 @@ public static class DependencyInjection
         services.AddScoped<BillWorkflow>();
         services.AddScoped<PrintSources>();
         services.AddScoped<IBusinessDays, BusinessDays>();
-        services.AddScoped<IReportService, ReportService>();
+        services.AddScoped<ReportRanges>();
         services.AddScoped<IServerNoticeService, ServerNoticeService>();
         services.AddScoped<MenuChanges>();
         services.AddScoped<MenuCategories>();

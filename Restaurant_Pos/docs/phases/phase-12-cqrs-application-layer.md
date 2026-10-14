@@ -210,3 +210,14 @@ while Phase 11 reworks them.
   reads (settings, user names) are in `PrintSources`.
 - `PrintDocumentServiceTests` → `Print/PrintTests`; dead `Call<>` helpers left over in the billing, kitchen and order
   tests were removed.
+
+**12.8 Reports (2026-10-14)**
+
+- `ReportService` dissolved into `Features/Reports`: `GetDashboard`, `GetMyDay`, `GetMonthlySalesReport` and nine
+  date-range report queries (`GetDailySalesReport`, `GetItemSalesReport`, ... `GetKitchenReport`), all
+  `reports.view` except `GetMyDay` (open to every signed-in user, as its endpoint). The range check is
+  `ReportRanges`; `IReportQueries` (SQL in Infrastructure), `BusinessDayCalculator` and `ReportCsv` moved beside them.
+- `GetMyDay` takes the caller from `ICurrentUser` instead of the controller passing the user id. The CSV / JSON choice
+  and file names stay in the controller (HTTP delivery).
+- `ReportServiceTests` → `Reports/ReportTests`: report reads run as the admin (`SendAsAdminAsync`; the scenarios sign
+  in waiters and cashiers, who never had `reports.view`), and "my day" is read signed in as each waiter.

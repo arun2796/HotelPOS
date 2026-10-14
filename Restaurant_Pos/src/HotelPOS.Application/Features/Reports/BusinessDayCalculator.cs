@@ -3,7 +3,7 @@ using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Contracts.Admin;
 
-namespace HotelPOS.Application.Reports;
+namespace HotelPOS.Application.Features.Reports;
 
 // A business day starts at BusinessDayStartTime local time (04:00 by default), so a bill settled at 01:30 belongs
 // to the previous calendar date. All arithmetic happens in the venue's time zone, the server's local zone.

@@ -9,7 +9,8 @@ using HotelPOS.Application.Features.Menu.Commands;
 using HotelPOS.Application.Features.Menu.Queries;
 using HotelPOS.Application.Features.Orders.Commands;
 using HotelPOS.Application.Features.Orders.Queries;
-using HotelPOS.Application.Reports;
+using HotelPOS.Application.Features.Reports;
+using HotelPOS.Application.Features.Reports.Queries;
 using HotelPOS.Application.Tests.Support;
 using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Billing;
@@ -55,9 +56,9 @@ public class BusinessDayCalculatorTests
     }
 }
 
-public class ReportServiceTests : DatabaseTestBase
+public class ReportTests : DatabaseTestBase
 {
-    public ReportServiceTests(DatabaseFixture fixture)
+    public ReportTests(DatabaseFixture fixture)
         : base(fixture)
     {
     }
@@ -66,7 +67,7 @@ public class ReportServiceTests : DatabaseTestBase
     public async Task DailySales_SplitsBillsByBusinessDay_AndNetsRefunds()
     {
         var s = await SetupAsync();
-        var calendar = await Call<IBusinessDays, BusinessDayCalculator>(b => b.GetAsync());
+        var calendar = await Get<IBusinessDays>().GetAsync();
         var day = calendar.DayOf(Clock.UtcNow);
 
         var first = await SettledBillAsync(s, s.Tables[0], Line(s.Biryani, 2));
@@ -77,7 +78,7 @@ public class ReportServiceTests : DatabaseTestBase
         Clock.UtcNow = calendar.StartOfUtc(day.AddDays(1)).AddMinutes(5);
         await SettledBillAsync(s, s.Tables[2], Line(s.Naan, 2));
 
-        var rows = await Call<IReportService, IReadOnlyList<DailySalesRowDto>>(r => r.DailySalesAsync(new ReportQuery { From = day, To = day.AddDays(1) }));
+        var rows = await SendAsAdminAsync(new GetDailySalesReportQuery(new ReportQuery { From = day, To = day.AddDays(1) }));
 
         rows.Value.Select(r => (r.Day, r.Bills, r.GrossSales, r.Refunds, r.NetSales)).Should().Equal(
             (day, 2, 630m, 100m, 530m),
@@ -95,8 +96,8 @@ public class ReportServiceTests : DatabaseTestBase
         await SendAsync(new CancelOrderItemCommand(order.Id, kulfi, new CancelOrderItemRequest { Reason = "No dessert" }));
         await SettleAsync(s, order.Id);
 
-        var items = await Call<IReportService, IReadOnlyList<ItemSalesRowDto>>(r => r.ItemSalesAsync(new ReportQuery()));
-        var categories = await Call<IReportService, IReadOnlyList<CategorySalesRowDto>>(r => r.CategorySalesAsync(new ReportQuery()));
+        var items = await SendAsAdminAsync(new GetItemSalesReportQuery(new ReportQuery()));
+        var categories = await SendAsAdminAsync(new GetCategorySalesReportQuery(new ReportQuery()));
 
         items.Value.Select(i => (i.ItemName, i.Quantity, i.Amount)).Should().BeEquivalentTo(new[] { ("Chicken Biryani", 1, 250m), ("Butter Naan", 2, 50m) });
         items.Value.Sum(i => i.SharePercent).Should().BeApproximately(100m, 0.2m);
@@ -116,10 +117,10 @@ public class ReportServiceTests : DatabaseTestBase
         bill = (await SendAsync(new AddPaymentCommand(bill.Id, new AddPaymentRequest { PaymentMethodId = 3, Amount = bill.BalanceDue, Reference = "UPI-1", RowVersion = bill.RowVersion }, Guid.NewGuid()))).Value;
         await RefundAsync(s, bill, 50m);
 
-        var payments = await Call<IReportService, IReadOnlyList<PaymentSummaryRowDto>>(r => r.PaymentsAsync(new ReportQuery()));
-        var discounts = await Call<IReportService, IReadOnlyList<DiscountRowDto>>(r => r.DiscountsAsync(new ReportQuery()));
-        var taxes = await Call<IReportService, IReadOnlyList<TaxCollectionRowDto>>(r => r.TaxesAsync(new ReportQuery()));
-        var waiters = await Call<IReportService, IReadOnlyList<WaiterPerformanceRowDto>>(r => r.WaitersAsync(new ReportQuery()));
+        var payments = await SendAsAdminAsync(new GetPaymentsReportQuery(new ReportQuery()));
+        var discounts = await SendAsAdminAsync(new GetDiscountsReportQuery(new ReportQuery()));
+        var taxes = await SendAsAdminAsync(new GetTaxesReportQuery(new ReportQuery()));
+        var waiters = await SendAsAdminAsync(new GetWaitersReportQuery(new ReportQuery()));
 
         payments.Value.Select(p => (p.Method, p.Payments, p.Amount, p.Refunds, p.RefundAmount, p.Net)).Should().Equal(
             ("Cash", 1, 200m, 1, 50m, 150m),
@@ -145,8 +146,8 @@ public class ReportServiceTests : DatabaseTestBase
         Clock.Advance(TimeSpan.FromMinutes(20));
         await SendAsync(new MarkKitchenTicketReadyCommand(ticket));
 
-        var cancellations = await Call<IReportService, IReadOnlyList<CancelledOrderRowDto>>(r => r.CancellationsAsync(new ReportQuery()));
-        var kitchen = await Call<IReportService, IReadOnlyList<KitchenPerformanceRowDto>>(r => r.KitchenAsync(new ReportQuery()));
+        var cancellations = await SendAsAdminAsync(new GetCancellationsReportQuery(new ReportQuery()));
+        var kitchen = await SendAsAdminAsync(new GetKitchenReportQuery(new ReportQuery()));
 
         cancellations.Value.Should().ContainSingle().Which.Should().Match<CancelledOrderRowDto>(c =>
             c.OrderNumber == cancelled.OrderNumber && c.Items == 3 && c.ApproxAmount == 75m && c.CancelReason == "Guests left" && c.WaiterName == "waiter1");
@@ -168,9 +169,11 @@ public class ReportServiceTests : DatabaseTestBase
         var bill = await SendAsync(new RequestBillCommand(open.Id));
         bill.IsSuccess.Should().BeTrue();
 
-        var dashboard = await Call<IReportService, DashboardDto>(r => r.DashboardAsync());
-        var mine = await Call<IReportService, WaiterDashboardDto>(r => r.WaiterDashboardAsync(s.Waiter));
-        var other = await Call<IReportService, WaiterDashboardDto>(r => r.WaiterDashboardAsync(s.WaiterTwo));
+        var dashboard = (await SendAsAdminAsync(new GetDashboardQuery())).Value;
+        AsWaiter(s);
+        var mine = (await SendAsync(new GetMyDayQuery())).Value;
+        CurrentUser.SignIn(s.WaiterTwo, "waiter2", Roles.Waiter);
+        var other = (await SendAsync(new GetMyDayQuery())).Value;
 
         dashboard.TodaySales.Should().Be(263m);
         dashboard.BillsToday.Should().Be(1);
@@ -195,9 +198,9 @@ public class ReportServiceTests : DatabaseTestBase
         await SetupAsync();
         var today = DateOnly.FromDateTime(Clock.UtcNow);
 
-        var tooLong = await Call<IReportService, IReadOnlyList<DailySalesRowDto>>(r => r.DailySalesAsync(new ReportQuery { From = today.AddDays(-400), To = today }));
-        var backwards = await Call<IReportService, IReadOnlyList<DailySalesRowDto>>(r => r.DailySalesAsync(new ReportQuery { From = today, To = today.AddDays(-1) }));
-        var year = await Call<IReportService, IReadOnlyList<MonthlySalesRowDto>>(r => r.MonthlySalesAsync(1999));
+        var tooLong = await SendAsAdminAsync(new GetDailySalesReportQuery(new ReportQuery { From = today.AddDays(-400), To = today }));
+        var backwards = await SendAsAdminAsync(new GetDailySalesReportQuery(new ReportQuery { From = today, To = today.AddDays(-1) }));
+        var year = await SendAsAdminAsync(new GetMonthlySalesReportQuery(1999));
 
         tooLong.Error!.Code.Should().Be(ErrorCodes.ValidationError);
         backwards.Error!.Code.Should().Be(ErrorCodes.ValidationError);
@@ -291,21 +294,5 @@ public class ReportServiceTests : DatabaseTestBase
         var cash = bill.Payments.First(p => p.MethodCode == "CASH");
         var result = await SendAsync(new RefundPaymentCommand(bill.Id, new RefundRequest { PaymentId = cash.Id, Amount = amount, Reason = "Complaint", RowVersion = bill.RowVersion }, Guid.NewGuid()));
         result.IsSuccess.Should().BeTrue(result.Error?.Message);
-    }
-
-
-
-    private async Task<Result<T>> Call<TService, T>(Func<TService, Task<Result<T>>> call)
-        where TService : notnull
-    {
-        await using var scope = Fixture.Services.CreateAsyncScope();
-        return await call(scope.ServiceProvider.GetRequiredService<TService>());
-    }
-
-    private async Task<T> Call<TService, T>(Func<TService, Task<T>> call)
-        where TService : notnull
-    {
-        await using var scope = Fixture.Services.CreateAsyncScope();
-        return await call(scope.ServiceProvider.GetRequiredService<TService>());
     }
 }
