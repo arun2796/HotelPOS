@@ -129,7 +129,7 @@ The Phase 7 `GET /api/print/{type}/{id}` stays for preview (no copy reserved).
 
 - [x] Invoice, receipt and KOT print from templates on thermal and as PDF; reprints are marked DUPLICATE with a
       server-side copy number.
-- [x] Reports, the audit log and the Day End pack export to Excel and PDF.
+- [x] Reports and the audit log export to Excel (reports also PDF); the Day End pack export is deferred.
 - [ ] Definition of Done satisfied.
 
 ## 13. Risks and notes

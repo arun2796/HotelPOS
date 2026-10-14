@@ -266,4 +266,4 @@ the object is optional. Since Phase 9 the object may instead carry `approvalToke
   `POST /api/print/kot/{ticketId}/copies` reserve a copy number (copy 2+ is marked DUPLICATE) and return the document;
   `PUT /api/print/copies/{logId}` records the result; `GET /api/print/{type}/{id}/history` lists the copies.
 - `GET /api/print/invoice/{billId}.pdf`, `GET /api/print/receipt/{paymentId}.pdf` — the same document as a PDF.
-- Reports and the audit log accept `format=xlsx|pdf|csv` on their export endpoints.
+- Report endpoints accept `format=csv|xlsx|pdf`; the audit log export accepts `format=xlsx` (CSV by default).
