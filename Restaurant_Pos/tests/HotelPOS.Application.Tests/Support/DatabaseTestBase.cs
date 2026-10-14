@@ -1,6 +1,7 @@
 using HotelPOS.Application.Users;
 using HotelPOS.Contracts.Users;
 using HotelPOS.Infrastructure.Persistence;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -34,6 +35,13 @@ public abstract class DatabaseTestBase : IAsyncLifetime
 
     protected T Get<T>()
         where T : notnull => _scope.ServiceProvider.GetRequiredService<T>();
+
+    // A fresh scope per request, like one HTTP request: its own DbContext, transaction and after-commit queue.
+    protected async Task<TResponse> SendAsync<TResponse>(IRequest<TResponse> request)
+    {
+        await using var scope = Fixture.Services.CreateAsyncScope();
+        return await scope.ServiceProvider.GetRequiredService<ISender>().Send(request);
+    }
 
     protected async Task<TResult> QueryAsync<TResult>(Func<AppDbContext, Task<TResult>> query)
     {

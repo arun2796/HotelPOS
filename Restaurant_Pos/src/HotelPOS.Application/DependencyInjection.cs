@@ -1,4 +1,7 @@
+using System.Reflection;
 using FluentValidation;
+using HotelPOS.Application.Common.Behaviors;
+using HotelPOS.Application.Common.Cqrs;
 using HotelPOS.Application.Administration;
 using HotelPOS.Application.Auth;
 using HotelPOS.Application.Billing;
@@ -20,7 +23,24 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
-        services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly, includeInternalTypes: true);
+        var assembly = typeof(DependencyInjection).Assembly;
+        services.AddValidatorsFromAssembly(assembly, includeInternalTypes: true);
+        services.AddInputValidators(assembly);
+        services.AddMediatR(cfg =>
+        {
+            cfg.RegisterServicesFromAssembly(assembly);
+
+            // Registration order is execution order, outermost first.
+            cfg.AddOpenBehavior(typeof(LoggingBehavior<,>));
+            cfg.AddOpenBehavior(typeof(AuthorizationBehavior<,>));
+            cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
+            cfg.AddOpenBehavior(typeof(TransactionBehavior<,>));
+            cfg.AddOpenBehavior(typeof(AuditBehavior<,>));
+        });
+        services.AddScoped<AuditTrail>();
+        services.AddScoped<IAuditTrail>(sp => sp.GetRequiredService<AuditTrail>());
+        services.AddScoped<AfterCommitQueue>();
+        services.AddScoped<IAfterCommit>(sp => sp.GetRequiredService<AfterCommitQueue>());
 
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserService, UserService>();
@@ -58,6 +78,24 @@ public static class DependencyInjection
         services.AddScoped<HotelPOS.Application.Security.ISessionService, HotelPOS.Application.Security.SessionService>();
         services.AddScoped<IDeviceAdminService, DeviceAdminService>();
         services.AddScoped<IAuditQueryService, AuditQueryService>();
+
+        return services;
+    }
+
+    // Each IHasInput<TInput> request is validated by the validators of its TInput (see InputValidator).
+    internal static IServiceCollection AddInputValidators(this IServiceCollection services, Assembly assembly)
+    {
+        var requests = assembly.GetTypes().Where(t => t is { IsAbstract: false, IsGenericTypeDefinition: false });
+        foreach (var request in requests)
+        {
+            var inputs = request.GetInterfaces().Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IHasInput<>));
+            foreach (var input in inputs)
+            {
+                services.AddTransient(
+                    typeof(IValidator<>).MakeGenericType(request),
+                    typeof(InputValidator<,>).MakeGenericType(request, input.GetGenericArguments()[0]));
+            }
+        }
 
         return services;
     }

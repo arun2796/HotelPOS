@@ -1,6 +1,6 @@
 # Phase 12 — CQRS Application Layer (MediatR)
 
-Status: Not started · Depends on: Phase 11 (independent in code; scheduled after it) · Reference: BillingHub `Core/CQRS`,
+Status: In progress (started 2026-10-14) · Depends on: Phase 11 (independent in code; scheduled after it) · Reference: BillingHub `Core/CQRS`,
 `Core/Features`, `Infrastructure/Behaviors`
 
 ## 1. Goal
@@ -70,4 +70,38 @@ All existing tests green after each module; new behaviour tests; matrix snapshot
 
 ## 14. Changes during implementation
 
-(fill in while building)
+Server side only for now: the desktop `ViewModelBase` / `ExecuteAsync` work (§ 3, § 4 Desktop row) is **deferred**
+because Phase 11 is reworking the desktop at the same time; it will be done once both branches are merged.
+
+**12.1 Primitives and pipeline (2026-10-14)**
+
+- MediatR **12.5.0** (pinned in `Directory.Packages.props`; 13+ needs a commercial licence). No known
+  vulnerabilities (`dotnet list package --vulnerable --include-transitive`).
+- `Application/Common/Cqrs`: `ICommand`, `ICommand<T>` (both `ICommandBase`), `IQuery<T>`, their handler
+  interfaces, all returning the existing `Result` / `Result<T>`. `IFailureResult<TSelf>` (a static abstract
+  `Failure(AppError)` on `Result` and `Result<T>`) lets behaviours build a failure of the handler's own result type
+  without reflection.
+- Pipeline (`Application/Common/Behaviors`, registration order = execution order):
+  1. `LoggingBehavior`: request name, user, duration and outcome code at Debug; Warning above 500 ms.
+  2. `AuthorizationBehavior`: `IRequirePermission.Permission` checked with `ICurrentUser.HasPermission`; denial is
+     `Result` failure `FORBIDDEN` with the endpoint policy's message. Each request names the same permission as its
+     endpoint policy, so the API's answers do not change.
+  3. `ValidationBehavior`: FluentValidation, failure = `VALIDATION_ERROR`, "One or more fields are invalid.", one
+     error per field with camel-cased names, exactly as `ValidationFilter` answered. Requests wrap their Contracts
+     DTO (`IHasInput<TDto>`) and are validated by the DTO's existing validator (`InputValidator`, registered per
+     request at start-up), so field names stay `name`, `items[0].quantity`, ...
+  4. `TransactionBehavior`: commands only; one `BeginTransaction` per command, commit on success, rollback (and a
+     cleared change tracker) on failure or exception. No process-wide lock: PostgreSQL row locks and the `xmin`
+     row versions handle terminals working at once. A command marked `ICommitOnFailure` commits its failure (used
+     where the failure itself must be kept, e.g. a counted failed login). EF Core's automatic savepoints keep the
+     transaction usable after a caught `SaveChanges` failure (concurrency conflicts, unique violations).
+  5. `AuditBehavior`: commands declared `IAuditedCommand` state their entries on the scoped `IAuditTrail` (action
+     constant from `AuditActions`, entity, id, old/new values); the behaviour writes them inside the transaction
+     after the handler succeeded. A command that records entries without declaring `IAuditedCommand` fails.
+- After-commit step: handlers queue real-time events and other observable side effects (closing hub connections,
+  deleting files) on the scoped `IAfterCommit`; `TransactionBehavior` runs them after the commit and drops them on
+  rollback. A failing step is logged and does not fail the request (docs/04 § 4 rule 2 applied to every step).
+- Tests (`Cqrs/PipelineBehaviorTests`, probe commands registered only in the test fixture): authorization denial,
+  validation shape, commit with audit row and user, event published only once other connections can read the
+  change, rollback on failure and on exception (no state, no audit row, no event), no leak of rolled-back changes
+  into the next command of the same scope, `ICommitOnFailure`, undeclared audit entries.
