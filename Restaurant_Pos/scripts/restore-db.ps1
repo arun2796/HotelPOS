@@ -26,7 +26,7 @@ param(
     # Owner of the restored database: the role the API connects with.
     [string] $Owner = 'hotelpos',
     [string] $PgBin,
-    [string] $ServiceName = 'HotelPOS API',
+    [string] $ServiceName = 'HotelPOSApi',
     [string] $MediaPath = 'C:\ProgramData\HotelPOS\Api\media',
     [switch] $SkipService,
     [switch] $SkipMedia

@@ -185,3 +185,29 @@ prefer the table for the admin list and audit (`Backup.Completed/Failed`). Migra
   sender (level + message, confirmation before broadcasting).
 - Every terminal shows `ServerNotice` broadcasts as a toast (Info / Warning / Critical as error) with the sender;
   `DEVICE_DISABLED` still signs the terminal out.
+
+**10.4 Publishing and installers (2026-10-14)**
+
+- `build/version.props` is the single version source (imported by `Directory.Build.props`).
+- `build/publish.ps1`: tests, self-contained win-x64 publish of server and client into
+  `artifacts/publish/<version>/`, scripts copied next to the server, installers built when Inno Setup is present.
+  It reads the ASP.NET Core version actually bundled and **refuses a release below 8.0.32** (CVE-2026-70159);
+  `-AllowOutdatedRuntime` produces a folder marked `NOT-FOR-RELEASE.txt` for local trials. The current build PC's
+  SDK (8.0.417) bundles 8.0.23, so the .NET 8 SDK must be updated before the first venue release.
+- `appsettings.Development.json` is excluded from publishing (it holds the development key and demo-data switch).
+- `scripts/configure-server.ps1` (run by the server installer, re-runnable): checks PostgreSQL is reachable,
+  writes `appsettings.Production.json` from the template (connection string with quoted password, 48-byte random
+  JWT key kept on re-runs, admin seed password, port, data folders under `C:\ProgramData\HotelPOS`), restricts it
+  to Administrators and SYSTEM, registers service `HotelPOSApi` (automatic, restart on failure 5 s / 15 s / 60 s),
+  firewall rules, starts and waits for `/health`. Passwords reach it in a temporary file it deletes, never on a
+  command line.
+- `installer/server.iss` (database page, admin password, port; uninstall removes the service but never the data)
+  and `installer/client.iss` (`/API=` pre-fills the server address for new terminals, `/CERT=` trusts a self-signed
+  HTTPS certificate, ProgramData settings folder writable by users).
+- **Verified 2026-10-14**: `publish.ps1` produced both folders (server 372 files, client 506; no development
+  settings) and the runtime check reported 8.0.23 as intended. The published server, configured by
+  `configure-server.ps1 -ConfigOnly` against a new database, created and migrated it (all 8 migrations), seeded the
+  admin with the installer password (must change at first sign-in), answered `/health` Healthy in Production mode
+  and did not expose Swagger. **Not yet verified**: compiling and running the two `.iss` scripts (Inno Setup is not
+  installed on the build PC) and the service registration path (needs an elevated session) — both belong to the
+  clean-VM smoke test in § 10.

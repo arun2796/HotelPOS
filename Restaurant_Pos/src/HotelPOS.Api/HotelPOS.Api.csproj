@@ -28,4 +28,10 @@
     <InternalsVisibleTo Include="HotelPOS.Api.Tests" />
   </ItemGroup>
 
+  <!-- A venue server never gets the development key and demo-data settings; the installer writes
+       appsettings.Production.json from the template instead. -->
+  <ItemGroup>
+    <Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
 </Project>

@@ -1,11 +1,13 @@
 <Project>
+  <Import Project="$(MSBuildThisFileDirectory)build/version.props" />
+
   <PropertyGroup>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AnalysisLevel>latest</AnalysisLevel>
     <Deterministic>true</Deterministic>
-    <Version>0.1.0</Version>
+    <!-- Version: build/version.props -->
     <Company>HotelPOS</Company>
     <Product>HotelPOS</Product>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
