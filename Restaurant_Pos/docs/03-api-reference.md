@@ -257,3 +257,13 @@ The server validates the credentials, checks the approver's role, records `Appro
 in the audit log. The approver's password is never logged. If the caller already has the Manager role
 the object is optional. Since Phase 9 the object may instead carry `approvalToken` from
 `POST /api/auth/approval`; the token is bound to the action type, valid for 2 minutes and used once.
+
+## Print templates, copies and exports (Phase 14)
+
+- `GET /api/templates`, `GET|POST /api/templates/{type}`, `POST /api/templates/{type}/{version}/activate`,
+  `POST /api/templates/preview`, `POST|DELETE /api/templates/logo` (Admin) — versioned layouts per document type.
+- `POST /api/print/invoice/{billId}/copies`, `POST /api/print/receipt/{paymentId}/copies`,
+  `POST /api/print/kot/{ticketId}/copies` reserve a copy number (copy 2+ is marked DUPLICATE) and return the document;
+  `PUT /api/print/copies/{logId}` records the result; `GET /api/print/{type}/{id}/history` lists the copies.
+- `GET /api/print/invoice/{billId}.pdf`, `GET /api/print/receipt/{paymentId}.pdf` — the same document as a PDF.
+- Reports and the audit log accept `format=xlsx|pdf|csv` on their export endpoints.

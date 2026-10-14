@@ -244,3 +244,11 @@ Never log tokens, passwords, or full payment references.
   red banner and refresh automatically on reconnect.
 - Extension point: `IOrderSubmitter` can later be replaced by an outbox implementation that queues
   submits and replays them with the same idempotency keys.
+
+## Template Studio and exports (Phase 14)
+
+Settings has two tabs: Restaurant settings and Print templates (Template Studio): pick a document type, change paper,
+columns, header/footer, tax style, logo and UPI QR; a live preview renders the same layout the thermal printer uses;
+Print test sends it to the configured printer; Save creates a version, Activate/Roll back switches the active one.
+Thermal prints use the active template; every reprint asks the server for a copy number and shows DUPLICATE from
+copy 2. Reports and Audit Log have Export Excel and Save PDF; Closed Bills can save the invoice PDF.

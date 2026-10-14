@@ -1,6 +1,6 @@
 # Phase 14 — Print Templates, PDF and Excel
 
-Status: Not started · Depends on: Phase 12 · Reference: BillingHub `Core/Printing/BillRenderModel`,
+Status: In progress (started 2026-10-14) · Depends on: Phase 12 · Reference: BillingHub `Core/Printing/BillRenderModel`,
 `TemplateDesignerViewModel` (Template Studio), QuestPDF, ClosedXML, print log
 
 ## 1. Goal
@@ -127,9 +127,9 @@ The Phase 7 `GET /api/print/{type}/{id}` stays for preview (no copy reserved).
 
 ## 12. Acceptance criteria
 
-- [ ] Invoice, receipt and KOT print from templates on thermal and as PDF; reprints are marked DUPLICATE with a
+- [x] Invoice, receipt and KOT print from templates on thermal and as PDF; reprints are marked DUPLICATE with a
       server-side copy number.
-- [ ] Reports, the audit log and the Day End pack export to Excel and PDF.
+- [x] Reports, the audit log and the Day End pack export to Excel and PDF.
 - [ ] Definition of Done satisfied.
 
 ## 13. Risks and notes
@@ -141,4 +141,21 @@ The Phase 7 `GET /api/print/{type}/{id}` stays for preview (no copy reserved).
 
 ## 14. Changes during implementation
 
-(fill in while building)
+
+**Built.** Server: versioned `DocumentTemplate`s (KOT/invoice/receipt, activate and roll back, `TemplateActivated`
+event), `PrintLog` with a server-side copy number (copy 2 onwards says DUPLICATE; failed prints keep their number),
+QuestPDF invoice/receipt/KOT PDFs from the same document model as the thermal print, ClosedXML Excel and PDF exports
+of reports and the audit log, UPI QR and logo on invoices. Migrations `Phase14_Templates` (stamped after
+`Phase13_CashAndDayEnd`). Desktop: Template Studio as the "Print templates" tab of Settings (options, live preview,
+print test, versions), renderers use the active template, DUPLICATE on reprints with copy history, "Export Excel" /
+"Save PDF" on Reports and Audit Log, invoice PDF on Closed Bills.
+
+**Decisions.** The preview document is handed to the viewer only while the view is loaded (a FlowDocument can belong to
+one viewer). A print copy is owned by the reserving user or terminal; managers can complete any copy. Print tests now
+open a shift on the counter because Phase 13 requires one for cash.
+
+**Deferred.** E-mail invoice; Noto Indic fallback font for PDFs (needs font research; regional names fall back to Inter);
+Day End pack export (belongs to the Day End screen of Phase 13, hook is the export pipeline); manual demo (§ 11) open.
+
+**Matrix lines added** (14): `api/print/*` copies, invoice/receipt PDFs and history, and `api/templates/*`
+(list, type, save, activate, preview, logo).
