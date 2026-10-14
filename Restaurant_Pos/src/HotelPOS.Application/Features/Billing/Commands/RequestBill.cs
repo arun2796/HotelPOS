@@ -16,7 +16,10 @@ namespace HotelPOS.Application.Features.Billing.Commands;
 
 // Sends an order's bill to the counter. Waiters and the cashier desk: the endpoint gates by role, there is no
 // permission for it; a waiter may only request the bill of their own order unless any waiter may edit orders.
-public sealed record RequestBillCommand(int OrderId) : ICommand<BillDetailDto>, IAuditedCommand;
+public sealed record RequestBillCommand(int OrderId) : ICommand<BillDetailDto>, IAuditedCommand, IBusinessDayGuarded
+{
+    public BusinessDayScope BusinessDayScope => BusinessDayScope.Today;
+}
 
 internal sealed class RequestBillHandler : ICommandHandler<RequestBillCommand, BillDetailDto>
 {

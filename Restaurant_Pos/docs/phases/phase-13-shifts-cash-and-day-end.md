@@ -1,6 +1,6 @@
 # Phase 13 — Shifts, Cash Register and Day End
 
-Status: Not started · Depends on: Phase 12 (written as CQRS commands/queries from the start) · Reference: BillingHub
+Status: In progress (started 2026-10-14) · Depends on: Phase 12 (written as CQRS commands/queries from the start) · Reference: BillingHub
 `Entities/CashShift`, `CurrencyDenomination`, `Features/CashRegister`, `RunDayEndCommand`, `GetDayEndPrecheckQuery`,
 `DayCloseGuard`
 
@@ -157,8 +157,8 @@ authorization matrix snapshot is updated deliberately in this phase.
 ## 12. Acceptance criteria
 
 - [ ] A full day with two counters reconciles to the rupee (expected = counted ± explained variance).
-- [ ] Cash cannot be taken without an open shift; Day End locks the day and reopening is audited.
-- [ ] Day End never closes a day without a verified backup.
+- [x] Cash cannot be taken without an open shift; Day End locks the day and reopening is audited.
+- [x] Day End never closes a day without a verified backup.
 - [ ] Definition of Done satisfied.
 
 ## 13. Risks and notes
@@ -170,4 +170,48 @@ authorization matrix snapshot is updated deliberately in this phase.
 
 ## 14. Changes during implementation
 
-(fill in while building)
+**Built (2026-10-14, branch `phase-13-shifts-cash-day-end`)**
+
+- Domain `Domain/Cash`: `CashShift` (+ `CashShiftCount`, `CashMovement`), `Denomination`, `DenominationCount`,
+  `ExpectedCash`, `NonTillCollection`, `BusinessDayClose`; `Domain/Common/BusinessDay` (also used by
+  `BusinessDayCalculator`). `Payment.CashShiftId`. Migration `Phase13_CashAndDayEnd` (also grants the new permissions
+  to existing roles); `DbSeeder` seeds Indian notes/coins and the settings `CashVarianceApprovalLimit` (100),
+  `CashPayOutApprovalLimit` (1000), `CashBlindCount` (false).
+- Application: `Features/Shifts` (8 commands/queries + `ListCashiers`), `Features/DayEnd` (precheck, run, internal
+  `CloseBusinessDay` / `RecordDayEndPack`, reopen, history, non-till collections), `Features/Denominations`.
+  `BusinessDayLockBehavior` (after `TransactionBehavior`) applies `IBusinessDayLock` to every `IBusinessDayGuarded`
+  command: RequestBill, FinalizeBill, AddPayment, RefundPayment, VoidBill, ReopenBill, OpenShift, AddCashMovement,
+  HandOverShift, AddNonTillCollection.
+- Api: `ShiftsController`, `DayEndController`, `DenominationsController`; 4 error codes → 409.
+- Desktop: shift bar + dialogs (`Modules/Cash`), counting sheet, Cash Shifts, Day End wizard, Day End History,
+  Denominations tab in Billing setup; X/Z print via `ShiftReportLayout` (one switch arm in `EscPosRenderer`) on the
+  receipt printer profile.
+- Authorization matrix: 17 added lines (no other change): `api/day-end` (POST), `api/day-end/history`,
+  `api/day-end/precheck`, `api/day-end/{day}/collections`, `api/day-end/{day}/reopen` (AM---);
+  `api/denominations` GET (AM--C), PUT (A----); `api/shifts` GET (AM---), POST (AM--C); `api/shifts/cashiers`,
+  `api/shifts/current`, `api/shifts/{id}/close`, `/handover`, `/movements`, `/x-report` (AM--C);
+  `api/shifts/{id}/force-close`, `/reopen` (AM---).
+
+**Decisions and deviations**
+
+- "A bill dated in a closed day" = today's business day plus the day the bill was settled in (sales count by
+  `SettledAt`), so a carried-over unpaid bill can still be paid the next day, but refunding a closed day's bill is
+  refused until the day is reopened.
+- Concurrency: per-day PostgreSQL advisory locks (shared for bill commands, exclusive for Day End close/reopen) so
+  Day End either waits for a payment in flight or the payment waits and gets `DAY_CLOSED`; cash payments share-lock
+  the shift row and close takes it `FOR UPDATE`, so expected cash includes every committed payment. Raw SQL lives in
+  Infrastructure (`BusinessDayLock`, `ShiftLocks`).
+- `RunDayEndCommand` is a plain MediatR request like `RunBackupCommand` (no transaction around a minutes-long
+  `pg_dump`); the close is its own audited command and re-checks the blocking items under the lock. If the pack
+  cannot be written the day stays closed with a warning. New `BackupTrigger.DayEnd`.
+- Pack = the existing reports + shifts + non-till collections as CSV in `dayend-<day>-<time>` next to the backups
+  (Phase 14 adds PDF/Excel). Backup retention still applies to Day End backups.
+- `CashShifts.DeviceId` has no FK (like `Payments.DeviceId`). `CashShiftCounts.Value` snapshots the note value;
+  `BusinessDayCloses.PackFolder` added. One open shift per cashier is also a unique index.
+- Approval actions `cash-variance`, `pay-out`, `reopen-shift`, `reopen-day`; as in Phase 9 a caller holding the
+  action's permission approves their own (managers reopening a day or shift give a reason, audited).
+- Blind count hides expected cash and cash takings from cashiers (not managers) until the shift is closed.
+- Default Day End day: the previous day when it traded, is not closed and today has not traded yet.
+- Existing tests that take cash open a shift in their arrange step; the API two-counter race now uses manager1 on
+  the second counter (a cashier holds one shift at a time). Assertions unchanged.
+- Not done: manual two-machine demo (§ 11); idempotency keys on cash movements.

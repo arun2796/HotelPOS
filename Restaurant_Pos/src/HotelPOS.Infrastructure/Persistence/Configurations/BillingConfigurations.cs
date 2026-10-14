@@ -2,6 +2,7 @@ using HotelPOS.Contracts.Billing;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Menu;
 using HotelPOS.Domain.Billing;
+using HotelPOS.Domain.Cash;
 using HotelPOS.Domain.Identity;
 using HotelPOS.Domain.Orders;
 using Microsoft.EntityFrameworkCore;
@@ -107,6 +108,8 @@ internal sealed class PaymentConfiguration : IEntityTypeConfiguration<Payment>
         builder.HasIndex(p => p.IdempotencyKey).IsUnique();
         builder.HasOne<PaymentMethod>().WithMany().HasForeignKey(p => p.PaymentMethodId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Payment>().WithMany().HasForeignKey(p => p.RefundOfPaymentId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<CashShift>().WithMany().HasForeignKey(p => p.CashShiftId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(p => p.CashShiftId);
         builder.Ignore(p => p.IsRefund);
     }
 }

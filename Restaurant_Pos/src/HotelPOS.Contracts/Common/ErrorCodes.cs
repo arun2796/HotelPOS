@@ -22,6 +22,10 @@ public static class ErrorCodes
     public const string ApprovalRequired = "APPROVAL_REQUIRED";
     public const string ApprovalInvalid = "APPROVAL_INVALID";
     public const string PaymentExceedsBalance = "PAYMENT_EXCEEDS_BALANCE";
+    public const string ShiftRequired = "SHIFT_REQUIRED";
+    public const string ShiftAlreadyOpen = "SHIFT_ALREADY_OPEN";
+    public const string DayClosed = "DAY_CLOSED";
+    public const string VarianceApprovalRequired = "VARIANCE_APPROVAL_REQUIRED";
     public const string BusinessRule = "BUSINESS_RULE";
     public const string RateLimited = "RATE_LIMITED";
     public const string ServerError = "SERVER_ERROR";

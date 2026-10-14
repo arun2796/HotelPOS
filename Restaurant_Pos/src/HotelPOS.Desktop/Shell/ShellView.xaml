@@ -6,6 +6,7 @@
              xmlns:shell="clr-namespace:HotelPOS.Desktop.Shell"
              xmlns:ui="clr-namespace:HotelPOS.Desktop.Services.Ui"
              xmlns:controls="clr-namespace:HotelPOS.Desktop.Controls"
+             xmlns:cash="clr-namespace:HotelPOS.Desktop.Modules.Cash"
              xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance shell:ShellViewModel}"
@@ -103,8 +104,13 @@
     <Grid Grid.Column="1" Background="{DynamicResource Brush.Background}">
       <Grid.RowDefinitions>
         <RowDefinition Height="64" />
+        <RowDefinition Height="Auto" />
         <RowDefinition Height="*" />
       </Grid.RowDefinitions>
+
+      <!-- Cash shift bar on billing terminals (phase 13) -->
+      <cash:ShiftBarView Grid.Row="1" DataContext="{Binding ShiftBar}"
+                         Visibility="{Binding IsVisible, Converter={StaticResource BoolToVisibility}}" />
 
       <Border Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,0,0,1"
               Padding="24,0,12,0">
@@ -170,10 +176,16 @@
         </Grid>
       </Border>
 
-      <controls:TransitioningContentControl Grid.Row="1" Content="{Binding CurrentPage}" />
+      <controls:TransitioningContentControl Grid.Row="2" Content="{Binding CurrentPage}" />
+
+      <!-- Shift dialogs (open, count, pay in/out, X/Z report) over the bar and the page -->
+      <Grid Grid.Row="1" Grid.RowSpan="2" Background="{DynamicResource Brush.Overlay}" DataContext="{Binding ShiftBar}"
+            Visibility="{Binding IsPanelOpen, Converter={StaticResource BoolToVisibility}}">
+        <ContentControl Content="{Binding Panel}" HorizontalAlignment="Center" VerticalAlignment="Center" Focusable="False" />
+      </Grid>
 
       <!-- Notices panel under the bell -->
-      <Grid Grid.Row="1" Width="380" Margin="0,8,16,0" HorizontalAlignment="Right" VerticalAlignment="Top"
+      <Grid Grid.Row="2" Width="380" Margin="0,8,16,0" HorizontalAlignment="Right" VerticalAlignment="Top"
             Visibility="{Binding IsNoticesOpen, Converter={StaticResource BoolToVisibility}}">
         <Border CornerRadius="12" Background="{DynamicResource Brush.Surface}" Effect="{DynamicResource Shadow.Popup}" />
         <Border Style="{StaticResource Card}" Padding="16" DataContext="{Binding Notices}">

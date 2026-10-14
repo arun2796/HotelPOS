@@ -15,6 +15,7 @@ public static class RolePermissionMap
             Permissions.KitchenOperate,
             Permissions.BillingOperate, Permissions.BillingDiscount, Permissions.BillingVoid, Permissions.BillingRefund,
             Permissions.ReportsView,
+            Permissions.ShiftOperate, Permissions.ShiftManage, Permissions.DayEndRun,
         },
         [Roles.Waiter] = new[]
         {
@@ -29,6 +30,7 @@ public static class RolePermissionMap
         {
             Permissions.TablesView, Permissions.TablesOperate, Permissions.MenuView,
             Permissions.BillingOperate, Permissions.BillingDiscount,
+            Permissions.ShiftOperate,
         },
     };
 

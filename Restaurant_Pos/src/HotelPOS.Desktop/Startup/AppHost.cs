@@ -1,4 +1,5 @@
 using System.IO;
+using HotelPOS.Desktop.Modules.Cash;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Auth;
 using HotelPOS.Desktop.Services.Configuration;
@@ -59,6 +60,10 @@ public static class AppHost
         services.AddSingleton<IOrderSubmitter, OrderSubmitter>();
         services.AddSingleton<IKitchenApi, KitchenApi>();
         services.AddSingleton<IBillingApi, BillingApi>();
+        services.AddSingleton<ICashApi, CashApi>();
+        services.AddSingleton<ShiftReportPrinting>();
+        services.AddSingleton<ShiftBarViewModel>();
+        services.AddSingleton<ICashDrawer>(sp => sp.GetRequiredService<ShiftBarViewModel>());
         services.AddSingleton<IReadyNotifier, ReadyNotifier>();
         services.AddSingleton<IPrintApi, PrintApi>();
         services.AddSingleton<ITemplatesApi, TemplatesApi>();

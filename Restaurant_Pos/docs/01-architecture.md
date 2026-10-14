@@ -160,7 +160,8 @@ Request
   -> RequestContextLogging        (adds "user@device" to every log line)
   -> Authorization                (fallback policy: authenticated unless [AllowAnonymous])
   -> IdempotencyMiddleware        (only for routes marked [Idempotent]; Phase 4)
-  -> Controller -> ISender.Send(request) -> Logging -> Authorization -> Validation -> Transaction -> Audit
+  -> Controller -> ISender.Send(request) -> Logging -> Authorization -> Validation -> Transaction
+     -> BusinessDayLock (Phase 13: bill/payment commands of a closed day -> DAY_CLOSED) -> Audit
      -> handler -> EF Core (one transaction per command) -> IRealtimeNotifier (after commit)
 Response (always wrapped in ApiResponse<T>)
 ```

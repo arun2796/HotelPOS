@@ -12,6 +12,7 @@
              xmlns:orders="clr-namespace:HotelPOS.Desktop.Modules.Orders"
              xmlns:kitchen="clr-namespace:HotelPOS.Desktop.Modules.Kitchen"
              xmlns:billing="clr-namespace:HotelPOS.Desktop.Modules.Billing"
+             xmlns:cash="clr-namespace:HotelPOS.Desktop.Modules.Cash"
              xmlns:printing="clr-namespace:HotelPOS.Desktop.Modules.Printing"
              xmlns:dashboard="clr-namespace:HotelPOS.Desktop.Modules.Dashboard"
              xmlns:reports="clr-namespace:HotelPOS.Desktop.Modules.Reports"
@@ -104,6 +105,24 @@
       </DataTemplate>
       <DataTemplate DataType="{x:Type billing:BillingSetupViewModel}">
         <billing:BillingSetupView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type cash:ShiftsViewModel}">
+        <cash:ShiftsView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type cash:DayEndViewModel}">
+        <cash:DayEndView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type cash:DayEndHistoryViewModel}">
+        <cash:DayEndHistoryView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type cash:ShiftCountPanelViewModel}">
+        <cash:ShiftCountPanelView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type cash:CashMovementPanelViewModel}">
+        <cash:CashMovementPanelView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type cash:ShiftReportPanelViewModel}">
+        <cash:ShiftReportPanelView />
       </DataTemplate>
       <DataTemplate DataType="{x:Type printing:PrinterSettingsViewModel}">
         <printing:PrinterSettingsView />

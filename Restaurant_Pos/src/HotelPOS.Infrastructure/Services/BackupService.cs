@@ -109,7 +109,7 @@ public sealed class BackupService : IBackupService
 
         var folder = await FolderAsync(cancellationToken);
         var stamp = TimeZoneInfo.ConvertTimeFromUtc(_clock.UtcNow, TimeZoneInfo.Local).ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
-        var backup = new Backup($"hotelpos-{stamp}.dump", trigger, trigger == BackupTrigger.Manual ? _currentUser.UserName : "schedule", _clock.UtcNow);
+        var backup = new Backup($"hotelpos-{stamp}.dump", trigger, trigger == BackupTrigger.Schedule ? "schedule" : _currentUser.UserName, _clock.UtcNow);
         _db.Backups.Add(backup);
         await _db.SaveChangesAsync(cancellationToken);
 

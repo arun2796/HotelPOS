@@ -16,11 +16,23 @@ public sealed class TestClock : IClock
 
 public sealed class TestCurrentUser : ICurrentUser
 {
+    // Requests sent concurrently from one test can come from different terminals (each async flow sets its own).
+    private static readonly AsyncLocal<Guid?> DeviceOfFlow = new();
+
+    private Guid? _deviceId;
+
     public bool IsAuthenticated => UserId is not null;
     public int? UserId { get; set; }
     public string? UserName { get; set; }
     public IReadOnlyList<string> Roles { get; set; } = Array.Empty<string>();
-    public Guid? DeviceId { get; set; }
+
+    public Guid? DeviceId
+    {
+        get => DeviceOfFlow.Value ?? _deviceId;
+        set => _deviceId = value;
+    }
+
+    public static void UseDeviceInThisFlow(Guid deviceId) => DeviceOfFlow.Value = deviceId;
     public string? DeviceName { get; set; }
     public string? MachineName { get; set; } = "TEST-PC";
     public string? IpAddress { get; set; } = "127.0.0.1";

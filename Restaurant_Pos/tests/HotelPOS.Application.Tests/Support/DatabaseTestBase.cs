@@ -1,5 +1,8 @@
 using HotelPOS.Application.Common.Interfaces;
+using HotelPOS.Application.Features.Shifts.Commands;
 using HotelPOS.Application.Features.Users;
+using HotelPOS.Contracts.Cash;
+using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Users;
 using HotelPOS.Domain.Identity;
 using HotelPOS.Infrastructure.Persistence;
@@ -70,6 +73,36 @@ public abstract class DatabaseTestBase : IAsyncLifetime
 
     protected Task<int> AdminIdAsync() =>
         QueryAsync(db => db.Users.Where(u => u.NormalizedUsername == "ADMIN").Select(u => u.Id).SingleAsync());
+
+    // Cash needs an open shift on the terminal (phase 13). Opens one on the terminal for the given user; the signed-in
+    // user is restored afterwards.
+    protected async Task<CashShiftDto> OpenShiftAsync(Guid deviceId, int userId, string userName, string role, params DenominationCountDto[] counts)
+    {
+        var (signedIn, name, roles, permissions, device) = (CurrentUser.UserId, CurrentUser.UserName, CurrentUser.Roles, CurrentUser.Permissions, CurrentUser.DeviceId);
+        CurrentUser.SignIn(userId, userName, role);
+        CurrentUser.DeviceId = deviceId;
+        try
+        {
+            var opened = await SendAsync(new OpenShiftCommand(new OpenShiftRequest { Counts = counts }));
+            opened.IsSuccess.Should().BeTrue(opened.Error?.Message);
+            return opened.Value;
+        }
+        finally
+        {
+            (CurrentUser.UserId, CurrentUser.UserName, CurrentUser.Roles, CurrentUser.Permissions, CurrentUser.DeviceId) = (signedIn, name, roles, permissions, device);
+        }
+    }
+
+    protected async Task EnsureDeviceAsync(Guid deviceId, string? name = null)
+    {
+        await using var scope = Fixture.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        if (!await db.Devices.AnyAsync(d => d.Id == deviceId))
+        {
+            db.Devices.Add(new Device(deviceId, name ?? "COUNTER-" + deviceId.ToString("N")[..6], DeviceType.Billing, Clock.UtcNow));
+            await db.SaveChangesAsync();
+        }
+    }
 
     // Seeds a user straight into the database, as DbSeeder does. Scenarios use short demo passwords ("secret1") that
     // the create-user request has always rejected, so they cannot be created through it; Users/UserTests covers it.

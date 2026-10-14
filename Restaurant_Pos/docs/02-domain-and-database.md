@@ -85,6 +85,25 @@ Constraints: at most one **active** order per table — partial unique index (EF
 | `Payments` | `BillId`, `PaymentMethodId`, `Amount`, `TenderedAmount?`, `ChangeAmount?`, `Reference?`, `Status` (Completed/Refunded/Voided), `ReceivedBy`, `DeviceId?`, `PaidAt`, `IdempotencyKey`, `RefundOfPaymentId?`, `RefundReason?` (refund rows carry a negative `Amount`) |
 | `InvoiceCounters` | `Period` (PK: `2026`, `202610` or `ALL`), `LastNumber` |
 
+Since Phase 13 `Payments.CashShiftId?` (FK `CashShifts`) is set for every cash payment and cash refund.
+
+### 2.7 Cash register and Day End (Phase 13)
+
+Money columns of these tables are `decimal(12,2)`.
+
+| Entity | Key columns |
+|---|---|
+| `Denominations` | `Value`, `Label`, `Kind` (Note/Coin), `SortOrder`, `IsActive`; unique (`Value`, `Kind`); seeded with ₹2000 … ₹10 notes and ₹20 … ₹1 coins; never deleted |
+| `CashShifts` | `DeviceId` (terminal id from the token, no FK), `BusinessDay` (date), `CashierUserId`, `Status` (Open/HandedOver/Closed/ForceClosed), `OpenedAt`, `OpenedBy`, `FloatAmount`, `ClosedAt?`, `ClosedBy?`, `ExpectedCash?`, `CountedCash?`, `Variance?`, `VarianceReason?`, `VarianceApprovedBy?`, `BlindCount`, `HandedOverToShiftId?`, `ForcedReason?`, `RowVersion`; unique filtered indexes: one Open shift per device and per cashier |
+| `CashShiftCounts` | `ShiftId`, `Phase` (Open/Close), `DenominationId`, `Value` (snapshot), `Quantity`; unique (`ShiftId`, `Phase`, `DenominationId`) |
+| `CashMovements` | `ShiftId`, `Type` (PayIn/PayOut/TillVoucher), `Amount` (> 0), `Reason`, `ApprovedBy?`, `CreatedAt/By` |
+| `NonTillCollections` | `BusinessDay`, `Method`, `Amount`, `Reference?`, `Note?`, `RecordedBy`, `RecordedAt` |
+| `BusinessDayCloses` | `BusinessDay` (PK, date), `Status` (Closed/Reopened), `ClosedAt`, `ClosedBy`, `Overrides` (jsonb), `TotalsSnapshot` (jsonb, `DayEndSummaryDto`), `BackupFile`, `PackFolder?`, `ReopenedAt?`, `ReopenedBy?`, `ReopenReason?`, `RowVersion` |
+
+Expected cash of a shift = float + cash payments − cash refunds + pay-ins − pay-outs − till vouchers (`ExpectedCash`).
+A closed business day (`BusinessDayCloses.Status = Closed`) refuses bill and payment commands with `DAY_CLOSED`
+(`IBusinessDayLock`, PostgreSQL advisory lock per day: shared for bill commands, exclusive for Day End close/reopen).
+
 ## 3. Enums (defined in `HotelPOS.Contracts.Enums`)
 
 All enums are numbered from 1, so the default value 0 is never a valid state (validators reject it).
@@ -174,6 +193,14 @@ Bill.Status:      Open -> Finalized -> Settled
                   Open/Finalized -> Voided
 Bill.PaymentStatus: Pending -> PartiallyPaid -> Paid -> Refunded (full refund)
                     Pending/PartiallyPaid -> Cancelled (bill voided)
+```
+
+### 4.5 Cash shift and business day (Phase 13)
+
+```
+CashShift.Status:  Open -> Closed | HandedOver (next shift opens with the counted cash) | ForceClosed (manager)
+                   Closed/ForceClosed -> Open (reopen, manager + approval; the close count is cleared)
+BusinessDayClose:  (none) -> Closed -> Reopened -> Closed (Day End again)
 ```
 
 ## 5. Numbering

@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 using HotelPOS.Contracts.Billing;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Security;
+using HotelPOS.Desktop.Modules.Cash;
 using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Auth;
@@ -27,11 +28,36 @@ public sealed partial class BillingSetupViewModel : ViewModelBase, INavigationAw
     private readonly IBillingApi _billingApi;
     private readonly INotificationService _notifications;
 
-    public BillingSetupViewModel(IBillingApi billingApi, INotificationService notifications, IAuthSession session)
+    public BillingSetupViewModel(IBillingApi billingApi, ICashApi cashApi, INotificationService notifications, IAuthSession session)
     {
         _billingApi = billingApi;
         _notifications = notifications;
         CanEditMethods = session.User?.Roles.Contains(Roles.Admin) == true;
+        Denominations = new DenominationsViewModel(cashApi, notifications,
+            CanEditMethods || session.User?.Permissions.Contains(Permissions.SettingsManage) == true);
+    }
+
+    public const int DiscountsTab = 0;
+    public const int DenominationsTab = 1;
+
+    public IReadOnlyList<string> Tabs { get; } = new[] { "Discounts & payments", "Denominations" };
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsDiscountsTab), nameof(IsDenominationsTab))]
+    private int _selectedTab = DiscountsTab;
+
+    public bool IsDiscountsTab => SelectedTab == DiscountsTab;
+
+    public bool IsDenominationsTab => SelectedTab == DenominationsTab;
+
+    public DenominationsViewModel Denominations { get; }
+
+    partial void OnSelectedTabChanged(int value)
+    {
+        if (value == DenominationsTab)
+        {
+            _ = Denominations.LoadAsync();
+        }
     }
 
     public ObservableCollection<DiscountRow> Discounts { get; } = new();

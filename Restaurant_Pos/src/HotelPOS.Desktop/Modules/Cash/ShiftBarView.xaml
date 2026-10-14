@@ -1,0 +1,53 @@
+<UserControl x:Class="HotelPOS.Desktop.Modules.Cash.ShiftBarView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:cash="clr-namespace:HotelPOS.Desktop.Modules.Cash"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance cash:ShiftBarViewModel}"
+             d:DesignWidth="1100" d:DesignHeight="60">
+
+  <StackPanel>
+    <Border BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,0,0,1" Padding="24,6,16,6">
+      <Border.Style>
+        <Style TargetType="Border">
+          <Setter Property="Background" Value="{DynamicResource Brush.SuccessSoft}" />
+          <Style.Triggers>
+            <DataTrigger Binding="{Binding HasNoShift}" Value="True">
+              <Setter Property="Background" Value="{DynamicResource Brush.WarningSoft}" />
+            </DataTrigger>
+          </Style.Triggers>
+        </Style>
+      </Border.Style>
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+          <TextBlock Text="&#xE8C7;" Style="{StaticResource Text.Icon}" FontSize="16" Margin="0,0,10,0" />
+          <TextBlock Text="{Binding StatusText}" FontWeight="SemiBold" VerticalAlignment="Center" />
+          <TextBlock Text="{Binding ExpectedText, StringFormat=' · {0}'}" VerticalAlignment="Center"
+                     Visibility="{Binding HasShift, Converter={StaticResource BoolToVisibility}}" />
+        </StackPanel>
+
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Visibility="{Binding HasShift, Converter={StaticResource BoolToVisibility}}">
+          <Button Content="X report" Command="{Binding XReportCommand}" MinHeight="{DynamicResource Size.Control}" Margin="0,0,8,0" />
+          <Button Content="Pay in / out" Command="{Binding PayInOutCommand}" MinHeight="{DynamicResource Size.Control}" Margin="0,0,8,0" />
+          <Button Content="Hand over" Command="{Binding HandOverCommand}" MinHeight="{DynamicResource Size.Control}" Margin="0,0,8,0" />
+          <Button Content="Close shift" Command="{Binding CloseShiftCommand}" Style="{StaticResource Button.Primary}" MinHeight="{DynamicResource Size.Control}" />
+        </StackPanel>
+        <Button Grid.Column="1" Content="Open shift" Command="{Binding OpenShiftCommand}" Style="{StaticResource Button.Primary}"
+                MinHeight="{DynamicResource Size.Control}" Visibility="{Binding HasNoShift, Converter={StaticResource BoolToVisibility}}" />
+      </Grid>
+    </Border>
+
+    <Border Style="{StaticResource Banner.Info}" Margin="24,8,24,0" Visibility="{Binding HasDayNotice, Converter={StaticResource BoolToVisibility}}">
+      <Grid>
+        <TextBlock Text="{Binding DayNotice}" TextWrapping="Wrap" Margin="0,0,90,0" VerticalAlignment="Center" />
+        <Button Content="Dismiss" Command="{Binding DismissDayNoticeCommand}" Style="{StaticResource Button.Ghost}" HorizontalAlignment="Right" />
+      </Grid>
+    </Border>
+  </StackPanel>
+</UserControl>

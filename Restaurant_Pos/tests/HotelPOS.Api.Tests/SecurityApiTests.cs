@@ -507,7 +507,7 @@ public class SecurityApiTests : IClassFixture<ApiFactory>
     public async Task AuditCompleteness_EndToEndScenario_LeavesTheExpectedTrailExactlyOnce()
     {
         var admin = await _factory.CreateAuthenticatedClientAsync("admin", ApiFactory.AdminPassword);
-        var cashier = await _factory.CreateAuthenticatedClientAsync("cashier1", ApiFactory.DemoPassword);
+        var cashier = await _factory.CreateTerminalClientAsync("cashier1", ApiFactory.DemoPassword, "BILLING-01");
         var startUtc = DateTime.UtcNow.AddSeconds(-5);
 
         var order = await ServedOrderAsync("T07", "Chicken Biryani");

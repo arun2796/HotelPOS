@@ -49,7 +49,7 @@ public class PrintApiTests : IClassFixture<ApiFactory>
     {
         var waiter = await _factory.CreateAuthenticatedClientAsync("waiter1", ApiFactory.DemoPassword);
         var kitchen = await _factory.CreateAuthenticatedClientAsync("kitchen1", ApiFactory.DemoPassword);
-        var cashier = await _factory.CreateAuthenticatedClientAsync("cashier1", ApiFactory.DemoPassword);
+        var cashier = await _factory.CreateTerminalClientAsync("cashier1", ApiFactory.DemoPassword, "BILLING-01");
         var order = await SendOrderAsync(waiter, "T13", "Chicken Biryani");
 
         var kot = await (await kitchen.GetAsync($"/api/print/kot/{order.Tickets.Single().Id}")).ReadEnvelopeAsync<KitchenTicketDocument>();

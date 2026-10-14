@@ -4,11 +4,23 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:billing="clr-namespace:HotelPOS.Desktop.Modules.Billing"
+             xmlns:cash="clr-namespace:HotelPOS.Desktop.Modules.Cash"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance billing:BillingSetupViewModel}"
              d:DesignWidth="1100" d:DesignHeight="700">
 
-  <Grid Margin="24">
+  <Grid Margin="24,16,24,24">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <ListBox Style="{StaticResource Hub.Tabs}" ItemsSource="{Binding Tabs}" SelectedIndex="{Binding SelectedTab}" AutomationProperties.Name="Billing setup" />
+
+    <cash:DenominationsView Grid.Row="1" DataContext="{Binding Denominations}"
+                            Visibility="{Binding DataContext.IsDenominationsTab, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}" />
+
+  <Grid Grid.Row="1" Visibility="{Binding IsDiscountsTab, Converter={StaticResource BoolToVisibility}}">
     <Grid.ColumnDefinitions>
       <ColumnDefinition Width="*" />
       <ColumnDefinition Width="Auto" />
@@ -139,5 +151,6 @@
         </Grid>
       </Grid>
     </Border>
+  </Grid>
   </Grid>
 </UserControl>

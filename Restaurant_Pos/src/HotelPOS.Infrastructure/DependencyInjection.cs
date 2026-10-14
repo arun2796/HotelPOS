@@ -52,6 +52,9 @@ public static class DependencyInjection
         services.AddHostedService<BillClaimCleanupService>();
         services.AddHostedService<AuditRetentionService>();
         services.AddScoped<IBackupService, BackupService>();
+        services.AddScoped<IDayEndPackWriter, DayEndPackWriter>();
+        services.AddScoped<IBusinessDayLock, BusinessDayLock>();
+        services.AddScoped<IShiftLocks, ShiftLocks>();
         services.AddHostedService<BackupHostedService>();
         services.AddSingleton<IIdempotencyStore, IdempotencyStore>();
         services.AddHostedService<IdempotencyCleanupService>();

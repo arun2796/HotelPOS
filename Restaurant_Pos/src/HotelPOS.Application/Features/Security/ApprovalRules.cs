@@ -15,6 +15,10 @@ internal static class ApprovalRules
         ApprovalActions.Void => Permissions.BillingVoid,
         ApprovalActions.Reopen => Permissions.BillingVoid,
         ApprovalActions.Refund => Permissions.BillingRefund,
+        ApprovalActions.CashVariance => Permissions.ShiftManage,
+        ApprovalActions.PayOut => Permissions.ShiftManage,
+        ApprovalActions.ReopenShift => Permissions.ShiftManage,
+        ApprovalActions.ReopenDay => Permissions.DayEndRun,
         _ => null,
     };
 

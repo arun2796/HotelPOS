@@ -25,6 +25,9 @@ public static class HubEvents
     public const string ServerNotice = "ServerNotice";
     public const string TemplateActivated = "TemplateActivated";
     public const string DocumentPrinted = "DocumentPrinted";
+    public const string ShiftChanged = "ShiftChanged";
+    public const string BusinessDayClosed = "BusinessDayClosed";
+    public const string BusinessDayReopened = "BusinessDayReopened";
 }
 
 public static class HubMethods

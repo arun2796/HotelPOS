@@ -30,7 +30,12 @@ public sealed record BackupRow(BackupDto Backup)
 
     public bool IsFailed => Backup.Status == BackupStatus.Failed;
 
-    public string Trigger => Backup.Trigger == BackupTrigger.Schedule ? "Scheduled" : $"Manual ({Backup.TriggeredBy})";
+    public string Trigger => Backup.Trigger switch
+    {
+        BackupTrigger.Schedule => "Scheduled",
+        BackupTrigger.DayEnd => $"Day End ({Backup.TriggeredBy})",
+        _ => $"Manual ({Backup.TriggeredBy})",
+    };
 }
 
 public sealed partial class BackupViewModel : ViewModelBase, INavigationAware, IRefreshable

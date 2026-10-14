@@ -257,6 +257,11 @@ public class ReportTests : DatabaseTestBase
             (await CreateUserAsync("managerx", "secret1", Roles.Manager)).Id,
             (await CreateUserAsync("cook", "secret1", Roles.Kitchen)).Id);
         await QueryAsync(db => db.Database.ExecuteSqlInterpolatedAsync($"UPDATE \"Settings\" SET \"Value\" = 'true' WHERE \"Key\" = {SettingKeys.AllowBillBeforeReady}"));
+
+        // The scenario runs on one billing terminal; cash needs an open shift on it (phase 13).
+        var counter = Guid.NewGuid();
+        await OpenShiftAsync(counter, setup.Cashier, "cashier1", Roles.Cashier);
+        CurrentUser.DeviceId = counter;
         AsWaiter(setup);
         return setup;
     }

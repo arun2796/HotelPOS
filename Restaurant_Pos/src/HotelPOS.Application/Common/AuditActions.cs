@@ -118,4 +118,16 @@ public static class AuditActions
     public const string DiscountUpdated = "Discount.Updated";
     public const string PaymentMethodCreated = "PaymentMethod.Created";
     public const string PaymentMethodUpdated = "PaymentMethod.Updated";
+
+    public const string DenominationsUpdated = "Denomination.Updated";
+    public const string ShiftOpened = "Shift.Opened";
+    public const string ShiftMovementAdded = "Shift.MovementAdded";
+    public const string ShiftClosed = "Shift.Closed";
+    public const string ShiftHandedOver = "Shift.HandedOver";
+    public const string ShiftForceClosed = "Shift.ForceClosed";
+    public const string ShiftReopened = "Shift.Reopened";
+    public const string DayEndClosed = "DayEnd.Closed";
+    public const string DayEndPackWritten = "DayEnd.PackWritten";
+    public const string DayEndReopened = "DayEnd.Reopened";
+    public const string NonTillCollectionRecorded = "DayEnd.NonTillCollectionRecorded";
 }

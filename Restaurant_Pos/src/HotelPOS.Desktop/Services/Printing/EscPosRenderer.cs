@@ -84,6 +84,7 @@ public sealed class EscPosRenderer
         InvoiceDocument invoice => new Layouter(columns, currencyFallback, invoice.Template ?? TemplateLayout.DefaultFor(PrintDocumentType.Invoice)).Invoice(invoice),
         ReceiptDocument receipt => new Layouter(columns, currencyFallback, receipt.Template ?? TemplateLayout.DefaultFor(PrintDocumentType.Receipt)).Receipt(receipt),
         TestPrintDocument test => new Layouter(columns, currencyFallback, new TemplateLayout()).TestPage(test),
+        HotelPOS.Contracts.Cash.ShiftReportDto shift => ShiftReportLayout.Lines(shift, columns, currencyFallback),
         _ => throw new PrintException($"Cannot print a {document.GetType().Name}."),
     };
 

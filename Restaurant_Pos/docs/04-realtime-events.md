@@ -59,8 +59,12 @@ it receives only its station's ticket events; `LeaveStation` puts it back. The c
 | `PaymentCompleted` | role:cashier, role:waiter, manager, admin | `billId, orderId, tableCode, invoiceNumber, grandTotal` | bill settled | 6 |
 | `DeviceStatusChanged` | role:admin, role:manager | `deviceId, deviceName, isOnline, isActive, timestampUtc` | device update/activate/deactivate; first hub connection of a device opens / its last one closes | 9 |
 | `ServerNotice` | `device:{id}` (Phase 9); all (Phase 10) | `message, code?` | device deactivated (`code = DEVICE_DISABLED`); admin broadcast and shutdown warning in Phase 10 | 9, 10 |
+| `ShiftChanged` | role:manager, role:admin, `device:{id}` of the shift | `shiftId, deviceId, deviceName, cashierName, businessDay, status, changeType` (Opened/MovementAdded/Closed/HandedOver/ForceClosed/Reopened) | shift opened, cash movement, close, handover, force close, reopen | 13 |
+| `BusinessDayClosed` | all | `businessDay, status, changedBy` (`entityId` = day number) | Day End closed the day | 13 |
+| `BusinessDayReopened` | all | same | a manager reopened a closed day | 13 |
 
-Event names are constants in `HotelPOS.Contracts.Realtime.HubEvents`.
+Event names are constants in `HotelPOS.Contracts.Realtime.HubEvents`. Phase 13 resync: the shift bar reloads
+`GET /api/shifts/current` on reconnect; screens re-read on navigation.
 
 ## 4. Publishing rules (server)
 

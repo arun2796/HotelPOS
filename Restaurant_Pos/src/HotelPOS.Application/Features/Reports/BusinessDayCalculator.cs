@@ -19,12 +19,8 @@ public sealed class BusinessDayCalculator
 
     public TimeZoneInfo Zone { get; }
 
-    public DateOnly DayOf(DateTime utc)
-    {
-        var local = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), Zone);
-        var date = DateOnly.FromDateTime(local);
-        return TimeOnly.FromDateTime(local) < StartTime ? date.AddDays(-1) : date;
-    }
+    public DateOnly DayOf(DateTime utc) =>
+        Domain.Common.BusinessDay.Of(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), Zone), StartTime);
 
     public DateTime StartOfUtc(DateOnly day) =>
         TimeZoneInfo.ConvertTimeToUtc(day.ToDateTime(StartTime, DateTimeKind.Unspecified), Zone);

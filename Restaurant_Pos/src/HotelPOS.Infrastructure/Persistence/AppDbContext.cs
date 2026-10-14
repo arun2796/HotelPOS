@@ -1,6 +1,7 @@
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Domain.Administration;
 using HotelPOS.Domain.Billing;
+using HotelPOS.Domain.Cash;
 using HotelPOS.Domain.Floor;
 using HotelPOS.Domain.Kitchen;
 using HotelPOS.Domain.Identity;
@@ -51,6 +52,12 @@ public sealed class AppDbContext : DbContext, IAppDbContext
     public DbSet<InvoiceCounter> InvoiceCounters => Set<InvoiceCounter>();
     public DbSet<DocumentTemplate> DocumentTemplates => Set<DocumentTemplate>();
     public DbSet<PrintLogEntry> PrintLogs => Set<PrintLogEntry>();
+    public DbSet<Denomination> Denominations => Set<Denomination>();
+    public DbSet<CashShift> CashShifts => Set<CashShift>();
+    public DbSet<CashShiftCount> CashShiftCounts => Set<CashShiftCount>();
+    public DbSet<CashMovement> CashMovements => Set<CashMovement>();
+    public DbSet<NonTillCollection> NonTillCollections => Set<NonTillCollection>();
+    public DbSet<BusinessDayClose> BusinessDayCloses => Set<BusinessDayClose>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

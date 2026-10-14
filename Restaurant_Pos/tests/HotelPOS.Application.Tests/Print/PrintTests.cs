@@ -171,6 +171,11 @@ public class PrintTests : DatabaseTestBase
             (await CreateUserAsync("managerx", "secret1", Roles.Manager)).Id,
             (await CreateUserAsync("cook", "secret1", Roles.Kitchen)).Id);
         await SetSettingAsync(SettingKeys.AllowBillBeforeReady, "true");
+
+        // The scenario runs on one billing terminal; cash needs an open shift on it (phase 13).
+        var counter = Guid.NewGuid();
+        await OpenShiftAsync(counter, setup.Cashier, "cashier1", Roles.Cashier);
+        CurrentUser.DeviceId = counter;
         CurrentUser.SignIn(setup.Waiter, "waiter1", Roles.Waiter);
         return setup;
     }

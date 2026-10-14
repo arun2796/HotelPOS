@@ -9,6 +9,7 @@ using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Print;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Contracts.Security;
+using HotelPOS.Desktop.Modules.Cash;
 using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Auth;
@@ -47,6 +48,7 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
     private readonly IDialogService _dialogs;
     private readonly INotificationService _notifications;
     private readonly IDocumentPrinter _printer;
+    private readonly ICashDrawer? _cashDrawer;
     private readonly bool _isManager;
     private readonly List<IDisposable> _subscriptions = new();
     private IReadOnlyList<PaymentMethodDto> _methods = Array.Empty<PaymentMethodDto>();
@@ -61,9 +63,11 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
         IDialogService dialogs,
         INotificationService notifications,
         IAuthSession session,
-        IDocumentPrinter printer)
+        IDocumentPrinter printer,
+        ICashDrawer? cashDrawer = null)
     {
         _printer = printer;
+        _cashDrawer = cashDrawer;
         _billingApi = billingApi;
         _systemApi = systemApi;
         _realtime = realtime;
@@ -487,6 +491,11 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
                     PanelError = result.IsConnectionFailure
                         ? "Could not confirm the payment. Check the connection and press CONFIRM again; it will not be taken twice."
                         : ApiFailures.Describe(result);
+                    if (result.HasError(ErrorCodes.ShiftRequired) && _cashDrawer is not null)
+                    {
+                        _ = _cashDrawer.OfferOpenShiftAsync();
+                    }
+
                     return;
                 }
 
@@ -674,6 +683,11 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
         if (Approvals.IsApprovalError(result))
         {
             return;
+        }
+
+        if (result.HasError(ErrorCodes.ShiftRequired) && _cashDrawer is not null)
+        {
+            _ = _cashDrawer.OfferOpenShiftAsync();
         }
 
         ErrorMessage = result.HasError(ErrorCodes.ConcurrencyConflict)
