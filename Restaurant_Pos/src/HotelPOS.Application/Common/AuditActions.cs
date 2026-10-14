@@ -80,6 +80,12 @@ public static class AuditActions
     public const string OrderServed = "Order.Served";
     public const string OrderItemCancelled = "Order.ItemCancelled";
 
+    public const string KitchenTicketAccepted = "KitchenTicket.Accepted";
+    public const string KitchenTicketStarted = "KitchenTicket.Started";
+    public const string KitchenTicketReady = "KitchenTicket.Ready";
+    public const string KitchenTicketCompleted = "KitchenTicket.Completed";
+    public const string KitchenTicketRecalled = "KitchenTicket.Recalled";
+
     public const string BillRequested = "Bill.Requested";
     public const string BillClaimed = "Bill.Claimed";
     public const string BillReleased = "Bill.Released";

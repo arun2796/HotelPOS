@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Http;
 using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Auth;
 using HotelPOS.Contracts.Common;
@@ -134,6 +136,7 @@ public class ChangePasswordTests
     [Theory]
     [InlineData("", "newpass1", "newpass1", false)]
     [InlineData("old", "short", "short", false)]
+    [InlineData("old", "lettersonly", "lettersonly", false)]
     [InlineData("old", "newpass1", "newpass2", false)]
     [InlineData("samepass", "samepass", "samepass", false)]
     [InlineData("old-pass", "newpass1", "newpass1", true)]
@@ -227,5 +230,56 @@ public class TokenRefresherTests
 
         _store.Items.Should().BeEmpty();
         _session.LoadPersistedRefreshToken().Should().BeNull();
+    }
+}
+
+public class AuthDelegatingHandlerTests
+{
+    private readonly InMemorySecureStore _store = new();
+    private readonly AuthSession _session;
+    private readonly ITokenRefresher _refresher = Substitute.For<ITokenRefresher>();
+
+    public AuthDelegatingHandlerTests()
+    {
+        _session = new AuthSession(_store);
+        _session.Start(TestData.Login());
+        _refresher.GetValidAccessTokenAsync(Arg.Any<CancellationToken>()).Returns(_session.AccessToken);
+    }
+
+    [Theory]
+    [InlineData(ErrorCodes.DeviceDisabled, true)]
+    [InlineData(ErrorCodes.Forbidden, false)]
+    public async Task Forbidden_EndsTheSessionOnlyWhenTheDeviceIsDisabled(string code, bool expires)
+    {
+        string? reason = null;
+        _session.Expired += (_, r) => reason = r;
+        var body = $$"""{"success":false,"message":"Refused.","errors":[{"code":"{{code}}","message":"Terminal disabled."}]}""";
+        using var client = new HttpClient(new AuthDelegatingHandler(_refresher, InMemorySettings.Configured(), _session)
+        {
+            InnerHandler = new StubHandler(HttpStatusCode.Forbidden, body),
+        });
+
+        var response = await client.GetAsync("http://pos.local/api/tables");
+
+        (reason == "Terminal disabled.").Should().Be(expires);
+        (await response.Content.ReadAsStringAsync()).Should().Be(body, "the caller must still be able to read the envelope");
+    }
+
+    private sealed class StubHandler : HttpMessageHandler
+    {
+        private readonly HttpStatusCode _status;
+        private readonly string _body;
+
+        public StubHandler(HttpStatusCode status, string body)
+        {
+            _status = status;
+            _body = body;
+        }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(_status)
+            {
+                Content = new StringContent(_body, System.Text.Encoding.UTF8, "application/json"),
+            });
     }
 }

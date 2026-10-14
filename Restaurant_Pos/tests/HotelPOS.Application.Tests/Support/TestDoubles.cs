@@ -1,5 +1,5 @@
 using HotelPOS.Application.Common.Interfaces;
-using HotelPOS.Application.Common.Security;
+using HotelPOS.Contracts.Security;
 
 namespace HotelPOS.Application.Tests.Support;
 

@@ -1,4 +1,5 @@
 using System.Globalization;
+using HotelPOS.Contracts.Auth;
 using HotelPOS.Contracts.Billing;
 
 namespace HotelPOS.Desktop.Services.Api;
@@ -10,6 +11,8 @@ public interface IBillingApi
     Task<ApiResult<List<BillSummaryDto>>> GetClosedAsync(DateOnly? businessDay, string? search, CancellationToken cancellationToken = default);
 
     Task<ApiResult<BillDetailDto>> GetAsync(int id, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<ApprovalTokenResponse>> RequestApprovalTokenAsync(ApprovalTokenRequest request, CancellationToken cancellationToken = default);
 
     Task<ApiResult<BillDetailDto>> ClaimAsync(int id, bool takeOver = false, CancellationToken cancellationToken = default);
 
@@ -48,6 +51,9 @@ public sealed class BillingApi : IBillingApi
     {
         _api = api;
     }
+
+    public Task<ApiResult<ApprovalTokenResponse>> RequestApprovalTokenAsync(ApprovalTokenRequest request, CancellationToken cancellationToken = default) =>
+        _api.PostAsync<ApprovalTokenResponse>("api/auth/approval", request, cancellationToken);
 
     public Task<ApiResult<List<BillSummaryDto>>> GetPendingAsync(CancellationToken cancellationToken = default) =>
         _api.GetAsync<List<BillSummaryDto>>("api/billing/pending", cancellationToken);

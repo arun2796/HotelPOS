@@ -1,4 +1,5 @@
 using System.Globalization;
+using HotelPOS.Contracts.Auth;
 using HotelPOS.Contracts.Billing;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Desktop.Services.Api;
@@ -9,25 +10,57 @@ namespace HotelPOS.Desktop.Modules.Billing;
 public static class Approvals
 {
     // Tries without approval first: a manager approves their own actions, and many discounts need none.
-    public static async Task<ApiResult<T>> WithApprovalAsync<T>(IDialogService dialogs, string action, Func<ManagerApprovalDto?, Task<ApiResult<T>>> call)
+    // The manager's password goes only to POST /api/auth/approval; the action itself carries the 2-minute,
+    // single-use token, so a retried or logged business request never contains the password.
+    public static async Task<ApiResult<T>> WithApprovalAsync<T>(
+        IDialogService dialogs,
+        IBillingApi billingApi,
+        string actionType,
+        string action,
+        Func<ManagerApprovalDto?, Task<ApiResult<T>>> call)
     {
         var result = await call(null);
+        var message = $"A manager must approve {action}.";
         while (IsApprovalError(result))
         {
-            var message = result.HasError(ErrorCodes.ApprovalInvalid)
-                ? "That approval was not accepted. Check the manager's username and password."
-                : $"A manager must approve {action}.";
-            var approval = await dialogs.RequestApprovalAsync("Manager approval", message);
-            if (approval is null)
+            var credentials = await dialogs.RequestApprovalAsync("Manager approval", message);
+            if (credentials is null)
             {
                 return result;
             }
 
-            result = await call(approval);
+            var token = await billingApi.RequestApprovalTokenAsync(new ApprovalTokenRequest
+            {
+                ApproverUsername = credentials.ApproverUsername ?? string.Empty,
+                ApproverPassword = credentials.ApproverPassword ?? string.Empty,
+                ActionType = actionType,
+            });
+            if (!token.Success)
+            {
+                if (token.IsConnectionFailure || !IsCredentialProblem(token))
+                {
+                    return ApiResult<T>.Fail(token.ErrorCode ?? ErrorCodes.ServerError, token.Message, token.StatusCode);
+                }
+
+                message = token.HasError(ErrorCodes.AccountLocked)
+                    ? "That manager account is locked after too many wrong passwords. Ask another manager."
+                    : token.HasError(ErrorCodes.RateLimited)
+                        ? "Too many attempts. Wait a minute and try again."
+                        : "That approval was not accepted. Check the manager's username and password.";
+                continue;
+            }
+
+            result = await call(new ManagerApprovalDto { ApprovalToken = token.Data!.Token });
+            message = "That approval was not accepted for this action. Ask a manager who may approve it.";
         }
 
         return result;
     }
+
+    private static bool IsCredentialProblem<T>(ApiResult<T> result) =>
+        result.HasError(ErrorCodes.ApprovalInvalid) || result.HasError(ErrorCodes.ApprovalRequired)
+        || result.HasError(ErrorCodes.AccountLocked) || result.HasError(ErrorCodes.RateLimited)
+        || result.HasError(ErrorCodes.ValidationError);
 
     public static bool IsApprovalError<T>(ApiResult<T> result) =>
         result.HasError(ErrorCodes.ApprovalRequired) || result.HasError(ErrorCodes.ApprovalInvalid);

@@ -19,6 +19,7 @@ public sealed record DeviceDto
     public string? MachineName { get; init; }
     public string? AppVersion { get; init; }
     public int? StationId { get; init; }
+    public string? StationName { get; init; }
     public bool IsActive { get; init; }
     public bool IsOnline { get; init; }
     public DateTime? LastSeenAtUtc { get; init; }

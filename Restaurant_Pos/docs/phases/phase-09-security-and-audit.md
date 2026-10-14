@@ -125,8 +125,8 @@ device before dropping its connection.
       the Phase 10 backup endpoints). Guarded by `AuthorizationMatrixTests` + `authorization-matrix.txt`.
 - [x] Lockout and rate limiting working (fixes of 2026-10-14 in § 14).
 - [x] Device control — REST 403, new hub connects refused, open hub connections closed after `ServerNotice`.
-- [ ] Audit viewer shows a complete trail for the end-to-end scenario — the completeness test checks only
-      six actions and not "exactly once".
+- [x] Audit viewer shows a complete trail for the end-to-end scenario (`AuditCompleteness_EndToEndScenario_*`:
+      exact trail, each action once).
 - [x] Security checklist completed and recorded in this document (one item deferred to the install checklist).
 - [ ] Definition of Done satisfied (open items in § 15).
 
@@ -205,6 +205,33 @@ branch `phase-09-security-and-audit`, reviewed against this document, and these 
   and `UpdateRolePermissionsRequest` (unknown permissions are rejected, not silently dropped).
 - Audit retention runs one minute after start, then every six hours, and records `Audit.Purged`.
 
+**Third round, 2026-10-14** (desktop and tests):
+
+- **Approval tokens on the desktop.** `Approvals.WithApprovalAsync` exchanges the manager's credentials once at
+  `POST /api/auth/approval` (bound to the action type) and sends only the token with the void/refund/reopen/discount
+  call, so a retried or logged business request never carries the password. Locked and rate-limited answers get
+  their own message.
+- **Disabled terminal mid-session.** The navigator signs out on `ServerNotice` with `DEVICE_DISABLED`, and
+  `AuthDelegatingHandler` does the same on any 403 `DEVICE_DISABLED` (body buffered so callers still read it).
+- **Devices screen**: assign a kitchen station (`DeviceDto.StationName` shown); renames and presence applied from
+  `DeviceStatusChanged`, last-seen moved only on an online/offline edge. Fixed: success was judged by
+  `Data != null`, but update/activate/deactivate answer without data, so every success showed an error toast.
+  Unknown station ids are a validation error (was a 500 from the foreign key).
+- **Audit Log**: user and terminal filters (server gained `deviceName`), custom date range, local days for every
+  preset (was the UTC date), before/after side by side, and the CSV export sends the same filters as the grid (it
+  dropped user, terminal and entity id). `AuditLogQuery` is validated (page size at most 200).
+- **Users**: the sessions list shows unrevoked, unexpired tokens only (each refresh rotates the token, so revoked
+  rows were mostly rotations) in local time; password hint; complexity checked on reset and change.
+- **Navigation follows permissions** (`ModuleRegistry.ForUser`); with the default sets every role sees the same
+  modules as before (tested per role). `RolePermissionMap` moved to `HotelPOS.Contracts.Security` so the desktop
+  and its tests share the default sets.
+- **Audit completeness**: the end-to-end scenario (order, kitchen, bill, discount, finalize, payment, reprint,
+  refund with an approval token) must leave exactly its expected trail on its order, tickets and bill, each action
+  once. Kitchen ticket actions became `AuditActions` constants.
+- **Static checks** run with `dotnet test` (`StaticSecurityChecksTests`: no `*Raw` SQL APIs, `SqlQuery`/`ExecuteSql`
+  only with an interpolated literal). `dotnet list package --vulnerable` found CVE-2026-70159 (SignalR DoS) in
+  `Microsoft.AspNetCore.SignalR.Common` 8.0.31; ASP.NET Core packages raised to 8.0.32, scan clean.
+
 ## 15. Remaining work (open)
 
 Server
@@ -212,18 +239,10 @@ Server
       bind devices to a registration secret, or document as accepted v1 risk.
 - [ ] Protected core permission set for the non-Admin system roles (spec § 3); today only Admin is protected.
 - [ ] Password complexity configurable (fixed at letters + digits, minimum 8).
-
-Desktop
-- [ ] Manager approval dialog requests and sends approval tokens instead of credentials.
-- [ ] Handle `ServerNotice` / 403 `DEVICE_DISABLED` during a session (sign out with a message).
-- [ ] Devices screen: assign station; apply renames and last-seen from `DeviceStatusChanged` correctly.
-- [ ] Audit Log: user and device filters, custom date range in local time, old/new values side by side.
-- [ ] Users: sessions as a list (active only, expired shown as expired), password-policy hint.
-- [ ] Navigation driven by permissions, not roles.
-
-Tests
-- [ ] Audit completeness test: correct `From` filter, all pages, every § 8 action, "exactly once".
-- [ ] Static checks: raw-SQL concatenation grep, secret scan, `dotnet list package --vulnerable`.
+- [ ] Secrets in the repository: a real PostgreSQL password is committed in `appsettings.Development.json` and
+      `tests/Shared/TestPostgres.cs`; move it to user-secrets / `HOTELPOS_TEST_POSTGRES` and rotate it.
+- [ ] Server PCs must run ASP.NET Core runtime 8.0.32 or later (the server's SignalR comes from the shared
+      runtime, not from NuGet); add to the Phase 10 install checklist.
 
 Manual
 - [ ] Demo script (§ 11 of the template) on two machines, including a network pull during lockout/approval.

@@ -544,7 +544,7 @@ public sealed partial class BillDetailViewModel : ObservableObject, INavigationA
         }
 
         var bill = Bill;
-        var result = await Approvals.WithApprovalAsync(_dialogs, "reopening an invoiced bill",
+        var result = await Approvals.WithApprovalAsync(_dialogs, _billingApi, ApprovalActions.Reopen, "reopening an invoiced bill",
             approval => _billingApi.ReopenAsync(bill.Id, new ReopenBillRequest { Reason = reason, Approval = approval, RowVersion = bill.RowVersion }));
         if (result.Success)
         {
@@ -571,7 +571,7 @@ public sealed partial class BillDetailViewModel : ObservableObject, INavigationA
         }
 
         var bill = Bill;
-        var result = await Approvals.WithApprovalAsync(_dialogs, "voiding a bill",
+        var result = await Approvals.WithApprovalAsync(_dialogs, _billingApi, ApprovalActions.Void, "voiding a bill",
             approval => _billingApi.VoidAsync(bill.Id, new VoidBillRequest { Reason = reason, Approval = approval, RowVersion = bill.RowVersion }));
         if (result.Success)
         {
@@ -612,7 +612,7 @@ public sealed partial class BillDetailViewModel : ObservableObject, INavigationA
         PanelError = null;
         try
         {
-            var result = await Approvals.WithApprovalAsync(_dialogs, "this discount", call);
+            var result = await Approvals.WithApprovalAsync(_dialogs, _billingApi, ApprovalActions.Discount, "this discount", call);
             if (result.Success && result.Data is not null)
             {
                 Bill = result.Data;

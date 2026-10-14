@@ -93,6 +93,12 @@ public sealed class AuditQueryService : IAuditQueryService
             queryable = queryable.Where(a => a.DeviceId == filter.DeviceId.Value);
         }
 
+        if (!string.IsNullOrWhiteSpace(filter.DeviceName))
+        {
+            var devicePattern = filter.DeviceName.Trim().ToUpperInvariant();
+            queryable = queryable.Where(a => a.DeviceName != null && a.DeviceName.ToUpper().Contains(devicePattern));
+        }
+
         if (!string.IsNullOrWhiteSpace(filter.Action))
         {
             queryable = queryable.Where(a => a.Action == filter.Action.Trim());

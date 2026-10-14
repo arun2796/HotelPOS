@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -14,6 +15,7 @@ using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Floor;
 using HotelPOS.Contracts.Menu;
 using HotelPOS.Contracts.Orders;
+using HotelPOS.Contracts.Print;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Contracts.Security;
 using HotelPOS.Contracts.Users;
@@ -468,78 +470,105 @@ public class SecurityApiTests : IClassFixture<ApiFactory>
         csvString.Should().Contain("Id,TimestampUtc,UserId,UserName,DeviceId,DeviceName,MachineName,IpAddress,Action,EntityType,EntityId,OldValues,NewValues,CorrelationId");
     }
 
+    // Phase 9 § 10: the end-to-end scenario (order -> kitchen -> bill -> discount -> payment -> reprint -> refund) leaves
+    // exactly the expected trail on its own order, tickets and bill: every expected action once, nothing missing.
     [Fact]
-    public async Task AuditCompleteness_EndToEndScenario_GeneratesExpectedAuditTrail()
+    public async Task AuditCompleteness_EndToEndScenario_LeavesTheExpectedTrailExactlyOnce()
     {
         var admin = await _factory.CreateAuthenticatedClientAsync("admin", ApiFactory.AdminPassword);
+        var cashier = await _factory.CreateAuthenticatedClientAsync("cashier1", ApiFactory.DemoPassword);
+        var startUtc = DateTime.UtcNow.AddSeconds(-5);
 
-        // Record timestamp before workflow
-        var startTime = DateTime.UtcNow.AddSeconds(-5);
-
-        // 1. Occupy table / Order created & served
         var order = await ServedOrderAsync("T07", "Chicken Biryani");
-
-        // 2. Request bill
         var bill = await RequestBillAsync(order.Id);
 
-        // 3. Finalize bill
-        var cashier = await _factory.CreateAuthenticatedClientAsync("cashier1", ApiFactory.DemoPassword);
-        var finalizeRes = await cashier.PostAsJsonAsync($"/api/billing/{bill.Id}/finalize", new BillActionRequest
+        var discounted = await SendAsync<BillDetailDto>(cashier, HttpMethod.Put, $"/api/billing/{bill.Id}/discount", new ApplyDiscountRequest
         {
+            Type = DiscountType.Percentage,
+            Value = 5,
+            Reason = "Regular guest",
             RowVersion = bill.RowVersion,
-        }, PosJson.Options);
-        finalizeRes.StatusCode.Should().Be(HttpStatusCode.OK);
-        var finalizedBill = (await finalizeRes.ReadEnvelopeAsync<BillDetailDto>()).Data!;
-
-        // 4. Pay bill
-        var payReq = new HttpRequestMessage(HttpMethod.Post, $"/api/billing/{bill.Id}/payments")
+        });
+        var finalized = await SendAsync<BillDetailDto>(cashier, HttpMethod.Post, $"/api/billing/{bill.Id}/finalize",
+            new BillActionRequest { RowVersion = discounted.RowVersion });
+        var paid = await SendAsync<BillDetailDto>(cashier, HttpMethod.Post, $"/api/billing/{bill.Id}/payments", new AddPaymentRequest
         {
-            Content = JsonContent.Create(new AddPaymentRequest
-            {
-                PaymentMethodId = 1,
-                Amount = finalizedBill.GrandTotal,
-                RowVersion = finalizedBill.RowVersion,
-            }, options: PosJson.Options),
-        };
-        payReq.Headers.Add(PosHeaders.IdempotencyKey, Guid.NewGuid().ToString());
-        var payRes = await cashier.SendAsync(payReq);
-        payRes.StatusCode.Should().Be(HttpStatusCode.OK);
-        var paidBill = (await payRes.ReadEnvelopeAsync<BillDetailDto>()).Data!;
-
-        // 5. Refund bill (requires manager credentials)
-        var refundReq = new HttpRequestMessage(HttpMethod.Post, $"/api/billing/{bill.Id}/refunds")
+            PaymentMethodId = 1,
+            Amount = finalized.GrandTotal,
+            RowVersion = finalized.RowVersion,
+        }, idempotent: true);
+        await SendAsync<object>(cashier, HttpMethod.Post, "/api/print/reprints", new ReprintRequest
         {
-            Content = JsonContent.Create(new RefundRequest
+            DocumentType = PrintDocumentType.Invoice,
+            EntityId = bill.Id,
+            Reason = "Guest asked for a copy",
+        });
+
+        using var anonymous = _factory.CreateClient();
+        var token = await SendAsync<ApprovalTokenResponse>(anonymous, HttpMethod.Post, "/api/auth/approval", new ApprovalTokenRequest
+        {
+            ApproverUsername = "manager1",
+            ApproverPassword = ApiFactory.DemoPassword,
+            ActionType = ApprovalActions.Refund,
+        });
+        await SendAsync<BillDetailDto>(cashier, HttpMethod.Post, $"/api/billing/{bill.Id}/refunds", new RefundRequest
+        {
+            PaymentId = paid.Payments.First().Id,
+            Amount = paid.GrandTotal,
+            Reason = "Customer complaint",
+            Approval = new ManagerApprovalDto { ApprovalToken = token.Token },
+            RowVersion = paid.RowVersion,
+        }, idempotent: true);
+
+        var trail = new List<AuditLogDto>();
+        for (var page = 1; ; page++)
+        {
+            var result = (await (await admin.GetAsync($"/api/admin/audit-logs?page={page}&pageSize=200&from={Uri.EscapeDataString(startUtc.ToString("O"))}"))
+                .ReadEnvelopeAsync<PagedResult<AuditLogDto>>()).Data!;
+            trail.AddRange(result.Items);
+            if (page >= result.TotalPages)
             {
-                PaymentId = paidBill.Payments.First().Id,
-                Amount = paidBill.GrandTotal,
-                Reason = "Customer Complaint",
-                Approval = new ManagerApprovalDto
-                {
-                    ApproverUsername = "manager1",
-                    ApproverPassword = ApiFactory.DemoPassword,
-                },
-                RowVersion = paidBill.RowVersion,
-            }, options: PosJson.Options),
-        };
-        refundReq.Headers.Add(PosHeaders.IdempotencyKey, Guid.NewGuid().ToString());
-        var refundRes = await cashier.SendAsync(refundReq);
-        refundRes.StatusCode.Should().Be(HttpStatusCode.OK);
+                break;
+            }
+        }
 
-        // Query audit logs generated during this run
-        var auditRes = await admin.GetAsync($"/api/admin/audit-logs?pageSize=100&fromUtc={startTime:O}");
-        auditRes.StatusCode.Should().Be(HttpStatusCode.OK);
-        var auditEntries = (await auditRes.ReadEnvelopeAsync<PagedResult<AuditLogDto>>()).Data!.Items;
+        var ticketIds = order.Tickets.Select(t => t.Id.ToString(CultureInfo.InvariantCulture)).ToHashSet();
+        var actions = trail
+            .Where(a => (a.EntityType == "Order" && a.EntityId == order.Id.ToString(CultureInfo.InvariantCulture))
+                || (a.EntityType == "KitchenTicket" && ticketIds.Contains(a.EntityId!))
+                || (a.EntityType == "Bill" && a.EntityId == bill.Id.ToString(CultureInfo.InvariantCulture)))
+            .Select(a => a.Action)
+            .ToList();
+        var perTicket = new[] { AuditActions.KitchenTicketStarted, AuditActions.KitchenTicketReady };
 
-        var actions = auditEntries.Select(a => a.Action).ToList();
+        actions.Should().BeEquivalentTo(
+            new[]
+            {
+                AuditActions.OrderSubmitted,
+                AuditActions.OrderServed,
+                AuditActions.BillRequested,
+                AuditActions.BillDiscountApplied,
+                AuditActions.BillFinalized,
+                AuditActions.PaymentReceived,
+                AuditActions.BillSettled,
+                AuditActions.PrintReprint,
+                AuditActions.PaymentRefunded,
+            }.Concat(order.Tickets.SelectMany(_ => perTicket)),
+            "each step of the scenario must be audited exactly once on its own entity");
+        trail.Should().ContainSingle(a => a.Action == AuditActions.ApprovalTokenIssued && a.NewValues!.Contains("refund"));
+    }
 
-        // Verify key business events exist in the audit log
-        actions.Should().Contain(AuditActions.OrderSubmitted);
-        actions.Should().Contain(AuditActions.OrderServed);
-        actions.Should().Contain(AuditActions.BillRequested);
-        actions.Should().Contain(AuditActions.BillFinalized);
-        actions.Should().Contain(AuditActions.PaymentReceived);
-        actions.Should().Contain(AuditActions.PaymentRefunded);
+    private static async Task<T> SendAsync<T>(HttpClient client, HttpMethod method, string url, object body, bool idempotent = false)
+    {
+        var request = new HttpRequestMessage(method, url) { Content = JsonContent.Create(body, options: PosJson.Options) };
+        if (idempotent)
+        {
+            request.Headers.Add(PosHeaders.IdempotencyKey, Guid.NewGuid().ToString());
+        }
+
+        var envelope = await (await client.SendAsync(request)).ReadEnvelopeAsync<T>();
+        envelope.Success.Should().BeTrue($"{method} {url}: {envelope.Message}");
+        return envelope.Data!;
     }
 
     // Helper methods

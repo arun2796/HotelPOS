@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text.Json;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Desktop.Services.Auth;
 using HotelPOS.Desktop.Services.Configuration;
@@ -13,11 +15,13 @@ public sealed class AuthDelegatingHandler : DelegatingHandler
 
     private readonly ITokenRefresher _refresher;
     private readonly IClientSettingsService _settings;
+    private readonly IAuthSession _session;
 
-    public AuthDelegatingHandler(ITokenRefresher refresher, IClientSettingsService settings)
+    public AuthDelegatingHandler(ITokenRefresher refresher, IClientSettingsService settings, IAuthSession session)
     {
         _refresher = refresher;
         _settings = settings;
+        _session = session;
     }
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -38,6 +42,7 @@ public sealed class AuthDelegatingHandler : DelegatingHandler
         var response = await base.SendAsync(request, cancellationToken);
         if (response.StatusCode != HttpStatusCode.Unauthorized || token is null)
         {
+            await EndSessionIfDeviceDisabledAsync(response, cancellationToken);
             return response;
         }
 
@@ -50,7 +55,36 @@ public sealed class AuthDelegatingHandler : DelegatingHandler
         response.Dispose();
         using var retry = Clone(request);
         retry.Headers.Authorization = new AuthenticationHeaderValue("Bearer", refreshed);
-        return await base.SendAsync(retry, cancellationToken);
+        var retried = await base.SendAsync(retry, cancellationToken);
+        await EndSessionIfDeviceDisabledAsync(retried, cancellationToken);
+        return retried;
+    }
+
+    // An administrator disabled this terminal while it was in use: every further call would be refused, so sign out
+    // with the reason instead of leaving the user on a screen where nothing works.
+    private async Task EndSessionIfDeviceDisabledAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        if (response.StatusCode != HttpStatusCode.Forbidden
+            || response.Content.Headers.ContentType?.MediaType?.Contains("json", StringComparison.OrdinalIgnoreCase) != true)
+        {
+            return;
+        }
+
+        // Buffered so ApiClient can still read the body afterwards.
+        await response.Content.LoadIntoBufferAsync();
+        try
+        {
+            var envelope = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(PosJson.Options, cancellationToken);
+            var error = envelope?.Errors.FirstOrDefault(e => e.Code == ErrorCodes.DeviceDisabled);
+            if (error is not null)
+            {
+                _session.Expire(error.Message);
+            }
+        }
+        catch (JsonException)
+        {
+            // Not an API envelope: ApiClient reports it.
+        }
     }
 
     private void AddClientHeaders(HttpRequestMessage request)

@@ -1,3 +1,4 @@
+using HotelPOS.Contracts.Auth;
 using HotelPOS.Contracts.Billing;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Enums;
@@ -206,7 +207,12 @@ public sealed class BillingViewModelTests
         _api.GetDiscountsAsync(false, Arg.Any<CancellationToken>()).Returns(ApiResult<List<DiscountDto>>.Ok(new List<DiscountDto>()));
         _api.SetDiscountAsync(9, Arg.Is<ApplyDiscountRequest>(r => r.Approval == null), Arg.Any<CancellationToken>())
             .Returns(ApiResult<BillDetailDto>.Fail(ErrorCodes.ApprovalRequired, "A manager must approve this discount."));
-        _api.SetDiscountAsync(9, Arg.Is<ApplyDiscountRequest>(r => r.Approval != null && r.Approval.ApproverUsername == "manager1"), Arg.Any<CancellationToken>())
+        _api.RequestApprovalTokenAsync(
+                Arg.Is<ApprovalTokenRequest>(r => r.ApproverUsername == "manager1" && r.ApproverPassword == "pw" && r.ActionType == ApprovalActions.Discount),
+                Arg.Any<CancellationToken>())
+            .Returns(ApiResult<ApprovalTokenResponse>.Ok(new ApprovalTokenResponse { Token = "tok-1" }));
+        // Only the single-use token travels with the discount; the manager's password never does.
+        _api.SetDiscountAsync(9, Arg.Is<ApplyDiscountRequest>(r => r.Approval != null && r.Approval.ApprovalToken == "tok-1" && r.Approval.ApproverPassword == null), Arg.Any<CancellationToken>())
             .Returns(ApiResult<BillDetailDto>.Ok(bill with { DiscountAmount = 90m, GrandTotal = 536m }));
         var vm = DetailViewModel(dialogs: dialogs);
         await vm.OnNavigatedToAsync(9);

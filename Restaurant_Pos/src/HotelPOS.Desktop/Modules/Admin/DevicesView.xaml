@@ -90,7 +90,7 @@
 
           <DataGridTextColumn Header="NAME" Binding="{Binding Name}" Width="1.5*" MinWidth="130" />
           <DataGridTextColumn Header="TYPE" Binding="{Binding Type}" Width="1*" MinWidth="90" />
-          <DataGridTextColumn Header="STATION" Binding="{Binding StationId}" Width="1.2*" MinWidth="100" />
+          <DataGridTextColumn Header="STATION" Binding="{Binding StationName, TargetNullValue='—'}" Width="1.2*" MinWidth="100" />
           <DataGridTextColumn Header="MACHINE" Binding="{Binding MachineName}" Width="1.2*" MinWidth="100" />
           <DataGridTextColumn Header="VERSION" Binding="{Binding AppVersion}" Width="0.8*" MinWidth="70" />
           <DataGridTextColumn Header="STATUS" Binding="{Binding IsActive, Converter={StaticResource ActiveText}}" Width="0.8*" MinWidth="75" />
@@ -107,6 +107,10 @@
       <StackPanel Orientation="Horizontal">
         <Button Content="Rename terminal" Command="{Binding RenameCommand}" MinWidth="130" />
         <Button Content="{Binding ToggleActiveText}" Command="{Binding ToggleActiveCommand}" Margin="8,0,0,0" MinWidth="120" />
+        <TextBlock Text="Kitchen station" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="24,0,8,0" />
+        <ComboBox ItemsSource="{Binding Stations}" SelectedItem="{Binding SelectedStation}" DisplayMemberPath="Name"
+                  MinWidth="220" IsEnabled="{Binding HasSelection}" />
+        <Button Content="Assign station" Command="{Binding AssignStationCommand}" Margin="8,0,0,0" MinWidth="130" />
       </StackPanel>
     </Grid>
   </Grid>

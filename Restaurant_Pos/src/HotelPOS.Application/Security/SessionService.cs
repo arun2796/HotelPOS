@@ -35,9 +35,11 @@ public sealed class SessionService : ISessionService
             return AppErrors.NotFound("User", userId);
         }
 
+        // Each refresh rotates the token, so revoked rows are mostly rotations rather than sessions: a session in use is
+        // an unrevoked, unexpired token.
         var now = _clock.UtcNow;
         var tokens = await _db.RefreshTokens
-            .Where(t => t.UserId == userId)
+            .Where(t => t.UserId == userId && t.RevokedAt == null && t.ExpiresAt > now)
             .OrderByDescending(t => t.CreatedAt)
             .Take(50)
             .ToListAsync(cancellationToken);

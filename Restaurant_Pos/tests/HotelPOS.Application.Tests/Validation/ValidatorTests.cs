@@ -1,4 +1,3 @@
-using HotelPOS.Application.Common.Security;
 using HotelPOS.Application.Validation;
 using HotelPOS.Contracts.Auth;
 using HotelPOS.Contracts.Devices;

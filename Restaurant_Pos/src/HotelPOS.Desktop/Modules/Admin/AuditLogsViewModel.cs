@@ -41,7 +41,28 @@ public sealed partial class AuditLogsViewModel : ObservableObject, INavigationAw
     private string _entityTypeFilter = string.Empty;
 
     [ObservableProperty]
-    private string _dateRange = "Today";
+    private string _userFilter = string.Empty;
+
+    [ObservableProperty]
+    private string _deviceFilter = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsCustomRange))]
+    private string _dateRange = TodayRange;
+
+    // Local calendar days, inclusive; used when DateRange is "Custom".
+    [ObservableProperty]
+    private DateTime? _customFrom = DateTime.Today.AddDays(-30);
+
+    [ObservableProperty]
+    private DateTime? _customTo = DateTime.Today;
+
+    public const string TodayRange = "Today";
+    public const string LastSevenDaysRange = "Last 7 Days";
+    public const string CustomRange = "Custom";
+    public const string AllTimeRange = "All Time";
+
+    public bool IsCustomRange => DateRange == CustomRange;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PageText))]
@@ -81,31 +102,39 @@ public sealed partial class AuditLogsViewModel : ObservableObject, INavigationAw
         _ = LoadAsync();
     }
 
-    private (DateTime? FromUtc, DateTime? ToUtc) GetDateFilter()
+    // Days are the venue's local days: a UTC "today" would start at 05:30 in India.
+    internal (DateTime? FromUtc, DateTime? ToUtc) GetDateFilter()
     {
-        var now = DateTime.UtcNow;
-        return DateRange switch
+        var today = DateTime.Today;
+        var (fromLocal, toLocalExclusive) = DateRange switch
         {
-            "Today" => (DateTime.UtcNow.Date, DateTime.UtcNow.Date.AddDays(1).AddTicks(-1)),
-            "Last 7 Days" => (now.AddDays(-7), now),
-            _ => (null, null),
+            TodayRange => (today, today.AddDays(1)),
+            LastSevenDaysRange => (today.AddDays(-6), today.AddDays(1)),
+            CustomRange => (CustomFrom?.Date, CustomTo?.Date.AddDays(1)),
+            _ => ((DateTime?)null, (DateTime?)null),
         };
+
+        return (fromLocal?.ToUniversalTime(), toLocalExclusive?.ToUniversalTime().AddTicks(-1));
     }
 
-    private AuditLogQuery BuildQuery()
+    internal AuditLogQuery BuildQuery()
     {
         var (fromUtc, toUtc) = GetDateFilter();
         return new AuditLogQuery
         {
             Page = Page,
             PageSize = PageSize,
-            Action = string.IsNullOrWhiteSpace(ActionFilter) ? null : ActionFilter.Trim(),
-            EntityType = string.IsNullOrWhiteSpace(EntityTypeFilter) ? null : EntityTypeFilter.Trim(),
-            Search = string.IsNullOrWhiteSpace(Search) ? null : Search.Trim(),
+            UserName = Trimmed(UserFilter),
+            DeviceName = Trimmed(DeviceFilter),
+            Action = Trimmed(ActionFilter),
+            EntityType = Trimmed(EntityTypeFilter),
+            Search = Trimmed(Search),
             From = fromUtc,
             To = toUtc,
         };
     }
+
+    private static string? Trimmed(string value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private async Task LoadAsync()
     {
@@ -196,7 +225,7 @@ public sealed partial class AuditLogsViewModel : ObservableObject, INavigationAw
             using var doc = JsonDocument.Parse(json);
             return JsonSerializer.Serialize(doc.RootElement, new JsonSerializerOptions { WriteIndented = true });
         }
-        catch
+        catch (JsonException)
         {
             return json;
         }

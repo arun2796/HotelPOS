@@ -86,19 +86,19 @@ public sealed class KitchenService : IKitchenService
     }
 
     public Task<Result<KitchenTicketDto>> AcceptAsync(int id, CancellationToken cancellationToken = default) =>
-        ChangeAsync(id, "KitchenTicket.Accepted", (t, user, now) => t.Accept(user, now), cancellationToken);
+        ChangeAsync(id, AuditActions.KitchenTicketAccepted, (t, user, now) => t.Accept(user, now), cancellationToken);
 
     public Task<Result<KitchenTicketDto>> StartAsync(int id, CancellationToken cancellationToken = default) =>
-        ChangeAsync(id, "KitchenTicket.Started", (t, user, now) => t.Start(user, now), cancellationToken);
+        ChangeAsync(id, AuditActions.KitchenTicketStarted, (t, user, now) => t.Start(user, now), cancellationToken);
 
     public Task<Result<KitchenTicketDto>> ReadyAsync(int id, CancellationToken cancellationToken = default) =>
-        ChangeAsync(id, "KitchenTicket.Ready", (t, _, now) => t.MarkReady(now), cancellationToken);
+        ChangeAsync(id, AuditActions.KitchenTicketReady, (t, _, now) => t.MarkReady(now), cancellationToken);
 
     public Task<Result<KitchenTicketDto>> CompleteAsync(int id, CancellationToken cancellationToken = default) =>
-        ChangeAsync(id, "KitchenTicket.Completed", (t, user, now) => t.Complete(user, now), cancellationToken);
+        ChangeAsync(id, AuditActions.KitchenTicketCompleted, (t, user, now) => t.Complete(user, now), cancellationToken);
 
     public Task<Result<KitchenTicketDto>> RecallAsync(int id, CancellationToken cancellationToken = default) =>
-        ChangeAsync(id, "KitchenTicket.Recalled", (t, _, _) => t.Recall(), cancellationToken);
+        ChangeAsync(id, AuditActions.KitchenTicketRecalled, (t, _, _) => t.Recall(), cancellationToken);
 
     private async Task<Result<KitchenTicketDto>> ChangeAsync(
         int id,

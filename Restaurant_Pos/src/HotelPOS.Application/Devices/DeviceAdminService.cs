@@ -47,8 +47,9 @@ public sealed class DeviceAdminService : IDeviceAdminService
             .ToListAsync(cancellationToken);
 
         var onlineIds = _onlineTracker.OnlineDeviceIds();
+        var stations = await StationNamesAsync(cancellationToken);
 
-        var dtos = devices.Select(d => ToDto(d, onlineIds.Contains(d.Id))).ToList();
+        var dtos = devices.Select(d => ToDto(d, onlineIds.Contains(d.Id), stations)).ToList();
         return dtos;
     }
 
@@ -63,7 +64,7 @@ public sealed class DeviceAdminService : IDeviceAdminService
         }
 
         var isOnline = _onlineTracker.IsDeviceOnline(id);
-        return ToDto(device, isOnline);
+        return ToDto(device, isOnline, await StationNamesAsync(cancellationToken));
     }
 
     public async Task<Result> UpdateDeviceAsync(Guid id, UpdateDeviceRequest request, CancellationToken cancellationToken = default)
@@ -78,6 +79,12 @@ public sealed class DeviceAdminService : IDeviceAdminService
         if (await _db.Devices.AnyAsync(d => d.Name == normalized && d.Id != id, cancellationToken))
         {
             return AppErrors.Duplicate($"Another device is already named '{request.Name.Trim()}'.");
+        }
+
+        if (request.StationId is { } stationId
+            && !await _db.PreparationStations.AnyAsync(s => s.Id == stationId && s.IsActive, cancellationToken))
+        {
+            return AppErrors.Validation("stationId", $"Preparation station {stationId} does not exist or is inactive.");
         }
 
         var oldName = device.Name;
@@ -204,7 +211,10 @@ public sealed class DeviceAdminService : IDeviceAdminService
         return Result.Success();
     }
 
-    private static DeviceDto ToDto(Device device, bool isOnline) => new()
+    private Task<Dictionary<int, string>> StationNamesAsync(CancellationToken cancellationToken) =>
+        _db.PreparationStations.AsNoTracking().ToDictionaryAsync(s => s.Id, s => s.Name, cancellationToken);
+
+    private static DeviceDto ToDto(Device device, bool isOnline, IReadOnlyDictionary<int, string> stations) => new()
     {
         Id = device.Id,
         Name = device.Name,
@@ -212,6 +222,7 @@ public sealed class DeviceAdminService : IDeviceAdminService
         MachineName = device.MachineName,
         AppVersion = device.AppVersion,
         StationId = device.StationId,
+        StationName = device.StationId is { } stationId && stations.TryGetValue(stationId, out var name) ? name : null,
         IsActive = device.IsActive,
         IsOnline = isOnline,
         LastSeenAtUtc = device.LastSeenAt,

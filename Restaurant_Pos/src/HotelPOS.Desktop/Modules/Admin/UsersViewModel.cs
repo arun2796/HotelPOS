@@ -64,6 +64,9 @@ public sealed partial class UsersViewModel : ObservableObject, INavigationAware,
 
     public bool CanUnlock => SelectedUser?.IsLockedOut == true;
 
+    public static string PasswordHint { get; } =
+        $"Passwords need at least {PasswordPolicy.MinLength} characters, with both letters and digits.";
+
     public string ToggleActiveText => SelectedUser?.IsActive == false ? "Activate" : "Deactivate";
 
     public string PageText => $"Page {Page} of {Math.Max(1, TotalPages)} · {TotalCount} user(s)";
@@ -235,9 +238,9 @@ public sealed partial class UsersViewModel : ObservableObject, INavigationAware,
             return;
         }
 
-        if (password.Length < PasswordPolicy.MinLength)
+        if (!PasswordPolicy.MeetsComplexity(password))
         {
-            _notifications.Warning($"The password must have at least {PasswordPolicy.MinLength} characters.");
+            _notifications.Warning(PasswordHint);
             return;
         }
 
@@ -343,7 +346,10 @@ public sealed partial class UsersViewModel : ObservableObject, INavigationAware,
             }
 
             var text = string.Join("\n\n", result.Data.Select(s =>
-                $"• Terminal: {s.DeviceName ?? "Unknown"} (IP: {s.IpAddress ?? "Unknown"})\n  Created: {s.CreatedAtUtc:yyyy-MM-dd HH:mm} UTC\n  Expires: {s.ExpiresAtUtc:yyyy-MM-dd HH:mm} UTC\n  Status: {(s.IsRevoked ? "Revoked" : "Active")}"));
+                $"• Terminal: {s.DeviceName ?? "(no terminal)"} (IP: {s.IpAddress ?? "unknown"})\n"
+                + $"  Signed in or renewed: {s.CreatedAtUtc.ToLocalTime():dd MMM HH:mm}\n"
+                + $"  Expires: {s.ExpiresAtUtc.ToLocalTime():dd MMM HH:mm}"));
+            text += "\n\nLOG OUT EVERYWHERE ends all of them.";
             await _dialogs.AlertAsync($"Active sessions for {user.DisplayName}", text);
         }
         else

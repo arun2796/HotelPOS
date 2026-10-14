@@ -218,8 +218,9 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
     {
         NavItems.Clear();
         var roles = _session.User?.Roles ?? Array.Empty<string>();
+        var permissions = _session.User?.Permissions ?? Array.Empty<string>();
         string? group = null;
-        foreach (var module in ModuleRegistry.ForRoles(roles.ToList()))
+        foreach (var module in ModuleRegistry.ForUser(roles.ToList(), permissions.ToList()))
         {
             NavItems.Add(new NavItemViewModel(module, showGroupHeader: module.Group != group));
             group = module.Group;

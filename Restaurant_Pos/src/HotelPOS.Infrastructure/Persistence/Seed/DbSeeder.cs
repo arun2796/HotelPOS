@@ -1,5 +1,4 @@
 using HotelPOS.Application.Common.Interfaces;
-using HotelPOS.Application.Common.Security;
 using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Security;

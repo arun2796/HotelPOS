@@ -25,6 +25,7 @@ public sealed record AuditLogQuery : PagedQuery
     public int? UserId { get; init; }
     public string? UserName { get; init; }
     public Guid? DeviceId { get; init; }
+    public string? DeviceName { get; init; }
     public string? Action { get; init; }
     public string? EntityType { get; init; }
     public string? EntityId { get; init; }

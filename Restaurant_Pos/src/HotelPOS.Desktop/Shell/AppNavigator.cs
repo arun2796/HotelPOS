@@ -1,3 +1,5 @@
+using HotelPOS.Contracts.Common;
+using HotelPOS.Contracts.Realtime;
 using HotelPOS.Desktop.Modules.Auth;
 using HotelPOS.Desktop.Modules.Config;
 using HotelPOS.Desktop.Services.Api;
@@ -37,6 +39,16 @@ public sealed class AppNavigator : IAppNavigator
 
         // The server refused to renew the session (user disabled, password reset, token revoked...).
         _session.Expired += (_, reason) => dispatcher.Post(() => _ = LogoutAsync(reason));
+
+        // Sent just before the server closes this terminal's connection; without it an idle screen would only find
+        // out on its next REST call.
+        _realtime.Subscribe<ServerNoticeEvent>(HubEvents.ServerNotice, notice =>
+        {
+            if (notice.Code == ErrorCodes.DeviceDisabled)
+            {
+                _session.Expire(notice.Message);
+            }
+        });
     }
 
     public Task ShowConfigurationAsync(bool isFirstRun) =>

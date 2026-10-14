@@ -1,5 +1,6 @@
 using HotelPOS.Contracts.Auth;
 using HotelPOS.Contracts.Enums;
+using HotelPOS.Contracts.Security;
 using HotelPOS.Desktop.Services.Configuration;
 using HotelPOS.Desktop.Services.Realtime;
 using HotelPOS.Desktop.Services.Ui;
@@ -130,6 +131,7 @@ public static class TestData
             Username = username,
             DisplayName = "Arun",
             Roles = roles.Length == 0 ? new[] { "Waiter" } : roles,
+            Permissions = RolePermissionMap.For(roles.Length == 0 ? new[] { "Waiter" } : roles),
             MustChangePassword = mustChange,
         },
     };

@@ -162,13 +162,17 @@ Data grids with search, add/edit side panel, activate/deactivate instead of dele
 | Dashboard (8) | Manager: six KPI tiles, top items, 7-day net-sales strip; waiter: own orders, sales, tables today. 60 s timer plus 5 s debounce on sale/order/ticket events |
 | Reports (8) | Report list, date presets + custom range, grid with totals row, **EXPORT CSV** (same columns as the grid) |
 | Roles & Permissions (9) | Roles × permissions matrix; Admin row read-only; save with optional "force re-login" |
-| Devices (9) | Name, type, station, machine, version, last seen, online badge; rename, activate/deactivate |
-| Audit Log (9) | Filters (action, entity, search, date presets), paged grid, old/new values, export CSV |
-| Users (9 additions) | Lockout state with **UNLOCK**, sessions, **LOG OUT EVERYWHERE** |
+| Devices (9) | Name, type, station, machine, version, last seen, online badge; rename, assign kitchen station, activate/deactivate |
+| Audit Log (9) | Filters (search, user, terminal, action, today / 7 days / custom local dates / all), paged grid, before/after side by side, export CSV with the same filters |
+| Users (9 additions) | Lockout state with **UNLOCK**, active sessions, **LOG OUT EVERYWHERE**, password hint |
 
-Login shows distinct messages for a locked account, a disabled device and too many attempts (429). Phase 9
-items still open on the desktop (approval tokens, station assignment, side-by-side diff, permission-driven
-navigation) are listed in `phases/phase-09-security-and-audit.md` § 15.
+Since Phase 9:
+- The sidebar follows the user's **permissions** (`ModuleRegistry.ForUser`); with the default sets it matches the
+  role table above.
+- Manager approval: the dialog's credentials are exchanged once for a 2-minute approval token
+  (`POST /api/auth/approval`); only the token travels with the void/refund/reopen/discount request.
+- Login shows distinct messages for a locked account, a disabled device and too many attempts (429). A terminal
+  disabled while in use signs out with the reason, on the hub's `ServerNotice` or on any 403 `DEVICE_DISABLED`.
 
 ## 9. UX guidelines
 

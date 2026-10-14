@@ -133,6 +133,9 @@ prefer the table for the admin list and audit (`Backup.Completed/Failed`). Migra
   documented option.
 - Installer development is often underestimated; start the Inno scripts early in this phase and test
   on a clean VM every time.
+- (From Phase 9) The server's SignalR comes from the shared ASP.NET Core runtime, which NuGet scans do not see.
+  The installer's prerequisite check must require runtime 8.0.32 or later (CVE-2026-70159), or the server must be
+  published self-contained with 8.0.32+; the client packages are already pinned at 8.0.32.
 
 ## 14. Changes during implementation
 

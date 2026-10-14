@@ -84,9 +84,9 @@ public sealed partial class ChangePasswordViewModel : ObservableObject, INavigat
             return "Enter your current password.";
         }
 
-        if (next.Length < PasswordPolicy.MinLength)
+        if (!PasswordPolicy.MeetsComplexity(next))
         {
-            return $"The new password must have at least {PasswordPolicy.MinLength} characters.";
+            return $"The new password needs at least {PasswordPolicy.MinLength} characters, with both letters and digits.";
         }
 
         if (next != confirm)

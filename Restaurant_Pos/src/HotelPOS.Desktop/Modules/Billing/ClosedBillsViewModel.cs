@@ -175,7 +175,7 @@ public sealed partial class ClosedBillsViewModel : ObservableObject, INavigation
         }
 
         // Each attempt carries a different approval, so each gets its own key.
-        var result = await Approvals.WithApprovalAsync(_dialogs, "a refund", approval => _billingApi.RefundAsync(detail.Id, new RefundRequest
+        var result = await Approvals.WithApprovalAsync(_dialogs, _billingApi, ApprovalActions.Refund, "a refund", approval => _billingApi.RefundAsync(detail.Id, new RefundRequest
         {
             PaymentId = row.Payment.Id,
             Amount = amount,

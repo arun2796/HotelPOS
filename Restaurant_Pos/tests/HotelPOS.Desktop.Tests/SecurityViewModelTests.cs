@@ -2,6 +2,7 @@ using FluentAssertions;
 using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Devices;
+using HotelPOS.Contracts.Menu;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Contracts.Security;
 using HotelPOS.Contracts.Users;
@@ -109,13 +110,21 @@ public sealed class SecurityViewModelTests
         devicesApi.ListAsync(Arg.Any<CancellationToken>())
             .Returns(ApiResult<List<DeviceDto>>.Ok(new List<DeviceDto> { device }));
 
+        // The server answers (de)activate and update without data; that is still a success.
         devicesApi.DeactivateAsync(deviceId, Arg.Any<CancellationToken>())
-            .Returns(ApiResult<DeviceDto>.Ok(device with { IsActive = false, DeactivatedAtUtc = DateTime.UtcNow }));
+            .Returns(ApiResult<DeviceDto>.Ok(null));
+        devicesApi.UpdateAsync(deviceId, Arg.Any<UpdateDeviceRequest>(), Arg.Any<CancellationToken>())
+            .Returns(ApiResult<DeviceDto>.Ok(null));
 
         dialogs.ConfirmAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>())
             .Returns(true);
 
-        var vm = new DevicesViewModel(devicesApi, dialogs, notifications, realtime, dispatcher);
+        var menuApi = Substitute.For<IMenuApi>();
+        menuApi.GetStationsAsync(false, Arg.Any<CancellationToken>()).Returns(ApiResult<List<StationDto>>.Ok(new List<StationDto>
+        {
+            new() { Id = 2, Name = "Bar", SortOrder = 2, IsActive = true },
+        }));
+        var vm = new DevicesViewModel(devicesApi, menuApi, dialogs, notifications, realtime, dispatcher);
         await vm.OnNavigatedToAsync(null);
 
         vm.Devices.Should().HaveCount(1);
@@ -132,6 +141,21 @@ public sealed class SecurityViewModelTests
         realtimeHandler!(onlineEvt);
 
         vm.Devices[0].IsOnline.Should().BeTrue();
+        notifications.Received(1).Success(Arg.Is<string>(m => m.Contains("deactivated")));
+        notifications.DidNotReceiveWithAnyArgs().Error(default!, default);
+
+        // Assign the kitchen display to the Bar station.
+        vm.SelectedDevice = vm.Devices[0];
+        vm.AssignStationCommand.CanExecute(null).Should().BeFalse("the device already shows every station");
+        vm.SelectedStation = vm.Stations.Single(s => s.Name == "Bar");
+        await vm.AssignStationCommand.ExecuteAsync(null);
+        await devicesApi.Received(1).UpdateAsync(deviceId, Arg.Is<UpdateDeviceRequest>(r => r.StationId == 2 && r.Name == "Register 1"), Arg.Any<CancellationToken>());
+
+        // A rename arrives through the presence event; "last seen" moves only on an online/offline edge.
+        var seenAt = vm.Devices[0].LastSeenAtUtc;
+        realtimeHandler!(onlineEvt with { DeviceName = "REGISTER-1", IsOnline = false, TimestampUtc = DateTime.UtcNow.AddMinutes(5) });
+        vm.Devices[0].Name.Should().Be("REGISTER-1");
+        vm.Devices[0].LastSeenAtUtc.Should().Be(seenAt);
     }
 
     [Fact]
@@ -250,5 +274,34 @@ public sealed class SecurityViewModelTests
         // Logout All Sessions
         await vm.LogoutAllCommand.ExecuteAsync(null);
         await usersApi.Received(1).LogoutAllAsync(5);
+    }
+
+    [Fact]
+    public void AuditLogsViewModel_UsesLocalDays_AndExportsWithTheScreensFilters()
+    {
+        var auditApi = Substitute.For<IAuditApi>();
+        auditApi.QueryAsync(Arg.Any<AuditLogQuery>(), Arg.Any<CancellationToken>())
+            .Returns(ApiResult<PagedResult<AuditLogDto>>.Ok(new PagedResult<AuditLogDto>()));
+        var vm = new AuditLogsViewModel(auditApi, Substitute.For<IFilePicker>(), Substitute.For<INotificationService>())
+        {
+            UserFilter = " waiter1 ",
+            DeviceFilter = "BILLING-01",
+            ActionFilter = "Bill.Voided",
+        };
+
+        var (todayFrom, todayTo) = vm.GetDateFilter();
+        todayFrom.Should().Be(DateTime.Today.ToUniversalTime());
+        todayTo.Should().Be(DateTime.Today.AddDays(1).ToUniversalTime().AddTicks(-1));
+
+        vm.DateRange = AuditLogsViewModel.CustomRange;
+        vm.CustomFrom = new DateTime(2026, 10, 1);
+        vm.CustomTo = new DateTime(2026, 10, 3);
+        var (customFrom, customTo) = vm.GetDateFilter();
+        customFrom.Should().Be(new DateTime(2026, 10, 1).ToUniversalTime());
+        customTo.Should().Be(new DateTime(2026, 10, 4).ToUniversalTime().AddTicks(-1), "the last day is included in full");
+
+        var exported = AuditApi.QueryString(vm.BuildQuery(), includePaging: false);
+        exported.Should().Contain("userName=waiter1").And.Contain("deviceName=BILLING-01").And.Contain("action=Bill.Voided")
+            .And.Contain("from=").And.Contain("to=").And.NotContain("page=");
     }
 }

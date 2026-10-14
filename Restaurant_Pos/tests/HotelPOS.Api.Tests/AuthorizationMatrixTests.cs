@@ -3,7 +3,6 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.RegularExpressions;
 using HotelPOS.Api.Tests.Support;
-using HotelPOS.Application.Common.Security;
 using HotelPOS.Contracts.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;

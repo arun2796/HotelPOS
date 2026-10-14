@@ -1,6 +1,5 @@
-using HotelPOS.Contracts.Security;
 
-namespace HotelPOS.Application.Common.Security;
+namespace HotelPOS.Contracts.Security;
 
 public static class RolePermissionMap
 {

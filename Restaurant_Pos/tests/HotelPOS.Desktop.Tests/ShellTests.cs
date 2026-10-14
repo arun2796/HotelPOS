@@ -95,3 +95,31 @@ public class ModuleRegistryTests
         ModuleRegistry.All.Select(m => m.Key).Should().OnlyHaveUniqueItems();
     }
 }
+
+public class PermissionNavigationTests
+{
+    [Fact]
+    public void Sidebar_FollowsPermissions_NotJustRoles()
+    {
+        // A waiter whose role was granted billing.operate, and a manager whose role lost reports.view.
+        var waiter = ModuleRegistry.ForUser(new[] { Roles.Waiter }, RolePermissionMap.For(new[] { Roles.Waiter }).Append(Permissions.BillingOperate).ToList());
+        var manager = ModuleRegistry.ForUser(new[] { Roles.Manager }, RolePermissionMap.For(new[] { Roles.Manager }).Where(p => p != Permissions.ReportsView).ToList());
+
+        waiter.Select(m => m.Key).Should().Contain(ModuleRegistry.Billing);
+        manager.Select(m => m.Key).Should().NotContain(ModuleRegistry.Reports).And.Contain(ModuleRegistry.Dashboard);
+    }
+
+    [Theory]
+    [InlineData(Roles.Admin)]
+    [InlineData(Roles.Manager)]
+    [InlineData(Roles.Waiter)]
+    [InlineData(Roles.Kitchen)]
+    [InlineData(Roles.Cashier)]
+    public void DefaultPermissions_ShowTheSameModulesAsTheRoleLists(string role)
+    {
+        var byPermission = ModuleRegistry.ForUser(new[] { role }, RolePermissionMap.For(new[] { role })).Select(m => m.Key);
+        var byRole = ModuleRegistry.ForRoles(new[] { role }).Select(m => m.Key);
+
+        byPermission.Should().BeEquivalentTo(byRole);
+    }
+}

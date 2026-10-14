@@ -93,8 +93,36 @@ public static class ModuleRegistry
             "Kitchen, invoice and receipt printers attached to this terminal.", typeof(PrinterSettingsViewModel)),
     };
 
+    // The permission each module is for (Phase 9). Its Roles list stays the audience under the default permission
+    // sets; once an admin edits a role, the sidebar follows the permissions the token carries. Modules without an
+    // entry (dashboard, set-up screens, this terminal) stay role-based.
+    private static readonly IReadOnlyDictionary<string, string> ModulePermissions = new Dictionary<string, string>
+    {
+        [Tables] = Permissions.TablesOperate,
+        [MyOrders] = Permissions.OrdersCreate,
+        [KitchenDisplay] = Permissions.KitchenOperate,
+        [KitchenCompleted] = Permissions.KitchenOperate,
+        [Billing] = Permissions.BillingOperate,
+        [ClosedBills] = Permissions.BillingOperate,
+        [Reports] = Permissions.ReportsView,
+        [Floor] = Permissions.TablesManage,
+        [Menu] = Permissions.MenuManage,
+        [Audit] = Permissions.AuditView,
+        [Users] = Permissions.UsersManage,
+        [RolesModule] = Permissions.RolesManage,
+        [Devices] = Permissions.DevicesManage,
+        [Settings] = Permissions.SettingsManage,
+        [Backup] = Permissions.BackupManage,
+    };
+
     public static IReadOnlyList<ModuleDefinition> ForRoles(IReadOnlyCollection<string> roles) =>
         All.Where(m => m.Roles.Any(roles.Contains)).ToList();
+
+    public static IReadOnlyList<ModuleDefinition> ForUser(IReadOnlyCollection<string> roles, IReadOnlyCollection<string> permissions) =>
+        All.Where(m => ModulePermissions.TryGetValue(m.Key, out var permission)
+                ? roles.Contains(Roles.Admin) || permissions.Contains(permission)
+                : m.Roles.Any(roles.Contains))
+            .ToList();
 
     public static ModuleDefinition? Find(string key) => All.FirstOrDefault(m => m.Key == key);
 
