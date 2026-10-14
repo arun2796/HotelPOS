@@ -117,6 +117,9 @@ public class ScreenRenderingTests
             users.SelectedUser = users.Users[1];
             users.EditCommand.Execute(null);
             rendered.Add(await RenderScreenAsync(env, shell, "05-admin-users"));
+            env.Theme.ApplyDensity(ThemeService.Comfort);
+            rendered.Add(await RenderScreenAsync(env, shell, "52-admin-users-comfort"));
+            env.Theme.ApplyDensity(ThemeService.Compact);
 
             await shell.NavigateToAsync(ModuleRegistry.Settings, null);
             rendered.Add(await RenderScreenAsync(env, shell, "06-admin-settings"));
@@ -188,6 +191,9 @@ public class ScreenRenderingTests
             await waiterShell.OnNavigatedToAsync(null);
             env.Realtime.Raise(ConnectionStatus.Connected);
             rendered.Add(await RenderScreenAsync(env, waiterShell, "10-waiter-home-table-map"));
+            env.Theme.ApplyDensity(ThemeService.Compact);
+            rendered.Add(await RenderScreenAsync(env, waiterShell, "51-waiter-table-map-compact"));
+            env.Theme.ApplyDensity(ThemeService.Comfort);
 
             var map = (HotelPOS.Desktop.Modules.Tables.TableMapViewModel)waiterShell.CurrentPage!;
             map.SelectTableCommand.Execute(map.AllTables.Single(t => t.Code == "T05"));
@@ -340,11 +346,27 @@ public class ScreenRenderingTests
         }
 
         bindingErrors.Errors.Should().BeEmpty("every binding in the views must point at an existing property");
-        rendered.Should().HaveCount(50);
+        rendered.Should().HaveCount(52);
         bodyFontFiles.Should().Equal("inter-regular.ttf", "inter-medium.ttf", "inter-semibold.ttf", "inter-bold.ttf");
     }
 
+    // Every light screen is also rendered in the dark theme ("-dark"), so both themes are checked for binding errors
+    // and can be reviewed side by side.
     private static async Task<string> RenderScreenAsync(Environment env, object screen, string name)
+    {
+        var path = await RenderOnceAsync(env, screen, name);
+        // A FlowDocument stays attached to the viewer of the first pass, so the print preview cannot be shown twice.
+        if (!env.Theme.IsDark && screen is not ShellViewModel { CurrentPage: PrintPreviewViewModel })
+        {
+            env.Theme.Apply(ThemeService.Dark);
+            await RenderOnceAsync(env, screen, name + "-dark");
+            env.Theme.Apply(ThemeService.Light);
+        }
+
+        return path;
+    }
+
+    private static async Task<string> RenderOnceAsync(Environment env, object screen, string name)
     {
         env.Main.CurrentScreen = screen;
         var window = new MainWindow { DataContext = env.Main };
@@ -352,7 +374,7 @@ public class ScreenRenderingTests
         window.Content = null;
         var host = new Border { Child = root, Background = (Brush)Application.Current.Resources["Brush.Background"] };
         TextElement.SetFontFamily(host, (FontFamily)Application.Current.Resources["Font.Body"]);
-        TextElement.SetFontSize(host, 15);
+        host.SetResourceReference(TextElement.FontSizeProperty, "Font.Size.Body");
         TextElement.SetForeground(host, (Brush)Application.Current.Resources["Brush.TextPrimary"]);
         host.DataContext = env.Main;
 

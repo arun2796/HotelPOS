@@ -43,10 +43,10 @@
 
     <DataGrid Grid.Row="2" ItemsSource="{Binding Bills}" SelectedItem="{Binding SelectedBill}" HorizontalScrollBarVisibility="Disabled">
       <DataGrid.Columns>
-        <DataGridTextColumn Header="INVOICE" Binding="{Binding Invoice}" Width="1.5*" MinWidth="150" />
+        <DataGridTextColumn Header="INVOICE" Binding="{Binding Invoice}" Width="1.5*" MinWidth="175" />
         <DataGridTextColumn Header="TABLE" Binding="{Binding Bill.TableCode}" Width="0.6*" MinWidth="70" />
         <DataGridTextColumn Header="ORDER" Binding="{Binding Bill.OrderNumber}" Width="0.6*" MinWidth="70" />
-        <DataGridTextColumn Header="TIME" Binding="{Binding TimeText}" Width="0.6*" MinWidth="60" />
+        <DataGridTextColumn Header="TIME" Binding="{Binding TimeText}" Width="0.6*" MinWidth="72" />
         <DataGridTextColumn Header="TOTAL" Binding="{Binding TotalText}" Width="0.8*" MinWidth="90" />
         <DataGridTextColumn Header="STATUS" Binding="{Binding StatusText}" Width="1.9*" MinWidth="160" />
       </DataGrid.Columns>

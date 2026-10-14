@@ -76,7 +76,8 @@
           <DataGridTextColumn Header="CODE" Binding="{Binding Code}" Width="0.55*" MinWidth="58" />
           <DataGridTextColumn Header="NAME" Binding="{Binding Name}" Width="1.8*" MinWidth="120" />
           <DataGridTextColumn Header="CATEGORY" Binding="{Binding CategoryName}" Width="0.9*" MinWidth="90" />
-          <DataGridTextColumn Header="PRICE" Binding="{Binding Price, StringFormat=N2}" Width="0.7*" MinWidth="72" />
+          <DataGridTextColumn Header="PRICE" Binding="{Binding Price, StringFormat=N2}" Width="0.7*" MinWidth="92"
+                              ElementStyle="{StaticResource Text.GridNumber}" HeaderStyle="{StaticResource DataGrid.NumberHeader}" />
           <DataGridTextColumn Header="TAX" Binding="{Binding TaxRatePercent, StringFormat={}{0:0.##}%}" Width="0.45*" MinWidth="52" />
           <DataGridTextColumn Header="STATION" Binding="{Binding StationName}" Width="1.1*" MinWidth="100" />
           <DataGridCheckBoxColumn Header="IN STOCK" Binding="{Binding IsAvailable, Mode=OneWay}" Width="0.6*" MinWidth="88" />

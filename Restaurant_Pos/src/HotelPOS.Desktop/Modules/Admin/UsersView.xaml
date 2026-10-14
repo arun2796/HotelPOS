@@ -64,7 +64,7 @@
           <DataGridTextColumn Header="USERNAME" Binding="{Binding Username}" Width="1*" MinWidth="90" />
           <DataGridTextColumn Header="NAME" Binding="{Binding DisplayName}" Width="1.5*" MinWidth="120" />
           <DataGridTextColumn Header="ROLES" Binding="{Binding Roles, Converter={StaticResource ListJoin}}" Width="1.2*" MinWidth="90" />
-          <DataGridTextColumn Header="STATUS" Binding="{Binding IsActive, Converter={StaticResource ActiveText}}" Width="0.7*" MinWidth="70" />
+          <DataGridTextColumn Header="STATUS" Binding="{Binding IsActive, Converter={StaticResource ActiveText}}" Width="0.7*" MinWidth="80" />
           <DataGridTemplateColumn Header="LOCKOUT" Width="0.8*" MinWidth="80">
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate>
@@ -86,7 +86,7 @@
               </DataTemplate>
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>
-          <DataGridTextColumn Header="LAST SIGN-IN" Binding="{Binding LastLoginAtUtc, Converter={StaticResource UtcToLocal}}" Width="1.2*" MinWidth="125" />
+          <DataGridTextColumn Header="LAST SIGN-IN" Binding="{Binding LastLoginAtUtc, Converter={StaticResource UtcToLocal}}" Width="1.2*" MinWidth="140" />
         </DataGrid.Columns>
       </DataGrid>
       <ProgressBar IsIndeterminate="True" Height="3" VerticalAlignment="Top"

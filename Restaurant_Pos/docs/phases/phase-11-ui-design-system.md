@@ -217,3 +217,16 @@ Built (manager dashboard, under the KPI strip):
 
 Tests: dashboard view-model test covers shares, the payment split (zero-net methods left out, largest first) and the
 compact total; `CompactMoneyTests` for Indian units and ring geometry. Desktop tests: 191 passed, 1 skipped.
+
+### 11.5 Polish (2026-10-14)
+
+- The rendering test now renders every screen in light **and** dark (`<name>-dark.png`; the print preview is rendered
+  once, because a FlowDocument stays attached to its first viewer) and both densities on two screens
+  (`51-waiter-table-map-compact`, `52-admin-users-comfort`): 52 screens, 101 images, zero binding errors.
+- All screenshots reviewed on contact sheets. Fixed: the bill screen's invoice preview is white paper with dark text in
+  both themes (it followed the dark surface before); clipped grid columns (menu price, now right-aligned with tabular
+  figures; closed-bill invoice and time; table status; user status and last sign-in).
+
+**Status:** code complete; every acceptance item except the manual demo (§ 11) on real terminals — Mica and the dark
+title bar, page and sidebar motion, Comfort targets on a waiter tablet, Ctrl+K on a billing desk — which needs the
+venue PCs. Desktop tests: 191 passed, 1 skipped.

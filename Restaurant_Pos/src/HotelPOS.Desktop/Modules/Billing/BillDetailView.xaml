@@ -416,7 +416,7 @@
                   </StackPanel>
                 </Grid>
                 <Border BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="6" Padding="20" Margin="0,8,0,0"
-                        Background="{DynamicResource Brush.SurfaceAlt}" TextElement.FontFamily="Consolas">
+                        Background="#FFFFFF" TextElement.Foreground="#18181B" TextElement.FontFamily="Consolas">
                   <StackPanel>
                     <TextBlock Text="{Binding RestaurantName}" FontWeight="Bold" FontSize="18" HorizontalAlignment="Center" />
                     <TextBlock Text="{Binding RestaurantAddress}" HorizontalAlignment="Center"
