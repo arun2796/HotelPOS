@@ -176,7 +176,7 @@ None. A closed period is read by the next command that needs it.
   hub and **Period Close** screens (registered, permission-gated); `ScreenRenderingTests` now renders 67 screens, no
   binding errors.
 - Tests added: 35 domain, 18 application (`Application.Tests/Gst`), 2 API, 4 desktop (+ 2 rendering screens). Full run: Domain 350,
-  Api 172, Desktop 211 (1 skipped, pre-existing) all green; Application 206 green when run alone before the last refactor.
+  Api 172, Desktop 211 (1 skipped, pre-existing) all green; Application: 205 of 206 green in the first full run (the one failure was a wrong expectation in a new test, fixed and re-run green); the final re-run was only partly finished (122 passed, 0 failed) because the machine became very slow.
 
 **Decisions and deviations**
 
