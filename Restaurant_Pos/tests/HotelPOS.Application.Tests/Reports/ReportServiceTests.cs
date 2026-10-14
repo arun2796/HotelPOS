@@ -1,7 +1,7 @@
 using System.Text;
 using HotelPOS.Application.Billing;
 using HotelPOS.Application.Common.Results;
-using HotelPOS.Application.Floor;
+using HotelPOS.Application.Features.Floor.Commands;
 using HotelPOS.Application.Kitchen;
 using HotelPOS.Application.Menu;
 using HotelPOS.Application.Orders;
@@ -217,11 +217,11 @@ public class ReportServiceTests : DatabaseTestBase
     private async Task<Setup> SetupAsync()
     {
         CurrentUser.SignIn(await AdminIdAsync(), "admin", Roles.Admin);
-        var section = await Call<ISectionService, SectionDto>(x => x.CreateAsync(new CreateSectionRequest { Name = "Hall", SortOrder = 1 }));
+        var section = await SendAsync(new CreateSectionCommand(new CreateSectionRequest { Name = "Hall", SortOrder = 1 }));
         var tables = new List<int>();
         for (var i = 1; i <= 3; i++)
         {
-            tables.Add((await Call<ITableService, TableDto>(x => x.CreateAsync(new CreateTableRequest { Code = $"T{i:00}", SectionId = section.Value.Id, Capacity = 4 }))).Value.Id);
+            tables.Add((await SendAsync(new CreateTableCommand(new CreateTableRequest { Code = $"T{i:00}", SectionId = section.Value.Id, Capacity = 4 }))).Value.Id);
         }
 
         var mains = await Call<ICategoryService, CategoryDto>(x => x.CreateAsync(new CreateCategoryRequest { Name = "Mains", SortOrder = 1 }));

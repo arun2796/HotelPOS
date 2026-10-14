@@ -1,7 +1,7 @@
 using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
-using HotelPOS.Application.Floor;
+using HotelPOS.Application.Features.Floor;
 using HotelPOS.Application.Kitchen;
 using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Billing;
@@ -101,7 +101,7 @@ public sealed class OrderService : IOrderService
 
         if (!table.CanTakeNewOrder)
         {
-            return AppErrors.TableNotAvailable(table.Code, TableService.ToDto(table));
+            return AppErrors.TableNotAvailable(table.Code, TableMapping.ToDto(table));
         }
 
         var items = await _itemFactory.CreateAsync(request.Items, cancellationToken);
@@ -139,7 +139,7 @@ public sealed class OrderService : IOrderService
             {
                 var current = await _db.Tables.AsNoTracking().FirstAsync(t => t.Id == table.Id, cancellationToken);
                 return AppErrors.TableNotAvailable(current.Code,
-                    current.CurrentOrderId is { } id ? await SummaryAsync(id, cancellationToken) : TableService.ToDto(current));
+                    current.CurrentOrderId is { } id ? await SummaryAsync(id, cancellationToken) : TableMapping.ToDto(current));
             }
 
             if (request.Submit)

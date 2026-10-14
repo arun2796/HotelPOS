@@ -1,6 +1,6 @@
 using HotelPOS.Application.Billing;
 using HotelPOS.Application.Common.Results;
-using HotelPOS.Application.Floor;
+using HotelPOS.Application.Features.Floor.Commands;
 using HotelPOS.Application.Kitchen;
 using HotelPOS.Application.Menu;
 using HotelPOS.Application.Orders;
@@ -137,8 +137,8 @@ public class PrintDocumentServiceTests : DatabaseTestBase
     private async Task<Setup> SetupAsync()
     {
         CurrentUser.SignIn(await AdminIdAsync(), "admin", Roles.Admin);
-        var section = await Call<ISectionService, SectionDto>(x => x.CreateAsync(new CreateSectionRequest { Name = "Hall", SortOrder = 1 }));
-        var table = await Call<ITableService, TableDto>(x => x.CreateAsync(new CreateTableRequest { Code = "T01", SectionId = section.Value.Id, Capacity = 4 }));
+        var section = await SendAsync(new CreateSectionCommand(new CreateSectionRequest { Name = "Hall", SortOrder = 1 }));
+        var table = await SendAsync(new CreateTableCommand(new CreateTableRequest { Code = "T01", SectionId = section.Value.Id, Capacity = 4 }));
         var category = await Call<ICategoryService, CategoryDto>(x => x.CreateAsync(new CreateCategoryRequest { Name = "Mains", SortOrder = 1 }));
         var gst = await Call<ITaxService, TaxDto>(x => x.CreateAsync(new SaveTaxRequest { Name = "GST 5%", Code = "GST5", RatePercent = 5m }));
         var main = await QueryAsync(db => db.PreparationStations.Where(p => p.Code == "MAIN").Select(p => p.Id).FirstAsync());

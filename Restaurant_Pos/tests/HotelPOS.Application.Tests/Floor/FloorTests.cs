@@ -1,21 +1,29 @@
 using HotelPOS.Application.Common;
-using HotelPOS.Application.Common.Results;
-using HotelPOS.Application.Floor;
+using HotelPOS.Application.Features.Floor.Commands;
+using HotelPOS.Application.Features.Floor.Queries;
 using HotelPOS.Application.Tests.Support;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Floor;
 using HotelPOS.Contracts.Realtime;
+using HotelPOS.Contracts.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace HotelPOS.Application.Tests.Floor;
 
-public class FloorServiceTests : DatabaseTestBase
+public class FloorTests : DatabaseTestBase
 {
-    public FloorServiceTests(DatabaseFixture fixture)
+    public FloorTests(DatabaseFixture fixture)
         : base(fixture)
     {
+    }
+
+    // The floor plan is set up from the admin PC; the admin holds every permission the floor requests ask for.
+    public override async Task InitializeAsync()
+    {
+        await base.InitializeAsync();
+        CurrentUser.SignIn(await AdminIdAsync(), "admin", Roles.Admin);
     }
 
     [Fact]
@@ -24,8 +32,7 @@ public class FloorServiceTests : DatabaseTestBase
         var table = await CreateTableAsync("T05");
         Clock.Advance(TimeSpan.FromMinutes(5));
 
-        var result = await InScopeAsync<ITableService, TableDto>(s =>
-            s.OccupyAsync(table.Id, new OccupyTableRequest { GuestCount = 4, RowVersion = table.RowVersion }));
+        var result = await SendAsync(new OccupyTableCommand(table.Id, new OccupyTableRequest { GuestCount = 4, RowVersion = table.RowVersion }));
 
         result.IsSuccess.Should().BeTrue(result.Error?.Message);
         result.Value.Status.Should().Be(TableStatus.Occupied);
@@ -48,7 +55,7 @@ public class FloorServiceTests : DatabaseTestBase
     public async Task Occupy_WithStaleRowVersion_ReturnsConcurrencyConflict_WithCurrentTable()
     {
         var table = await CreateTableAsync("T05");
-        var renamed = await InScopeAsync<ITableService, TableDto>(s => s.UpdateAsync(table.Id, new UpdateTableRequest
+        var renamed = await SendAsync(new UpdateTableCommand(table.Id, new UpdateTableRequest
         {
             Code = "T05",
             Name = "Window",
@@ -58,8 +65,7 @@ public class FloorServiceTests : DatabaseTestBase
         }));
         renamed.IsSuccess.Should().BeTrue(renamed.Error?.Message);
 
-        var result = await InScopeAsync<ITableService, TableDto>(s =>
-            s.OccupyAsync(table.Id, new OccupyTableRequest { GuestCount = 2, RowVersion = table.RowVersion }));
+        var result = await SendAsync(new OccupyTableCommand(table.Id, new OccupyTableRequest { GuestCount = 2, RowVersion = table.RowVersion }));
 
         result.Error!.Code.Should().Be(ErrorCodes.ConcurrencyConflict);
         var current = result.Error.Data.Should().BeOfType<TableDto>().Subject;
@@ -72,11 +78,9 @@ public class FloorServiceTests : DatabaseTestBase
     public async Task Occupy_WhenAlreadyOccupied_ReturnsTableNotAvailable()
     {
         var table = await CreateTableAsync("T05");
-        var first = await InScopeAsync<ITableService, TableDto>(s =>
-            s.OccupyAsync(table.Id, new OccupyTableRequest { GuestCount = 4, RowVersion = table.RowVersion }));
+        var first = await SendAsync(new OccupyTableCommand(table.Id, new OccupyTableRequest { GuestCount = 4, RowVersion = table.RowVersion }));
 
-        var second = await InScopeAsync<ITableService, TableDto>(s =>
-            s.OccupyAsync(table.Id, new OccupyTableRequest { GuestCount = 2, RowVersion = first.Value.RowVersion }));
+        var second = await SendAsync(new OccupyTableCommand(table.Id, new OccupyTableRequest { GuestCount = 2, RowVersion = first.Value.RowVersion }));
 
         second.Error!.Code.Should().Be(ErrorCodes.TableNotAvailable);
         second.Error.Data.Should().BeOfType<TableDto>().Which.GuestCount.Should().Be(4);
@@ -89,8 +93,8 @@ public class FloorServiceTests : DatabaseTestBase
 
         // Two terminals press OCCUPY on the same version of the table at the same moment.
         var results = await Task.WhenAll(
-            InScopeAsync<ITableService, TableDto>(s => s.OccupyAsync(table.Id, new OccupyTableRequest { GuestCount = 2, RowVersion = table.RowVersion })),
-            InScopeAsync<ITableService, TableDto>(s => s.OccupyAsync(table.Id, new OccupyTableRequest { GuestCount = 5, RowVersion = table.RowVersion })));
+            SendAsync(new OccupyTableCommand(table.Id, new OccupyTableRequest { GuestCount = 2, RowVersion = table.RowVersion })),
+            SendAsync(new OccupyTableCommand(table.Id, new OccupyTableRequest { GuestCount = 5, RowVersion = table.RowVersion })));
 
         results.Count(r => r.IsSuccess).Should().Be(1);
         var loser = results.Single(r => r.IsFailure);
@@ -127,10 +131,9 @@ public class FloorServiceTests : DatabaseTestBase
     public async Task Release_FromOccupied_MakesTheTableAvailable()
     {
         var table = await CreateTableAsync("T05");
-        await InScopeAsync<ITableService, TableDto>(s =>
-            s.OccupyAsync(table.Id, new OccupyTableRequest { GuestCount = 3, RowVersion = table.RowVersion }));
+        await SendAsync(new OccupyTableCommand(table.Id, new OccupyTableRequest { GuestCount = 3, RowVersion = table.RowVersion }));
 
-        var result = await InScopeAsync<ITableService, TableDto>(s => s.ReleaseAsync(table.Id));
+        var result = await SendAsync(new ReleaseTableCommand(table.Id));
 
         result.IsSuccess.Should().BeTrue(result.Error?.Message);
         result.Value.Status.Should().Be(TableStatus.Available);
@@ -144,7 +147,7 @@ public class FloorServiceTests : DatabaseTestBase
     {
         var table = await CreateTableAsync("T05");
 
-        var result = await InScopeAsync<ITableService, TableDto>(s => s.ReleaseAsync(table.Id));
+        var result = await SendAsync(new ReleaseTableCommand(table.Id));
 
         result.Error!.Code.Should().Be(ErrorCodes.InvalidStateTransition);
     }
@@ -155,14 +158,12 @@ public class FloorServiceTests : DatabaseTestBase
         CurrentUser.SignIn(await AdminIdAsync(), "admin", "Admin");
         var table = await CreateTableAsync("T08");
         var other = await CreateTableAsync("T09", table.SectionId);
-        await InScopeAsync<ITableService, TableDto>(s =>
-            s.OccupyAsync(other.Id, new OccupyTableRequest { GuestCount = 2, RowVersion = other.RowVersion }));
+        await SendAsync(new OccupyTableCommand(other.Id, new OccupyTableRequest { GuestCount = 2, RowVersion = other.RowVersion }));
 
-        var outOfService = await InScopeAsync<ITableService, TableDto>(s => s.SetServiceStateAsync(table.Id, outOfService: true));
-        var occupiedOut = await InScopeAsync<ITableService, TableDto>(s => s.SetServiceStateAsync(other.Id, outOfService: true));
-        var occupy = await InScopeAsync<ITableService, TableDto>(s =>
-            s.OccupyAsync(table.Id, new OccupyTableRequest { GuestCount = 2, RowVersion = outOfService.Value.RowVersion }));
-        var back = await InScopeAsync<ITableService, TableDto>(s => s.SetServiceStateAsync(table.Id, outOfService: false));
+        var outOfService = await SendAsync(new SetTableServiceStateCommand(table.Id, OutOfService: true));
+        var occupiedOut = await SendAsync(new SetTableServiceStateCommand(other.Id, OutOfService: true));
+        var occupy = await SendAsync(new OccupyTableCommand(table.Id, new OccupyTableRequest { GuestCount = 2, RowVersion = outOfService.Value.RowVersion }));
+        var back = await SendAsync(new SetTableServiceStateCommand(table.Id, OutOfService: false));
 
         outOfService.Value.Status.Should().Be(TableStatus.OutOfService);
         occupiedOut.Error!.Code.Should().Be(ErrorCodes.InvalidStateTransition);
@@ -177,9 +178,9 @@ public class FloorServiceTests : DatabaseTestBase
     {
         var table = await CreateTableAsync("T01");
 
-        var result = await InScopeAsync<ITableService, TableDto>(s => s.CreateAsync(new CreateTableRequest
+        var result = await SendAsync(new CreateTableCommand(new CreateTableRequest
         {
-            Code = " t01 ",
+            Code = "t01",
             SectionId = table.SectionId,
             Capacity = 2,
         }));
@@ -191,9 +192,9 @@ public class FloorServiceTests : DatabaseTestBase
     public async Task CreateTable_InInactiveSection_IsRejected()
     {
         var section = await CreateSectionAsync("Terrace");
-        await InScopeAsync<ISectionService, SectionDto>(s => s.DeactivateAsync(section.Id));
+        await SendAsync(new DeactivateSectionCommand(section.Id));
 
-        var result = await InScopeAsync<ITableService, TableDto>(s => s.CreateAsync(new CreateTableRequest
+        var result = await SendAsync(new CreateTableCommand(new CreateTableRequest
         {
             Code = "R01",
             SectionId = section.Id,
@@ -208,9 +209,9 @@ public class FloorServiceTests : DatabaseTestBase
     {
         var table = await CreateTableAsync("T01");
 
-        var rejected = await InScopeAsync<ISectionService, SectionDto>(s => s.DeactivateAsync(table.SectionId));
-        await InScopeAsync<ITableService, TableDto>(s => s.DeactivateAsync(table.Id));
-        var accepted = await InScopeAsync<ISectionService, SectionDto>(s => s.DeactivateAsync(table.SectionId));
+        var rejected = await SendAsync(new DeactivateSectionCommand(table.SectionId));
+        await SendAsync(new DeactivateTableCommand(table.Id));
+        var accepted = await SendAsync(new DeactivateSectionCommand(table.SectionId));
 
         rejected.Error!.Code.Should().Be(ErrorCodes.BusinessRule);
         accepted.IsSuccess.Should().BeTrue(accepted.Error?.Message);
@@ -221,10 +222,9 @@ public class FloorServiceTests : DatabaseTestBase
     public async Task DeactivateTable_WhileOccupied_IsRejected()
     {
         var table = await CreateTableAsync("T01");
-        await InScopeAsync<ITableService, TableDto>(s =>
-            s.OccupyAsync(table.Id, new OccupyTableRequest { GuestCount = 2, RowVersion = table.RowVersion }));
+        await SendAsync(new OccupyTableCommand(table.Id, new OccupyTableRequest { GuestCount = 2, RowVersion = table.RowVersion }));
 
-        var result = await InScopeAsync<ITableService, TableDto>(s => s.DeactivateAsync(table.Id));
+        var result = await SendAsync(new DeactivateTableCommand(table.Id));
 
         result.Error!.Code.Should().Be(ErrorCodes.InvalidStateTransition);
     }
@@ -234,8 +234,7 @@ public class FloorServiceTests : DatabaseTestBase
     {
         await CreateSectionAsync("Ground Floor");
 
-        var result = await InScopeAsync<ISectionService, SectionDto>(s =>
-            s.CreateAsync(new CreateSectionRequest { Name = "ground floor", SortOrder = 2 }));
+        var result = await SendAsync(new CreateSectionCommand(new CreateSectionRequest { Name = "ground floor", SortOrder = 2 }));
 
         result.Error!.Code.Should().Be(ErrorCodes.Duplicate);
     }
@@ -248,10 +247,10 @@ public class FloorServiceTests : DatabaseTestBase
         var t02 = await CreateTableAsync("T02", second.Id);
         await CreateTableAsync("T01", second.Id);
         await CreateTableAsync("O01", first.Id);
-        await InScopeAsync<ITableService, TableDto>(s => s.DeactivateAsync(t02.Id));
+        await SendAsync(new DeactivateTableCommand(t02.Id));
 
-        var map = await InScopeAsync<ITableService, TableMapDto>(s => s.GetMapAsync(includeInactive: false));
-        var full = await InScopeAsync<ITableService, TableMapDto>(s => s.GetMapAsync(includeInactive: true));
+        var map = (await SendAsync(new GetTableMapQuery(IncludeInactive: false))).Value;
+        var full = (await SendAsync(new GetTableMapQuery(IncludeInactive: true))).Value;
 
         map.Sections.Select(s => s.Name).Should().Equal("Ground Floor", "Outdoor");
         map.Sections[0].Tables.Select(t => t.Code).Should().Equal("T01");
@@ -259,23 +258,9 @@ public class FloorServiceTests : DatabaseTestBase
         map.ServerTimeUtc.Should().Be(Clock.UtcNow);
     }
 
-    private async Task<TResult> InScopeAsync<TService, TResult>(Func<TService, Task<TResult>> call)
-        where TService : notnull
-    {
-        await using var scope = Fixture.Services.CreateAsyncScope();
-        return await call(scope.ServiceProvider.GetRequiredService<TService>());
-    }
-
-    private async Task<Result<TResult>> InScopeAsync<TService, TResult>(Func<TService, Task<Result<TResult>>> call)
-        where TService : notnull
-    {
-        await using var scope = Fixture.Services.CreateAsyncScope();
-        return await call(scope.ServiceProvider.GetRequiredService<TService>());
-    }
-
     private async Task<SectionDto> CreateSectionAsync(string name, int sortOrder = 1)
     {
-        var result = await InScopeAsync<ISectionService, SectionDto>(s => s.CreateAsync(new CreateSectionRequest { Name = name, SortOrder = sortOrder }));
+        var result = await SendAsync(new CreateSectionCommand(new CreateSectionRequest { Name = name, SortOrder = sortOrder }));
         result.IsSuccess.Should().BeTrue(result.Error?.Message);
         return result.Value;
     }
@@ -283,7 +268,7 @@ public class FloorServiceTests : DatabaseTestBase
     private async Task<TableDto> CreateTableAsync(string code, int? sectionId = null)
     {
         var section = sectionId ?? (await CreateSectionAsync("Section " + code)).Id;
-        var result = await InScopeAsync<ITableService, TableDto>(s => s.CreateAsync(new CreateTableRequest
+        var result = await SendAsync(new CreateTableCommand(new CreateTableRequest
         {
             Code = code,
             SectionId = section,

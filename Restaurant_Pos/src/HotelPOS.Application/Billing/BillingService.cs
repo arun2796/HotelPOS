@@ -2,7 +2,7 @@ using System.Globalization;
 using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
-using HotelPOS.Application.Floor;
+using HotelPOS.Application.Features.Floor;
 using HotelPOS.Application.Kitchen;
 using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Billing;

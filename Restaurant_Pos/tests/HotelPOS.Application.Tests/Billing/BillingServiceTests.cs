@@ -1,6 +1,6 @@
 using HotelPOS.Application.Billing;
 using HotelPOS.Application.Common.Results;
-using HotelPOS.Application.Floor;
+using HotelPOS.Application.Features.Floor.Commands;
 using HotelPOS.Application.Kitchen;
 using HotelPOS.Application.Menu;
 using HotelPOS.Application.Orders;
@@ -431,11 +431,11 @@ public class BillingServiceTests : DatabaseTestBase
     {
         var admin = await AdminIdAsync();
         CurrentUser.SignIn(admin, "admin", Roles.Admin);
-        var section = await Call<ISectionService, SectionDto>(x => x.CreateAsync(new CreateSectionRequest { Name = "Hall", SortOrder = 1 }));
+        var section = await SendAsync(new CreateSectionCommand(new CreateSectionRequest { Name = "Hall", SortOrder = 1 }));
         var tables = new List<int>();
         for (var i = 1; i <= tableCount; i++)
         {
-            var table = await Call<ITableService, TableDto>(x => x.CreateAsync(new CreateTableRequest { Code = $"T{i:00}", SectionId = section.Value.Id, Capacity = 4 }));
+            var table = await SendAsync(new CreateTableCommand(new CreateTableRequest { Code = $"T{i:00}", SectionId = section.Value.Id, Capacity = 4 }));
             tables.Add(table.Value.Id);
         }
 

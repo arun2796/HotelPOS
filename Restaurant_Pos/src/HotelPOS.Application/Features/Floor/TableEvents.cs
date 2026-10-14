@@ -3,7 +3,7 @@ using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Domain.Floor;
 
-namespace HotelPOS.Application.Floor;
+namespace HotelPOS.Application.Features.Floor;
 
 public sealed class TableEvents
 {

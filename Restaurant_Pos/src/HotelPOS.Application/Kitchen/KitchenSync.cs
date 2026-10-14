@@ -1,6 +1,6 @@
 using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Interfaces;
-using HotelPOS.Application.Floor;
+using HotelPOS.Application.Features.Floor;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Contracts.Security;

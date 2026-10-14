@@ -105,3 +105,33 @@ because Phase 11 is reworking the desktop at the same time; it will be done once
   validation shape, commit with audit row and user, event published only once other connections can read the
   change, rollback on failure and on exception (no state, no audit row, no event), no leak of rolled-back changes
   into the next command of the same scope, `ICommitOnFailure`, undeclared audit entries.
+
+**Conventions used by every module**
+
+- Requests are records named `<Verb><Thing>Command` / `<Verb><Thing>Query`, one file per use case with the
+  record, the DTO validator (moved unchanged from `Application/Validation`) and the `internal` handler.
+- A request wraps the Contracts DTO as `Input` plus route values (`UpdateTableCommand(int Id, UpdateTableRequest
+  Input)`); DTOs and validators did not change, so neither did the JSON contract or validation messages.
+- Each request names the permission of its endpoint policy; checks the controllers used to make before calling a
+  service (e.g. "only managers can list inactive tables") moved into the handler, after validation, as before.
+- Controllers keep their routes, attributes, status codes and messages and call
+  `FromResult(await Sender.Send(request, ct), ...)`; `ApiControllerBase.Sender` resolves MediatR's `ISender`.
+- Logic shared by several handlers of a module lives in a small `internal` helper beside them (`FloorTables`,
+  `FloorSections`), not in a service facade.
+- Ported tests send requests through `ISender` (`DatabaseTestBase.SendAsync`, one scope per request like one HTTP
+  request) and keep their assertions. Where a test fed a service input that the DTO validator rejects (the API
+  always answered 400 for it), the input was made valid so the test still reaches the rule it is about.
+- Old services that are not migrated yet keep publishing and auditing directly; shared helpers such as
+  `TableEvents` stay "publish now" and migrated handlers queue the call on `IAfterCommit`.
+
+**12.2 Floor (2026-10-14)**
+
+- `SectionService` and `TableService` dissolved into `Features/Floor`: queries `ListSections`, `GetSection`,
+  `GetTableMap`, `GetTable`; commands `CreateSection`, `UpdateSection`, `DeactivateSection`, `CreateTable`,
+  `UpdateTable`, `DeactivateTable`, `OccupyTable`, `ReleaseTable`, `SetTableServiceState` (out of service / back in
+  service). `TableEvents` and `TableService.ToDto` (now `TableMapping`) moved to `Features/Floor` for the order and
+  billing services that still use them.
+- The explicit transactions of create section / create table are gone (the pipeline's transaction covers the
+  second save that used to need them). Table status events go out after the commit as before.
+- `FloorServiceTests` → `Floor/FloorTests` (signed in as admin; the duplicate-code test sends `t01` instead of
+  `" t01 "`, which the validator rejects).

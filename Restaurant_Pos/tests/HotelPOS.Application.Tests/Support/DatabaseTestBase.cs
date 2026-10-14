@@ -25,7 +25,7 @@ public abstract class DatabaseTestBase : IAsyncLifetime
 
     protected RecordingRealtimeNotifier Realtime => Fixture.Realtime;
 
-    public async Task InitializeAsync()
+    public virtual async Task InitializeAsync()
     {
         await Fixture.ResetAsync();
         _scope = Fixture.Services.CreateAsyncScope();

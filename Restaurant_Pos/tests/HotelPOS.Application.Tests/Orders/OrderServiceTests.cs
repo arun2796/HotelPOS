@@ -1,6 +1,6 @@
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
-using HotelPOS.Application.Floor;
+using HotelPOS.Application.Features.Floor.Commands;
 using HotelPOS.Application.Menu;
 using HotelPOS.Application.Orders;
 using HotelPOS.Application.Tests.Support;
@@ -176,7 +176,7 @@ public class OrderServiceTests : DatabaseTestBase
         var s = await SetupAsync();
         await AsWaiterAsync(s.WaiterA);
         var table = await TableAsync(s.TableId);
-        await Call<ITableService, TableDto>(t => t.OccupyAsync(s.TableId, new OccupyTableRequest
+        await SendAsync(new OccupyTableCommand(s.TableId, new OccupyTableRequest
         {
             GuestCount = 2,
             RowVersion = Common.RowVersions.Encode(table.RowVersion),
@@ -230,8 +230,8 @@ public class OrderServiceTests : DatabaseTestBase
     private async Task<Setup> SetupAsync()
     {
         CurrentUser.SignIn(await AdminIdAsync(), "admin", Roles.Admin);
-        var section = await Call<ISectionService, SectionDto>(x => x.CreateAsync(new CreateSectionRequest { Name = "Ground Floor", SortOrder = 1 }));
-        var table = await Call<ITableService, TableDto>(x => x.CreateAsync(new CreateTableRequest { Code = "T05", SectionId = section.Value.Id, Capacity = 4 }));
+        var section = await SendAsync(new CreateSectionCommand(new CreateSectionRequest { Name = "Ground Floor", SortOrder = 1 }));
+        var table = await SendAsync(new CreateTableCommand(new CreateTableRequest { Code = "T05", SectionId = section.Value.Id, Capacity = 4 }));
         var category = await Call<ICategoryService, CategoryDto>(x => x.CreateAsync(new CreateCategoryRequest { Name = "Mains", SortOrder = 1 }));
         var tax = await Call<ITaxService, TaxDto>(x => x.CreateAsync(new SaveTaxRequest { Name = "GST 5%", Code = "GST5", RatePercent = 5m }));
         var spice = await Call<IModifierService, ModifierGroupDto>(x => x.CreateAsync(new SaveModifierGroupRequest { Name = "Spice level", MinSelections = 1, MaxSelections = 1 }));
