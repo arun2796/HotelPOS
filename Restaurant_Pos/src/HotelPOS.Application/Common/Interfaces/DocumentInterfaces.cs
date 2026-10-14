@@ -85,6 +85,9 @@ public interface IPdfRenderer
     byte[] Receipt(ReceiptDocument document, PaperSize paper);
 
     byte[] Report(ReportTable table, Letterhead letterhead);
+
+    // Several reports in one PDF, one page run each (the Day End pack of Phase 13).
+    byte[] Reports(IReadOnlyList<ReportTable> tables, Letterhead letterhead);
 }
 
 public interface IExcelExporter

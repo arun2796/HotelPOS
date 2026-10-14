@@ -93,6 +93,23 @@ public class DayEndTests : CashTestBase, IDisposable
         result.Value.Warnings.Should().BeEmpty();
         result.Value.PackFiles.Should().Contain($"daily-sales-{Today:yyyy-MM-dd}.csv").And.Contain($"shifts-{Today:yyyy-MM-dd}.csv");
         Directory.GetFiles(result.Value.PackFolder!).Should().HaveCount(result.Value.PackFiles.Count);
+        var xlsxName = $"day-end-{Today:yyyy-MM-dd}.xlsx";
+        var pdfName = $"day-end-{Today:yyyy-MM-dd}.pdf";
+        result.Value.PackFiles.Should().Contain(xlsxName).And.Contain(pdfName);
+        using (var workbook = new ClosedXML.Excel.XLWorkbook(Path.Combine(result.Value.PackFolder!, xlsxName)))
+        {
+            workbook.Worksheets.Select(w => w.Name).Should().Equal("Daily sales", "Payments", "Item sales", "Category sales", "Taxes", "Discounts", "Cancellations", "Waiters", "Kitchen", "Shifts", "Non-till collections");
+            var shiftHeaders = HotelPOS.Contracts.Reports.ReportSchema.Describe<DayEndShiftRowDto>().Select(c => c.Header).ToList();
+            var shifts = workbook.Worksheet("Shifts");
+            shifts.RowsUsed().First(r => r.Cell(1).GetString() == shiftHeaders[0]).CellsUsed().Select(c => c.GetString()).Should().Equal(shiftHeaders);
+        }
+
+        using (var pdf = UglyToad.PdfPig.PdfDocument.Open(Path.Combine(result.Value.PackFolder!, pdfName)))
+        {
+            pdf.NumberOfPages.Should().BeGreaterOrEqualTo(11);
+            string.Join(" ", pdf.GetPages().SelectMany(p => p.GetWords()).Select(w => w.Text)).Should().Contain("Hotel").And.Contain("Non-till");
+        }
+
         result.Value.Summary.Bills.Should().Be(1);
         result.Value.Summary.NonTillTotal.Should().Be(1200m);
         result.Value.Summary.Shifts.Should().ContainSingle(s => s.Status == CashShiftStatus.Closed && s.Variance == 0m);

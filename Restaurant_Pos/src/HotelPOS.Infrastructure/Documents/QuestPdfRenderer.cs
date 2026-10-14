@@ -128,10 +128,24 @@ public sealed class QuestPdfRenderer : IPdfRenderer
         })).GeneratePdf();
     }
 
-    public byte[] Report(ReportTable table, Letterhead letterhead)
+    public byte[] Report(ReportTable table, Letterhead letterhead) => Reports(new[] { table }, letterhead);
+
+    // Several reports in one PDF, each starting on its own page (the Day End pack).
+    public byte[] Reports(IReadOnlyList<ReportTable> tables, Letterhead letterhead)
+    {
+        return Document.Create(container =>
+        {
+            foreach (var table in tables)
+            {
+                var current = table;
+                container.Page(page => ReportPage(page, current, letterhead));
+            }
+        }).GeneratePdf();
+    }
+
+    private static void ReportPage(PageDescriptor page, ReportTable table, Letterhead letterhead)
     {
         var landscape = table.Columns.Count > 6;
-        return Document.Create(container => container.Page(page =>
         {
             page.Size(landscape ? PageSizes.A4.Landscape() : PageSizes.A4);
             page.Margin(28);
@@ -225,7 +239,7 @@ public sealed class QuestPdfRenderer : IPdfRenderer
                     text.TotalPages();
                 });
             });
-        })).GeneratePdf();
+        }
     }
 
     public static string Cell(object? value, ReportCellKind kind) => value switch
