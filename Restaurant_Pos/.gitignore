@@ -18,8 +18,9 @@ TestResults/
 # Logs and runtime data
 logs/
 *.log
-# Uploaded menu images (Media:RootPath, default src/HotelPOS.Api/media)
-media/
+# Uploaded menu images (Media:RootPath, default src/HotelPOS.Api/media). Anchored: git on Windows matches
+# case-insensitively, and a bare "media/" also hid the src/HotelPOS.Infrastructure/Media source folder.
+/src/HotelPOS.Api/media/
 
 # Local secrets and machine configuration (never commit)
 appsettings.Local.json
