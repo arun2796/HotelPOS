@@ -1,8 +1,9 @@
 using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
-using HotelPOS.Application.Common.Security;
 using HotelPOS.Application.Devices;
+using HotelPOS.Application.Security;
+using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Auth;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Domain.Identity;
@@ -21,6 +22,7 @@ public sealed class AuthService : IAuthService
     private readonly IPasswordHasher _hasher;
     private readonly ITokenService _tokens;
     private readonly IDeviceService _devices;
+    private readonly IPermissionService _permissions;
     private readonly IAuditService _audit;
     private readonly ICurrentUser _currentUser;
     private readonly IClock _clock;
@@ -32,6 +34,7 @@ public sealed class AuthService : IAuthService
         IPasswordHasher hasher,
         ITokenService tokens,
         IDeviceService devices,
+        IPermissionService permissions,
         IAuditService audit,
         ICurrentUser currentUser,
         IClock clock,
@@ -42,6 +45,7 @@ public sealed class AuthService : IAuthService
         _hasher = hasher;
         _tokens = tokens;
         _devices = devices;
+        _permissions = permissions;
         _audit = audit;
         _currentUser = currentUser;
         _clock = clock;
@@ -68,17 +72,25 @@ public sealed class AuthService : IAuthService
 
         if (user.IsLockedOut(now))
         {
+            _audit.Record(AuditActions.LoginFailed, nameof(User), user.Id.ToString(),
+                newValues: new { Reason = "Locked", user.LockedUntil, request.DeviceName },
+                actor: new AuditActor(user.Id, user.Username));
+            await _db.SaveChangesAsync(cancellationToken);
             return AppErrors.AccountLocked();
         }
 
         var check = _hasher.Verify(user.PasswordHash, request.Password);
         if (check == PasswordCheck.Failed)
         {
-            user.RecordFailedLogin();
-            _audit.Record(AuditActions.LoginFailed, nameof(User), user.Id.ToString(),
-                newValues: new { Reason = "WrongPassword", user.FailedLoginCount, request.DeviceName },
-                actor: new AuditActor(user.Id, user.Username));
+            var locked = await LoginFailures.RecordAsync(_db, _audit, user, now, "WrongPassword", request.DeviceName, cancellationToken);
             await _db.SaveChangesAsync(cancellationToken);
+            if (locked)
+            {
+                _logger.LogWarning("User {Username} locked out until {LockedUntil} after {FailedCount} failed attempts",
+                    user.Username, user.LockedUntil, user.FailedLoginCount);
+                return AppErrors.AccountLocked();
+            }
+
             _logger.LogWarning("Login failed for user {Username}: wrong password", user.Username);
             return AppErrors.InvalidCredentials();
         }
@@ -113,7 +125,8 @@ public sealed class AuthService : IAuthService
         }
 
         user.RecordSuccessfulLogin(now);
-        var response = IssueTokens(user, device, now);
+        var permissions = await _permissions.GetPermissionsForRolesAsync(user.RoleNames, cancellationToken);
+        var response = IssueTokens(user, device, permissions, now);
         _audit.Record(AuditActions.LoginSucceeded, nameof(User), user.Id.ToString(),
             newValues: new { DeviceName = device?.Name },
             actor: new AuditActor(user.Id, user.Username));
@@ -161,6 +174,11 @@ public sealed class AuthService : IAuthService
             return AppErrors.AccountDisabled();
         }
 
+        if (user.IsLockedOut(now))
+        {
+            return AppErrors.AccountLocked();
+        }
+
         Device? device = null;
         if (stored.DeviceId is { } deviceId)
         {
@@ -175,7 +193,8 @@ public sealed class AuthService : IAuthService
             device?.Touch(now);
         }
 
-        var response = IssueTokens(user, device, now);
+        var permissions = await _permissions.GetPermissionsForRolesAsync(user.RoleNames, cancellationToken);
+        var response = IssueTokens(user, device, permissions, now);
         stored.Revoke(now, "Rotated", _tokens.HashRefreshToken(response.RefreshToken));
         await _db.SaveChangesAsync(cancellationToken);
         return response;
@@ -203,7 +222,13 @@ public sealed class AuthService : IAuthService
         }
 
         var user = await UsersWithRoles().AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
-        return user is null ? AppErrors.Unauthenticated() : ToCurrentUser(user);
+        if (user is null)
+        {
+            return AppErrors.Unauthenticated();
+        }
+
+        var permissions = await _permissions.GetPermissionsForRolesAsync(user.RoleNames, cancellationToken);
+        return ToCurrentUser(user, permissions);
     }
 
     public async Task<Result> ChangePasswordAsync(ChangePasswordRequest request, CancellationToken cancellationToken = default)
@@ -219,6 +244,11 @@ public sealed class AuthService : IAuthService
             return AppErrors.Unauthenticated();
         }
 
+        if (!PasswordPolicy.MeetsComplexity(request.NewPassword))
+        {
+            return AppErrors.Validation(nameof(request.NewPassword).ToCamelCase(), "Password must be at least 8 characters long and contain both letters and digits.");
+        }
+
         if (_hasher.Verify(user.PasswordHash, request.CurrentPassword) == PasswordCheck.Failed)
         {
             return AppErrors.Validation(nameof(request.CurrentPassword).ToCamelCase(), "The current password is not correct.");
@@ -230,7 +260,7 @@ public sealed class AuthService : IAuthService
         return Result.Success();
     }
 
-    internal static CurrentUserDto ToCurrentUser(User user)
+    internal static CurrentUserDto ToCurrentUser(User user, IReadOnlyList<string> permissions)
     {
         var roles = user.RoleNames.OrderBy(r => r, StringComparer.Ordinal).ToList();
         return new CurrentUserDto
@@ -239,7 +269,7 @@ public sealed class AuthService : IAuthService
             Username = user.Username,
             DisplayName = user.DisplayName,
             Roles = roles,
-            Permissions = RolePermissionMap.For(roles),
+            Permissions = permissions,
             MustChangePassword = user.MustChangePassword,
         };
     }
@@ -247,9 +277,9 @@ public sealed class AuthService : IAuthService
     private IQueryable<User> UsersWithRoles() =>
         _db.Users.Include(u => u.UserRoles).ThenInclude(ur => ur.Role);
 
-    private LoginResponse IssueTokens(User user, Device? device, DateTime now)
+    private LoginResponse IssueTokens(User user, Device? device, IReadOnlyList<string> permissions, DateTime now)
     {
-        var current = ToCurrentUser(user);
+        var current = ToCurrentUser(user, permissions);
         var access = _tokens.CreateAccessToken(user, current.Roles, current.Permissions, device?.Id, device?.Name);
         var refresh = _tokens.GenerateRefreshToken();
         var refreshExpires = now.AddHours(_jwt.RefreshTokenHours);

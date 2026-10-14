@@ -739,6 +739,9 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                     b.Property<int?>("CreatedBy")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("DeactivatedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
@@ -881,6 +884,20 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("Roles", (string)null);
+                });
+
+            modelBuilder.Entity("HotelPOS.Domain.Identity.RolePermission", b =>
+                {
+                    b.Property<int>("RoleId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Permission")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("RoleId", "Permission");
+
+                    b.ToTable("RolePermissions", (string)null);
                 });
 
             modelBuilder.Entity("HotelPOS.Domain.Identity.User", b =>
@@ -1711,6 +1728,17 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("HotelPOS.Domain.Identity.RolePermission", b =>
+                {
+                    b.HasOne("HotelPOS.Domain.Identity.Role", "Role")
+                        .WithMany("Permissions")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Role");
+                });
+
             modelBuilder.Entity("HotelPOS.Domain.Identity.UserRole", b =>
                 {
                     b.HasOne("HotelPOS.Domain.Identity.Role", "Role")
@@ -1872,6 +1900,11 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                     b.Navigation("Items");
 
                     b.Navigation("Payments");
+                });
+
+            modelBuilder.Entity("HotelPOS.Domain.Identity.Role", b =>
+                {
+                    b.Navigation("Permissions");
                 });
 
             modelBuilder.Entity("HotelPOS.Domain.Identity.User", b =>

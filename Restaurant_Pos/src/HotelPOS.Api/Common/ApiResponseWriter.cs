@@ -10,7 +10,8 @@ public static class ApiResponseWriter
         int statusCode,
         string code,
         string message,
-        IReadOnlyList<ApiError>? errors = null)
+        IReadOnlyList<ApiError>? errors = null,
+        Action<IHeaderDictionary>? configureHeaders = null)
     {
         if (context.Response.HasStarted)
         {
@@ -20,6 +21,7 @@ public static class ApiResponseWriter
         context.Response.Clear();
         context.Response.StatusCode = statusCode;
         context.Response.ContentType = "application/json; charset=utf-8";
+        configureHeaders?.Invoke(context.Response.Headers);
 
         var body = ApiResponse.Fail(
             message,

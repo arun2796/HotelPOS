@@ -92,9 +92,11 @@ app.UseStaticFiles(new StaticFileOptions
     OnPrepareResponse = context => context.Context.Response.Headers.CacheControl = "public, max-age=31536000, immutable",
 });
 
+app.UseMiddleware<LoginRateLimitingMiddleware>();
 app.UseAuthentication();
 app.UseMiddleware<RequestContextLoggingMiddleware>();
 app.UseAuthorization();
+app.UseMiddleware<DeviceEnforcementMiddleware>();
 app.UseMiddleware<IdempotencyMiddleware>();
 
 app.MapControllers();

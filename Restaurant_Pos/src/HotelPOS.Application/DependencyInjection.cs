@@ -8,6 +8,7 @@ using HotelPOS.Application.Menu;
 using HotelPOS.Application.Orders;
 using HotelPOS.Application.Print;
 using HotelPOS.Application.Reports;
+using HotelPOS.Application.Security;
 using HotelPOS.Application.Settings;
 using HotelPOS.Application.Users;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,6 +33,7 @@ public static class DependencyInjection
         services.AddScoped<KitchenSync>();
         services.AddScoped<IKitchenService, KitchenService>();
         services.AddScoped<IManagerApprovalService, ManagerApprovalService>();
+        services.AddSingleton<IDeviceAccessCache, DeviceAccessCache>();
         services.AddScoped<IBillingService, BillingService>();
         services.AddScoped<IDiscountService, DiscountService>();
         services.AddScoped<IPaymentMethodService, PaymentMethodService>();
@@ -48,6 +50,11 @@ public static class DependencyInjection
         services.AddScoped<SettingsService>();
         services.AddScoped<ISettingsService>(sp => sp.GetRequiredService<SettingsService>());
         services.AddScoped<ISystemInfoService>(sp => sp.GetRequiredService<SettingsService>());
+        services.AddScoped<HotelPOS.Application.Security.IPermissionService, HotelPOS.Application.Security.PermissionService>();
+        services.AddScoped<HotelPOS.Application.Security.IApprovalTokenService, HotelPOS.Application.Security.ApprovalTokenService>();
+        services.AddScoped<HotelPOS.Application.Security.ISessionService, HotelPOS.Application.Security.SessionService>();
+        services.AddScoped<IDeviceAdminService, DeviceAdminService>();
+        services.AddScoped<HotelPOS.Application.Administration.IAuditQueryService, HotelPOS.Application.Administration.AuditQueryService>();
 
         return services;
     }

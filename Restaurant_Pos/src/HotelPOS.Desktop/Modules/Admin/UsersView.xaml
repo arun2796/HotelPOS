@@ -65,6 +65,27 @@
           <DataGridTextColumn Header="NAME" Binding="{Binding DisplayName}" Width="1.5*" MinWidth="120" />
           <DataGridTextColumn Header="ROLES" Binding="{Binding Roles, Converter={StaticResource ListJoin}}" Width="1.2*" MinWidth="90" />
           <DataGridTextColumn Header="STATUS" Binding="{Binding IsActive, Converter={StaticResource ActiveText}}" Width="0.7*" MinWidth="70" />
+          <DataGridTemplateColumn Header="LOCKOUT" Width="0.8*" MinWidth="80">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate>
+                <TextBlock VerticalAlignment="Center">
+                  <TextBlock.Style>
+                    <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+                      <Setter Property="Text" Value="Normal" />
+                      <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsLockedOut}" Value="True">
+                          <Setter Property="Text" Value="Locked Out" />
+                          <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
+                          <Setter Property="FontWeight" Value="SemiBold" />
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </TextBlock.Style>
+                </TextBlock>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
           <DataGridTextColumn Header="LAST SIGN-IN" Binding="{Binding LastLoginAtUtc, Converter={StaticResource UtcToLocal}}" Width="1.2*" MinWidth="125" />
         </DataGrid.Columns>
       </DataGrid>
@@ -81,7 +102,10 @@
       <StackPanel Orientation="Horizontal">
         <Button Content="Edit" Command="{Binding EditCommand}" MinWidth="90" />
         <Button Content="Reset password" Command="{Binding ResetPasswordCommand}" Margin="8,0,0,0" />
-        <Button Content="{Binding ToggleActiveText}" Command="{Binding ToggleActiveCommand}" Margin="8,0,0,0" MinWidth="110" />
+        <Button Content="{Binding ToggleActiveText}" Command="{Binding ToggleActiveCommand}" Margin="8,0,0,0" MinWidth="100" />
+        <Button Content="Unlock" Command="{Binding UnlockCommand}" Margin="8,0,0,0" MinWidth="80" />
+        <Button Content="Sessions" Command="{Binding ViewSessionsCommand}" Margin="8,0,0,0" MinWidth="90" />
+        <Button Content="Log out everywhere" Command="{Binding LogoutAllCommand}" Margin="8,0,0,0" MinWidth="140" />
       </StackPanel>
       <StackPanel Grid.Column="2" Orientation="Horizontal">
         <Button Command="{Binding PreviousPageCommand}" ToolTip="Previous page">

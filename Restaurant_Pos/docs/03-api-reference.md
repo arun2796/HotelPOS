@@ -1,6 +1,6 @@
 # 03 — API Reference (planned surface)
 
-Last updated: 2026-10-07
+Last updated: 2026-10-14
 
 This is the target REST surface. Each endpoint lists the roles allowed and the phase that delivers it.
 `M` = Manager, `A` = Admin, `W` = Waiter, `K` = Kitchen, `C` = Cashier, `*` = any authenticated user.
@@ -46,7 +46,7 @@ Admin always has access; Manager has access wherever `M` is listed.
 | 409 | `APPROVAL_REQUIRED` / `APPROVAL_INVALID` | Manager approval missing or wrong |
 | 409 | `PAYMENT_EXCEEDS_BALANCE` | Non-cash amount above balance due |
 | 422 | `BUSINESS_RULE` | Other domain rule (message explains) |
-| 429 | `RATE_LIMITED` | Too many login attempts |
+| 429 | `RATE_LIMITED` | Too many attempts on `/api/auth/login` or `/api/auth/approval` (per socket IP and per username; `Security:RateLimit` `MaxPerIp` 10, `MaxPerUser` 5, `WindowSeconds` 60); `Retry-After` header |
 | 500 | `SERVER_ERROR` | Unhandled exception (details only in logs) |
 | none | `CONNECTION_UNAVAILABLE` | Client-side only: no response from the server (never sent by the API) |
 
@@ -58,6 +58,7 @@ Admin always has access; Manager has access wherever `M` is listed.
 |---|---|---|---|
 | POST | `/api/auth/login` | anon | `{username, password, deviceName?, deviceType?, machineName?, appVersion?}` -> access + refresh tokens, user, roles, permissions, `deviceId` (the device is registered or updated during login) |
 | POST | `/api/auth/refresh` | anon | Rotates refresh token |
+| POST | `/api/auth/approval` | anon | `{approverUsername, approverPassword, actionType}` -> 2-minute single-use approval token (Manager/Admin only) for `discount`, `void`, `refund`, `reopen` |
 | POST | `/api/auth/logout` | anon | Revokes the given refresh token (possession is the authorization, so it works with an expired access token) |
 | GET | `/api/auth/me` | * | Current user, roles, permissions |
 | POST | `/api/auth/change-password` | * | |
@@ -78,8 +79,9 @@ Admin always has access; Manager has access wherever `M` is listed.
 | POST | `/api/users/{id}/activate` / `deactivate` | A | 1 |
 | POST | `/api/users/{id}/reset-password` | A | 1 |
 | POST | `/api/users/{id}/unlock` | A | 9 |
+| GET | `/api/users/{id}/sessions` ; POST `/api/users/{id}/logout-all` | A | 9 |
 | GET | `/api/roles` | A | 1 |
-| GET/PUT | `/api/roles/{id}/permissions` | A | 9 |
+| GET/PUT | `/api/roles/{id}/permissions` (`{permissions[], forceRelogin}`); GET `/api/roles/permissions` | A | 9 |
 
 ### 3.3 Sections and tables (Phase 2)
 
@@ -186,7 +188,7 @@ All `GET`, roles A/M, params `from`, `to` (business days, default today, at most
 
 | Method | Route | Roles | Phase |
 |---|---|---|---|
-| GET | `/api/admin/audit-logs` (paged, filters) | A, M | 9 |
+| GET | `/api/admin/audit-logs` (paged, filters: user, device, action, entity, dates); GET `.../export` (CSV) | A, M | 9 |
 | GET | `/api/admin/devices` | A | 9 |
 | PUT | `/api/admin/devices/{id}` ; POST `.../deactivate` / `activate` | A | 9 |
 | POST | `/api/admin/backup` ; GET `/api/admin/backups` | A | 10 |
@@ -215,4 +217,5 @@ Actions marked "approval" accept an `approval` object:
 
 The server validates the credentials, checks the approver's role, records `ApprovedBy` on the entity and
 in the audit log. The approver's password is never logged. If the caller already has the Manager role
-the object is optional. Phase 9 may replace this with short-lived approval tokens.
+the object is optional. Since Phase 9 the object may instead carry `approvalToken` from
+`POST /api/auth/approval`; the token is bound to the action type, valid for 2 minutes and used once.

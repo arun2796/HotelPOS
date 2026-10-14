@@ -1,6 +1,6 @@
 # 02 — Domain Model and Database
 
-Last updated: 2026-10-07
+Last updated: 2026-10-14
 
 ## 1. Conventions
 
@@ -25,12 +25,12 @@ Last updated: 2026-10-07
 
 | Entity | Key columns |
 |---|---|
-| `Users` | `Username` (50), `NormalizedUsername` (upper-case, unique, so logins are case-insensitive), `DisplayName`, `PasswordHash`, `IsActive`, `MustChangePassword`, `FailedLoginCount`, `LockedUntil`, `LastLoginAt`, `RowVersion` |
+| `Users` | `Username` (50), `NormalizedUsername` (upper-case, unique, so logins are case-insensitive), `DisplayName`, `PasswordHash`, `IsActive`, `MustChangePassword`, `FailedLoginCount`, `LockedUntil`, `LastLoginAt`, `PasswordChangedAt`, `RowVersion` |
 | `Roles` | `Name` (unique: Admin, Manager, Waiter, Kitchen, Cashier), `Description`, `IsSystem` |
 | `UserRoles` | `UserId`, `RoleId` (composite PK) |
 | `RolePermissions` (Phase 9) | `RoleId`, `Permission` (string constant) |
 | `RefreshTokens` | `UserId`, `TokenHash`, `DeviceId`, `ExpiresAt`, `RevokedAt`, `ReplacedByTokenHash`, `CreatedByIp` |
-| `Devices` | `Id` (guid), `Name` (unique, e.g. WAITER-01), `Type` (enum), `MachineName`, `AppVersion`, `StationId?`, `LastSeenAt`, `IsActive`, `RegisteredAt` |
+| `Devices` | `Id` (guid), `Name` (unique, e.g. WAITER-01), `Type` (enum), `MachineName`, `AppVersion`, `StationId?`, `LastSeenAt`, `IsActive`, `DeactivatedAt?` (Phase 9), `RegisteredAt` |
 | `Settings` | `Key` (PK, 100), `Value` (max), `DataType` (String/Int/Decimal/Bool/Json), `Description`, `IsPublic` (visible to all clients) |
 | `AuditLogs` | `UserId?`, `UserName`, `DeviceId?`, `DeviceName`, `MachineName`, `IpAddress`, `Action` (e.g. `Order.Cancelled`), `EntityType`, `EntityId`, `OldValues` (JSON), `NewValues` (JSON), `CorrelationId`, `Timestamp` |
 | `IdempotencyRecords` | `Key` (guid PK), `UserId`, `Route`, `RequestHash`, `StatusCode`, `ResponseBody`, `CreatedAt`, `ExpiresAt`, `InProgress` |
@@ -233,7 +233,11 @@ Prices are tax-exclusive in v1 (`PricesIncludeTax` setting reserved).
   `InvoiceResetPolicy` (Yearly), `RoundOffTotals` (true), `BusinessDayStartTime` (04:00),
   `KitchenWarnMinutes` (10), `KitchenLateMinutes` (20), `AutoCloseOnFullPayment` (true),
   `ReceiptFooter`, `MenuVersion` (1), `TaxSplitDisplay` (CGST_SGST), `AllowAnyWaiterToEditOrders` (false),
-  `MaxCashierDiscountPercent` (10), `AllowBillBeforeReady` (false), `PrintInvoiceCopies` (1), `KotShowPrices` (false)
+  `MaxCashierDiscountPercent` (10), `AllowBillBeforeReady` (false), `PrintInvoiceCopies` (1), `KotShowPrices` (false),
+  `LockoutThreshold` (5), `LockoutMinutes` (15), `AuditRetentionDays` (0 = keep all) (Phase 9)
+- Role permissions (Phase 9): the defaults of `RolePermissionMap`, written only when a role is created (the
+  `Phase09_Security` migration back-fills roles that already existed). Later restarts never touch them, so an
+  admin's edits, removals included, stand.
 - Development-only seed: sample sections, tables, categories, items, a waiter/kitchen/cashier user
 
 ## 9. Migration strategy

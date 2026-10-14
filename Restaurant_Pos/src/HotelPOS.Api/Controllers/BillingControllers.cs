@@ -16,7 +16,7 @@ internal static class BillingRoles
 }
 
 [Route("api/billing")]
-[Authorize(Roles = BillingRoles.Desk)]
+[Authorize]
 public sealed class BillingController : ApiControllerBase
 {
     private readonly IBillingService _billing;
@@ -26,11 +26,13 @@ public sealed class BillingController : ApiControllerBase
         _billing = billing;
     }
 
+    [Authorize(Policy = Permissions.BillingOperate)]
     [HttpGet("pending")]
     [ProducesResponseType<ApiResponse<IReadOnlyList<BillSummaryDto>>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Pending(CancellationToken cancellationToken) =>
         Envelope(await _billing.ListPendingAsync(cancellationToken));
 
+    [Authorize(Policy = Permissions.BillingOperate)]
     [HttpGet("closed")]
     [ProducesResponseType<ApiResponse<IReadOnlyList<BillSummaryDto>>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Closed([FromQuery] ClosedBillQuery query, CancellationToken cancellationToken) =>
@@ -42,59 +44,70 @@ public sealed class BillingController : ApiControllerBase
     public async Task<IActionResult> Get(int id, CancellationToken cancellationToken) =>
         FromResult(await _billing.GetAsync(id, cancellationToken));
 
+    [Authorize(Policy = Permissions.BillingOperate)]
     [HttpPost("{id:int}/claim")]
     [ProducesResponseType<ApiResponse<BillDetailDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Claim(int id, [FromBody] ClaimBillRequest? request, CancellationToken cancellationToken) =>
         FromResult(await _billing.ClaimAsync(id, request ?? new ClaimBillRequest(), cancellationToken));
 
+    [Authorize(Policy = Permissions.BillingOperate)]
     [HttpPost("{id:int}/release")]
     [ProducesResponseType<ApiResponse<BillDetailDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Release(int id, CancellationToken cancellationToken) =>
         FromResult(await _billing.ReleaseAsync(id, cancellationToken));
 
+    [Authorize(Policy = Permissions.BillingOperate)]
     [HttpPut("{id:int}/discount")]
     [ProducesResponseType<ApiResponse<BillDetailDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> SetDiscount(int id, ApplyDiscountRequest request, CancellationToken cancellationToken) =>
         FromResult(await _billing.SetDiscountAsync(id, request, cancellationToken), message: "Discount applied.");
 
+    [Authorize(Policy = Permissions.BillingOperate)]
     [HttpDelete("{id:int}/discount")]
     [ProducesResponseType<ApiResponse<BillDetailDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> ClearDiscount(int id, [FromQuery] string? rowVersion, CancellationToken cancellationToken) =>
         FromResult(await _billing.ClearDiscountAsync(id, new BillActionRequest { RowVersion = rowVersion ?? string.Empty }, cancellationToken),
             message: "Discount removed.");
 
+    [Authorize(Policy = Permissions.BillingOperate)]
     [HttpPut("{id:int}/customer")]
     [ProducesResponseType<ApiResponse<BillDetailDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> SetCustomer(int id, UpdateCustomerRequest request, CancellationToken cancellationToken) =>
         FromResult(await _billing.SetCustomerAsync(id, request, cancellationToken), message: "Customer details saved.");
 
+    [Authorize(Policy = Permissions.BillingOperate)]
     [HttpPost("{id:int}/finalize")]
     [ProducesResponseType<ApiResponse<BillDetailDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Finalize(int id, BillActionRequest request, CancellationToken cancellationToken) =>
         FromResult(await _billing.FinalizeAsync(id, request, cancellationToken), message: "Invoice finalized.");
 
+    [Authorize(Policy = Permissions.BillingOperate)]
     [HttpPost("{id:int}/payments")]
     [Idempotent]
     [ProducesResponseType<ApiResponse<BillDetailDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> AddPayment(int id, AddPaymentRequest request, CancellationToken cancellationToken) =>
         FromResult(await _billing.AddPaymentAsync(id, request, IdempotencyKey, cancellationToken), message: "Payment received.");
 
+    [Authorize(Policy = Permissions.BillingOperate)]
     [HttpPost("{id:int}/close")]
     [ProducesResponseType<ApiResponse<BillDetailDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Close(int id, CancellationToken cancellationToken) =>
         FromResult(await _billing.CloseAsync(id, cancellationToken), message: "Order closed.");
 
+    [Authorize(Policy = Permissions.BillingOperate)]
     [HttpPost("{id:int}/reopen")]
     [ProducesResponseType<ApiResponse<BillDetailDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Reopen(int id, ReopenBillRequest request, CancellationToken cancellationToken) =>
         FromResult(await _billing.ReopenAsync(id, request, cancellationToken), message: "Bill reopened; the order can be changed again.");
 
     // Cashiers may call void and refund too: the service then requires a manager's approval in the request.
+    [Authorize(Policy = Permissions.BillingOperate)]
     [HttpPost("{id:int}/void")]
     [ProducesResponseType<ApiResponse<BillDetailDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Void(int id, VoidBillRequest request, CancellationToken cancellationToken) =>
         FromResult(await _billing.VoidAsync(id, request, cancellationToken), message: "Bill voided.");
 
+    [Authorize(Policy = Permissions.BillingOperate)]
     [HttpPost("{id:int}/refunds")]
     [Idempotent]
     [ProducesResponseType<ApiResponse<BillDetailDto>>(StatusCodes.Status200OK)]
@@ -105,7 +118,7 @@ public sealed class BillingController : ApiControllerBase
 }
 
 [Route("api/discounts")]
-[Authorize(Roles = BillingRoles.Desk)]
+[Authorize(Policy = Permissions.BillingOperate)]
 public sealed class DiscountsController : ApiControllerBase
 {
     private readonly IDiscountService _discounts;

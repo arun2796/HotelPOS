@@ -1,6 +1,6 @@
 # Phase Roadmap
 
-Last updated: 2026-10-07
+Last updated: 2026-10-14
 
 Each phase ends with a working, demonstrable system increment. Later phases only add; they never
 require rewriting earlier ones. Reference documents (`docs/00`–`06`) describe the target design; phase
@@ -19,7 +19,7 @@ documents say what to build, in which order, and how to verify it.
 | 6 | [Billing & Payments](phase-06-billing-and-payments.md) | 5 | Bill request queue, discounts, tax, finalize/invoice, split payments, multi-counter safety, void/refund | Done (2026-10-07) |
 | 7 | [Printing](phase-07-printing.md) | 5, 6 | KOT, invoice, receipt via thermal/Windows/network printers behind `IPrintService` | Done (2026-10-07) |
 | 8 | [Reports & Dashboard](phase-08-reports-and-dashboard.md) | 6 | Sales, items, payments, cancellations, discounts, taxes, staff and kitchen performance; dashboard | Done (2026-10-08) |
-| 9 | [Security & Audit](phase-09-security-and-audit.md) | 1–6 | Editable permissions, lockout, rate limiting, device management, audit viewer, hardening | Not started |
+| 9 | [Security & Audit](phase-09-security-and-audit.md) | 1–6 | Editable permissions, lockout, rate limiting, device management, audit viewer, hardening | In progress (open items: phase doc § 15) |
 | 10 | [Production Readiness](phase-10-production-readiness.md) | all | Windows Service hosting, installers, backup/recovery, monitoring, LAN/firewall docs, go-live checklist | Not started |
 
 Phases 2 and 3 are independent and can be built in parallel. Phase 7 can start once Phase 5 exists

@@ -1,4 +1,5 @@
 using HotelPOS.Application.Auth;
+using HotelPOS.Application.Security;
 using HotelPOS.Contracts.Auth;
 using HotelPOS.Contracts.Common;
 using Microsoft.AspNetCore.Authorization;
@@ -10,10 +11,12 @@ namespace HotelPOS.Api.Controllers;
 public sealed class AuthController : ApiControllerBase
 {
     private readonly IAuthService _auth;
+    private readonly IApprovalTokenService _approvalTokens;
 
-    public AuthController(IAuthService auth)
+    public AuthController(IAuthService auth, IApprovalTokenService approvalTokens)
     {
         _auth = auth;
+        _approvalTokens = approvalTokens;
     }
 
     [HttpPost("login")]
@@ -21,6 +24,12 @@ public sealed class AuthController : ApiControllerBase
     [ProducesResponseType<ApiResponse<LoginResponse>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Login(LoginRequest request, CancellationToken cancellationToken) =>
         FromResult(await _auth.LoginAsync(request, cancellationToken));
+
+    [HttpPost("approval")]
+    [AllowAnonymous]
+    [ProducesResponseType<ApiResponse<ApprovalTokenResponse>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> Approval(ApprovalTokenRequest request, CancellationToken cancellationToken) =>
+        FromResult(await _approvalTokens.IssueApprovalTokenAsync(request, cancellationToken));
 
     [HttpPost("refresh")]
     [AllowAnonymous]

@@ -4,6 +4,7 @@ using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Auth;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Floor;
+using HotelPOS.Contracts.Security;
 using HotelPOS.Contracts.Users;
 
 namespace HotelPOS.Desktop.Services.Api;
@@ -84,6 +85,18 @@ public interface IUsersApi
     Task<ApiResult<object>> ResetPasswordAsync(int id, ResetPasswordRequest request, CancellationToken cancellationToken = default);
 
     Task<ApiResult<List<RoleDto>>> GetRolesAsync(CancellationToken cancellationToken = default);
+
+    Task<ApiResult<UserDto>> UnlockAsync(int id, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<List<UserSessionDto>>> GetSessionsAsync(int id, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<object>> LogoutAllAsync(int id, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<List<RolePermissionsDto>>> ListAllRolePermissionsAsync(CancellationToken cancellationToken = default);
+
+    Task<ApiResult<RolePermissionsDto>> GetRolePermissionsAsync(int roleId, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<object>> UpdateRolePermissionsAsync(int roleId, UpdateRolePermissionsRequest request, CancellationToken cancellationToken = default);
 }
 
 public sealed class UsersApi : IUsersApi
@@ -126,6 +139,24 @@ public sealed class UsersApi : IUsersApi
 
     public Task<ApiResult<List<RoleDto>>> GetRolesAsync(CancellationToken cancellationToken = default) =>
         _api.GetAsync<List<RoleDto>>("api/roles", cancellationToken);
+
+    public Task<ApiResult<UserDto>> UnlockAsync(int id, CancellationToken cancellationToken = default) =>
+        _api.PostAsync<UserDto>($"api/users/{id}/unlock", null, cancellationToken);
+
+    public Task<ApiResult<List<UserSessionDto>>> GetSessionsAsync(int id, CancellationToken cancellationToken = default) =>
+        _api.GetAsync<List<UserSessionDto>>($"api/users/{id}/sessions", cancellationToken);
+
+    public Task<ApiResult<object>> LogoutAllAsync(int id, CancellationToken cancellationToken = default) =>
+        _api.PostAsync<object>($"api/users/{id}/logout-all", null, cancellationToken);
+
+    public Task<ApiResult<List<RolePermissionsDto>>> ListAllRolePermissionsAsync(CancellationToken cancellationToken = default) =>
+        _api.GetAsync<List<RolePermissionsDto>>("api/roles/permissions", cancellationToken);
+
+    public Task<ApiResult<RolePermissionsDto>> GetRolePermissionsAsync(int roleId, CancellationToken cancellationToken = default) =>
+        _api.GetAsync<RolePermissionsDto>($"api/roles/{roleId}/permissions", cancellationToken);
+
+    public Task<ApiResult<object>> UpdateRolePermissionsAsync(int roleId, UpdateRolePermissionsRequest request, CancellationToken cancellationToken = default) =>
+        _api.PutAsync<object>($"api/roles/{roleId}/permissions", request, cancellationToken);
 }
 
 public interface IAdminSettingsApi

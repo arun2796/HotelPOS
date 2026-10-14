@@ -1,3 +1,4 @@
+using HotelPOS.Application.Security;
 using HotelPOS.Application.Users;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Security;
@@ -8,14 +9,16 @@ using Microsoft.AspNetCore.Mvc;
 namespace HotelPOS.Api.Controllers;
 
 [Route("api/users")]
-[Authorize(Roles = Roles.Admin)]
+[Authorize(Policy = Permissions.UsersManage)]
 public sealed class UsersController : ApiControllerBase
 {
     private readonly IUserService _users;
+    private readonly ISessionService _sessions;
 
-    public UsersController(IUserService users)
+    public UsersController(IUserService users, ISessionService sessions)
     {
         _users = users;
+        _sessions = sessions;
     }
 
     [HttpGet]
@@ -49,21 +52,50 @@ public sealed class UsersController : ApiControllerBase
     [HttpPost("{id:int}/reset-password")]
     public async Task<IActionResult> ResetPassword(int id, ResetPasswordRequest request, CancellationToken cancellationToken) =>
         FromResult(await _users.ResetPasswordAsync(id, request, cancellationToken), "Password reset.");
+
+    [HttpPost("{id:int}/unlock")]
+    public async Task<IActionResult> Unlock(int id, CancellationToken cancellationToken) =>
+        FromResult(await _sessions.UnlockUserAsync(id, cancellationToken), "User account unlocked.");
+
+    [HttpGet("{id:int}/sessions")]
+    [ProducesResponseType<ApiResponse<IReadOnlyList<UserSessionDto>>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetSessions(int id, CancellationToken cancellationToken) =>
+        FromResult(await _sessions.GetUserSessionsAsync(id, cancellationToken));
+
+    [HttpPost("{id:int}/logout-all")]
+    public async Task<IActionResult> LogoutAll(int id, CancellationToken cancellationToken) =>
+        FromResult(await _sessions.LogoutAllAsync(id, cancellationToken), "All user sessions terminated.");
 }
 
 [Route("api/roles")]
-[Authorize(Roles = Roles.Admin)]
+[Authorize(Policy = Permissions.RolesManage)]
 public sealed class RolesController : ApiControllerBase
 {
     private readonly IUserService _users;
+    private readonly IPermissionService _permissions;
 
-    public RolesController(IUserService users)
+    public RolesController(IUserService users, IPermissionService permissions)
     {
         _users = users;
+        _permissions = permissions;
     }
 
     [HttpGet]
     [ProducesResponseType<ApiResponse<IReadOnlyList<RoleDto>>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> List(CancellationToken cancellationToken) =>
         Envelope(await _users.ListRolesAsync(cancellationToken));
+
+    [HttpGet("permissions")]
+    [ProducesResponseType<ApiResponse<IReadOnlyList<RolePermissionsDto>>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> ListAllPermissions(CancellationToken cancellationToken) =>
+        FromResult(await _permissions.GetAllRolePermissionsAsync(cancellationToken));
+
+    [HttpGet("{id:int}/permissions")]
+    [ProducesResponseType<ApiResponse<RolePermissionsDto>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetPermissions(int id, CancellationToken cancellationToken) =>
+        FromResult(await _permissions.GetRolePermissionsAsync(id, cancellationToken));
+
+    [HttpPut("{id:int}/permissions")]
+    public async Task<IActionResult> UpdatePermissions(int id, UpdateRolePermissionsRequest request, CancellationToken cancellationToken) =>
+        FromResult(await _permissions.UpdateRolePermissionsAsync(id, request, cancellationToken), "Role permissions updated.");
 }

@@ -41,6 +41,15 @@
       <DataTemplate DataType="{x:Type admin:UsersViewModel}">
         <admin:UsersView />
       </DataTemplate>
+      <DataTemplate DataType="{x:Type admin:RolesViewModel}">
+        <admin:RolesView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type admin:DevicesViewModel}">
+        <admin:DevicesView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type admin:AuditLogsViewModel}">
+        <admin:AuditLogsView />
+      </DataTemplate>
       <DataTemplate DataType="{x:Type admin:SettingsViewModel}">
         <admin:SettingsView />
       </DataTemplate>

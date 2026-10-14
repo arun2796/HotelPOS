@@ -80,8 +80,8 @@ public class UserServiceTests : DatabaseTestBase
     public async Task Deactivate_TheLastActiveAdmin_IsRejected()
     {
         var adminId = await AdminIdAsync();
-        var manager = await CreateUserAsync("manager1", "secret1", Roles.Manager);
-        CurrentUser.SignIn(manager.Id, "manager1", Roles.Manager);
+        // An admin caller other than the target, so neither the own-account nor the admin-only rule answers first.
+        CurrentUser.SignIn(adminId + 1000, "other-admin-session", Roles.Admin);
 
         var result = await Users.SetActiveAsync(adminId, active: false);
 
@@ -92,8 +92,8 @@ public class UserServiceTests : DatabaseTestBase
     [Fact]
     public async Task Deactivate_AnAdmin_IsAllowedWhenAnotherActiveAdminExists()
     {
-        var second = await CreateUserAsync("admin2", "secret1", Roles.Admin);
         await SignInAsAdminAsync();
+        var second = await CreateUserAsync("admin2", "secret1", Roles.Admin);
 
         var result = await Users.SetActiveAsync(second.Id, active: false);
 
@@ -104,8 +104,8 @@ public class UserServiceTests : DatabaseTestBase
     [Fact]
     public async Task Deactivate_OwnAccount_IsRejected()
     {
-        await CreateUserAsync("admin2", "secret1", Roles.Admin);
         await SignInAsAdminAsync();
+        await CreateUserAsync("admin2", "secret1", Roles.Admin);
 
         var result = await Users.SetActiveAsync(CurrentUser.UserId!.Value, active: false);
 
@@ -215,5 +215,32 @@ public class UserServiceTests : DatabaseTestBase
         page.TotalCount.Should().Be(2);
         page.Items.Should().HaveCount(1);
         page.TotalPages.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task NonAdminWithUsersManage_CannotCreateOrResetAdministrators()
+    {
+        var manager = await CreateUserAsync("mgr", "Pass@1234", Roles.Manager);
+        CurrentUser.SignIn(manager.Id, "mgr", Roles.Manager);
+
+        var create = await Users.CreateAsync(new CreateUserRequest
+        {
+            Username = "sneaky",
+            DisplayName = "Sneaky",
+            Password = "Pass@1234",
+            Roles = new[] { Roles.Admin },
+        });
+        var reset = await Users.ResetPasswordAsync(await AdminIdAsync(), new ResetPasswordRequest { NewPassword = "Pass@1234" });
+        var waiter = await Users.CreateAsync(new CreateUserRequest
+        {
+            Username = "w9",
+            DisplayName = "Waiter 9",
+            Password = "Pass@1234",
+            Roles = new[] { Roles.Waiter },
+        });
+
+        create.Error!.Code.Should().Be(ErrorCodes.Forbidden);
+        reset.Error!.Code.Should().Be(ErrorCodes.Forbidden);
+        waiter.IsSuccess.Should().BeTrue();
     }
 }

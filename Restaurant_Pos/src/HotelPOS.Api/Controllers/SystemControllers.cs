@@ -44,7 +44,7 @@ public sealed class SettingsController : ApiControllerBase
 }
 
 [Route("api/admin/settings")]
-[Authorize(Roles = Roles.Admin)]
+[Authorize(Policy = Permissions.SettingsManage)]
 public sealed class AdminSettingsController : ApiControllerBase
 {
     private readonly ISettingsService _settings;

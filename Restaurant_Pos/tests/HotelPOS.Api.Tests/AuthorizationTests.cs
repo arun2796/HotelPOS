@@ -55,13 +55,13 @@ public class AuthorizationTests : IClassFixture<ApiFactory>
         {
             Username = "newwaiter",
             DisplayName = "New Waiter",
-            Password = "secret1",
+            Password = "secret123",
             Roles = new[] { "Waiter" },
             MustChangePassword = false,
         }, PosJson.Options);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
-        var login = await _factory.LoginAsync("newwaiter", "secret1");
+        var login = await _factory.LoginAsync("newwaiter", "secret123");
         login.User.Roles.Should().Equal("Waiter");
     }
 

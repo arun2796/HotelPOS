@@ -21,6 +21,8 @@ public interface IDeviceService
         CancellationToken cancellationToken = default);
 
     Task TouchAsync(Guid deviceId, CancellationToken cancellationToken = default);
+
+    Task<Device?> GetByIdAsync(Guid deviceId, CancellationToken cancellationToken = default);
 }
 
 public sealed class DeviceService : IDeviceService
@@ -88,6 +90,9 @@ public sealed class DeviceService : IDeviceService
         device.Touch(_clock.UtcNow);
         await _db.SaveChangesAsync(cancellationToken);
     }
+
+    public Task<Device?> GetByIdAsync(Guid deviceId, CancellationToken cancellationToken = default) =>
+        _db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, cancellationToken);
 
     internal static DeviceDto ToDto(Device device, bool isOnline = false) => new()
     {

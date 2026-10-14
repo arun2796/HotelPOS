@@ -23,6 +23,13 @@ public sealed record DeviceDto
     public bool IsOnline { get; init; }
     public DateTime? LastSeenAtUtc { get; init; }
     public DateTime RegisteredAtUtc { get; init; }
+    public DateTime? DeactivatedAtUtc { get; init; }
+}
+
+public sealed record UpdateDeviceRequest
+{
+    public string Name { get; init; } = string.Empty;
+    public int? StationId { get; init; }
 }
 
 public static class DeviceNameRules

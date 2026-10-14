@@ -39,19 +39,19 @@ public sealed class SectionsController : ApiControllerBase
         FromResult(await _sections.GetAsync(id, cancellationToken));
 
     [HttpPost]
-    [Authorize(Roles = FloorManagers)]
+    [Authorize(Policy = Permissions.TablesManage)]
     [ProducesResponseType<ApiResponse<SectionDto>>(StatusCodes.Status201Created)]
     public async Task<IActionResult> Create(CreateSectionRequest request, CancellationToken cancellationToken) =>
         FromResult(await _sections.CreateAsync(request, cancellationToken), StatusCodes.Status201Created, "Section created.");
 
     [HttpPut("{id:int}")]
-    [Authorize(Roles = FloorManagers)]
+    [Authorize(Policy = Permissions.TablesManage)]
     [ProducesResponseType<ApiResponse<SectionDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Update(int id, UpdateSectionRequest request, CancellationToken cancellationToken) =>
         FromResult(await _sections.UpdateAsync(id, request, cancellationToken), message: "Section updated.");
 
     [HttpDelete("{id:int}")]
-    [Authorize(Roles = FloorManagers)]
+    [Authorize(Policy = Permissions.TablesManage)]
     [ProducesResponseType<ApiResponse<SectionDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Deactivate(int id, CancellationToken cancellationToken) =>
         FromResult(await _sections.DeactivateAsync(id, cancellationToken), message: "Section deactivated.");
@@ -93,43 +93,43 @@ public sealed class TablesController : ApiControllerBase
         FromResult(await _tables.GetAsync(id, cancellationToken));
 
     [HttpPost]
-    [Authorize(Roles = FloorManagers)]
+    [Authorize(Policy = Permissions.TablesManage)]
     [ProducesResponseType<ApiResponse<TableDto>>(StatusCodes.Status201Created)]
     public async Task<IActionResult> Create(CreateTableRequest request, CancellationToken cancellationToken) =>
         FromResult(await _tables.CreateAsync(request, cancellationToken), StatusCodes.Status201Created, "Table created.");
 
     [HttpPut("{id:int}")]
-    [Authorize(Roles = FloorManagers)]
+    [Authorize(Policy = Permissions.TablesManage)]
     [ProducesResponseType<ApiResponse<TableDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Update(int id, UpdateTableRequest request, CancellationToken cancellationToken) =>
         FromResult(await _tables.UpdateAsync(id, request, cancellationToken), message: "Table updated.");
 
     [HttpDelete("{id:int}")]
-    [Authorize(Roles = FloorManagers)]
+    [Authorize(Policy = Permissions.TablesManage)]
     [ProducesResponseType<ApiResponse<TableDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Deactivate(int id, CancellationToken cancellationToken) =>
         FromResult(await _tables.DeactivateAsync(id, cancellationToken), message: "Table deactivated.");
 
     [HttpPost("{id:int}/occupy")]
-    [Authorize(Roles = FloorOperators)]
+    [Authorize(Policy = Permissions.TablesOperate)]
     [ProducesResponseType<ApiResponse<TableDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Occupy(int id, OccupyTableRequest request, CancellationToken cancellationToken) =>
         FromResult(await _tables.OccupyAsync(id, request, cancellationToken), message: "Table occupied.");
 
     [HttpPost("{id:int}/release")]
-    [Authorize(Roles = FloorOperators)]
+    [Authorize(Policy = Permissions.TablesOperate)]
     [ProducesResponseType<ApiResponse<TableDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Release(int id, CancellationToken cancellationToken) =>
         FromResult(await _tables.ReleaseAsync(id, cancellationToken), message: "Table released.");
 
     [HttpPost("{id:int}/out-of-service")]
-    [Authorize(Roles = FloorManagers)]
+    [Authorize(Policy = Permissions.TablesManage)]
     [ProducesResponseType<ApiResponse<TableDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> OutOfService(int id, CancellationToken cancellationToken) =>
         FromResult(await _tables.SetServiceStateAsync(id, outOfService: true, cancellationToken), message: "Table set out of service.");
 
     [HttpPost("{id:int}/in-service")]
-    [Authorize(Roles = FloorManagers)]
+    [Authorize(Policy = Permissions.TablesManage)]
     [ProducesResponseType<ApiResponse<TableDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> InService(int id, CancellationToken cancellationToken) =>
         FromResult(await _tables.SetServiceStateAsync(id, outOfService: false, cancellationToken), message: "Table back in service.");

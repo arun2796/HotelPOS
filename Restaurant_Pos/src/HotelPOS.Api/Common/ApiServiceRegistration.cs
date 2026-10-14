@@ -5,6 +5,7 @@ using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Security;
 using HotelPOS.Contracts.Common;
+using HotelPOS.Contracts.Security;
 using HotelPOS.Infrastructure.Identity;
 using HotelPOS.Infrastructure.Media;
 using HotelPOS.Infrastructure.Persistence;
@@ -60,7 +61,11 @@ public static class ApiServiceRegistration
             })
             .AddJsonProtocol(options => PosJson.Apply(options.PayloadSerializerOptions));
         services.AddSingleton<ConnectionTracker>();
+        services.AddSingleton<IOnlineDeviceTracker>(sp => sp.GetRequiredService<ConnectionTracker>());
         services.AddSingleton<IRealtimeNotifier, SignalRRealtimeNotifier>();
+        services.Configure<LoginRateLimitOptions>(configuration.GetSection(LoginRateLimitOptions.SectionName));
+        services.AddSingleton<LoginRateLimiter>();
+        services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
 
         services.AddHealthChecks().AddDbContextCheck<AppDbContext>("database");
 
@@ -156,6 +161,12 @@ public static class ApiServiceRegistration
         {
             // Secure by default: an endpoint without [Authorize]/[AllowAnonymous] still requires a login.
             options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
+
+            foreach (var permission in Permissions.All)
+            {
+                options.AddPolicy(permission, policy =>
+                    policy.AddRequirements(new PermissionRequirement(permission)));
+            }
         });
     }
 

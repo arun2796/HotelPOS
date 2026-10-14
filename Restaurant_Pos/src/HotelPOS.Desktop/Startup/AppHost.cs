@@ -48,6 +48,8 @@ public static class AppHost
         services.AddSingleton<IAuthApi, AuthApi>();
         services.AddSingleton<ISystemApi, SystemApi>();
         services.AddSingleton<IUsersApi, UsersApi>();
+        services.AddSingleton<IDevicesApi, DevicesApi>();
+        services.AddSingleton<IAuditApi, AuditApi>();
         services.AddSingleton<IAdminSettingsApi, AdminSettingsApi>();
         services.AddSingleton<IFloorApi, FloorApi>();
         services.AddSingleton<IMenuApi, MenuApi>();

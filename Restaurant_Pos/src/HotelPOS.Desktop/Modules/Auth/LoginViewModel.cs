@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HotelPOS.Contracts.Auth;
+using HotelPOS.Contracts.Common;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Auth;
 using HotelPOS.Desktop.Services.Configuration;
@@ -108,9 +109,27 @@ public sealed partial class LoginViewModel : ObservableObject, INavigationAware
             if (!result.Success || result.Data is null)
             {
                 Password = string.Empty;
-                ErrorMessage = result.IsConnectionFailure
-                    ? $"Cannot reach the server at {settings.ApiBaseUrl}. Check the Wi-Fi/LAN connection, or the server address in Server settings."
-                    : result.Message;
+                if (result.IsConnectionFailure)
+                {
+                    ErrorMessage = $"Cannot reach the server at {settings.ApiBaseUrl}. Check the Wi-Fi/LAN connection, or the server address in Server settings.";
+                }
+                else if (result.HasError(ErrorCodes.AccountLocked))
+                {
+                    ErrorMessage = "This account has been locked due to too many failed login attempts. Contact an administrator to unlock it.";
+                }
+                else if (result.HasError("DEVICE_DISABLED"))
+                {
+                    ErrorMessage = "This terminal has been deactivated by an administrator. Contact an administrator to reactivate this device.";
+                }
+                else if (result.HasError(ErrorCodes.RateLimited))
+                {
+                    ErrorMessage = "Too many login attempts. Please wait a minute before trying again.";
+                }
+                else
+                {
+                    ErrorMessage = result.Message;
+                }
+
                 ServerState = result.IsConnectionFailure ? ServerState.Unreachable : ServerState.Reachable;
                 return;
             }

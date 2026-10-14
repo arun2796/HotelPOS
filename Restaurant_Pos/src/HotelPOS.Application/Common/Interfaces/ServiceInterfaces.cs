@@ -49,3 +49,9 @@ public interface IAuditService
         object? newValues = null,
         AuditActor? actor = null);
 }
+
+public interface IOnlineDeviceTracker
+{
+    IReadOnlySet<Guid> OnlineDeviceIds();
+    bool IsDeviceOnline(Guid deviceId);
+}

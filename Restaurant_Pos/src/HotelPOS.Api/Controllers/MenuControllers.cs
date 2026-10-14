@@ -55,19 +55,19 @@ public sealed class CategoriesController : ApiControllerBase
         FromResult(await _categories.GetAsync(id, cancellationToken));
 
     [HttpPost]
-    [Authorize(Roles = MenuRoles.Managers)]
+    [Authorize(Policy = Permissions.MenuManage)]
     [ProducesResponseType<ApiResponse<CategoryDto>>(StatusCodes.Status201Created)]
     public async Task<IActionResult> Create(CreateCategoryRequest request, CancellationToken cancellationToken) =>
         FromResult(await _categories.CreateAsync(request, cancellationToken), StatusCodes.Status201Created, "Category created.");
 
     [HttpPut("{id:int}")]
-    [Authorize(Roles = MenuRoles.Managers)]
+    [Authorize(Policy = Permissions.MenuManage)]
     [ProducesResponseType<ApiResponse<CategoryDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Update(int id, UpdateCategoryRequest request, CancellationToken cancellationToken) =>
         FromResult(await _categories.UpdateAsync(id, request, cancellationToken), message: "Category updated.");
 
     [HttpDelete("{id:int}")]
-    [Authorize(Roles = MenuRoles.Managers)]
+    [Authorize(Policy = Permissions.MenuManage)]
     [ProducesResponseType<ApiResponse<CategoryDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Deactivate(int id, [FromQuery] bool deactivateItems, CancellationToken cancellationToken) =>
         FromResult(await _categories.DeactivateAsync(id, deactivateItems, cancellationToken), message: "Category deactivated.");
@@ -101,32 +101,32 @@ public sealed class MenuItemsController : ApiControllerBase
         FromResult(await _items.GetAsync(id, cancellationToken));
 
     [HttpPost]
-    [Authorize(Roles = MenuRoles.Managers)]
+    [Authorize(Policy = Permissions.MenuManage)]
     [ProducesResponseType<ApiResponse<MenuItemDto>>(StatusCodes.Status201Created)]
     public async Task<IActionResult> Create(CreateMenuItemRequest request, CancellationToken cancellationToken) =>
         FromResult(await _items.CreateAsync(request, cancellationToken), StatusCodes.Status201Created, "Item created.");
 
     [HttpPut("{id:int}")]
-    [Authorize(Roles = MenuRoles.Managers)]
+    [Authorize(Policy = Permissions.MenuManage)]
     [ProducesResponseType<ApiResponse<MenuItemDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Update(int id, UpdateMenuItemRequest request, CancellationToken cancellationToken) =>
         FromResult(await _items.UpdateAsync(id, request, cancellationToken), message: "Item updated.");
 
     [HttpDelete("{id:int}")]
-    [Authorize(Roles = MenuRoles.Managers)]
+    [Authorize(Policy = Permissions.MenuManage)]
     [ProducesResponseType<ApiResponse<MenuItemDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Deactivate(int id, CancellationToken cancellationToken) =>
         FromResult(await _items.DeactivateAsync(id, cancellationToken), message: "Item deactivated.");
 
     [HttpPatch("{id:int}/availability")]
-    [Authorize(Roles = MenuRoles.Availability)]
+    [Authorize(Policy = Permissions.MenuAvailability)]
     [ProducesResponseType<ApiResponse<MenuItemDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> SetAvailability(int id, SetAvailabilityRequest request, CancellationToken cancellationToken) =>
         FromResult(await _items.SetAvailabilityAsync(id, request.IsAvailable, cancellationToken),
             message: request.IsAvailable ? "Item available again." : "Item marked sold out.");
 
     [HttpPost("{id:int}/image")]
-    [Authorize(Roles = MenuRoles.Managers)]
+    [Authorize(Policy = Permissions.MenuManage)]
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(MaxUploadRequestBytes)]
     [RequestFormLimits(MultipartBodyLengthLimit = MaxUploadRequestBytes)]
@@ -143,7 +143,7 @@ public sealed class MenuItemsController : ApiControllerBase
     }
 
     [HttpDelete("{id:int}/image")]
-    [Authorize(Roles = MenuRoles.Managers)]
+    [Authorize(Policy = Permissions.MenuManage)]
     [ProducesResponseType<ApiResponse<MenuItemDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> RemoveImage(int id, CancellationToken cancellationToken) =>
         FromResult(await _items.RemoveImageAsync(id, cancellationToken), message: "Picture removed.");
@@ -173,37 +173,37 @@ public sealed class ModifierGroupsController : ApiControllerBase
         FromResult(await _modifiers.GetAsync(id, cancellationToken));
 
     [HttpPost]
-    [Authorize(Roles = MenuRoles.Managers)]
+    [Authorize(Policy = Permissions.MenuManage)]
     [ProducesResponseType<ApiResponse<ModifierGroupDto>>(StatusCodes.Status201Created)]
     public async Task<IActionResult> Create(SaveModifierGroupRequest request, CancellationToken cancellationToken) =>
         FromResult(await _modifiers.CreateAsync(request, cancellationToken), StatusCodes.Status201Created, "Modifier group created.");
 
     [HttpPut("{id:int}")]
-    [Authorize(Roles = MenuRoles.Managers)]
+    [Authorize(Policy = Permissions.MenuManage)]
     [ProducesResponseType<ApiResponse<ModifierGroupDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Update(int id, SaveModifierGroupRequest request, CancellationToken cancellationToken) =>
         FromResult(await _modifiers.UpdateAsync(id, request, cancellationToken), message: "Modifier group updated.");
 
     [HttpDelete("{id:int}")]
-    [Authorize(Roles = MenuRoles.Managers)]
+    [Authorize(Policy = Permissions.MenuManage)]
     [ProducesResponseType<ApiResponse<ModifierGroupDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Deactivate(int id, CancellationToken cancellationToken) =>
         FromResult(await _modifiers.DeactivateAsync(id, cancellationToken), message: "Modifier group deactivated.");
 
     [HttpPost("{id:int}/options")]
-    [Authorize(Roles = MenuRoles.Managers)]
+    [Authorize(Policy = Permissions.MenuManage)]
     [ProducesResponseType<ApiResponse<ModifierGroupDto>>(StatusCodes.Status201Created)]
     public async Task<IActionResult> AddOption(int id, SaveModifierOptionRequest request, CancellationToken cancellationToken) =>
         FromResult(await _modifiers.AddOptionAsync(id, request, cancellationToken), StatusCodes.Status201Created, "Option added.");
 
     [HttpPut("{id:int}/options/{optionId:int}")]
-    [Authorize(Roles = MenuRoles.Managers)]
+    [Authorize(Policy = Permissions.MenuManage)]
     [ProducesResponseType<ApiResponse<ModifierGroupDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> UpdateOption(int id, int optionId, SaveModifierOptionRequest request, CancellationToken cancellationToken) =>
         FromResult(await _modifiers.UpdateOptionAsync(id, optionId, request, cancellationToken), message: "Option updated.");
 
     [HttpDelete("{id:int}/options/{optionId:int}")]
-    [Authorize(Roles = MenuRoles.Managers)]
+    [Authorize(Policy = Permissions.MenuManage)]
     [ProducesResponseType<ApiResponse<ModifierGroupDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> DeactivateOption(int id, int optionId, CancellationToken cancellationToken) =>
         FromResult(await _modifiers.DeactivateOptionAsync(id, optionId, cancellationToken), message: "Option deactivated.");

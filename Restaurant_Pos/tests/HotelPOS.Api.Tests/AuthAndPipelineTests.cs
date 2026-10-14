@@ -183,16 +183,16 @@ public class AuthAndPipelineTests : IClassFixture<ApiFactory>
         {
             Username = "pwchange",
             DisplayName = "Pw Change",
-            Password = "first-pass",
+            Password = "FirstPass1",
             Roles = new[] { "Waiter" },
         }, PosJson.Options);
-        var user = await _factory.CreateAuthenticatedClientAsync("pwchange", "first-pass");
+        var user = await _factory.CreateAuthenticatedClientAsync("pwchange", "FirstPass1");
 
         var response = await user.PostAsJsonAsync("/api/auth/change-password",
-            new ChangePasswordRequest { CurrentPassword = "first-pass", NewPassword = "second-pass" }, PosJson.Options);
+            new ChangePasswordRequest { CurrentPassword = "FirstPass1", NewPassword = "SecondPass2" }, PosJson.Options);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var login = await _factory.LoginAsync("pwchange", "second-pass");
+        var login = await _factory.LoginAsync("pwchange", "SecondPass2");
         login.User.MustChangePassword.Should().BeFalse();
     }
 }

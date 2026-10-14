@@ -26,7 +26,7 @@ public sealed class ReportsController : ApiControllerBase
     }
 
     [HttpGet("dashboard")]
-    [Authorize(Roles = Managers)]
+    [Authorize(Policy = Permissions.ReportsView)]
     [ProducesResponseType<ApiResponse<DashboardDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Dashboard(CancellationToken cancellationToken) =>
         Envelope(await _reports.DashboardAsync(cancellationToken));
@@ -38,52 +38,52 @@ public sealed class ReportsController : ApiControllerBase
         Envelope(await _reports.WaiterDashboardAsync(_currentUser.UserId ?? 0, cancellationToken));
 
     [HttpGet("sales/daily")]
-    [Authorize(Roles = Managers)]
+    [Authorize(Policy = Permissions.ReportsView)]
     public Task<IActionResult> DailySales([FromQuery] ReportQuery query, CancellationToken cancellationToken) =>
         ReportAsync(query, "daily-sales", _reports.DailySalesAsync(query, cancellationToken));
 
     [HttpGet("sales/monthly")]
-    [Authorize(Roles = Managers)]
+    [Authorize(Policy = Permissions.ReportsView)]
     public async Task<IActionResult> MonthlySales([FromQuery] int? year, [FromQuery] string? format, CancellationToken cancellationToken) =>
         Deliver(await _reports.MonthlySalesAsync(year, cancellationToken), format, $"monthly-sales-{year ?? DateTime.Now.Year}");
 
     [HttpGet("sales/items")]
-    [Authorize(Roles = Managers)]
+    [Authorize(Policy = Permissions.ReportsView)]
     public Task<IActionResult> ItemSales([FromQuery] ReportQuery query, CancellationToken cancellationToken) =>
         ReportAsync(query, "item-sales", _reports.ItemSalesAsync(query, cancellationToken));
 
     [HttpGet("sales/categories")]
-    [Authorize(Roles = Managers)]
+    [Authorize(Policy = Permissions.ReportsView)]
     public Task<IActionResult> CategorySales([FromQuery] ReportQuery query, CancellationToken cancellationToken) =>
         ReportAsync(query, "category-sales", _reports.CategorySalesAsync(query, cancellationToken));
 
     [HttpGet("payments")]
-    [Authorize(Roles = Managers)]
+    [Authorize(Policy = Permissions.ReportsView)]
     public Task<IActionResult> Payments([FromQuery] ReportQuery query, CancellationToken cancellationToken) =>
         ReportAsync(query, "payments", _reports.PaymentsAsync(query, cancellationToken));
 
     [HttpGet("cancellations")]
-    [Authorize(Roles = Managers)]
+    [Authorize(Policy = Permissions.ReportsView)]
     public Task<IActionResult> Cancellations([FromQuery] ReportQuery query, CancellationToken cancellationToken) =>
         ReportAsync(query, "cancellations", _reports.CancellationsAsync(query, cancellationToken));
 
     [HttpGet("discounts")]
-    [Authorize(Roles = Managers)]
+    [Authorize(Policy = Permissions.ReportsView)]
     public Task<IActionResult> Discounts([FromQuery] ReportQuery query, CancellationToken cancellationToken) =>
         ReportAsync(query, "discounts", _reports.DiscountsAsync(query, cancellationToken));
 
     [HttpGet("taxes")]
-    [Authorize(Roles = Managers)]
+    [Authorize(Policy = Permissions.ReportsView)]
     public Task<IActionResult> Taxes([FromQuery] ReportQuery query, CancellationToken cancellationToken) =>
         ReportAsync(query, "taxes", _reports.TaxesAsync(query, cancellationToken));
 
     [HttpGet("staff/waiters")]
-    [Authorize(Roles = Managers)]
+    [Authorize(Policy = Permissions.ReportsView)]
     public Task<IActionResult> Waiters([FromQuery] ReportQuery query, CancellationToken cancellationToken) =>
         ReportAsync(query, "waiters", _reports.WaitersAsync(query, cancellationToken));
 
     [HttpGet("kitchen")]
-    [Authorize(Roles = Managers)]
+    [Authorize(Policy = Permissions.ReportsView)]
     public Task<IActionResult> Kitchen([FromQuery] ReportQuery query, CancellationToken cancellationToken) =>
         ReportAsync(query, "kitchen", _reports.KitchenAsync(query, cancellationToken));
 

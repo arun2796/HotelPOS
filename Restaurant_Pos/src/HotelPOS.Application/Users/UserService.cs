@@ -92,6 +92,11 @@ public sealed class UserService : IUserService
             return AppErrors.Duplicate($"Username '{request.Username.Trim()}' is already taken.");
         }
 
+        if (!MayManage(request.Roles))
+        {
+            return AdminOnly();
+        }
+
         var rolesResult = await LoadRolesAsync(request.Roles, cancellationToken);
         if (rolesResult.IsFailure)
         {
@@ -135,6 +140,10 @@ public sealed class UserService : IUserService
 
         var oldRoles = user.RoleNames.OrderBy(r => r).ToList();
         var newRoles = rolesResult.Value.Select(r => r.Name).OrderBy(r => r).ToList();
+        if (!MayManage(oldRoles.Concat(newRoles)))
+        {
+            return AdminOnly();
+        }
 
         if (user.IsActive && oldRoles.Contains(Roles.Admin) && !newRoles.Contains(Roles.Admin)
             && !await AnotherActiveAdminExistsAsync(user.Id, cancellationToken))
@@ -165,6 +174,11 @@ public sealed class UserService : IUserService
         if (user is null)
         {
             return AppErrors.NotFound("User", id);
+        }
+
+        if (!MayManage(user.RoleNames))
+        {
+            return AdminOnly();
         }
 
         if (user.IsActive == active)
@@ -200,10 +214,15 @@ public sealed class UserService : IUserService
 
     public async Task<Result> ResetPasswordAsync(int id, ResetPasswordRequest request, CancellationToken cancellationToken = default)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
+        var user = await UsersWithRoles().FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
         if (user is null)
         {
             return AppErrors.NotFound("User", id);
+        }
+
+        if (!MayManage(user.RoleNames))
+        {
+            return AdminOnly();
         }
 
         user.SetPasswordHash(_hasher.Hash(request.NewPassword), request.MustChangePassword, _clock.UtcNow);
@@ -230,10 +249,20 @@ public sealed class UserService : IUserService
         IsActive = user.IsActive,
         MustChangePassword = user.MustChangePassword,
         Roles = user.RoleNames.OrderBy(r => r, StringComparer.Ordinal).ToList(),
+        IsLockedOut = user.IsLockedOut(DateTime.UtcNow),
+        LockedUntilUtc = user.LockedUntil,
+        FailedLoginCount = user.FailedLoginCount,
         LastLoginAtUtc = user.LastLoginAt,
         CreatedAtUtc = user.CreatedAt,
         RowVersion = RowVersions.Encode(user.RowVersion),
     };
+
+    // users.manage may be granted to non-admin roles, but administrator accounts and the Admin role stay with admins;
+    // otherwise such a holder could create an Admin account or reset an admin's password.
+    private bool MayManage(IEnumerable<string> roles) =>
+        _currentUser.IsInRole(Roles.Admin) || !roles.Contains(Roles.Admin, StringComparer.Ordinal);
+
+    private static AppError AdminOnly() => AppErrors.Forbidden("Only an administrator can manage administrator accounts.");
 
     private IQueryable<User> UsersWithRoles() =>
         _db.Users.Include(u => u.UserRoles).ThenInclude(ur => ur.Role);

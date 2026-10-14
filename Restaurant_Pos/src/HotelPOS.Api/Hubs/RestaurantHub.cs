@@ -38,6 +38,14 @@ public sealed class RestaurantHub : Hub
         await Groups.AddToGroupAsync(Context.ConnectionId, HubGroups.User(userId));
         if (deviceId is { } device)
         {
+            var dev = await _devices.GetByIdAsync(device);
+            if (dev is not null && !dev.IsActive)
+            {
+                _logger.LogWarning("Deactivated device {DeviceId} attempted to connect to hub. Connection rejected.", device);
+                Context.Abort();
+                return;
+            }
+
             await Groups.AddToGroupAsync(Context.ConnectionId, HubGroups.Device(device));
             await TouchDeviceAsync(device);
         }

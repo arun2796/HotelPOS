@@ -80,7 +80,31 @@ public sealed class User : BaseEntity, IHasRowVersion
         LockedUntil = null;
     }
 
-    public void RecordFailedLogin() => FailedLoginCount++;
+    // Returns true when this failure locks the account. A lock that has run out starts a fresh count; otherwise the
+    // first typo after an automatic unlock would lock the account again.
+    public bool RecordFailedLogin(DateTime nowUtc, int threshold, TimeSpan lockoutDuration)
+    {
+        if (LockedUntil is not null && LockedUntil <= nowUtc)
+        {
+            LockedUntil = null;
+            FailedLoginCount = 0;
+        }
+
+        FailedLoginCount++;
+        if (threshold <= 0 || FailedLoginCount < threshold)
+        {
+            return false;
+        }
+
+        LockedUntil = nowUtc.Add(lockoutDuration);
+        return true;
+    }
+
+    public void Unlock()
+    {
+        LockedUntil = null;
+        FailedLoginCount = 0;
+    }
 
     public bool IsLockedOut(DateTime nowUtc) => LockedUntil is not null && LockedUntil > nowUtc;
 

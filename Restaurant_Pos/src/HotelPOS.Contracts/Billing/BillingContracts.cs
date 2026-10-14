@@ -23,10 +23,22 @@ public static class PaymentMethodCodes
     public const string Upi = "UPI";
 }
 
+// Action types an approval token is bound to (POST /api/auth/approval).
+public static class ApprovalActions
+{
+    public const string Discount = "discount";
+    public const string Void = "void";
+    public const string Refund = "refund";
+    public const string Reopen = "reopen";
+
+    public static IReadOnlyList<string> All { get; } = new[] { Discount, Void, Refund, Reopen };
+}
+
 public sealed record ManagerApprovalDto
 {
-    public string ApproverUsername { get; init; } = string.Empty;
-    public string ApproverPassword { get; init; } = string.Empty;
+    public string? ApproverUsername { get; init; }
+    public string? ApproverPassword { get; init; }
+    public string? ApprovalToken { get; init; }
 }
 
 public sealed record BillSummaryDto

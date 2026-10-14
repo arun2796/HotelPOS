@@ -36,6 +36,26 @@ internal sealed class RoleConfiguration : IEntityTypeConfiguration<Role>
         builder.Property(r => r.Name).HasMaxLength(50).IsRequired();
         builder.HasIndex(r => r.Name).IsUnique();
         builder.Property(r => r.Description).HasMaxLength(200);
+
+        builder.HasMany(r => r.Permissions)
+            .WithOne(rp => rp.Role)
+            .HasForeignKey(rp => rp.RoleId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(r => r.Permissions).UsePropertyAccessMode(PropertyAccessMode.Field);
+    }
+}
+
+internal sealed class RolePermissionConfiguration : IEntityTypeConfiguration<RolePermission>
+{
+    public void Configure(EntityTypeBuilder<RolePermission> builder)
+    {
+        builder.ToTable("RolePermissions");
+        builder.HasKey(rp => new { rp.RoleId, rp.Permission });
+        builder.Property(rp => rp.Permission).HasMaxLength(100).IsRequired();
+        builder.HasOne(rp => rp.Role)
+            .WithMany(r => r.Permissions)
+            .HasForeignKey(rp => rp.RoleId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
 
@@ -85,6 +105,7 @@ internal sealed class DeviceConfiguration : IEntityTypeConfiguration<Device>
         builder.HasIndex(d => d.Name).IsUnique();
         builder.Property(d => d.MachineName).HasMaxLength(100);
         builder.Property(d => d.AppVersion).HasMaxLength(30);
+        builder.Property(d => d.DeactivatedAt);
         builder.HasOne<PreparationStation>()
             .WithMany()
             .HasForeignKey(d => d.StationId)

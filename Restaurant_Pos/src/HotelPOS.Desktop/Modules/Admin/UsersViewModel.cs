@@ -30,8 +30,8 @@ public sealed partial class UsersViewModel : ObservableObject, INavigationAware,
     public UserEditorViewModel Editor { get; } = new();
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasSelection), nameof(ToggleActiveText))]
-    [NotifyCanExecuteChangedFor(nameof(ResetPasswordCommand), nameof(ToggleActiveCommand), nameof(EditCommand))]
+    [NotifyPropertyChangedFor(nameof(HasSelection), nameof(ToggleActiveText), nameof(CanUnlock))]
+    [NotifyCanExecuteChangedFor(nameof(ResetPasswordCommand), nameof(ToggleActiveCommand), nameof(EditCommand), nameof(UnlockCommand), nameof(LogoutAllCommand), nameof(ViewSessionsCommand))]
     private UserDto? _selectedUser;
 
     [ObservableProperty]
@@ -61,6 +61,8 @@ public sealed partial class UsersViewModel : ObservableObject, INavigationAware,
     private string? _errorMessage;
 
     public bool HasSelection => SelectedUser is not null;
+
+    public bool CanUnlock => SelectedUser?.IsLockedOut == true;
 
     public string ToggleActiveText => SelectedUser?.IsActive == false ? "Activate" : "Deactivate";
 
@@ -274,6 +276,75 @@ public sealed partial class UsersViewModel : ObservableObject, INavigationAware,
         {
             _notifications.Success(activate ? $"{user.Username} activated." : $"{user.Username} deactivated.");
             await LoadAsync(user.Id);
+        }
+        else
+        {
+            _notifications.Error(DescribeFailure(result), result.CorrelationId);
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanUnlock))]
+    private async Task UnlockAsync()
+    {
+        var user = SelectedUser;
+        if (user is null) return;
+
+        var result = await _usersApi.UnlockAsync(user.Id);
+        if (result.Success)
+        {
+            _notifications.Success($"User {user.Username} has been unlocked.");
+            await LoadAsync(user.Id);
+        }
+        else
+        {
+            _notifications.Error(DescribeFailure(result), result.CorrelationId);
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(HasSelection))]
+    private async Task LogoutAllAsync()
+    {
+        var user = SelectedUser;
+        if (user is null) return;
+
+        if (!await _dialogs.ConfirmAsync(
+            "Log out everywhere",
+            $"This will terminate all active sessions for {user.DisplayName} on all devices. Continue?",
+            "Log out everywhere",
+            destructive: true))
+        {
+            return;
+        }
+
+        var result = await _usersApi.LogoutAllAsync(user.Id);
+        if (result.Success)
+        {
+            _notifications.Success($"All active sessions for {user.Username} have been revoked.");
+        }
+        else
+        {
+            _notifications.Error(DescribeFailure(result), result.CorrelationId);
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(HasSelection))]
+    private async Task ViewSessionsAsync()
+    {
+        var user = SelectedUser;
+        if (user is null) return;
+
+        var result = await _usersApi.GetSessionsAsync(user.Id);
+        if (result.Success && result.Data is not null)
+        {
+            if (result.Data.Count == 0)
+            {
+                await _dialogs.AlertAsync("Active sessions", $"No active sessions found for {user.DisplayName}.");
+                return;
+            }
+
+            var text = string.Join("\n\n", result.Data.Select(s =>
+                $"• Terminal: {s.DeviceName ?? "Unknown"} (IP: {s.IpAddress ?? "Unknown"})\n  Created: {s.CreatedAtUtc:yyyy-MM-dd HH:mm} UTC\n  Expires: {s.ExpiresAtUtc:yyyy-MM-dd HH:mm} UTC\n  Status: {(s.IsRevoked ? "Revoked" : "Active")}"));
+            await _dialogs.AlertAsync($"Active sessions for {user.DisplayName}", text);
         }
         else
         {

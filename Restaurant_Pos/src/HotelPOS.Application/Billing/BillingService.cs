@@ -340,7 +340,7 @@ public sealed class BillingService : IBillingService
 
                 if (needsApproval)
                 {
-                    var approval = await _approvals.ApproveAsync(request.Approval, "this discount", cancellationToken);
+                    var approval = await _approvals.ApproveAsync(request.Approval, ApprovalActions.Discount, "this discount", cancellationToken);
                     if (approval.IsFailure)
                     {
                         return approval.Error;
@@ -489,7 +489,7 @@ public sealed class BillingService : IBillingService
                 }
 
                 // A finalized bill has an invoice number; reopening cancels that invoice.
-                var approval = await _approvals.ApproveAsync(request.Approval, "reopening an invoiced bill", cancellationToken);
+                var approval = await _approvals.ApproveAsync(request.Approval, ApprovalActions.Reopen, "reopening an invoiced bill", cancellationToken);
                 approvedBy = approval.IsSuccess ? approval.Value : null;
                 return approval.Error;
             },
@@ -527,7 +527,7 @@ public sealed class BillingService : IBillingService
         return await RunAsync(id, request.RowVersion, claim: true,
             prepare: async _ =>
             {
-                var approval = await _approvals.ApproveAsync(request.Approval, "voiding a bill", cancellationToken);
+                var approval = await _approvals.ApproveAsync(request.Approval, ApprovalActions.Void, "voiding a bill", cancellationToken);
                 approvedBy = approval.IsSuccess ? approval.Value : 0;
                 return approval.Error;
             },
@@ -586,7 +586,7 @@ public sealed class BillingService : IBillingService
         return await RunAsync(id, request.RowVersion, claim: false,
             prepare: async _ =>
             {
-                var approval = await _approvals.ApproveAsync(request.Approval, "a refund", cancellationToken);
+                var approval = await _approvals.ApproveAsync(request.Approval, ApprovalActions.Refund, "a refund", cancellationToken);
                 approvedBy = approval.IsSuccess ? approval.Value : 0;
                 return approval.Error;
             },

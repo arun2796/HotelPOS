@@ -22,13 +22,13 @@ public sealed class KitchenController : ApiControllerBase
     }
 
     [HttpGet]
-    [Authorize(Roles = KitchenStaff)]
+    [Authorize(Policy = Permissions.KitchenOperate)]
     [ProducesResponseType<ApiResponse<KitchenTicketListDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> List([FromQuery] KitchenTicketQuery query, CancellationToken cancellationToken) =>
         Envelope(await _kitchen.ListAsync(query, cancellationToken));
 
     [HttpGet("completed")]
-    [Authorize(Roles = KitchenStaff)]
+    [Authorize(Policy = Permissions.KitchenOperate)]
     [ProducesResponseType<ApiResponse<KitchenTicketListDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Completed([FromQuery] DateOnly? date, CancellationToken cancellationToken) =>
         Envelope(await _kitchen.ListCompletedAsync(date, cancellationToken));
@@ -40,17 +40,17 @@ public sealed class KitchenController : ApiControllerBase
         FromResult(await _kitchen.GetAsync(ticketId, cancellationToken));
 
     [HttpPost("{ticketId:int}/accept")]
-    [Authorize(Roles = KitchenStaff)]
+    [Authorize(Policy = Permissions.KitchenOperate)]
     public async Task<IActionResult> Accept(int ticketId, CancellationToken cancellationToken) =>
         FromResult(await _kitchen.AcceptAsync(ticketId, cancellationToken));
 
     [HttpPost("{ticketId:int}/start")]
-    [Authorize(Roles = KitchenStaff)]
+    [Authorize(Policy = Permissions.KitchenOperate)]
     public async Task<IActionResult> Start(int ticketId, CancellationToken cancellationToken) =>
         FromResult(await _kitchen.StartAsync(ticketId, cancellationToken));
 
     [HttpPost("{ticketId:int}/ready")]
-    [Authorize(Roles = KitchenStaff)]
+    [Authorize(Policy = Permissions.KitchenOperate)]
     public async Task<IActionResult> Ready(int ticketId, CancellationToken cancellationToken) =>
         FromResult(await _kitchen.ReadyAsync(ticketId, cancellationToken));
 
@@ -60,7 +60,7 @@ public sealed class KitchenController : ApiControllerBase
         FromResult(await _kitchen.CompleteAsync(ticketId, cancellationToken));
 
     [HttpPost("{ticketId:int}/recall")]
-    [Authorize(Roles = KitchenStaff)]
+    [Authorize(Policy = Permissions.KitchenOperate)]
     public async Task<IActionResult> Recall(int ticketId, CancellationToken cancellationToken) =>
         FromResult(await _kitchen.RecallAsync(ticketId, cancellationToken));
 }

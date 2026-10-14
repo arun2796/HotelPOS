@@ -30,7 +30,7 @@ public sealed class OrdersController : ApiControllerBase
 
     [HttpPost]
     [Idempotent]
-    [Authorize(Roles = OrderTakers)]
+    [Authorize(Policy = Permissions.OrdersCreate)]
     [ProducesResponseType<ApiResponse<OrderDetailDto>>(StatusCodes.Status201Created)]
     public async Task<IActionResult> Create(CreateOrderRequest request, CancellationToken cancellationToken) =>
         FromResult(await _orders.CreateAsync(request, cancellationToken), StatusCodes.Status201Created,
@@ -52,44 +52,44 @@ public sealed class OrdersController : ApiControllerBase
         FromResult(await _orders.GetAsync(id, cancellationToken));
 
     [HttpPut("{id:int}")]
-    [Authorize(Roles = OrderTakers)]
+    [Authorize(Policy = Permissions.OrdersCreate)]
     [ProducesResponseType<ApiResponse<OrderDetailDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Update(int id, UpdateOrderRequest request, CancellationToken cancellationToken) =>
         FromResult(await _orders.UpdateAsync(id, request, cancellationToken), message: "Order updated.");
 
     [HttpPut("{id:int}/items")]
-    [Authorize(Roles = OrderTakers)]
+    [Authorize(Policy = Permissions.OrdersCreate)]
     [ProducesResponseType<ApiResponse<OrderDetailDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> ReplaceItems(int id, ReplaceOrderItemsRequest request, CancellationToken cancellationToken) =>
         FromResult(await _orders.ReplaceItemsAsync(id, request, cancellationToken), message: "Draft saved.");
 
     [HttpPost("{id:int}/submit")]
-    [Authorize(Roles = OrderTakers)]
+    [Authorize(Policy = Permissions.OrdersCreate)]
     [ProducesResponseType<ApiResponse<OrderDetailDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Submit(int id, CancellationToken cancellationToken) =>
         FromResult(await _orders.SubmitAsync(id, cancellationToken), message: "Order sent to the kitchen.");
 
     [HttpPost("{id:int}/items")]
     [Idempotent]
-    [Authorize(Roles = OrderTakers)]
+    [Authorize(Policy = Permissions.OrdersCreate)]
     [ProducesResponseType<ApiResponse<OrderDetailDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> AppendItems(int id, AppendOrderItemsRequest request, CancellationToken cancellationToken) =>
         FromResult(await _orders.AppendItemsAsync(id, request, cancellationToken), message: "Items sent to the kitchen.");
 
     [HttpPost("{id:int}/serve")]
-    [Authorize(Roles = OrderTakers)]
+    [Authorize(Policy = Permissions.OrdersCreate)]
     [ProducesResponseType<ApiResponse<OrderDetailDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Serve(int id, CancellationToken cancellationToken) =>
         FromResult(await _orders.ServeAsync(id, cancellationToken), message: "Served.");
 
     [HttpPost("{id:int}/items/{itemId:int}/cancel")]
-    [Authorize(Roles = OrderTakers)]
+    [Authorize(Policy = Permissions.OrdersCreate)]
     [ProducesResponseType<ApiResponse<OrderDetailDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> CancelItem(int id, int itemId, CancelOrderItemRequest request, CancellationToken cancellationToken) =>
         FromResult(await _orders.CancelItemAsync(id, itemId, request, cancellationToken), message: "Item cancelled.");
 
     [HttpPost("{id:int}/cancel")]
-    [Authorize(Roles = OrderTakers)]
+    [Authorize(Policy = Permissions.OrdersCreate)]
     [ProducesResponseType<ApiResponse<OrderDetailDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Cancel(int id, CancelOrderRequest request, CancellationToken cancellationToken) =>
         FromResult(await _orders.CancelAsync(id, request, cancellationToken), message: "Order cancelled.");

@@ -41,3 +41,18 @@ public static class Permissions
         ReportsView,
     };
 }
+
+public sealed record RolePermissionsDto
+{
+    public int RoleId { get; init; }
+    public string RoleName { get; init; } = string.Empty;
+    public string? Description { get; init; }
+    public bool IsSystem { get; init; }
+    public IReadOnlyList<string> Permissions { get; init; } = Array.Empty<string>();
+}
+
+public sealed record UpdateRolePermissionsRequest
+{
+    public IReadOnlyList<string> Permissions { get; init; } = Array.Empty<string>();
+    public bool ForceRelogin { get; init; }
+}

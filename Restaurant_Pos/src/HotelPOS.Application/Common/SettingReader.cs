@@ -16,6 +16,9 @@ public static class SettingReader
     public static async Task<decimal> DecimalSettingAsync(this IAppDbContext db, string key, decimal fallback, CancellationToken cancellationToken) =>
         decimal.TryParse(await db.SettingAsync(key, cancellationToken), NumberStyles.Number, CultureInfo.InvariantCulture, out var value) ? value : fallback;
 
+    public static async Task<int> IntSettingAsync(this IAppDbContext db, string key, int fallback, CancellationToken cancellationToken) =>
+        int.TryParse(await db.SettingAsync(key, cancellationToken), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) ? value : fallback;
+
     public static async Task<(DateTime FromUtc, DateTime ToUtc)> BusinessDayAsync(
         this IAppDbContext db,
         IClock clock,

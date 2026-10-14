@@ -1,4 +1,5 @@
 using HotelPOS.Application.Common.Interfaces;
+using HotelPOS.Application.Common.Security;
 using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Security;
@@ -61,6 +62,9 @@ public sealed class DbSeeder
         new Setting(SettingKeys.AllowBillBeforeReady, "false", SettingDataType.Bool, "Allow requesting the bill before every kitchen ticket is ready (drinks-only tables).", true),
         new Setting(SettingKeys.PrintInvoiceCopies, "1", SettingDataType.Int, "Copies printed when an invoice is finalized (1-5).", true),
         new Setting(SettingKeys.KotShowPrices, "false", SettingDataType.Bool, "Print item prices on kitchen tickets.", true),
+        new Setting(SettingKeys.LockoutThreshold, "5", SettingDataType.Int, "Consecutive failed login attempts before account lockout.", true),
+        new Setting(SettingKeys.AuditRetentionDays, "0", SettingDataType.Int, "Delete audit entries older than this many days (0 keeps everything).", false),
+        new Setting(SettingKeys.LockoutMinutes, "15", SettingDataType.Int, "Duration in minutes an account remains locked out.", true),
     };
 
     public async Task SeedAsync(SeedOptions options, CancellationToken cancellationToken = default)
@@ -90,9 +94,23 @@ public sealed class DbSeeder
         };
 
         var existing = await _db.Roles.Select(r => r.Name).ToListAsync(cancellationToken);
-        foreach (var name in Roles.All.Except(existing))
+        var created = Roles.All.Except(existing).Select(name => new Role(name, descriptions[name], isSystem: true)).ToList();
+        if (created.Count == 0)
         {
-            _db.Roles.Add(new Role(name, descriptions[name], isSystem: true));
+            return;
+        }
+
+        _db.Roles.AddRange(created);
+        await _db.SaveChangesAsync(cancellationToken);
+
+        // Defaults only for roles created just now: on later starts an admin's edits (removals included) must stand.
+        // Databases that had roles before Phase 9 got their defaults from the Phase09_Security migration.
+        foreach (var role in created)
+        {
+            foreach (var permission in RolePermissionMap.For(new[] { role.Name }))
+            {
+                _db.RolePermissions.Add(new RolePermission(role.Id, permission));
+            }
         }
 
         await _db.SaveChangesAsync(cancellationToken);

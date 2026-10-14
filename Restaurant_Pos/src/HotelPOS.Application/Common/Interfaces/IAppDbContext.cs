@@ -15,6 +15,7 @@ public interface IAppDbContext
 {
     DbSet<User> Users { get; }
     DbSet<Role> Roles { get; }
+    DbSet<RolePermission> RolePermissions { get; }
     DbSet<UserRole> UserRoles { get; }
     DbSet<RefreshToken> RefreshTokens { get; }
     DbSet<Device> Devices { get; }

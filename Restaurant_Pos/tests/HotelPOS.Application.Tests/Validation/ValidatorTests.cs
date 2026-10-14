@@ -13,7 +13,7 @@ public class ValidatorTests
     [InlineData("bad name", "Name", "secret1", "Waiter", "Username")]
     [InlineData("waiter1", "", "secret1", "Waiter", "DisplayName")]
     [InlineData("waiter1", "Name", "123", "Waiter", "Password")]
-    [InlineData("waiter1", "Name", "secret1", "Chef", "Roles")]
+    [InlineData("waiter1", "Name", "secret123", "Chef", "Roles")]
     public void CreateUserRequest_InvalidField_IsReported(string username, string displayName, string password, string role, string field)
     {
         var result = new CreateUserRequestValidator().Validate(new CreateUserRequest
@@ -34,7 +34,7 @@ public class ValidatorTests
         {
             Username = "waiter.one",
             DisplayName = "Waiter One",
-            Password = "secret1",
+            Password = "secret123",
             Roles = new[] { Roles.Waiter },
         });
 

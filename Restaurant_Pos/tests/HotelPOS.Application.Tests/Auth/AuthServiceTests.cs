@@ -1,9 +1,11 @@
 using HotelPOS.Application.Auth;
 using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Interfaces;
+using HotelPOS.Application.Security;
 using HotelPOS.Application.Tests.Support;
 using HotelPOS.Application.Users;
 using HotelPOS.Contracts.Auth;
+using HotelPOS.Contracts.Billing;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Security;
@@ -224,5 +226,78 @@ public class AuthServiceTests : DatabaseTestBase
 
         hash.Should().NotContain("plain-secret");
         Get<IPasswordHasher>().Verify(hash, "plain-secret").Should().Be(PasswordCheck.Success);
+    }
+
+    [Fact]
+    public async Task Login_AfterLockoutWindow_UnlocksAutomatically_AndOneTypoDoesNotRelock()
+    {
+        await CreateUserAsync("lockme", "Pass@1234", Roles.Waiter);
+        for (var i = 0; i < 5; i++)
+        {
+            await Auth.LoginAsync(Login("lockme", "wrong-password"));
+        }
+
+        (await Auth.LoginAsync(Login("lockme", "Pass@1234"))).Error!.Code.Should().Be(ErrorCodes.AccountLocked);
+
+        Clock.Advance(TimeSpan.FromMinutes(16));
+
+        (await Auth.LoginAsync(Login("lockme", "wrong-password"))).Error!.Code.Should().Be(ErrorCodes.InvalidCredentials);
+        (await Auth.LoginAsync(Login("lockme", "Pass@1234"))).IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ApprovalToken_WrongPasswords_CountTowardsLockout()
+    {
+        await CreateUserAsync("mgr", "Pass@1234", Roles.Manager);
+        var approvals = Get<IApprovalTokenService>();
+        ApprovalTokenRequest Request(string password) => new()
+        {
+            ApproverUsername = "mgr",
+            ApproverPassword = password,
+            ActionType = ApprovalActions.Void,
+        };
+
+        for (var i = 0; i < 5; i++)
+        {
+            (await approvals.IssueApprovalTokenAsync(Request("wrong-password"))).Error!.Code.Should().Be(ErrorCodes.ApprovalInvalid);
+        }
+
+        (await approvals.IssueApprovalTokenAsync(Request("Pass@1234"))).Error!.Code.Should().Be(ErrorCodes.ApprovalInvalid);
+        var lockedOut = await QueryAsync(db => db.AuditLogs.AnyAsync(a => a.Action == AuditActions.UserLockedOut));
+        lockedOut.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ApprovalToken_PresentedForWrongAction_IsRejectedWithoutBeingSpent()
+    {
+        await CreateUserAsync("mgr", "Pass@1234", Roles.Manager);
+        var approvals = Get<IApprovalTokenService>();
+        var token = (await approvals.IssueApprovalTokenAsync(new ApprovalTokenRequest
+        {
+            ApproverUsername = "mgr",
+            ApproverPassword = "Pass@1234",
+            ActionType = ApprovalActions.Void,
+        })).Value.Token;
+
+        (await approvals.ValidateApprovalTokenAsync(token, ApprovalActions.Refund)).Error!.Code.Should().Be(ErrorCodes.ApprovalInvalid);
+        (await approvals.ValidateApprovalTokenAsync(token, ApprovalActions.Void)).IsSuccess.Should().BeTrue();
+        (await approvals.ValidateApprovalTokenAsync(token, ApprovalActions.Void)).Error!.Code.Should().Be(ErrorCodes.ApprovalInvalid);
+    }
+
+    [Fact]
+    public async Task ApprovalToken_AfterTwoMinutes_IsRejected()
+    {
+        await CreateUserAsync("mgr", "Pass@1234", Roles.Manager);
+        var approvals = Get<IApprovalTokenService>();
+        var token = (await approvals.IssueApprovalTokenAsync(new ApprovalTokenRequest
+        {
+            ApproverUsername = "mgr",
+            ApproverPassword = "Pass@1234",
+            ActionType = ApprovalActions.Refund,
+        })).Value.Token;
+
+        Clock.Advance(TimeSpan.FromMinutes(2).Add(TimeSpan.FromSeconds(1)));
+
+        (await approvals.ValidateApprovalTokenAsync(token, ApprovalActions.Refund)).Error!.Code.Should().Be(ErrorCodes.ApprovalInvalid);
     }
 }

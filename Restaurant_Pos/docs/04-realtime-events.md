@@ -1,6 +1,6 @@
 # 04 — Real-time Events (SignalR)
 
-Last updated: 2026-10-07
+Last updated: 2026-10-14
 
 ## 1. Hub
 
@@ -57,8 +57,8 @@ it receives only its station's ticket events; `LeaveStation` puts it back. The c
 | `BillRequested` | role:cashier, manager | `billId, billNumber, orderId, orderNumber, tableCode, waiterName, grandTotal` | request-bill | 6 |
 | `BillUpdated` | role:cashier, manager, user:{waiter} | `billId, status, paymentStatus, claimedByDevice?, grandTotal, paidAmount, changeType` | claim/release/discount/finalize/partial payment/reopen/void | 6 |
 | `PaymentCompleted` | role:cashier, role:waiter, manager, admin | `billId, orderId, tableCode, invoiceNumber, grandTotal` | bill settled | 6 |
-| `DeviceStatusChanged` | role:admin | `deviceId, name, isOnline` | hub connect/disconnect | 9 |
-| `ServerNotice` | all or targeted | `level, message` | admin broadcast, shutdown warning | 10 |
+| `DeviceStatusChanged` | role:admin, role:manager | `deviceId, deviceName, isOnline, isActive, timestampUtc` | device update/activate/deactivate (hub connect/disconnect: still open, phase 9 § 15) | 9 |
+| `ServerNotice` | `device:{id}` (Phase 9); all (Phase 10) | `message, code?` | device deactivated (`code = DEVICE_DISABLED`); admin broadcast and shutdown warning in Phase 10 | 9, 10 |
 
 Event names are constants in `HotelPOS.Contracts.Realtime.HubEvents`.
 

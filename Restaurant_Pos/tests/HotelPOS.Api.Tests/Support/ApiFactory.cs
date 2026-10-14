@@ -40,6 +40,8 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             ["Seed:DemoPassword"] = DemoPassword,
             ["Logging:Directory"] = Path.Combine(Path.GetTempPath(), "hotelpos-test-logs"),
             ["Media:RootPath"] = MediaPath,
+            ["Security:RateLimit:MaxPerIp"] = "100",
+            ["Security:RateLimit:MaxPerUser"] = "100",
         }));
     }
 
@@ -73,11 +75,31 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         return body.Data!;
     }
 
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> _tokenCache = new();
+
+    public void ResetTokens() => _tokenCache.Clear();
+
+    public void ResetRateLimiter()
+    {
+        try
+        {
+            Services.GetRequiredService<HotelPOS.Api.Common.LoginRateLimiter>().Reset();
+        }
+        catch { }
+    }
+
     public async Task<HttpClient> CreateAuthenticatedClientAsync(string username, string password)
     {
-        var login = await LoginAsync(username, password);
+        var key = $"{username}:{password}";
+        if (!_tokenCache.TryGetValue(key, out var token))
+        {
+            var login = await LoginAsync(username, password);
+            token = login.AccessToken;
+            _tokenCache[key] = token;
+        }
+
         var client = CreateClient();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", login.AccessToken);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         return client;
     }
 

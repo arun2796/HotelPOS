@@ -120,9 +120,9 @@ public sealed partial class UserEditorViewModel : ObservableObject
             return "Enter the name shown on screens and tickets.";
         }
 
-        if (IsNew && Password.Length < PasswordPolicy.MinLength)
+        if (IsNew && !PasswordPolicy.MeetsComplexity(Password))
         {
-            return $"The password must have at least {PasswordPolicy.MinLength} characters.";
+            return $"Password must be at least {PasswordPolicy.MinLength} characters and contain both letters and numbers.";
         }
 
         return SelectedRoles.Count == 0 ? "Select at least one role." : null;

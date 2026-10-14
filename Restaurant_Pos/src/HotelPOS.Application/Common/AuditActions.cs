@@ -13,8 +13,18 @@ public static class AuditActions
     public const string UserActivated = "User.Activated";
     public const string UserDeactivated = "User.Deactivated";
     public const string UserPasswordReset = "User.PasswordReset";
+    public const string UserLockedOut = "User.LockedOut";
+    public const string UserUnlocked = "User.Unlocked";
+    public const string UserLoggedOutAll = "User.LoggedOutAll";
+
+    public const string RolePermissionsUpdated = "Role.PermissionsUpdated";
 
     public const string DeviceRegistered = "Device.Registered";
+    public const string DeviceUpdated = "Device.Updated";
+    public const string DeviceActivated = "Device.Activated";
+    public const string DeviceDeactivated = "Device.Deactivated";
+
+    public const string ApprovalTokenIssued = "Approval.TokenIssued";
 
     public const string SettingsUpdated = "Settings.Updated";
 

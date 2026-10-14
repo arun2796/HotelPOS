@@ -7,6 +7,9 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using HotelPOS.Contracts.Admin;
+using HotelPOS.Contracts.Devices;
+using HotelPOS.Contracts.Security;
+using HotelPOS.Desktop.Modules.Admin;
 using HotelPOS.Contracts.Billing;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Enums;
@@ -262,6 +265,19 @@ public class ScreenRenderingTests
             await Dispatcher.Yield(DispatcherPriority.Background);
             rendered.Add(await RenderScreenAsync(env, setupShell, "41-reports-item-sales"));
 
+            await setupShell.NavigateToAsync(ModuleRegistry.RolesModule, null);
+            var roles = (RolesViewModel)setupShell.CurrentPage!;
+            roles.SelectedRole = roles.Roles.First(r => r.RoleName == "Cashier");
+            rendered.Add(await RenderScreenAsync(env, setupShell, "42-roles-and-permissions"));
+            await setupShell.NavigateToAsync(ModuleRegistry.Devices, null);
+            var devices = (DevicesViewModel)setupShell.CurrentPage!;
+            devices.SelectedDevice = devices.Devices.First();
+            rendered.Add(await RenderScreenAsync(env, setupShell, "43-devices"));
+            await setupShell.NavigateToAsync(ModuleRegistry.Audit, null);
+            var audit = (AuditLogsViewModel)setupShell.CurrentPage!;
+            audit.SelectedEntry = audit.AuditEntries.First();
+            rendered.Add(await RenderScreenAsync(env, setupShell, "44-audit-log"));
+
             await setupShell.NavigateToAsync(ModuleRegistry.Printers, null);
             rendered.Add(await RenderScreenAsync(env, setupShell, "38-printer-settings"));
             var preview = env.Create<PrintPreviewViewModel>();
@@ -280,7 +296,7 @@ public class ScreenRenderingTests
         }
 
         bindingErrors.Errors.Should().BeEmpty("every binding in the views must point at an existing property");
-        rendered.Should().HaveCount(41);
+        rendered.Should().HaveCount(44);
     }
 
     private static async Task<string> RenderScreenAsync(Environment env, object screen, string name)
@@ -386,6 +402,14 @@ public class ScreenRenderingTests
                 .Returns(ApiResult<List<SettingDto>>.Ok(new List<SettingDto> { new() { Key = SettingKeys.RestaurantName, Value = "Hotel Saravana Bhavan" } }));
 
             var usersApi = Substitute.For<IUsersApi>();
+            usersApi.ListAllRolePermissionsAsync(Arg.Any<CancellationToken>()).Returns(ApiResult<List<RolePermissionsDto>>.Ok(new List<RolePermissionsDto>
+            {
+                new() { RoleId = 1, RoleName = "Admin", IsSystem = true, Permissions = Permissions.All },
+                new() { RoleId = 2, RoleName = "Manager", IsSystem = true, Permissions = Permissions.All.Except(new[] { Permissions.UsersManage, Permissions.RolesManage, Permissions.SettingsManage, Permissions.DevicesManage, Permissions.BackupManage }).ToList() },
+                new() { RoleId = 3, RoleName = "Waiter", IsSystem = true, Permissions = new[] { Permissions.TablesView, Permissions.TablesOperate, Permissions.MenuView, Permissions.OrdersCreate } },
+                new() { RoleId = 4, RoleName = "Kitchen", IsSystem = true, Permissions = new[] { Permissions.MenuView, Permissions.MenuAvailability, Permissions.KitchenOperate } },
+                new() { RoleId = 5, RoleName = "Cashier", IsSystem = true, Permissions = new[] { Permissions.TablesView, Permissions.TablesOperate, Permissions.MenuView, Permissions.BillingOperate, Permissions.BillingDiscount } },
+            }));
             usersApi.GetRolesAsync(Arg.Any<CancellationToken>()).Returns(ApiResult<List<RoleDto>>.Ok(new List<RoleDto>
             {
                 new() { Id = 1, Name = "Admin", Description = "Full access including users, settings and devices." },
@@ -452,6 +476,8 @@ public class ScreenRenderingTests
             services.AddSingleton(Substitute.For<ILocalDraftStore>());
             services.AddSingleton<IOrderSubmitter>(new OrderSubmitter(NullLogger<OrderSubmitter>.Instance));
             services.AddSingleton(DemoKitchenApi());
+            services.AddSingleton(DemoDevicesApi());
+            services.AddSingleton(DemoAuditApi());
             services.AddSingleton(DemoBillingApi());
             services.AddSingleton(DemoReportsApi());
             services.AddSingleton(Substitute.For<ISoundPlayer>());
@@ -900,6 +926,54 @@ public class ScreenRenderingTests
                     new() { ItemName = "Mutton Biryani", Category = "Main Course", Quantity = 64, Amount = 19200m, SharePercent = 9.7m },
                     new() { ItemName = "Fresh Lime Soda", Category = "Drinks", Quantity = 210, Amount = 12600m, SharePercent = 6.4m },
                 }));
+            return api;
+        }
+
+        private static IDevicesApi DemoDevicesApi()
+        {
+            var now = DateTime.UtcNow;
+            DeviceDto Device(string name, DeviceType type, string machine, bool online, int minutesAgo, bool active = true, int? station = null) => new()
+            {
+                Id = Guid.NewGuid(), Name = name, Type = type, MachineName = machine, AppVersion = "0.1.0", StationId = station,
+                IsActive = active, IsOnline = online, LastSeenAtUtc = now.AddMinutes(-minutesAgo), RegisteredAtUtc = now.AddDays(-30),
+                DeactivatedAtUtc = active ? null : now.AddDays(-2),
+            };
+            var api = Substitute.For<IDevicesApi>();
+            api.ListAsync(Arg.Any<CancellationToken>()).Returns(ApiResult<List<DeviceDto>>.Ok(new List<DeviceDto>
+            {
+                Device("ADMIN-01", DeviceType.Admin, "OFFICE-PC", true, 0),
+                Device("WAITER-01", DeviceType.Waiter, "TAB-01", true, 1),
+                Device("WAITER-02", DeviceType.Waiter, "TAB-02", false, 95),
+                Device("KITCHEN-01", DeviceType.Kitchen, "KITCHEN-PC", true, 0, station: 1),
+                Device("BILLING-01", DeviceType.Billing, "COUNTER-PC", true, 2),
+                Device("BILLING-02", DeviceType.Billing, "OLD-COUNTER", false, 4000, active: false),
+            }));
+            return api;
+        }
+
+        private static IAuditApi DemoAuditApi()
+        {
+            var now = DateTime.UtcNow;
+            AuditLogDto Entry(long id, string user, string device, string action, string entity, string entityId, string? oldValues, string? newValues, int minutesAgo) => new()
+            {
+                Id = id, UserId = 1, UserName = user, DeviceId = Guid.NewGuid(), DeviceName = device, MachineName = "PC", IpAddress = "192.168.1.30",
+                Action = action, EntityType = entity, EntityId = entityId, OldValues = oldValues, NewValues = newValues, CorrelationId = "c0ffee" + id, TimestampUtc = now.AddMinutes(-minutesAgo),
+            };
+            var entries = new List<AuditLogDto>
+            {
+                Entry(1, "cashier1", "BILLING-01", "Payment.Received", "Bill", "41", null, "{\"invoiceNumber\":\"INV-202610-000042\",\"method\":\"CASH\",\"amount\":1134.00,\"tenderedAmount\":1200.00,\"changeAmount\":66.00}", 3),
+                Entry(2, "cashier1", "BILLING-01", "Bill.DiscountApplied", "Bill", "41", "{\"discountType\":null,\"discountAmount\":0,\"grandTotal\":1134.00}", "{\"discountType\":\"Percentage\",\"discountValue\":15,\"discountAmount\":162.00,\"grandTotal\":964.00,\"approvedBy\":6}", 6),
+                Entry(3, "manager1", "ADMIN-01", "MenuItem.PriceChanged", "MenuItem", "12", "{\"price\":250.00}", "{\"price\":260.00}", 40),
+                Entry(4, "kitchen1", "KITCHEN-01", "KitchenTicket.Ready", "KitchenTicket", "7", null, "{\"ticketNumber\":\"1025-1\",\"status\":\"Ready\",\"order\":1025}", 55),
+                Entry(5, "waiter1", "WAITER-01", "Order.Submitted", "Order", "25", null, "{\"orderNumber\":1025,\"table\":\"T05\",\"items\":3}", 70),
+                Entry(6, "admin", "ADMIN-01", "Device.Deactivated", "Device", "b2", null, "{\"name\":\"BILLING-02\",\"revokedSessions\":1}", 2880),
+                Entry(7, "waiter2", "WAITER-02", "Auth.LoginFailed", "User", "4", null, "{\"reason\":\"WrongPassword\",\"failedLoginCount\":3}", 3000),
+            };
+            var api = Substitute.For<IAuditApi>();
+            api.QueryAsync(Arg.Any<AuditLogQuery>(), Arg.Any<CancellationToken>()).Returns(ApiResult<PagedResult<AuditLogDto>>.Ok(new PagedResult<AuditLogDto>
+            {
+                Items = entries, Page = 1, PageSize = 50, TotalCount = entries.Count,
+            }));
             return api;
         }
 

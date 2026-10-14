@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using HotelPOS.Application.Common.Interfaces;
 
 namespace HotelPOS.Api.Hubs;
 
@@ -11,7 +12,7 @@ public sealed record HubConnectionInfo(
     string? DeviceName,
     DateTime ConnectedAtUtc);
 
-public sealed class ConnectionTracker
+public sealed class ConnectionTracker : IOnlineDeviceTracker
 {
     private readonly ConcurrentDictionary<string, HubConnectionInfo> _connections = new();
 

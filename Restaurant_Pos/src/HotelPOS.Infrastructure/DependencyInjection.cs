@@ -48,6 +48,7 @@ public static class DependencyInjection
         services.AddScoped<IInvoiceNumberService, InvoiceNumberService>();
         services.AddScoped<IReportQueries, ReportQueries>();
         services.AddHostedService<BillClaimCleanupService>();
+        services.AddHostedService<AuditRetentionService>();
         services.AddSingleton<IIdempotencyStore, IdempotencyStore>();
         services.AddHostedService<IdempotencyCleanupService>();
         services.AddSingleton<IMenuImageStore, MenuImageStore>();

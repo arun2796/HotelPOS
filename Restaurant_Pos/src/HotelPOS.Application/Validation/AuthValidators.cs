@@ -1,5 +1,6 @@
 using FluentValidation;
 using HotelPOS.Contracts.Auth;
+using HotelPOS.Contracts.Billing;
 using HotelPOS.Contracts.Devices;
 
 namespace HotelPOS.Application.Validation;
@@ -33,6 +34,18 @@ public sealed class LogoutRequestValidator : AbstractValidator<LogoutRequest>
     public LogoutRequestValidator()
     {
         RuleFor(x => x.RefreshToken).NotEmpty().MaximumLength(200);
+    }
+}
+
+public sealed class ApprovalTokenRequestValidator : AbstractValidator<ApprovalTokenRequest>
+{
+    public ApprovalTokenRequestValidator()
+    {
+        RuleFor(x => x.ApproverUsername).NotEmpty().MaximumLength(50);
+        RuleFor(x => x.ApproverPassword).NotEmpty().MaximumLength(PasswordPolicy.MaxLength);
+        RuleFor(x => x.ActionType).NotEmpty()
+            .Must(a => ApprovalActions.All.Contains(a, StringComparer.OrdinalIgnoreCase))
+            .WithMessage($"Action type must be one of: {string.Join(", ", ApprovalActions.All)}.");
     }
 }
 

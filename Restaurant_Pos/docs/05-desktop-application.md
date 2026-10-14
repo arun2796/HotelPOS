@@ -1,6 +1,6 @@
 # 05 — Desktop Application (WPF)
 
-Last updated: 2026-10-07
+Last updated: 2026-10-14
 
 ## 1. Project layout (`HotelPOS.Desktop`)
 
@@ -156,6 +156,19 @@ View-models are matched to views by DataTemplates in `App.xaml` and created with
 Users, Roles, Sections/Tables, Categories, Menu Items (list + edit form + image), Modifiers, Taxes,
 Stations, Discounts, Payment Methods, Devices, Settings, Audit Log, Reports, Dashboard, Backup.
 Data grids with search, add/edit side panel, activate/deactivate instead of delete.
+
+| Screen (phase) | Content |
+|---|---|
+| Dashboard (8) | Manager: six KPI tiles, top items, 7-day net-sales strip; waiter: own orders, sales, tables today. 60 s timer plus 5 s debounce on sale/order/ticket events |
+| Reports (8) | Report list, date presets + custom range, grid with totals row, **EXPORT CSV** (same columns as the grid) |
+| Roles & Permissions (9) | Roles × permissions matrix; Admin row read-only; save with optional "force re-login" |
+| Devices (9) | Name, type, station, machine, version, last seen, online badge; rename, activate/deactivate |
+| Audit Log (9) | Filters (action, entity, search, date presets), paged grid, old/new values, export CSV |
+| Users (9 additions) | Lockout state with **UNLOCK**, sessions, **LOG OUT EVERYWHERE** |
+
+Login shows distinct messages for a locked account, a disabled device and too many attempts (429). Phase 9
+items still open on the desktop (approval tokens, station assignment, side-by-side diff, permission-driven
+navigation) are listed in `phases/phase-09-security-and-audit.md` § 15.
 
 ## 9. UX guidelines
 
