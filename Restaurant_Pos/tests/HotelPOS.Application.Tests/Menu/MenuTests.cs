@@ -1,21 +1,29 @@
 using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Results;
-using HotelPOS.Application.Menu;
+using HotelPOS.Application.Features.Menu.Commands;
+using HotelPOS.Application.Features.Menu.Queries;
 using HotelPOS.Application.Tests.Support;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Menu;
 using HotelPOS.Contracts.Realtime;
+using HotelPOS.Contracts.Security;
 using HotelPOS.Testing;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace HotelPOS.Application.Tests.Menu;
 
-public class MenuServiceTests : DatabaseTestBase
+public class MenuTests : DatabaseTestBase
 {
-    public MenuServiceTests(DatabaseFixture fixture)
+    public MenuTests(DatabaseFixture fixture)
         : base(fixture)
     {
+    }
+
+    // The menu is maintained from the admin PC; taxes and stations are admin-only anyway.
+    public override async Task InitializeAsync()
+    {
+        await base.InitializeAsync();
+        CurrentUser.SignIn(await AdminIdAsync(), "admin", Roles.Admin);
     }
 
     [Fact]
@@ -23,10 +31,10 @@ public class MenuServiceTests : DatabaseTestBase
     {
         var setup = await SetupAsync();
         await CreateItemAsync(setup, "Chicken 65");
-        var other = await Call<ICategoryService, CategoryDto>(s => s.CreateAsync(new CreateCategoryRequest { Name = "Specials", SortOrder = 2 }));
+        var other = await SendAsync(new CreateCategoryCommand(new CreateCategoryRequest { Name = "Specials", SortOrder = 2 }));
 
-        var duplicate = await Call<IMenuItemService, MenuItemDto>(s => s.CreateAsync(ItemRequest(setup, "chicken 65")));
-        var elsewhere = await Call<IMenuItemService, MenuItemDto>(s => s.CreateAsync(ItemRequest(setup, "Chicken 65") with { CategoryId = other.Value.Id }));
+        var duplicate = await SendAsync(new CreateMenuItemCommand(ItemRequest(setup, "chicken 65")));
+        var elsewhere = await SendAsync(new CreateMenuItemCommand(ItemRequest(setup, "Chicken 65") with { CategoryId = other.Value.Id }));
 
         duplicate.Error!.Code.Should().Be(ErrorCodes.Duplicate);
         elsewhere.IsSuccess.Should().BeTrue(elsewhere.Error?.Message);
@@ -38,7 +46,7 @@ public class MenuServiceTests : DatabaseTestBase
         var setup = await SetupAsync();
         var item = await CreateItemAsync(setup, "Chicken 65");
 
-        var result = await Call<IMenuItemService, MenuItemDto>(s => s.UpdateAsync(item.Id, UpdateRequest(item) with { Price = 235m }));
+        var result = await SendAsync(new UpdateMenuItemCommand(item.Id, UpdateRequest(item) with { Price = 235m }));
 
         result.IsSuccess.Should().BeTrue(result.Error?.Message);
         result.Value.Price.Should().Be(235m);
@@ -53,9 +61,9 @@ public class MenuServiceTests : DatabaseTestBase
     {
         var setup = await SetupAsync();
         var item = await CreateItemAsync(setup, "Chicken 65");
-        await Call<IMenuItemService, MenuItemDto>(s => s.UpdateAsync(item.Id, UpdateRequest(item) with { Price = 230m }));
+        await SendAsync(new UpdateMenuItemCommand(item.Id, UpdateRequest(item) with { Price = 230m }));
 
-        var stale = await Call<IMenuItemService, MenuItemDto>(s => s.UpdateAsync(item.Id, UpdateRequest(item) with { Price = 240m }));
+        var stale = await SendAsync(new UpdateMenuItemCommand(item.Id, UpdateRequest(item) with { Price = 240m }));
 
         stale.Error!.Code.Should().Be(ErrorCodes.ConcurrencyConflict);
         stale.Error.Data.Should().BeOfType<MenuItemDto>().Which.Price.Should().Be(230m);
@@ -67,7 +75,7 @@ public class MenuServiceTests : DatabaseTestBase
         var setup = await SetupAsync();
         var item = await CreateItemAsync(setup, "Chicken 65");
 
-        var result = await Call<IMenuItemService, MenuItemDto>(s => s.UpdateAsync(item.Id, UpdateRequest(item) with { ModifierGroupIds = new[] { setup.GroupId } }));
+        var result = await SendAsync(new UpdateMenuItemCommand(item.Id, UpdateRequest(item) with { ModifierGroupIds = new[] { setup.GroupId } }));
 
         result.Value.ModifierGroupIds.Should().Equal(setup.GroupId);
         result.Value.RowVersion.Should().NotBe(item.RowVersion);
@@ -79,8 +87,8 @@ public class MenuServiceTests : DatabaseTestBase
         var setup = await SetupAsync();
         await CreateItemAsync(setup, "Chicken 65");
 
-        var station = await Call<IStationService, StationDto>(s => s.DeactivateAsync(setup.StationId));
-        var tax = await Call<ITaxService, TaxDto>(s => s.DeactivateAsync(setup.TaxId));
+        var station = await SendAsync(new DeactivateStationCommand(setup.StationId));
+        var tax = await SendAsync(new DeactivateTaxCommand(setup.TaxId));
 
         station.Error!.Code.Should().Be(ErrorCodes.BusinessRule);
         tax.Error!.Code.Should().Be(ErrorCodes.BusinessRule);
@@ -92,8 +100,8 @@ public class MenuServiceTests : DatabaseTestBase
         var setup = await SetupAsync();
         var item = await CreateItemAsync(setup, "Chicken 65");
 
-        var refused = await Call<ICategoryService, CategoryDto>(s => s.DeactivateAsync(setup.CategoryId, deactivateItems: false));
-        var confirmed = await Call<ICategoryService, CategoryDto>(s => s.DeactivateAsync(setup.CategoryId, deactivateItems: true));
+        var refused = await SendAsync(new DeactivateCategoryCommand(setup.CategoryId, DeactivateItems: false));
+        var confirmed = await SendAsync(new DeactivateCategoryCommand(setup.CategoryId, DeactivateItems: true));
 
         refused.Error!.Code.Should().Be(ErrorCodes.BusinessRule);
         confirmed.Value.IsActive.Should().BeFalse();
@@ -103,13 +111,13 @@ public class MenuServiceTests : DatabaseTestBase
     [Fact]
     public async Task EveryMenuWrite_BumpsTheVersion_AndPublishesMenuChangedOnce()
     {
-        var before = await Call<IMenuQuery, MenuDto>(q => q.GetMenuAsync(null));
+        var before = (await SendAsync(new GetMenuQuery(null))).Value;
         var setup = await SetupAsync();
         var item = await CreateItemAsync(setup, "Chicken 65");
         Realtime.Reset();
 
-        await Call<IMenuItemService, MenuItemDto>(s => s.SetAvailabilityAsync(item.Id, false));
-        var after = await Call<IMenuQuery, MenuDto>(q => q.GetMenuAsync(null));
+        await SendAsync(new SetMenuItemAvailabilityCommand(item.Id, new SetAvailabilityRequest { IsAvailable = false }));
+        var after = (await SendAsync(new GetMenuQuery(null))).Value;
 
         // Category, station, tax, modifier group + option, item: six writes during setup, one toggle.
         after.Version.Should().Be(before.Version + 7);
@@ -122,12 +130,12 @@ public class MenuServiceTests : DatabaseTestBase
     public async Task ConcurrentWrites_NeverLoseAVersionBump()
     {
         var setup = await SetupAsync();
-        var start = (await Call<IMenuQuery, MenuDto>(q => q.GetMenuAsync(null))).Version;
+        var start = (await SendAsync(new GetMenuQuery(null))).Value.Version;
 
         await Task.WhenAll(Enumerable.Range(1, 6).Select(i =>
-            Call<ICategoryService, CategoryDto>(s => s.CreateAsync(new CreateCategoryRequest { Name = $"Parallel {i}", SortOrder = i }))));
+            SendAsync(new CreateCategoryCommand(new CreateCategoryRequest { Name = $"Parallel {i}", SortOrder = i }))));
 
-        (await Call<IMenuQuery, MenuDto>(q => q.GetMenuAsync(null))).Version.Should().Be(start + 6);
+        (await SendAsync(new GetMenuQuery(null))).Value.Version.Should().Be(start + 6);
     }
 
     [Fact]
@@ -136,11 +144,11 @@ public class MenuServiceTests : DatabaseTestBase
         var setup = await SetupAsync();
         var kept = await CreateItemAsync(setup, "Chicken 65", withGroup: true);
         var removed = await CreateItemAsync(setup, "Old dish");
-        await Call<IMenuItemService, MenuItemDto>(s => s.DeactivateAsync(removed.Id));
-        await Call<IMenuItemService, MenuItemDto>(s => s.SetAvailabilityAsync(kept.Id, false));
+        await SendAsync(new DeactivateMenuItemCommand(removed.Id));
+        await SendAsync(new SetMenuItemAvailabilityCommand(kept.Id, new SetAvailabilityRequest { IsAvailable = false }));
 
-        var menu = await Call<IMenuQuery, MenuDto>(q => q.GetMenuAsync(null));
-        var again = await Call<IMenuQuery, MenuDto>(q => q.GetMenuAsync(menu.Version));
+        var menu = (await SendAsync(new GetMenuQuery(null))).Value;
+        var again = (await SendAsync(new GetMenuQuery(menu.Version))).Value;
 
         menu.NotModified.Should().BeFalse();
         var entry = menu.Items.Should().ContainSingle().Subject;
@@ -193,11 +201,11 @@ public class MenuServiceTests : DatabaseTestBase
 
     private async Task<Setup> SetupAsync()
     {
-        var category = await Call<ICategoryService, CategoryDto>(s => s.CreateAsync(new CreateCategoryRequest { Name = "Starters", SortOrder = 1 }));
-        var station = await Call<IStationService, StationDto>(s => s.CreateAsync(new SaveStationRequest { Name = "Grill", Code = "GRILL", SortOrder = 2 }));
-        var tax = await Call<ITaxService, TaxDto>(s => s.CreateAsync(new SaveTaxRequest { Name = "GST 5%", Code = "GST5", RatePercent = 5m }));
-        var group = await Call<IModifierService, ModifierGroupDto>(s => s.CreateAsync(new SaveModifierGroupRequest { Name = "Spice level", MinSelections = 1, MaxSelections = 1 }));
-        await Call<IModifierService, ModifierGroupDto>(s => s.AddOptionAsync(group.Value.Id, new SaveModifierOptionRequest { Name = "Spicy", SortOrder = 2 }));
+        var category = await SendAsync(new CreateCategoryCommand(new CreateCategoryRequest { Name = "Starters", SortOrder = 1 }));
+        var station = await SendAsync(new CreateStationCommand(new SaveStationRequest { Name = "Grill", Code = "GRILL", SortOrder = 2 }));
+        var tax = await SendAsync(new CreateTaxCommand(new SaveTaxRequest { Name = "GST 5%", Code = "GST5", RatePercent = 5m }));
+        var group = await SendAsync(new CreateModifierGroupCommand(new SaveModifierGroupRequest { Name = "Spice level", MinSelections = 1, MaxSelections = 1 }));
+        await SendAsync(new AddModifierOptionCommand(group.Value.Id, new SaveModifierOptionRequest { Name = "Spicy", SortOrder = 2 }));
         foreach (var result in new Result[] { category, station, tax, group })
         {
             result.IsSuccess.Should().BeTrue(result.Error?.Message);
@@ -244,7 +252,7 @@ public class MenuServiceTests : DatabaseTestBase
     private async Task<MenuItemDto> CreateItemAsync(Setup setup, string name, bool withGroup = false)
     {
         var request = ItemRequest(setup, name) with { ModifierGroupIds = withGroup ? new[] { setup.GroupId } : Array.Empty<int>() };
-        var result = await Call<IMenuItemService, MenuItemDto>(s => s.CreateAsync(request));
+        var result = await SendAsync(new CreateMenuItemCommand(request));
         result.IsSuccess.Should().BeTrue(result.Error?.Message);
         return result.Value;
     }
@@ -252,20 +260,6 @@ public class MenuServiceTests : DatabaseTestBase
     private async Task<Result<MenuItemDto>> UploadAsync(int itemId, byte[] content)
     {
         await using var stream = new MemoryStream(content);
-        return await Call<IMenuItemService, MenuItemDto>(s => s.UploadImageAsync(itemId, stream, content.Length));
-    }
-
-    private async Task<Result<T>> Call<TService, T>(Func<TService, Task<Result<T>>> call)
-        where TService : notnull
-    {
-        await using var scope = Fixture.Services.CreateAsyncScope();
-        return await call(scope.ServiceProvider.GetRequiredService<TService>());
-    }
-
-    private async Task<T> Call<TService, T>(Func<TService, Task<T>> call)
-        where TService : notnull
-    {
-        await using var scope = Fixture.Services.CreateAsyncScope();
-        return await call(scope.ServiceProvider.GetRequiredService<TService>());
+        return await SendAsync(new UploadMenuItemImageCommand(itemId, stream, content.Length));
     }
 }

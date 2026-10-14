@@ -3,7 +3,8 @@ using HotelPOS.Application.Billing;
 using HotelPOS.Application.Common.Results;
 using HotelPOS.Application.Features.Floor.Commands;
 using HotelPOS.Application.Kitchen;
-using HotelPOS.Application.Menu;
+using HotelPOS.Application.Features.Menu.Commands;
+using HotelPOS.Application.Features.Menu.Queries;
 using HotelPOS.Application.Orders;
 using HotelPOS.Application.Reports;
 using HotelPOS.Application.Tests.Support;
@@ -224,14 +225,14 @@ public class ReportServiceTests : DatabaseTestBase
             tables.Add((await SendAsync(new CreateTableCommand(new CreateTableRequest { Code = $"T{i:00}", SectionId = section.Value.Id, Capacity = 4 }))).Value.Id);
         }
 
-        var mains = await Call<ICategoryService, CategoryDto>(x => x.CreateAsync(new CreateCategoryRequest { Name = "Mains", SortOrder = 1 }));
-        var breads = await Call<ICategoryService, CategoryDto>(x => x.CreateAsync(new CreateCategoryRequest { Name = "Breads", SortOrder = 2 }));
-        var gst = await Call<ITaxService, TaxDto>(x => x.CreateAsync(new SaveTaxRequest { Name = "GST 5%", Code = "GST5", RatePercent = 5m }));
+        var mains = await SendAsync(new CreateCategoryCommand(new CreateCategoryRequest { Name = "Mains", SortOrder = 1 }));
+        var breads = await SendAsync(new CreateCategoryCommand(new CreateCategoryRequest { Name = "Breads", SortOrder = 2 }));
+        var gst = await SendAsync(new CreateTaxCommand(new SaveTaxRequest { Name = "GST 5%", Code = "GST5", RatePercent = 5m }));
         var main = await QueryAsync(db => db.PreparationStations.Where(p => p.Code == "MAIN").Select(p => p.Id).FirstAsync());
 
         async Task<int> ItemAsync(string name, decimal price, int category)
         {
-            var r = await Call<IMenuItemService, MenuItemDto>(x => x.CreateAsync(new CreateMenuItemRequest
+            var r = await SendAsync(new CreateMenuItemCommand(new CreateMenuItemRequest
             {
                 CategoryId = category, Name = name, Price = price, TaxId = gst.Value.Id, PreparationStationId = main,
             }));

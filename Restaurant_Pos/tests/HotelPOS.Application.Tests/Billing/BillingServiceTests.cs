@@ -2,7 +2,8 @@ using HotelPOS.Application.Billing;
 using HotelPOS.Application.Common.Results;
 using HotelPOS.Application.Features.Floor.Commands;
 using HotelPOS.Application.Kitchen;
-using HotelPOS.Application.Menu;
+using HotelPOS.Application.Features.Menu.Commands;
+using HotelPOS.Application.Features.Menu.Queries;
 using HotelPOS.Application.Orders;
 using HotelPOS.Application.Tests.Support;
 using HotelPOS.Contracts.Admin;
@@ -439,13 +440,13 @@ public class BillingServiceTests : DatabaseTestBase
             tables.Add(table.Value.Id);
         }
 
-        var category = await Call<ICategoryService, CategoryDto>(x => x.CreateAsync(new CreateCategoryRequest { Name = "Mains", SortOrder = 1 }));
-        var gst = await Call<ITaxService, TaxDto>(x => x.CreateAsync(new SaveTaxRequest { Name = "GST 5%", Code = "GST5", RatePercent = 5m }));
+        var category = await SendAsync(new CreateCategoryCommand(new CreateCategoryRequest { Name = "Mains", SortOrder = 1 }));
+        var gst = await SendAsync(new CreateTaxCommand(new SaveTaxRequest { Name = "GST 5%", Code = "GST5", RatePercent = 5m }));
         var main = await QueryAsync(db => db.PreparationStations.Where(p => p.Code == "MAIN").Select(p => p.Id).FirstAsync());
 
         async Task<int> ItemAsync(string name, decimal price)
         {
-            var r = await Call<IMenuItemService, MenuItemDto>(x => x.CreateAsync(new CreateMenuItemRequest
+            var r = await SendAsync(new CreateMenuItemCommand(new CreateMenuItemRequest
             {
                 CategoryId = category.Value.Id, Name = name, Price = price, TaxId = gst.Value.Id, PreparationStationId = main,
             }));

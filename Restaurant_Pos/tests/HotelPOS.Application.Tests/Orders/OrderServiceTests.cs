@@ -1,7 +1,8 @@
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
 using HotelPOS.Application.Features.Floor.Commands;
-using HotelPOS.Application.Menu;
+using HotelPOS.Application.Features.Menu.Commands;
+using HotelPOS.Application.Features.Menu.Queries;
 using HotelPOS.Application.Orders;
 using HotelPOS.Application.Tests.Support;
 using HotelPOS.Contracts.Common;
@@ -46,7 +47,7 @@ public class OrderServiceTests : DatabaseTestBase
     {
         var s = await SetupAsync();
         await AsWaiterAsync(s.WaiterA);
-        await Call<IMenuItemService, MenuItemDto>(m => m.SetAvailabilityAsync(s.Naan, false));
+        await SendAsAdminAsync(new SetMenuItemAvailabilityCommand(s.Naan, new SetAvailabilityRequest { IsAvailable = false }));
 
         var soldOut = await TryCreateAsync(s, submit: false, Line(s.Naan, 1));
         var missingSpice = await TryCreateAsync(s, submit: false, Line(s.Biryani, 1));
@@ -232,12 +233,12 @@ public class OrderServiceTests : DatabaseTestBase
         CurrentUser.SignIn(await AdminIdAsync(), "admin", Roles.Admin);
         var section = await SendAsync(new CreateSectionCommand(new CreateSectionRequest { Name = "Ground Floor", SortOrder = 1 }));
         var table = await SendAsync(new CreateTableCommand(new CreateTableRequest { Code = "T05", SectionId = section.Value.Id, Capacity = 4 }));
-        var category = await Call<ICategoryService, CategoryDto>(x => x.CreateAsync(new CreateCategoryRequest { Name = "Mains", SortOrder = 1 }));
-        var tax = await Call<ITaxService, TaxDto>(x => x.CreateAsync(new SaveTaxRequest { Name = "GST 5%", Code = "GST5", RatePercent = 5m }));
-        var spice = await Call<IModifierService, ModifierGroupDto>(x => x.CreateAsync(new SaveModifierGroupRequest { Name = "Spice level", MinSelections = 1, MaxSelections = 1 }));
-        spice = await Call<IModifierService, ModifierGroupDto>(x => x.AddOptionAsync(spice.Value.Id, new SaveModifierOptionRequest { Name = "Spicy", SortOrder = 1 }));
-        var addOns = await Call<IModifierService, ModifierGroupDto>(x => x.CreateAsync(new SaveModifierGroupRequest { Name = "Add-ons", MinSelections = 0, MaxSelections = 2 }));
-        addOns = await Call<IModifierService, ModifierGroupDto>(x => x.AddOptionAsync(addOns.Value.Id, new SaveModifierOptionRequest { Name = "Extra raita", PriceDelta = 30m, SortOrder = 1 }));
+        var category = await SendAsync(new CreateCategoryCommand(new CreateCategoryRequest { Name = "Mains", SortOrder = 1 }));
+        var tax = await SendAsync(new CreateTaxCommand(new SaveTaxRequest { Name = "GST 5%", Code = "GST5", RatePercent = 5m }));
+        var spice = await SendAsync(new CreateModifierGroupCommand(new SaveModifierGroupRequest { Name = "Spice level", MinSelections = 1, MaxSelections = 1 }));
+        spice = await SendAsync(new AddModifierOptionCommand(spice.Value.Id, new SaveModifierOptionRequest { Name = "Spicy", SortOrder = 1 }));
+        var addOns = await SendAsync(new CreateModifierGroupCommand(new SaveModifierGroupRequest { Name = "Add-ons", MinSelections = 0, MaxSelections = 2 }));
+        addOns = await SendAsync(new AddModifierOptionCommand(addOns.Value.Id, new SaveModifierOptionRequest { Name = "Extra raita", PriceDelta = 30m, SortOrder = 1 }));
         var station = await QueryAsync(db => db.PreparationStations.Select(p => p.Id).FirstAsync());
 
         MenuItemDto Created(Result<MenuItemDto> r)
@@ -246,11 +247,11 @@ public class OrderServiceTests : DatabaseTestBase
             return r.Value;
         }
 
-        var naan = Created(await Call<IMenuItemService, MenuItemDto>(x => x.CreateAsync(new CreateMenuItemRequest
+        var naan = Created(await SendAsync(new CreateMenuItemCommand(new CreateMenuItemRequest
         {
             CategoryId = category.Value.Id, Name = "Butter Naan", Price = 50m, TaxId = tax.Value.Id, PreparationStationId = station,
         })));
-        var biryani = Created(await Call<IMenuItemService, MenuItemDto>(x => x.CreateAsync(new CreateMenuItemRequest
+        var biryani = Created(await SendAsync(new CreateMenuItemCommand(new CreateMenuItemRequest
         {
             CategoryId = category.Value.Id, Name = "Chicken Biryani", Price = 260m, TaxId = tax.Value.Id, PreparationStationId = station,
             ModifierGroupIds = new[] { spice.Value.Id, addOns.Value.Id },
@@ -284,8 +285,8 @@ public class OrderServiceTests : DatabaseTestBase
 
     private async Task ChangePriceAsync(int menuItemId, decimal price)
     {
-        var item = (await Call<IMenuItemService, MenuItemDto>(m => m.GetAsync(menuItemId))).Value;
-        var result = await Call<IMenuItemService, MenuItemDto>(m => m.UpdateAsync(menuItemId, new UpdateMenuItemRequest
+        var item = (await SendAsAdminAsync(new GetMenuItemQuery(menuItemId))).Value;
+        var result = await SendAsAdminAsync(new UpdateMenuItemCommand(menuItemId, new UpdateMenuItemRequest
         {
             CategoryId = item.CategoryId,
             Name = item.Name,

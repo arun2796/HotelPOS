@@ -1,7 +1,8 @@
 using HotelPOS.Application.Common.Results;
 using HotelPOS.Application.Features.Floor.Commands;
 using HotelPOS.Application.Kitchen;
-using HotelPOS.Application.Menu;
+using HotelPOS.Application.Features.Menu.Commands;
+using HotelPOS.Application.Features.Menu.Queries;
 using HotelPOS.Application.Orders;
 using HotelPOS.Application.Tests.Support;
 using HotelPOS.Contracts.Common;
@@ -206,13 +207,13 @@ public class KitchenServiceTests : DatabaseTestBase
         CurrentUser.SignIn(await AdminIdAsync(), "admin", Roles.Admin);
         var section = await SendAsync(new CreateSectionCommand(new CreateSectionRequest { Name = "Ground Floor", SortOrder = 1 }));
         var table = await SendAsync(new CreateTableCommand(new CreateTableRequest { Code = "T05", SectionId = section.Value.Id, Capacity = 4 }));
-        var category = await Call<ICategoryService, CategoryDto>(x => x.CreateAsync(new CreateCategoryRequest { Name = "All day", SortOrder = 1 }));
+        var category = await SendAsync(new CreateCategoryCommand(new CreateCategoryRequest { Name = "All day", SortOrder = 1 }));
         var main = await QueryAsync(db => db.PreparationStations.Where(p => p.Code == "MAIN").Select(p => p.Id).FirstAsync());
-        var bar = await Call<IStationService, StationDto>(x => x.CreateAsync(new SaveStationRequest { Name = "Bar", Code = "BAR", SortOrder = 2 }));
+        var bar = await SendAsync(new CreateStationCommand(new SaveStationRequest { Name = "Bar", Code = "BAR", SortOrder = 2 }));
 
         async Task<int> ItemAsync(string name, int station)
         {
-            var r = await Call<IMenuItemService, MenuItemDto>(x => x.CreateAsync(new CreateMenuItemRequest
+            var r = await SendAsync(new CreateMenuItemCommand(new CreateMenuItemRequest
             {
                 CategoryId = category.Value.Id, Name = name, Price = 100m, PreparationStationId = station,
             }));

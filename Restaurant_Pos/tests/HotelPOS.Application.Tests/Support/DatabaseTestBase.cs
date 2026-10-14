@@ -43,6 +43,22 @@ public abstract class DatabaseTestBase : IAsyncLifetime
         return await scope.ServiceProvider.GetRequiredService<ISender>().Send(request);
     }
 
+    // For a step another role takes in the middle of a scenario (a manager changing the menu while a waiter
+    // orders): requests check permissions, so it runs as the admin and the signed-in user is restored afterwards.
+    protected async Task<TResponse> SendAsAdminAsync<TResponse>(IRequest<TResponse> request)
+    {
+        var (userId, userName, roles, permissions) = (CurrentUser.UserId, CurrentUser.UserName, CurrentUser.Roles, CurrentUser.Permissions);
+        CurrentUser.SignIn(await AdminIdAsync(), "admin", Contracts.Security.Roles.Admin);
+        try
+        {
+            return await SendAsync(request);
+        }
+        finally
+        {
+            (CurrentUser.UserId, CurrentUser.UserName, CurrentUser.Roles, CurrentUser.Permissions) = (userId, userName, roles, permissions);
+        }
+    }
+
     protected async Task<TResult> QueryAsync<TResult>(Func<AppDbContext, Task<TResult>> query)
     {
         await using var scope = Fixture.Services.CreateAsyncScope();

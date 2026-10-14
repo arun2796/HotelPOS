@@ -135,3 +135,19 @@ because Phase 11 is reworking the desktop at the same time; it will be done once
   second save that used to need them). Table status events go out after the commit as before.
 - `FloorServiceTests` → `Floor/FloorTests` (signed in as admin; the duplicate-code test sends `t01` instead of
   `" t01 "`, which the validator rejects).
+
+**12.3 Menu (2026-10-14)**
+
+- `CategoryService`, `MenuItemService`, `ModifierService`, `StationService`, `TaxService` and `MenuQuery` dissolved
+  into `Features/Menu` (9 queries, 21 commands, helpers `MenuCategories`, `MenuItems`, `MenuModifiers`,
+  `MenuStations`, `MenuTaxes`, `MenuMapping`).
+- `MenuChanges.SaveAsync` replaces its begin/commit pair: save, bump the menu version inside the command's
+  transaction (the row lock still serialises concurrent menu writes), queue `MenuChanged` for after the commit.
+- Picture upload: the replaced file is deleted after the commit (was: right after the save); the new file is
+  still deleted at once when the save fails. Picture removal deletes the file after the commit.
+- The "no file" check of the upload endpoint moved from the controller into the command (same error).
+- Tax and station writes are gated by `[Authorize(Roles = Admin)]`, not by a permission, so their commands carry
+  no `IRequirePermission`; the role gate stays the only check, as before.
+- `MenuServiceTests` → `Menu/MenuTests` (signed in as admin). Order tests that change a price or mark an item sold
+  out while a waiter is signed in now do that step as the admin (`SendAsAdminAsync`): a waiter has never had
+  `menu.manage` / `menu.availability` over HTTP.

@@ -1,30 +1,34 @@
+using HotelPOS.Application.Common.Cqrs;
 using HotelPOS.Application.Common.Interfaces;
+using HotelPOS.Application.Common.Results;
 using HotelPOS.Contracts.Menu;
+using HotelPOS.Contracts.Security;
 using Microsoft.EntityFrameworkCore;
 
-namespace HotelPOS.Application.Menu;
+namespace HotelPOS.Application.Features.Menu.Queries;
 
-public interface IMenuQuery
+// The ordering menu the terminals cache; answers NotModified when the caller already holds the current version.
+public sealed record GetMenuQuery(int? KnownVersion) : IQuery<MenuDto>, IRequirePermission
 {
-    Task<MenuDto> GetMenuAsync(int? knownVersion, CancellationToken cancellationToken = default);
+    public string Permission => Permissions.MenuView;
 }
 
-public sealed class MenuQuery : IMenuQuery
+internal sealed class GetMenuHandler : IQueryHandler<GetMenuQuery, MenuDto>
 {
     private readonly IAppDbContext _db;
     private readonly IMenuVersionStore _versions;
 
-    public MenuQuery(IAppDbContext db, IMenuVersionStore versions)
+    public GetMenuHandler(IAppDbContext db, IMenuVersionStore versions)
     {
         _db = db;
         _versions = versions;
     }
 
-    public async Task<MenuDto> GetMenuAsync(int? knownVersion, CancellationToken cancellationToken = default)
+    public async Task<Result<MenuDto>> Handle(GetMenuQuery request, CancellationToken cancellationToken)
     {
         // Read the version first: a change committed while the menu is read only makes the next check reload.
         var version = await _versions.GetAsync(cancellationToken);
-        if (knownVersion == version)
+        if (request.KnownVersion == version)
         {
             return new MenuDto { Version = version, NotModified = true };
         }
