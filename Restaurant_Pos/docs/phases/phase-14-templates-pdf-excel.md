@@ -129,7 +129,7 @@ The Phase 7 `GET /api/print/{type}/{id}` stays for preview (no copy reserved).
 
 - [x] Invoice, receipt and KOT print from templates on thermal and as PDF; reprints are marked DUPLICATE with a
       server-side copy number.
-- [x] Reports and the audit log export to Excel (reports also PDF); the Day End pack export is deferred.
+- [x] Reports and the audit log export to Excel and PDF (reports also CSV); the Day End pack is also an Excel workbook and a PDF.
 - [ ] Definition of Done satisfied.
 
 ## 13. Risks and notes
@@ -154,8 +154,9 @@ print test, versions), renderers use the active template, DUPLICATE on reprints 
 one viewer). A print copy is owned by the reserving user or terminal; managers can complete any copy. Print tests now
 open a shift on the counter because Phase 13 requires one for cash.
 
-**Deferred.** E-mail invoice; Noto Indic fallback font for PDFs (needs font research; regional names fall back to Inter);
-Day End pack export (belongs to the Day End screen of Phase 13, hook is the export pipeline); manual demo (§ 11) open.
+**Done after review.** Day End pack: `day-end-<date>.xlsx` (one sheet per report, same columns and totals as the CSVs) and `day-end-<date>.pdf` (letterhead, one page run per report) beside the CSVs, listed on the Day End result like them (`IPdfRenderer.Reports`). Audit Log: `format=pdf` on `api/admin/audit-logs/export` and a "Save PDF" button (same route, so the authorization matrix is unchanged). Fonts: Inter plus Noto Sans Tamil and Devanagari (OFL texts beside them) were already bundled and registered as fallbacks; `IndicFontTests` renders Tamil and Hindi names with missing-glyph checks on.
+
+**Deferred.** E-mail invoice; manual demo (§ 11) open.
 
 **Matrix lines added** (14): `api/print/*` copies, invoice/receipt PDFs and history, and `api/templates/*`
 (list, type, save, activate, preview, logo).
