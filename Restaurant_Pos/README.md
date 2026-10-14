@@ -66,7 +66,8 @@ Development sign-in: `admin` / `Admin@123` (must change it), or `manager1`, `wai
 | [docs/04-realtime-events.md](docs/04-realtime-events.md) | SignalR hub, groups, event catalogue, reconnection & resync |
 | [docs/05-desktop-application.md](docs/05-desktop-application.md) | WPF structure, MVVM rules, configuration, modules, UX rules |
 | [docs/06-conventions-and-dod.md](docs/06-conventions-and-dod.md) | Coding/naming conventions, testing, Definition of Done |
-| [docs/dev-setup.md](docs/dev-setup.md) | Build, run and test on a development PC |
+| [docs/dev-setup.md](docs/dev-setup.md) | Build, run and test on a development PC; release build and load test |
+| [docs/ops/](docs/ops/01-installation.md) | For venue technicians: installation, LAN and firewall, backup and recovery, upgrade, troubleshooting, daily operations, go-live checklist |
 | [docs/phases/README.md](docs/phases/README.md) | Roadmap and phase index |
 | [docs/phases/phase-01-foundation.md](docs/phases/phase-01-foundation.md) … [phase-10](docs/phases/phase-10-production-readiness.md) | One document per phase |
 

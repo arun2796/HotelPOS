@@ -118,11 +118,15 @@ prefer the table for the admin list and audit (`Backup.Completed/Failed`). Migra
 
 ## 12. Acceptance criteria
 
-- [ ] API runs as a Windows Service with auto-migrate and startup checks; HTTPS option documented.
-- [ ] Server and client installers produce a working system on clean machines.
-- [ ] Scheduled and manual backups work; restore procedure executed successfully in rehearsal.
-- [ ] Logs, health, version compatibility and server notices in place.
-- [ ] Ops documentation complete; load test passed on target hardware.
+- [x] API runs as a Windows Service with auto-migrate and startup checks; HTTPS option documented
+      (service registration itself verified only in the clean-VM smoke test, § 15).
+- [ ] Server and client installers produce a working system on clean machines — scripts written, not yet compiled
+      or run (§ 15).
+- [x] Scheduled and manual backups work; restore procedure executed successfully in rehearsal (development
+      database, 2026-10-14).
+- [x] Logs, health, version compatibility and server notices in place.
+- [ ] Ops documentation complete (`docs/ops/01`–`07`); load test passed on the development PC, still to be run
+      on target hardware.
 - [ ] Definition of Done satisfied; project status table marked complete.
 
 ## 13. Risks and notes
@@ -211,3 +215,27 @@ prefer the table for the admin list and audit (`Backup.Completed/Failed`). Migra
   and did not expose Swagger. **Not yet verified**: compiling and running the two `.iss` scripts (Inno Setup is not
   installed on the build PC) and the service registration path (needs an elevated session) — both belong to the
   clean-VM smoke test in § 10.
+
+**10.5 Operations documentation and load test (2026-10-14)**
+
+- `docs/ops/01`–`07` for the venue technician: installation, LAN and firewall (fixed address, Private profile,
+  port checks, optional HTTPS), backup and recovery (restore and rehearsal), upgrade, troubleshooting table, daily
+  and weekly routine, signed go-live checklist.
+- `tools/HotelPOS.LoadTest`: N virtual waiters run order → kitchen start/ready → serve → request bill → finalize
+  → payment in a loop against a running API, while a cashier hub connection counts `BillRequested` events; reports
+  p50/p95/max per step and fails when a p95 exceeds the budget, a request fails or an event is lost.
+  **Result on the development PC, 2026-10-14** (API, PostgreSQL 18 and the tool on one machine, scratch database):
+  20 clients for 3 minutes, 11,820 complete cycles, slowest p95 58 ms (submit order), no errors, 11,820 of
+  11,820 events delivered.
+- Found while writing the operations guide: a deactivated user kept working until the access token expired; fixed
+  (see Phase 9 § 14).
+
+## 15. Remaining work (open)
+
+- [ ] Update the .NET 8 SDK on the build PC so the self-contained publish bundles ASP.NET Core 8.0.32 or later
+      (the current SDK bundles 8.0.23 and `publish.ps1` refuses it for a release).
+- [ ] Install Inno Setup 6, build both installers with `publish.ps1`, and run the installer smoke test on clean VMs
+      (§ 10): server installer, service registration and restart-on-failure, client installer with `/API=`,
+      full order-to-payment flow, restore on a second VM.
+- [ ] Run the load test on venue-like hardware for the full 10 minutes over Wi-Fi.
+- [ ] Manual demo script (§ 11) and the go-live checklist on site.

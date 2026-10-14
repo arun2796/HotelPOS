@@ -200,7 +200,26 @@ dotnet run --project src/HotelPOS.Desktop -- --profile kitchen
 
 Delete the settings file to see the first-run screen again. **F11** toggles full screen.
 
-## 6. Troubleshooting
+## 6. Release build and load test
+
+```powershell
+.\build\publish.ps1                       # tests, then artifacts\publish\<version>\{server,client} and the installers
+.\build\publish.ps1 -SkipTests -AllowOutdatedRuntime   # local trial only (output marked NOT-FOR-RELEASE)
+```
+
+The version lives in `build/version.props`. The publish is self-contained and carries this PC's .NET runtime;
+the script refuses a release with ASP.NET Core below 8.0.32. Installers need Inno Setup 6 (see
+`docs/phases/phase-10-production-readiness.md` § 14 for what each script does).
+
+Load test against a running API with demo users (a scratch database, never a venue's):
+
+```powershell
+dotnet run --project tools/HotelPOS.LoadTest -- --api http://localhost:5000 --clients 20 --minutes 10 --p95 300
+```
+
+It exits with 0 when every step's p95 is within budget, nothing failed and every `BillRequested` event arrived.
+
+## 7. Troubleshooting
 
 | Symptom | Check |
 |---|---|
