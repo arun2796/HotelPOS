@@ -60,6 +60,14 @@ internal sealed class OrderSteps
         {
             return await ConflictAsync(order.Id, cancellationToken);
         }
+        catch (DbUpdateException)
+        {
+            // Two terminals submitted the same order at once and the loser's kitchen ticket hit the unique ticket
+            // number before its row-version check. PostgreSQL has aborted the transaction, so the order cannot be
+            // re-read here: answer with the conflict and let the client reload.
+            _db.ChangeTracker.Clear();
+            return AppErrors.Concurrency("order");
+        }
         catch (DomainException ex)
         {
             return new AppError(ex.Code, ex.Message);

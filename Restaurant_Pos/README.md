@@ -37,7 +37,7 @@ PostgreSQL is the single source of truth.
 | Phase 11 – UI Design System            | In progress  |
 | Phase 12 – CQRS Application Layer      | Done         |
 | Phase 13 – Shifts, Cash & Day End      | In progress  |
-| Phase 14 – Templates, PDF & Excel      | Not started  |
+| Phase 14 – Templates, PDF & Excel      | In progress  |
 | Phase 15 – GST & Period Close          | Not started  |
 | Phase 16 – Licensing, Updates & Import | Not started  |
 
