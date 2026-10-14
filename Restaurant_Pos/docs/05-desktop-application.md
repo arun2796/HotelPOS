@@ -255,3 +255,16 @@ columns, header/footer, tax style, logo and UPI QR; a live preview renders the s
 Print test sends it to the configured printer; Save creates a version, Activate/Roll back switches the active one.
 Thermal prints use the active template; every reprint asks the server for a copy number and shows DUPLICATE from
 copy 2. Reports has Export Excel and Save PDF, Audit Log has Export Excel; Closed Bills can save the invoice PDF.
+
+## Licence, import and updates (Phase 16)
+
+- **Licence** (Administration, administrators): status (Trial / Licensed / Expired), edition, terminals registered of
+  licensed, valid-until date, the **machine id** (copy it when ordering a key) and a box to paste a licence key.
+  A banner above every screen shows the trial, the last 14 days of a licence, or the read-only state after expiry.
+- **Import** (Management, managers and administrators): a four-step wizard. Choose Menu or Customers and a `.xlsx` /
+  `.csv` file, match its columns to the fields (guessed from the headers), check the rows (errors listed with row and
+  column; optionally skip them), import, and undo the last import from the wizard.
+- **Updates**: when the server hosts a newer client than the terminal runs, the banner offers **Update now** (the
+  **Update required** screen offers it too). The terminal downloads the installer from the server, checks its
+  SHA-256, closes and lets the installer replace it; HotelPOS starts again by itself (Windows asks for administrator
+  permission).

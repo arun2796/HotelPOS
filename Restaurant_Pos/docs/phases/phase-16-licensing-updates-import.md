@@ -122,8 +122,10 @@ new version; a terminal offers the update and restarts on it.
 
 ## 12. Acceptance criteria
 
-- [ ] Trial → licensed key on a clean server; terminal limit enforced; client auto-updates from the server.
-- [ ] Menu import of 500 items with preview and undo; Definition of Done satisfied.
+- [x] Trial → licensed key on a clean server; terminal limit enforced; client auto-updates from the server (download,
+      checksum and installer start are tested; running it on a real terminal belongs to the manual demo).
+- [x] Menu import of 500 items with preview and undo; Definition of Done satisfied.
+- [ ] Manual demo (§ 11) on real machines.
 
 ## 13. Risks and notes
 
@@ -133,4 +135,49 @@ new version; a terminal offers the update and restarts on it.
 
 ## 14. Changes during implementation
 
-(fill in while building)
+**Built (2026-10-15, branch `phase-16-licensing-updates-import`)**
+
+- Domain/Contracts: `LicenseKeyCodec` (sign/verify), `MachineIds`, `LicenseEvaluator`, `ServerLicense`, `Customer`,
+  `ImportBatch`/`ImportEntry`; permissions `license.manage` (Admin) and `import.run` (Admin, Manager); error codes
+  `LICENSE_TERMINAL_LIMIT`, `LICENSE_EXPIRED`, `LICENSE_INVALID`, `IMPORT_HAS_ERRORS`.
+- Application: `LicenseService` (login and device registration check the terminal limit; login refuses non-admins when
+  expired), import planner/executor/requests, `clientUpdate` in `GetSystemInfo`. Infrastructure: migration
+  `Phase16_LicensingImport` (tables, trial row, permission grants), `HardwareMachineIdProvider`, `TabularReader`
+  (ClosedXML + CSV), `ClientUpdateSource`. Api: `LicenseController`, `ImportController`, `LicenseEnforcementMiddleware`,
+  `/updates/` static files.
+- Tool: `tools/HotelPOS.LicenseGenerator` (keygen/issue/inspect; refuses to write a key inside a git repository);
+  `.gitignore` ignores `*.pem`, `license-private*`, `*.hpkey`. The embedded public key is a real one; its private key
+  is in `C:\Users\Arunkumar\.hotelpos-vendor\license-private.pem` (outside the repository: back it up).
+- Desktop: Licence and Import screens (registered, permission-gated), banner above every screen, `UpdateService`
+  with "Update now" on the banner and the Update required screen; `client.iss` starts the new version after a
+  silent `/RESTART=1` install; `build/publish.ps1` builds the client installer first, copies it with `latest.json`
+  (version, file, SHA-256, size) to `server\updates`, then builds the server installer. `ScreenRenderingTests` renders
+  70 screens, no binding errors. No NuGet package added (no NU1701 risk, no new vulnerability scan needed).
+- Authorization matrix: 6 added lines, nothing else changed: `api/import/apply`, `/last`, `/preview`, `/undo` are
+  `AM---`; `api/license` (GET) is `AMWKC`; `api/license/apply` is `A----`.
+- Tests added: 15 domain (incl. generator round trip), 18 application (8 licence, 10 import incl. 500 items and undo),
+  4 API classes, 15 desktop (update check/download/checksum, banner text, licence and wizard view-models) + 3 rendering screens.
+
+Full run: Domain 365, Application 224, Desktop 232 (1 skipped, pre-existing) all green; Api 175 of 176 (the SignalR
+test `DeactivatingDevice_ClosesItsOpenHubConnection...` timed out under load and passed on its own, 11 of 11 in its class).
+
+**Decisions and deviations**
+
+- **Expiry is read-only, not a lock-out**: reads and exports keep working, writes answer `LICENSE_EXPIRED` (except
+  auth, licence and backup), and only administrators can sign in. Please confirm this is the policy you want.
+- **Terminal count** = registered active devices, first N by registration date may sign in; a new name over the limit
+  is refused before it is registered. Trial: 7 days, 10 terminals, started by the migration.
+- **Update mechanism**: server-hosted installer + checksum + Inno silent install, instead of Velopack (no extra
+  dependency, reuses the Phase 10 installers and version gate). A terminal must be restarted by the installer, so
+  Windows asks for administrator permission each time.
+- Machine id = Windows MachineGuid + processor id: reinstalling Windows or swapping the CPU needs a new key.
+- There was no customer master, so `Customers` was added for the customer import; nothing reads it yet (bills keep
+  their own snapshot).
+- Phone numbers are stored as 10 national digits (+91 / leading 0 dropped) so re-imports match.
+- Undo only reverts the latest batch, once; created rows already used by orders are deactivated, not deleted.
+
+**Not done / deferred**
+
+- Manual demo (§ 11), including a real publish with Inno Setup and an actual terminal self-update.
+- Customer picker on the bill / customer list screen; the vendor UI (console only); edition-based feature gating.
+- The trial/licence can be reset by restoring an old database backup (documented in § 13).

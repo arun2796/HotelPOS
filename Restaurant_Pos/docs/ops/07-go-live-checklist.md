@@ -14,6 +14,8 @@ Venue: ____________________  Date: __________  Technician: ____________________ 
       `NOT-FOR-RELEASE.txt` next to it.
 - [ ] Service **HotelPOS API** is Automatic and running; `/health` is Healthy.
 - [ ] Server time zone and clock are correct.
+- [ ] Licence key applied (**Administration → Licence** shows Licensed, enough terminals, the right valid-until date;
+      [08](08-licensing.md)); the trial is not what the venue goes live on.
 
 ## Accounts and security
 
