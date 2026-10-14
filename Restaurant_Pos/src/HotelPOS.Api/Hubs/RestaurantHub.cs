@@ -2,9 +2,10 @@ using System.Globalization;
 using System.Security.Claims;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Security;
-using HotelPOS.Application.Devices;
+using HotelPOS.Application.Features.Devices.Commands;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Contracts.Security;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -15,20 +16,20 @@ namespace HotelPOS.Api.Hubs;
 public sealed class RestaurantHub : Hub
 {
     private readonly ConnectionTracker _tracker;
-    private readonly IDeviceService _devices;
+    private readonly ISender _sender;
     private readonly IAppDbContext _db;
     private readonly IRealtimeNotifier _realtime;
     private readonly ILogger<RestaurantHub> _logger;
 
     public RestaurantHub(
         ConnectionTracker tracker,
-        IDeviceService devices,
+        ISender sender,
         IAppDbContext db,
         IRealtimeNotifier realtime,
         ILogger<RestaurantHub> logger)
     {
         _tracker = tracker;
-        _devices = devices;
+        _sender = sender;
         _db = db;
         _realtime = realtime;
         _logger = logger;
@@ -56,7 +57,7 @@ public sealed class RestaurantHub : Hub
                 DateTime.UtcNow),
             Context);
 
-        if (deviceId is { } device && await _devices.GetByIdAsync(device) is { IsActive: false })
+        if (deviceId is { } device && await _db.Devices.FirstOrDefaultAsync(d => d.Id == device) is { IsActive: false })
         {
             _tracker.Remove(Context.ConnectionId);
             _logger.LogWarning("Deactivated device {DeviceId} attempted to connect to the hub; connection refused", device);
@@ -139,14 +140,14 @@ public sealed class RestaurantHub : Hub
     {
         try
         {
-            await _devices.TouchAsync(deviceId);
+            await _sender.Send(new TouchDeviceCommand(deviceId));
             if (!announce)
             {
                 return;
             }
 
             // Read back so a disconnect caused by deactivation does not announce the device as active again.
-            var device = await _devices.GetByIdAsync(deviceId);
+            var device = await _db.Devices.FirstOrDefaultAsync(d => d.Id == deviceId);
             await _realtime.PublishAsync(
                 HubEvents.DeviceStatusChanged,
                 new DeviceStatusChangedEvent

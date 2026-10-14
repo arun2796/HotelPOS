@@ -1,6 +1,6 @@
 using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Interfaces;
-using HotelPOS.Application.Reports;
+using HotelPOS.Application.Features.Reports;
 using HotelPOS.Infrastructure.Identity;
 using HotelPOS.Infrastructure.Media;
 using HotelPOS.Infrastructure.Persistence;

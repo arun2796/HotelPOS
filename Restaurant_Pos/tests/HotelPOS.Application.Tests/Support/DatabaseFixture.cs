@@ -61,6 +61,7 @@ public sealed class DatabaseFixture : IAsyncLifetime
         services.Configure<AppOptions>(o => o.ApiVersion = "test");
         services.AddApplication();
         services.AddInfrastructure(configuration);
+        PipelineProbes.Register(services);
         Services = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
 
         await using var scope = Services.CreateAsyncScope();

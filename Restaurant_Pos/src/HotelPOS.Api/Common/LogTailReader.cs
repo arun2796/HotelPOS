@@ -1,10 +1,11 @@
+using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Contracts.Admin;
 
 namespace HotelPOS.Api.Common;
 
 // Reads the end of today's API log for the admin Logs screen, so a technician does not need a remote desktop
 // session to see why something failed.
-public sealed class LogTailReader
+public sealed class LogTailReader : ILogTailSource
 {
     private readonly IConfiguration _configuration;
     private readonly IHostEnvironment _environment;

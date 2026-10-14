@@ -9,7 +9,14 @@ public sealed record AppError(string Code, string Message)
     public object? Data { get; init; }
 }
 
-public class Result
+// Lets the pipeline behaviours turn an AppError into the handler's own result type without reflection.
+public interface IFailureResult<TSelf>
+    where TSelf : Result
+{
+    static abstract TSelf Failure(AppError error);
+}
+
+public class Result : IFailureResult<Result>
 {
     protected Result(AppError? error)
     {
@@ -29,7 +36,7 @@ public class Result
     public static implicit operator Result(AppError error) => Failure(error);
 }
 
-public sealed class Result<T> : Result
+public sealed class Result<T> : Result, IFailureResult<Result<T>>
 {
     private readonly T? _value;
 

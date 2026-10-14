@@ -16,6 +16,8 @@
     <PackageVersion Include="SkiaSharp" Version="3.119.4" />
     <PackageVersion Include="FluentValidation" Version="11.12.0" />
     <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="11.12.0" />
+    <!-- 12.x stays on the Apache 2.0 licence; 13+ needs a commercial licence key. -->
+    <PackageVersion Include="MediatR" Version="12.5.0" />
     <PackageVersion Include="Serilog.AspNetCore" Version="8.0.3" />
     <PackageVersion Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.1" />
     <PackageVersion Include="Swashbuckle.AspNetCore" Version="6.9.0" />

@@ -101,9 +101,13 @@ HotelPOS.Domain/
 HotelPOS.Application/
   Common/        Result<T>, AppError, ErrorCodes, PagedQuery, ICurrentUser, IClock, IAppDbContext,
                  IRealtimeNotifier, IAuditService, IIdempotencyStore
-  Auth/          AuthService, validators
-  Users/, Floor/, Menu/, Orders/, Kitchen/, Billing/, Reports/, Admin/
-                 one folder per feature: <Feature>Service + request validators + mappers
+  Common/Cqrs/   ICommand, ICommand<T>, IQuery<T>, IRequirePermission, IHasInput<T>, IAuditedCommand,
+                 ICommitOnFailure, IAuditTrail, IAfterCommit (Phase 12)
+  Common/Behaviors/ Logging, Authorization, Validation, Transaction, Audit (MediatR pipeline)
+  Features/<Module>/Commands|Queries/<Name>.cs
+                 one file per use case: request record + DTO validator + handler; shared steps of a
+                 module in small internal helpers beside them (Auth, Users, Security, Devices, Floor,
+                 Menu, Orders, Kitchen, Billing, Print, Reports, Operations)
 
 HotelPOS.Infrastructure/
   Persistence/   AppDbContext, EntityConfigurations/, Migrations/, Interceptors/, Seed/
@@ -113,8 +117,8 @@ HotelPOS.Infrastructure/
 HotelPOS.Api/
   Controllers/   one controller per resource (ApiControllerBase turns Result<T> into the envelope)
   Hubs/          RestaurantHub, HubGroups, ConnectionTracker, SignalRRealtimeNotifier (needs the hub type)
-  Common/        middleware (correlation id, exceptions, request context), ValidationFilter,
-                 HttpCurrentUser, error-code to status mapping, service registration
+  Common/        middleware (correlation id, exceptions, request context), HttpCurrentUser,
+                 error-code to status mapping, service registration
   Program.cs, appsettings.json, appsettings.Development.json
 
 HotelPOS.Contracts/
@@ -134,15 +138,15 @@ HotelPOS.Desktop/
 | Layer | Does | Does not |
 |---|---|---|
 | Domain | Entities, enums, invariants, state-machine transition tables, money calculation (`BillCalculator`) | Reference EF Core, HTTP, DI |
-| Application | Use cases as services (`OrderService.SubmitAsync`), FluentValidation validators, orchestration of transactions, audit and notifications via interfaces | Know about controllers or SignalR types |
+| Application | Use cases as commands and queries (`SubmitOrderCommand`) with their handlers, FluentValidation validators, the MediatR pipeline (permission, validation, transaction, audit), notifications via interfaces | Know about controllers or SignalR types |
 | Infrastructure | EF Core mapping and migrations, hashing, JWT, SignalR publisher, clock, backup | Contain business rules |
 | Api | HTTP surface, auth middleware, hub, DI composition, `appsettings` | Contain business rules |
 | Contracts | DTOs and constants shared by API and Desktop | Reference any other project |
 | Desktop | Views, view-models, local config, printing, connection handling | Business rules, DB access |
 
-Decision: **plain application services, not MediatR/CQRS**. Each feature exposes an interface
-(`IOrderService`) with async methods returning `Result<T>`. This keeps the call graph obvious for a
-small team and avoids pipeline magic. Validators run explicitly inside the service (or via an API filter).
+Decision (Phase 12, replacing the plain services of v1): **CQRS with MediatR**. Each use case is a request
+record returning `Result`/`Result<T>`, sent by the controller; cross-cutting rules (permission, validation,
+one transaction per command, audit, events after commit) live once in the pipeline. See phase-12 § 14.
 
 ## 5. API request pipeline (middleware order)
 
@@ -156,7 +160,8 @@ Request
   -> RequestContextLogging        (adds "user@device" to every log line)
   -> Authorization                (fallback policy: authenticated unless [AllowAnonymous])
   -> IdempotencyMiddleware        (only for routes marked [Idempotent]; Phase 4)
-  -> Controller -> Application service -> EF Core (transaction) -> IRealtimeNotifier (after commit)
+  -> Controller -> ISender.Send(request) -> Logging -> Authorization -> Validation -> Transaction -> Audit
+     -> handler -> EF Core (one transaction per command) -> IRealtimeNotifier (after commit)
 Response (always wrapped in ApiResponse<T>)
 ```
 
@@ -180,8 +185,8 @@ HTTP status codes: 200 OK, 201 Created, 400 validation, 401 unauthenticated, 403
 ### 6.2 Validation
 
 FluentValidation validators for every request DTO. Validation failures return 400 with one `ApiError`
-per field. Business-rule failures (state, concurrency, permissions on data) return 409/403 from the
-service via `Result<T>`.
+per field; the pipeline's ValidationBehavior runs them. Business-rule failures (state, concurrency, permissions on
+data) return 409/403 from the handler via `Result<T>`.
 
 ### 6.3 Idempotency
 
@@ -203,14 +208,14 @@ current state in `data` so the client can refresh. Bills additionally use a soft
 
 ### 6.5 Transactions
 
-Application services that touch multiple aggregates (submit order, payment, void, reopen) run inside
-one `IDbContextTransaction`. SignalR events are published **after** commit. If publishing fails the
+Every command runs inside one `IDbContextTransaction` (TransactionBehavior; no process-wide lock, PostgreSQL row
+locks and row versions decide). SignalR events are queued on `IAfterCommit` and published **after** commit. If publishing fails the
 data is still correct; clients resync on reconnect.
 
 ### 6.6 Audit
 
-`IAuditService.LogAsync(action, entityType, entityId, oldValues, newValues)` called explicitly from
-services for critical operations. Entry includes user, device, machine name, IP, correlation id,
+Handlers of `IAuditedCommand`s state `IAuditTrail.Add(action, entityType, entityId, oldValues, newValues)` for critical
+operations; AuditBehavior writes them. Entry includes user, device, machine name, IP, correlation id,
 timestamp. Written in the same transaction as the change.
 
 ### 6.7 Time and money
@@ -254,7 +259,7 @@ configuration, DPAPI-protected refresh token, connection manager with status ind
 | # | Decision | Why |
 |---|---|---|
 | 1 | Enums live in `HotelPOS.Contracts`; Domain references Contracts for enums only | Avoids duplicating enums between server and desktop; Contracts has zero dependencies |
-| 2 | Plain application services + `Result<T>` instead of MediatR | Simpler call graph, fewer abstractions for v1 |
+| 2 | Plain application services + `Result<T>` in v1; commands and queries through MediatR 12 since Phase 12 | One shape per use case and cross-cutting rules in one pipeline once the feature count grew |
 | 3 | `int` identity primary keys | Readable, fast, sufficient for a single venue; multi-branch later would use a branch id or separate databases |
 | 4 | Order numbers from a SQL `SEQUENCE`; invoice numbers from a locked counter row assigned at finalisation | Order numbers may have gaps; invoice numbers must be gap-free |
 | 5 | Table status is **stored** and updated by the server, not computed on read | Simple map queries and events; derivation rules live in one place |
