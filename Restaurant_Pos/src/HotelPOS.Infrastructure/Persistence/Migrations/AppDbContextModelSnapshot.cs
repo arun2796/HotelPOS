@@ -1683,6 +1683,125 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                     b.ToTable("OrderItemModifiers", (string)null);
                 });
 
+            modelBuilder.Entity("HotelPOS.Domain.Printing.DocumentTemplate", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("ActivatedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int?>("ActivatedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DocumentType")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("LayoutJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DocumentType")
+                        .IsUnique()
+                        .HasDatabaseName("IX_DocumentTemplates_ActivePerType")
+                        .HasFilter("\"IsActive\"");
+
+                    b.HasIndex("DocumentType", "Version")
+                        .IsUnique();
+
+                    b.ToTable("DocumentTemplates", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_DocumentTemplates_DocumentType", "\"DocumentType\" IN (1, 2, 3)");
+                        });
+                });
+
+            modelBuilder.Entity("HotelPOS.Domain.Printing.PrintLogEntry", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int>("CopyNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<Guid?>("DeviceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("DocumentId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DocumentType")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid?>("IdempotencyKey")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Output")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PrinterName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("Result")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("DocumentType", "DocumentId", "CopyNumber")
+                        .IsUnique();
+
+                    b.ToTable("PrintLogs", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_PrintLogs_CopyNumber", "\"CopyNumber\" >= 1");
+
+                            t.HasCheckConstraint("CK_PrintLogs_DocumentType", "\"DocumentType\" IN (1, 2, 3)");
+
+                            t.HasCheckConstraint("CK_PrintLogs_Output", "\"Output\" IN (1, 2, 3)");
+
+                            t.HasCheckConstraint("CK_PrintLogs_Result", "\"Result\" IN (1, 2, 3)");
+                        });
+                });
+
             modelBuilder.Entity("HotelPOS.Domain.Billing.Bill", b =>
                 {
                     b.HasOne("HotelPOS.Domain.Billing.Discount", null)

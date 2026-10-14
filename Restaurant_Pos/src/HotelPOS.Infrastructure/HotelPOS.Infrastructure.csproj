@@ -21,6 +21,15 @@
     <PackageReference Include="Microsoft.Extensions.Identity.Core" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+    <PackageReference Include="QuestPDF" />
+    <PackageReference Include="ClosedXML" />
+    <PackageReference Include="ZXing.Net" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- PDF fonts (SIL Open Font License 1.1, licence files beside them). -->
+    <EmbeddedResource Include="Documents\Fonts\*.ttf" />
+    <None Include="Documents\Fonts\*.txt" />
   </ItemGroup>
 
 </Project>

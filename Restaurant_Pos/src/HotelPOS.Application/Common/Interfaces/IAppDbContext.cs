@@ -5,6 +5,7 @@ using HotelPOS.Domain.Kitchen;
 using HotelPOS.Domain.Identity;
 using HotelPOS.Domain.Menu;
 using HotelPOS.Domain.Orders;
+using HotelPOS.Domain.Printing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -42,6 +43,8 @@ public interface IAppDbContext
     DbSet<BillItem> BillItems { get; }
     DbSet<Payment> Payments { get; }
     DbSet<InvoiceCounter> InvoiceCounters { get; }
+    DbSet<DocumentTemplate> DocumentTemplates { get; }
+    DbSet<PrintLogEntry> PrintLogs { get; }
 
     DatabaseFacade Database { get; }
 

@@ -56,6 +56,13 @@ public static class SettingKeys
     public const string AuditRetentionDays = "AuditRetentionDays";
     public const string LockoutMinutes = "LockoutMinutes";
 
+    // Phase 14: print templates and PDFs.
+    public const string UpiVpa = "UpiVpa";
+    public const string UpiPayeeName = "UpiPayeeName";
+    public const string LogoFile = "LogoFile";
+    public const string PdfPaper = "PdfPaper";
+    public const string DefaultSacCode = "DefaultSacCode";
+
     public const string BackupEnabled = "BackupEnabled";
     public const string BackupTime = "BackupTime";
     public const string BackupRetentionDays = "BackupRetentionDays";

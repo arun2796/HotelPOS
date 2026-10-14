@@ -23,6 +23,8 @@ public static class HubEvents
     public const string PaymentCompleted = "PaymentCompleted";
     public const string DeviceStatusChanged = "DeviceStatusChanged";
     public const string ServerNotice = "ServerNotice";
+    public const string TemplateActivated = "TemplateActivated";
+    public const string DocumentPrinted = "DocumentPrinted";
 }
 
 public static class HubMethods

@@ -12,6 +12,7 @@ using HotelPOS.Application.Features.Orders;
 using HotelPOS.Application.Features.Print;
 using HotelPOS.Application.Features.Reports;
 using HotelPOS.Application.Features.Security;
+using HotelPOS.Application.Features.Templates;
 using HotelPOS.Application.Features.Users;
 using HotelPOS.Application.Security;
 using Microsoft.Extensions.DependencyInjection;
@@ -67,6 +68,10 @@ public static class DependencyInjection
         services.AddScoped<BillEvents>();
         services.AddScoped<BillWorkflow>();
         services.AddScoped<PrintSources>();
+        services.AddScoped<PrintDocuments>();
+        services.AddScoped<PrintLog>();
+        services.AddScoped<DocumentTemplates>();
+        services.AddScoped<TemplateActivation>();
         services.AddScoped<IBusinessDays, BusinessDays>();
         services.AddScoped<ReportRanges>();
 

@@ -6,6 +6,7 @@ using HotelPOS.Domain.Kitchen;
 using HotelPOS.Domain.Identity;
 using HotelPOS.Domain.Menu;
 using HotelPOS.Domain.Orders;
+using HotelPOS.Domain.Printing;
 using HotelPOS.Infrastructure.Persistence.Configurations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
@@ -48,6 +49,8 @@ public sealed class AppDbContext : DbContext, IAppDbContext
     public DbSet<BillItem> BillItems => Set<BillItem>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<InvoiceCounter> InvoiceCounters => Set<InvoiceCounter>();
+    public DbSet<DocumentTemplate> DocumentTemplates => Set<DocumentTemplate>();
+    public DbSet<PrintLogEntry> PrintLogs => Set<PrintLogEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

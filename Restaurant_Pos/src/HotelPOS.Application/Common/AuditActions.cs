@@ -107,6 +107,12 @@ public static class AuditActions
     public const string ApprovalRejected = "Approval.Rejected";
 
     public const string PrintReprint = "Print.Reprint";
+    public const string PrintedCopy = "Print.Copy";
+    public const string PrintCopyCompleted = "Print.CopyCompleted";
+
+    public const string TemplateVersionSaved = "Template.VersionSaved";
+    public const string TemplateActivated = "Template.Activated";
+    public const string TemplateLogoChanged = "Template.LogoChanged";
 
     public const string DiscountCreated = "Discount.Created";
     public const string DiscountUpdated = "Discount.Updated";

@@ -59,6 +59,13 @@ public sealed record KotLine
 
 public sealed record KitchenTicketDocument
 {
+    // Phase 14: copy and template in force. CopyNumber 0 is a preview; 1 the original; later copies say DUPLICATE.
+    public int CopyNumber { get; init; }
+    public string? CopyLabel { get; init; }
+    public long? PrintLogId { get; init; }
+    public TemplateLayout? Template { get; init; }
+    public int? TemplateVersion { get; init; }
+
     public int TicketId { get; init; }
     public string TicketNumber { get; init; } = string.Empty;
     public int OrderNumber { get; init; }
@@ -84,6 +91,29 @@ public sealed record InvoiceLine
     public decimal UnitPrice { get; init; }
     public decimal LineSubtotal { get; init; }
     public decimal TaxRatePercent { get; init; }
+
+    // The line's share of the bill discount, and its HSN/SAC code (Phase 14).
+    public decimal DiscountAmount { get; init; }
+    public string? HsnSac { get; init; }
+    public decimal TaxAmount { get; init; }
+}
+
+// One row per tax rate with its central and state halves, for the rate-wise GST table.
+public sealed record TaxRateRow
+{
+    public decimal RatePercent { get; init; }
+    public decimal TaxableAmount { get; init; }
+    public decimal CentralTax { get; init; }
+    public decimal StateTax { get; init; }
+    public decimal TaxAmount { get; init; }
+}
+
+public sealed record HsnSummaryRow
+{
+    public string HsnSac { get; init; } = string.Empty;
+    public decimal RatePercent { get; init; }
+    public decimal TaxableAmount { get; init; }
+    public decimal TaxAmount { get; init; }
 }
 
 public sealed record TaxRow
@@ -111,6 +141,18 @@ public sealed record InvoiceCustomer
 
 public sealed record InvoiceDocument
 {
+    // Phase 14: copy and template in force. CopyNumber 0 is a preview; 1 the original; later copies say DUPLICATE.
+    public int CopyNumber { get; init; }
+    public string? CopyLabel { get; init; }
+    public long? PrintLogId { get; init; }
+    public TemplateLayout? Template { get; init; }
+    public int? TemplateVersion { get; init; }
+    public byte[]? LogoPng { get; init; }
+    public string? UpiQrPayload { get; init; }
+    public byte[]? UpiQrPng { get; init; }
+    public IReadOnlyList<TaxRateRow> TaxRates { get; init; } = Array.Empty<TaxRateRow>();
+    public IReadOnlyList<HsnSummaryRow> HsnSummary { get; init; } = Array.Empty<HsnSummaryRow>();
+
     public int BillId { get; init; }
     public int BillNumber { get; init; }
     public string? InvoiceNumber { get; init; }
@@ -146,6 +188,14 @@ public sealed record InvoiceDocument
 
 public sealed record ReceiptDocument
 {
+    // Phase 14: copy and template in force. CopyNumber 0 is a preview; 1 the original; later copies say DUPLICATE.
+    public int CopyNumber { get; init; }
+    public string? CopyLabel { get; init; }
+    public long? PrintLogId { get; init; }
+    public TemplateLayout? Template { get; init; }
+    public int? TemplateVersion { get; init; }
+    public byte[]? LogoPng { get; init; }
+
     public int PaymentId { get; init; }
     public int BillId { get; init; }
     public string? InvoiceNumber { get; init; }

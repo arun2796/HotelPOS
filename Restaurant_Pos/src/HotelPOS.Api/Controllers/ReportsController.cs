@@ -1,5 +1,8 @@
 using System.Globalization;
+using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
+using HotelPOS.Application.Features.Exports;
+using HotelPOS.Application.Features.Exports.Queries;
 using HotelPOS.Application.Features.Reports;
 using HotelPOS.Application.Features.Reports.Queries;
 using HotelPOS.Contracts.Common;
@@ -37,7 +40,8 @@ public sealed class ReportsController : ApiControllerBase
     [HttpGet("sales/monthly")]
     [Authorize(Policy = Permissions.ReportsView)]
     public async Task<IActionResult> MonthlySales([FromQuery] int? year, [FromQuery] string? format, CancellationToken cancellationToken) =>
-        Deliver(await Sender.Send(new GetMonthlySalesReportQuery(year), cancellationToken), format, $"monthly-sales-{year ?? DateTime.Now.Year}");
+        await DeliverAsync(await Sender.Send(new GetMonthlySalesReportQuery(year), cancellationToken), format, $"monthly-sales-{year ?? DateTime.Now.Year}",
+            "Monthly sales", (year ?? DateTime.Now.Year).ToString(CultureInfo.InvariantCulture), cancellationToken);
 
     [HttpGet("sales/items")]
     [Authorize(Policy = Permissions.ReportsView)]
@@ -84,19 +88,50 @@ public sealed class ReportsController : ApiControllerBase
         var result = await Sender.Send(report, cancellationToken);
         var from = query.From?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "today";
         var to = query.To?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? from;
-        return Deliver(result, query.Format, $"{name}-{from}-to-{to}");
+        return await DeliverAsync(result, query.Format, $"{name}-{from}-to-{to}", Titles[name], ReportTables.Period(query.From, query.To), cancellationToken);
     }
 
-    // JSON in the usual envelope, or the rows as a CSV download.
-    private IActionResult Deliver<T>(Result<IReadOnlyList<T>> result, string? format, string fileName)
+    private static readonly IReadOnlyDictionary<string, string> Titles = new Dictionary<string, string>
+    {
+        ["daily-sales"] = "Daily sales",
+        ["item-sales"] = "Item sales",
+        ["category-sales"] = "Category sales",
+        ["payments"] = "Payments",
+        ["cancellations"] = "Cancellations",
+        ["discounts"] = "Discounts",
+        ["taxes"] = "Tax collection",
+        ["waiters"] = "Waiter performance",
+        ["kitchen"] = "Kitchen performance",
+    };
+
+    // JSON in the usual envelope, the rows as a CSV download, or (Phase 14) an Excel workbook or a PDF with the
+    // restaurant's letterhead. All four carry the same columns and totals (ReportSchema).
+    private async Task<IActionResult> DeliverAsync<T>(
+        Result<IReadOnlyList<T>> result,
+        string? format,
+        string fileName,
+        string title,
+        string period,
+        CancellationToken cancellationToken)
     {
         if (result.IsFailure)
         {
             return Failure(result.Error!);
         }
 
-        return string.Equals(format, "csv", StringComparison.OrdinalIgnoreCase)
-            ? File(ReportCsv.Write(result.Value), "text/csv; charset=utf-8", fileName + ".csv")
-            : Envelope(result.Value);
+        var kind = ExportFormats.Parse(format);
+        if (kind == ExportFormat.Csv)
+        {
+            return File(ReportCsv.Write(result.Value), "text/csv; charset=utf-8", fileName + ".csv");
+        }
+
+        if (kind is ExportFormat.Xlsx or ExportFormat.Pdf)
+        {
+            var table = ReportTables.From(title, period, result.Value, DateTime.Now);
+            var file = await Sender.Send(new ExportReportQuery(table, kind, fileName), cancellationToken);
+            return file.IsSuccess ? File(file.Value.Content, file.Value.ContentType, file.Value.FileName) : Failure(file.Error!);
+        }
+
+        return Envelope(result.Value);
     }
 }

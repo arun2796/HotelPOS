@@ -7,6 +7,9 @@ using HotelPOS.Domain.Billing;
 using HotelPOS.Domain.Floor;
 using HotelPOS.Domain.Identity;
 using HotelPOS.Domain.Menu;
+using HotelPOS.Domain.Printing;
+using HotelPOS.Application.Features.Templates;
+using HotelPOS.Contracts.Print;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -68,6 +71,11 @@ public sealed class DbSeeder
         new Setting(SettingKeys.BackupRetentionDays, "14", SettingDataType.Int, "Delete backups older than this many days (at least 1).", false),
         new Setting(SettingKeys.BackupPath, "", SettingDataType.String, "Folder for backups; empty uses the server default (Backup:DefaultPath in appsettings).", false),
         new Setting(SettingKeys.LockoutMinutes, "15", SettingDataType.Int, "Duration in minutes an account remains locked out.", true),
+        new Setting(SettingKeys.UpiVpa, string.Empty, SettingDataType.String, "UPI ID (VPA) for the payment QR on invoices, e.g. restaurant@okbank. Empty prints no QR.", false),
+        new Setting(SettingKeys.UpiPayeeName, string.Empty, SettingDataType.String, "Payee name in the UPI payment QR; empty uses the restaurant name.", false),
+        new Setting(SettingKeys.LogoFile, string.Empty, SettingDataType.String, "Logo for invoices and PDFs (managed by Print templates).", false),
+        new Setting(SettingKeys.PdfPaper, "A4", SettingDataType.String, "Paper of invoice and receipt PDFs when the template uses a thermal roll: A4, A5 or 80mm.", false),
+        new Setting(SettingKeys.DefaultSacCode, "996331", SettingDataType.String, "SAC code printed for restaurant service when the template shows the HSN/SAC column.", false),
     };
 
     public async Task SeedAsync(SeedOptions options, CancellationToken cancellationToken = default)
@@ -77,6 +85,7 @@ public sealed class DbSeeder
         await SeedSettingsAsync(cancellationToken);
         await SeedPaymentMethodsAsync(cancellationToken);
         await SeedStationsAsync(cancellationToken);
+        await SeedTemplatesAsync(cancellationToken);
         if (options.DemoData)
         {
             await SeedDemoUsersAsync(options.DemoPassword, cancellationToken);
@@ -168,6 +177,21 @@ public sealed class DbSeeder
         foreach (var method in defaults.Where(m => !existing.Contains(m.Code)))
         {
             _db.PaymentMethods.Add(method);
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    // Version 1 of every document type reproduces the Phase 7 output; only types without any version get one, so an
+    // owner's versions (and which one is active) are never touched.
+    private async Task SeedTemplatesAsync(CancellationToken cancellationToken)
+    {
+        var existing = await _db.DocumentTemplates.Select(t => t.DocumentType).Distinct().ToListAsync(cancellationToken);
+        foreach (var type in Enum.GetValues<PrintDocumentType>().Where(t => !existing.Contains(t)))
+        {
+            var template = new DocumentTemplate(type, 1, "Standard", TemplateJson.Serialize(TemplateLayout.DefaultFor(type)), DateTime.UtcNow, null);
+            template.Activate(DateTime.UtcNow, null);
+            _db.DocumentTemplates.Add(template);
         }
 
         await _db.SaveChangesAsync(cancellationToken);

@@ -1,6 +1,7 @@
 using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Features.Reports;
+using HotelPOS.Infrastructure.Documents;
 using HotelPOS.Infrastructure.Identity;
 using HotelPOS.Infrastructure.Media;
 using HotelPOS.Infrastructure.Persistence;
@@ -55,6 +56,13 @@ public static class DependencyInjection
         services.AddSingleton<IIdempotencyStore, IdempotencyStore>();
         services.AddHostedService<IdempotencyCleanupService>();
         services.AddSingleton<IMenuImageStore, MenuImageStore>();
+
+        // Phase 14 documents: PDF (QuestPDF), Excel (ClosedXML), QR codes, logo, copy numbers.
+        services.AddSingleton<IPdfRenderer, QuestPdfRenderer>();
+        services.AddSingleton<IExcelExporter, ClosedXmlExporter>();
+        services.AddSingleton<IQrCodeRenderer, QrCodeRenderer>();
+        services.AddSingleton<ILogoStore, LogoStore>();
+        services.AddScoped<IPrintCopyAllocator, PrintCopyAllocator>();
         services.AddScoped<DbSeeder>();
 
         return services;
