@@ -976,6 +976,13 @@ public class ScreenRenderingTests
                     new() { ItemName = "Mutton Biryani", Category = "Main Course", Quantity = 64, Amount = 19200m, SharePercent = 9.7m },
                     new() { ItemName = "Fresh Lime Soda", Category = "Drinks", Quantity = 210, Amount = 12600m, SharePercent = 6.4m },
                 }));
+            api.GetRowsAsync<PaymentSummaryRowDto>(Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+                .Returns(ApiResult<List<PaymentSummaryRowDto>>.Ok(new List<PaymentSummaryRowDto>
+                {
+                    new() { Method = "Cash", Payments = 18, Amount = 19400m, Net = 19400m },
+                    new() { Method = "UPI", Payments = 17, Amount = 21580m, Refunds = 1, RefundAmount = 450m, Net = 21130m },
+                    new() { Method = "Card", Payments = 6, Amount = 7700m, Net = 7700m },
+                }));
             return api;
         }
 

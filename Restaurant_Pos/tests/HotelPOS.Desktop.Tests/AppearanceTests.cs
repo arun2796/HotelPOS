@@ -99,3 +99,26 @@ public class DensityTests
         settings.Current.Density.Should().BeNull();
     }
 }
+
+public class CompactMoneyTests
+{
+    [Theory]
+    [InlineData("950", "950")]
+    [InlineData("48230", "48.2K")]
+    [InlineData("140400", "1.4L")]
+    [InlineData("25000000", "2.5Cr")]
+    public void Compact_UsesIndianUnits(string amount, string expected)
+    {
+        Money.Compact(decimal.Parse(amount, CultureInfo.InvariantCulture)).Should().Be(expected);
+    }
+
+    [Fact]
+    public void RingSegments_CoverTheCircle()
+    {
+        var half = HotelPOS.Desktop.Controls.ChartGeometry.RingSegment(0, 180, 72, 20);
+        var full = HotelPOS.Desktop.Controls.ChartGeometry.RingSegment(0, 360, 72, 20);
+
+        half.Bounds.Width.Should().BeApproximately(72, 0.5, "the right half of the ring spans one radius");
+        full.Bounds.Width.Should().BeApproximately(144, 0.5);
+    }
+}

@@ -43,15 +43,20 @@
         </controls:KpiStrip.ItemTemplate>
       </controls:KpiStrip>
 
+      <!-- Charts (managers): plain WPF shapes in the token colours, see Controls/ChartGeometry. -->
       <Grid Grid.Row="3" Visibility="{Binding IsManagerView, Converter={StaticResource BoolToVisibility}}">
         <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="3*" />
-          <ColumnDefinition Width="2*" />
+          <ColumnDefinition Width="5*" />
+          <ColumnDefinition Width="4*" />
+          <ColumnDefinition Width="4*" />
         </Grid.ColumnDefinitions>
+
+        <!-- Net sales trend -->
         <Border Style="{StaticResource Card}" Padding="20" Margin="0,0,16,16">
           <StackPanel>
-            <TextBlock Text="NET SALES · LAST 7 DAYS" Style="{StaticResource Text.Label}" />
-            <ItemsControl ItemsSource="{Binding DayBars}" Focusable="False" Height="200" Margin="0,12,0,0">
+            <TextBlock Text="Net sales · last 7 days" Style="{StaticResource Text.Subtitle}" />
+            <TextBlock Text="Today in blue; hover a bar for the exact amount." Style="{StaticResource Text.Caption}" />
+            <ItemsControl ItemsSource="{Binding DayBars}" Focusable="False" Height="210" Margin="0,16,0,0">
               <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
                   <UniformGrid Rows="1" />
@@ -59,19 +64,16 @@
               </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate DataType="{x:Type dashboard:DayBar}">
-                  <Grid Margin="6,0">
+                  <Grid Background="Transparent" ToolTip="{Binding Amount}">
                     <Grid.RowDefinitions>
-                      <RowDefinition Height="Auto" />
                       <RowDefinition Height="*" />
                       <RowDefinition Height="Auto" />
+                      <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-                    <TextBlock Text="{Binding Amount}" Style="{StaticResource Text.Caption}" HorizontalAlignment="Center" />
-                    <Grid Grid.Row="1" Margin="0,4">
-                      <Grid.RowDefinitions>
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
-                      </Grid.RowDefinitions>
-                      <Border Grid.Row="1" CornerRadius="4,4,0,0" MinHeight="2"
+                    <StackPanel VerticalAlignment="Bottom" Margin="5,0">
+                      <TextBlock Text="{Binding CompactAmount}" Style="{StaticResource Text.Caption}" FontWeight="SemiBold"
+                                 HorizontalAlignment="Center" Margin="0,0,0,4" />
+                      <Border CornerRadius="6,6,2,2" MinHeight="3"
                               Height="{Binding Height, Converter={StaticResource BarHeight}, ConverterParameter=150}">
                         <Border.Style>
                           <Style TargetType="Border">
@@ -84,34 +86,88 @@
                           </Style>
                         </Border.Style>
                       </Border>
-                    </Grid>
-                    <TextBlock Grid.Row="2" Text="{Binding Label}" Style="{StaticResource Text.Caption}" HorizontalAlignment="Center" />
+                    </StackPanel>
+                    <Border Grid.Row="1" Height="1" Background="{DynamicResource Brush.Border}" />
+                    <TextBlock Grid.Row="2" Text="{Binding Label}" Style="{StaticResource Text.Caption}" HorizontalAlignment="Center" Margin="0,6,0,0" />
                   </Grid>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
           </StackPanel>
         </Border>
+
+        <!-- Payment split -->
         <Border Grid.Column="1" Style="{StaticResource Card}" Padding="20" Margin="0,0,16,16">
           <StackPanel>
-            <TextBlock Text="TOP ITEMS TODAY" Style="{StaticResource Text.Label}" />
-            <TextBlock Text="Nothing settled yet today." Style="{StaticResource Text.Caption}" Margin="0,12,0,0"
-                       Visibility="{Binding HasTopItems, Converter={StaticResource InverseBoolToVisibility}}" />
+            <TextBlock Text="Payments today" Style="{StaticResource Text.Subtitle}" />
+            <TextBlock Text="Net takings by payment method." Style="{StaticResource Text.Caption}" />
+            <controls:EmptyState Glyph="&#xE8C7;" Title="No payments yet" Message="The split appears with the first settled bill."
+                                 Margin="0,24,0,0" Visibility="{Binding HasPayments, Converter={StaticResource InverseBoolToVisibility}}" />
+            <StackPanel Margin="0,16,0,0" Visibility="{Binding HasPayments, Converter={StaticResource BoolToVisibility}}">
+              <Grid Width="144" Height="144" HorizontalAlignment="Center">
+                <ItemsControl ItemsSource="{Binding PaymentSlices}" Focusable="False">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <Grid />
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type dashboard:ChartSlice}">
+                      <Path Data="{Binding Shape}" Style="{StaticResource Chart.Swatch}" Stretch="None" ToolTip="{Binding Label}" />
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                  <TextBlock Text="{Binding PaymentTotal}" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" />
+                  <TextBlock Text="net" Style="{StaticResource Text.Caption}" HorizontalAlignment="Center" />
+                </StackPanel>
+              </Grid>
+              <ItemsControl ItemsSource="{Binding PaymentSlices}" Focusable="False" Margin="0,12,0,0">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate DataType="{x:Type dashboard:ChartSlice}">
+                    <Grid Margin="0,4">
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="48" />
+                      </Grid.ColumnDefinitions>
+                      <Ellipse Width="10" Height="10" Style="{StaticResource Chart.Swatch}" VerticalAlignment="Center" />
+                      <TextBlock Grid.Column="1" Text="{Binding Label}" FontWeight="Medium" Margin="8,0" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Grid.Column="2" Text="{Binding AmountText}" Typography.NumeralAlignment="Tabular" />
+                      <TextBlock Grid.Column="3" Text="{Binding PercentText}" FontWeight="SemiBold" TextAlignment="Right" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <!-- Top items -->
+        <Border Grid.Column="2" Style="{StaticResource Card}" Padding="20" Margin="0,0,16,16">
+          <StackPanel>
+            <TextBlock Text="Top items today" Style="{StaticResource Text.Subtitle}" />
+            <TextBlock Text="Best sellers on settled bills." Style="{StaticResource Text.Caption}" />
+            <controls:EmptyState Glyph="&#xE719;" Title="Nothing settled yet" Message="Best sellers appear as bills are settled."
+                                 Margin="0,24,0,0" Visibility="{Binding HasTopItems, Converter={StaticResource InverseBoolToVisibility}}" />
             <ItemsControl ItemsSource="{Binding TopItems}" Focusable="False" Margin="0,8,0,0">
               <ItemsControl.ItemTemplate>
                 <DataTemplate DataType="{x:Type dashboard:TopItemRow}">
-                  <Grid Margin="0,6,0,0">
-                    <Grid.ColumnDefinitions>
-                      <ColumnDefinition Width="28" />
-                      <ColumnDefinition Width="*" />
-                      <ColumnDefinition Width="40" />
-                      <ColumnDefinition Width="90" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="{Binding Rank}" Style="{StaticResource Text.Body}" Foreground="{DynamicResource Brush.TextSecondary}" />
-                    <TextBlock Grid.Column="1" Text="{Binding Name}" Style="{StaticResource Text.Body}" TextTrimming="CharacterEllipsis" />
-                    <TextBlock Grid.Column="2" Text="{Binding Quantity}" Style="{StaticResource Text.Body}" HorizontalAlignment="Right" />
-                    <TextBlock Grid.Column="3" Text="{Binding Amount}" Style="{StaticResource Text.Body}" HorizontalAlignment="Right" FontWeight="SemiBold" />
-                  </Grid>
+                  <StackPanel Margin="0,8,0,0">
+                    <Grid>
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                      </Grid.ColumnDefinitions>
+                      <TextBlock TextTrimming="CharacterEllipsis">
+                        <Run Text="{Binding Name, Mode=OneWay}" FontWeight="Medium" />
+                        <Run Text="{Binding Quantity, Mode=OneWay, StringFormat=' · {0} sold'}" Foreground="{DynamicResource Brush.TextSecondary}" />
+                      </TextBlock>
+                      <TextBlock Grid.Column="1" Text="{Binding Amount}" FontWeight="SemiBold" Margin="8,0,0,0" Typography.NumeralAlignment="Tabular" />
+                    </Grid>
+                    <ProgressBar Value="{Binding Share, Mode=OneWay}" Style="{StaticResource Chart.ShareBar}" Margin="0,6,0,0" />
+                  </StackPanel>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>

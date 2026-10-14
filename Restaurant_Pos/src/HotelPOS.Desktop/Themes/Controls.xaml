@@ -217,6 +217,37 @@
     </Setter>
   </Style>
 
+  <!-- ============================ Charts ============================ -->
+  <!-- Fill of a chart shape or legend dot from its item's ColorIndex (0-5). -->
+  <Style x:Key="Chart.Swatch" TargetType="Shape">
+    <Setter Property="Fill" Value="{DynamicResource Brush.Chart.0}" />
+    <Style.Triggers>
+      <DataTrigger Binding="{Binding ColorIndex}" Value="1">
+        <Setter Property="Fill" Value="{DynamicResource Brush.Chart.1}" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding ColorIndex}" Value="2">
+        <Setter Property="Fill" Value="{DynamicResource Brush.Chart.2}" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding ColorIndex}" Value="3">
+        <Setter Property="Fill" Value="{DynamicResource Brush.Chart.3}" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding ColorIndex}" Value="4">
+        <Setter Property="Fill" Value="{DynamicResource Brush.Chart.4}" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding ColorIndex}" Value="5">
+        <Setter Property="Fill" Value="{DynamicResource Brush.Chart.5}" />
+      </DataTrigger>
+    </Style.Triggers>
+  </Style>
+
+  <!-- A 0..1 share drawn as a thin rounded bar (top items). -->
+  <Style x:Key="Chart.ShareBar" TargetType="ProgressBar" BasedOn="{StaticResource {x:Type ProgressBar}}">
+    <Setter Property="Height" Value="6" />
+    <Setter Property="Minimum" Value="0" />
+    <Setter Property="Maximum" Value="1" />
+    <Setter Property="Background" Value="{DynamicResource Brush.SurfaceSubtle}" />
+  </Style>
+
   <!-- ============================ Hub tabs ============================ -->
   <!-- Tabs of a hub page (Menu, Sections & Tables): text tabs with an accent underline, BillingHub style. -->
   <Style x:Key="Hub.Tab" TargetType="ListBoxItem">

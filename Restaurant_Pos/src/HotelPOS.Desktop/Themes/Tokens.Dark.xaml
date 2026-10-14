@@ -49,6 +49,13 @@
   <SolidColorBrush x:Key="Brush.Purple" Color="#A78BFA" />
   <SolidColorBrush x:Key="Brush.Teal" Color="#2DD4BF" />
 
+  <SolidColorBrush x:Key="Brush.Chart.0" Color="#3B82F6" />
+  <SolidColorBrush x:Key="Brush.Chart.1" Color="#2DD4BF" />
+  <SolidColorBrush x:Key="Brush.Chart.2" Color="#A78BFA" />
+  <SolidColorBrush x:Key="Brush.Chart.3" Color="#F59E0B" />
+  <SolidColorBrush x:Key="Brush.Chart.4" Color="#10B981" />
+  <SolidColorBrush x:Key="Brush.Chart.5" Color="#FB7185" />
+
   <!-- Sidebar -->
   <SolidColorBrush x:Key="Brush.Sidebar" Color="#0E0E10" />
   <SolidColorBrush x:Key="Brush.SidebarText" Color="#D4D4D8" />

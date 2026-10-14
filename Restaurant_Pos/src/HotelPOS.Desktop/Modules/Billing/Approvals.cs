@@ -70,6 +70,15 @@ public static class Money
 {
     public static string Format(decimal amount) => amount.ToString("N2", CultureInfo.CurrentCulture);
 
+    // Short Indian form for chart labels: 950, 48.2K, 1.4L (lakh), 2.1Cr (crore).
+    public static string Compact(decimal amount) => Math.Abs(amount) switch
+    {
+        >= 1_00_00_000m => (amount / 1_00_00_000m).ToString("0.#", CultureInfo.CurrentCulture) + "Cr",
+        >= 1_00_000m => (amount / 1_00_000m).ToString("0.#", CultureInfo.CurrentCulture) + "L",
+        >= 1_000m => (amount / 1_000m).ToString("0.#", CultureInfo.CurrentCulture) + "K",
+        _ => amount.ToString("0", CultureInfo.CurrentCulture),
+    };
+
     public static bool TryParse(string? text, out decimal amount) =>
         decimal.TryParse(text?.Trim(), NumberStyles.Number, CultureInfo.CurrentCulture, out amount)
         && decimal.Round(amount, 2) == amount;

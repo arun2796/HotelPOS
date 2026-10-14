@@ -100,7 +100,8 @@ All screens are restyled. New: command palette, notices panel, hub pages. Change
 
 - MaterialDesign's implicit styles restyle every control: views that relied on WPF defaults must be checked in the
   rendering screenshots, not only for binding errors.
-- LiveChartsCore 2 is a release candidate; keep the chart area replaceable (charts are a view concern only).
+- LiveChartsCore 2 is a release candidate; keep the chart area replaceable (charts are a view concern only). Decided in
+  11.4: not used (see § 14); the charts are plain WPF.
 - Inter is bundled as static TTFs (OFL licence, `Resources/Fonts`); Segoe UI Variable / Segoe UI are the fallbacks.
 
 ## 14. Changes during implementation
@@ -197,3 +198,22 @@ columns right-aligned and tabular figures; the CSV export keeps the invariant ma
 wraps instead of clipping. `ThemeService` changes application resources only on the UI thread: view-model tests that
 save settings ran beside the rendering test and swapped its dictionaries mid-render, which made the full suite hang
 intermittently. Desktop tests: 186 passed, 1 skipped (three full runs).
+
+### 11.4 Dashboard charts (2026-10-14)
+
+**Deviation: no LiveChartsCore.** Version 2.0.0-rc5.4 (BillingHub's) restores `SkiaSharp.Views.WPF` and
+`OpenTK.GLWpfControl` as .NET Framework-only builds on .NET 8 (NU1701, an error in this repository). Shipping
+compatibility-mode binaries, including an OpenGL control, from a pre-release package in a POS for three charts is not
+worth the risk. The charts are plain WPF instead: no dependency, theme tokens, and they render in the screenshot test.
+
+Built (manager dashboard, under the KPI strip):
+- **Net sales, last 7 days**: rounded bars with compact Indian labels (`Money.Compact`: 48.2K, 1.4L, 2.5Cr), today in
+  the accent colour, exact amount in the tooltip.
+- **Payments today**: a donut (`Controls/ChartGeometry.RingSegment`) with the net total in the centre and a legend
+  (method, ₹ amount, %). The data comes from the existing payments report for the business day, so no new endpoint;
+  if it cannot load, the rest of the dashboard stays.
+- **Top items today**: name, quantity, amount and a share bar relative to the best seller.
+- Chart colours are tokens `Brush.Chart.0`–`5` (lighter shades in dark mode), applied by the `Chart.Swatch` style.
+
+Tests: dashboard view-model test covers shares, the payment split (zero-net methods left out, largest first) and the
+compact total; `CompactMoneyTests` for Indian units and ring geometry. Desktop tests: 191 passed, 1 skipped.

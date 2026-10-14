@@ -49,6 +49,14 @@
   <SolidColorBrush x:Key="Brush.Purple" Color="#7C3AED" />
   <SolidColorBrush x:Key="Brush.Teal" Color="#0D9488" />
 
+  <!-- Chart series, in order (payment split, future charts). -->
+  <SolidColorBrush x:Key="Brush.Chart.0" Color="#2563EB" />
+  <SolidColorBrush x:Key="Brush.Chart.1" Color="#0D9488" />
+  <SolidColorBrush x:Key="Brush.Chart.2" Color="#7C3AED" />
+  <SolidColorBrush x:Key="Brush.Chart.3" Color="#D97706" />
+  <SolidColorBrush x:Key="Brush.Chart.4" Color="#059669" />
+  <SolidColorBrush x:Key="Brush.Chart.5" Color="#E11D48" />
+
   <!-- Sidebar: near-black in both themes -->
   <SolidColorBrush x:Key="Brush.Sidebar" Color="#0A0A0B" />
   <SolidColorBrush x:Key="Brush.SidebarText" Color="#D4D4D8" />

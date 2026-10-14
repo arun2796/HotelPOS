@@ -70,6 +70,13 @@ public sealed class ReportViewModelTests
             LastDays = Enumerable.Range(0, 7).Select(i => new DashboardDayPoint { Day = new DateOnly(2026, 10, 1).AddDays(i), NetSales = 100m * i }).ToList(),
             GeneratedAtUtc = DateTime.UtcNow,
         }));
+        api.GetRowsAsync<PaymentSummaryRowDto>(ReportKeys.Payments, new DateOnly(2026, 10, 7), new DateOnly(2026, 10, 7), Arg.Any<CancellationToken>())
+            .Returns(ApiResult<List<PaymentSummaryRowDto>>.Ok(new List<PaymentSummaryRowDto>
+            {
+                new() { Method = "Card", Net = 2500m },
+                new() { Method = "Cash", Net = 7500m },
+                new() { Method = "Voucher", Net = 0m },
+            }));
         var session = Substitute.For<IAuthSession>();
         session.User.Returns(TestData.Login("manager1", roles: "Manager").User);
         var realtime = new FakeRealtimeClient();
@@ -90,6 +97,9 @@ public sealed class ReportViewModelTests
         vm.DayBars.Should().HaveCount(7);
         vm.DayBars[^1].Height.Should().Be(1);
         vm.DayBars[^1].IsToday.Should().BeTrue();
+        vm.TopItems[0].Share.Should().Be(1);
+        vm.PaymentSlices.Select(s => (s.Label, s.PercentText)).Should().Equal(("Cash", "75%"), ("Card", "25%"));
+        vm.PaymentTotal.Should().Be("10K");
         vm.Dispose();
     }
 
