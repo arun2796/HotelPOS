@@ -62,7 +62,10 @@ public abstract class PrintScenario : DatabaseTestBase
         order.IsSuccess.Should().BeTrue(order.Error?.Message);
         var bill = (await SendAsync(new RequestBillCommand(order.Value.Id))).Value;
 
+        var counter = Guid.NewGuid();
+        await OpenShiftAsync(counter, cashier, "cashier1", Roles.Cashier);
         CurrentUser.SignIn(cashier, "cashier1", Roles.Cashier);
+        CurrentUser.DeviceId = counter;
         bill = (await SendAsync(new FinalizeBillCommand(bill.Id, new BillActionRequest { RowVersion = bill.RowVersion }))).Value;
         var paymentId = 0;
         if (pay)

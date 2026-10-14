@@ -85,6 +85,7 @@ public class PrintLogTests : PrintScenario
         var other = await CreateUserAsync("cashier2", "secret1", Roles.Cashier);
 
         CurrentUser.SignIn(other.Id, "cashier2", Roles.Cashier);
+        CurrentUser.DeviceId = Guid.NewGuid();
         (await SendAsync(new CompletePrintCommand(copy.PrintLogId!.Value, new CompletePrintRequest { Succeeded = true }))).Error!.Code.Should().Be(ErrorCodes.Forbidden);
         CurrentUser.SignIn(s.Manager, "managerx", Roles.Manager);
         (await SendAsync(new CompletePrintCommand(copy.PrintLogId!.Value, new CompletePrintRequest { Succeeded = true }))).IsSuccess.Should().BeTrue();
