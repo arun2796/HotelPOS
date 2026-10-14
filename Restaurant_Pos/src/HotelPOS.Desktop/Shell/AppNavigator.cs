@@ -20,6 +20,7 @@ public sealed class AppNavigator : IAppNavigator
     private readonly IAuthSession _session;
     private readonly IRealtimeClient _realtime;
     private readonly IAuthApi _authApi;
+    private readonly NoticeCenter _notices;
     private readonly ILogger<AppNavigator> _logger;
 
     public AppNavigator(
@@ -30,6 +31,7 @@ public sealed class AppNavigator : IAppNavigator
         IAuthApi authApi,
         IUiDispatcher dispatcher,
         INotificationService notifications,
+        NoticeCenter notices,
         ILogger<AppNavigator> logger)
     {
         _main = main;
@@ -37,6 +39,7 @@ public sealed class AppNavigator : IAppNavigator
         _session = session;
         _realtime = realtime;
         _authApi = authApi;
+        _notices = notices;
         _logger = logger;
 
         // The server refused to renew the session (user disabled, password reset, token revoked...).
@@ -53,6 +56,7 @@ public sealed class AppNavigator : IAppNavigator
             }
 
             // An administrator's broadcast, e.g. "Server restarting in 2 minutes for maintenance".
+            _notices.Add(new NoticeItem(notice.Message, notice.SentBy, notice.Level, DateTime.Now));
             var text = string.IsNullOrWhiteSpace(notice.SentBy) ? notice.Message : $"{notice.Message} ({notice.SentBy})";
             switch (notice.Level)
             {
@@ -91,6 +95,7 @@ public sealed class AppNavigator : IAppNavigator
 
         await _realtime.StopAsync();
         _session.Clear();
+        _notices.Clear();
         await ShowLoginAsync(message);
 
         if (refreshToken is not null)

@@ -145,5 +145,35 @@ Comfort. New `IndianCultureTests` (grouping up to crores, parsing, dates) and `D
 chosen density; changing it never signs the user out). Suite: 733 passed, 1 skipped (+16).
 
 Left for later steps: report grids and totals format amounts without `Money.Format` (no grouping), to fix with the
-report filter bar (11.3); the Users command bar clips "Log out everywhere" at 1366 px (11.3 command bars); sidebar
-collapse, top bar and command palette (11.2).
+report filter bar (11.3); the Users command bar clips "Log out everywhere" at 1366 px when the edit panel is open
+(11.3 command bars); sidebar collapse, top bar and command palette (11.2).
+
+### 11.2 Shell (2026-10-14)
+
+Built:
+- **Sidebar** collapses to icons (72 px; group headings become dividers, names become tooltips), remembered per
+  terminal (`ClientSettings.SidebarCollapsed`). The width is set from state and animated only when the user toggles
+  it, so a terminal that starts collapsed does not slide on start. The user card carries change-password and
+  sign-out.
+- **Top bar**: page icon, title and module description; a search field that opens the palette; clock; theme toggle;
+  notices bell with an unread badge; help (F1).
+- **Command palette** (`CommandPaletteViewModel`, Ctrl+K or the search field): the modules the user may open (the
+  same permission-filtered list as the sidebar), shell actions (new order, back up now, theme, change password,
+  shortcuts, sign out) and live results. A table code (`t5`, `T05`, `table 5`) opens that table; an order number
+  (`1019`, `#1019`) opens its table; a bill number or the end of an invoice number opens the bill. Lookups load once
+  per opening from the existing list endpoints, and only for modules the user has. Fuzzy ranking: title match first
+  (prefix, word starts, consecutive letters), then search keywords per module (e.g. "gst" → Restaurant Settings).
+  ↑/↓, Enter and Esc work as expected.
+- **Notices** (`NoticeCenter`): `AppNavigator` keeps every server notice of the session (latest 50) next to its
+  toast; the bell counts unread ones and the panel lists them; sign-out clears them.
+- **Shortcuts** handled by `ShellViewModel.HandleShortcut` from the window's key stream: Ctrl+K, Ctrl+D/T/B/R (only
+  when the user has that module), F1, Esc. The cashier keys (F2/F3/F4/F9) stay with the bill screen.
+
+Decisions: "find bill" covers pending bills only; closed bills are searched on the Closed Bills screen. The palette
+shows no server search beyond the three lists (no new endpoints in this phase).
+
+Tests: `CommandPaletteTests` (permission filtering, ranking, table/order/bill lookups and their navigation, lookups
+skipped without permission, keyboard wrap), `NoticeCenterTests`; the rendering test drives Ctrl+K/Esc and Ctrl+R/B
+and adds screenshots 48–50 (palette, notices, collapsed sidebar). The rendering harness now uses explicit shutdown,
+fixing an intermittent "Application object is being shut down" when the first test window closed. Desktop tests:
+186 passed, 1 skipped.

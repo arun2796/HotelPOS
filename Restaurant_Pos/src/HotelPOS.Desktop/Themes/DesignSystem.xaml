@@ -257,7 +257,7 @@
     <Setter Property="Width" Value="{DynamicResource Size.Control}" />
     <Setter Property="Height" Value="{DynamicResource Size.Control}" />
     <Setter Property="Padding" Value="0" />
-    <Setter Property="AutomationProperties.Name" Value="{Binding ToolTip, RelativeSource={RelativeSource Self}}" />
+    <Setter Property="AutomationProperties.Name" Value="{Binding ToolTip, RelativeSource={RelativeSource Self}, TargetNullValue=''}" />
   </Style>
 
   <Style x:Key="Button.Link" TargetType="Button">
@@ -1189,12 +1189,13 @@
       <Setter.Value>
         <ControlTemplate TargetType="ListBoxItem">
           <StackPanel>
-            <TextBlock Text="{Binding Group}"
+            <TextBlock x:Name="GroupHeader" Text="{Binding Group}"
                        Visibility="{Binding ShowGroupHeader, Converter={StaticResource BoolToVisibility}}"
                        Margin="22,18,12,6"
                        FontSize="11"
                        FontWeight="SemiBold"
                        Foreground="{DynamicResource Brush.SidebarTextMuted}" />
+            <Border x:Name="GroupDivider" Height="1" Margin="18,10" Background="{DynamicResource Brush.SidebarDivider}" Visibility="Collapsed" />
             <Grid Margin="10,1">
               <Border x:Name="Root" CornerRadius="8" Padding="12,0" Height="{DynamicResource Size.NavItem}" Background="Transparent">
                 <Grid>
@@ -1208,7 +1209,7 @@
                   <TextBlock x:Name="Title" Grid.Column="1" Text="{Binding Title}" Margin="8,0,0,0"
                              FontSize="{DynamicResource Font.Size.Body}" FontWeight="Medium"
                              Foreground="{DynamicResource Brush.SidebarText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                  <Border Grid.Column="2" CornerRadius="4" Padding="6,1" Background="#22FFFFFF" VerticalAlignment="Center"
+                  <Border x:Name="Soon" Grid.Column="2" CornerRadius="4" Padding="6,1" Background="#22FFFFFF" VerticalAlignment="Center"
                           Visibility="{Binding IsAvailable, Converter={StaticResource InverseBoolToVisibility}}">
                     <TextBlock Text="Soon" FontSize="10" Foreground="{DynamicResource Brush.SidebarTextMuted}" />
                   </Border>
@@ -1229,10 +1230,28 @@
               <Setter TargetName="Title" Property="FontWeight" Value="SemiBold" />
               <Setter TargetName="Glyph" Property="Foreground" Value="{DynamicResource Brush.SidebarAccent}" />
             </Trigger>
+            <!-- Collapsed sidebar: icons only; a divider marks where a group starts. -->
+            <DataTrigger Binding="{Binding DataContext.IsSidebarCollapsed, RelativeSource={RelativeSource AncestorType=ListBox}}" Value="True">
+              <Setter TargetName="Title" Property="Visibility" Value="Collapsed" />
+              <Setter TargetName="Soon" Property="Visibility" Value="Collapsed" />
+              <Setter TargetName="GroupHeader" Property="Visibility" Value="Collapsed" />
+            </DataTrigger>
+            <MultiDataTrigger>
+              <MultiDataTrigger.Conditions>
+                <Condition Binding="{Binding DataContext.IsSidebarCollapsed, RelativeSource={RelativeSource AncestorType=ListBox}}" Value="True" />
+                <Condition Binding="{Binding ShowGroupHeader}" Value="True" />
+              </MultiDataTrigger.Conditions>
+              <Setter TargetName="GroupDivider" Property="Visibility" Value="Visible" />
+            </MultiDataTrigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>
       </Setter.Value>
     </Setter>
+    <Style.Triggers>
+      <DataTrigger Binding="{Binding DataContext.IsSidebarCollapsed, RelativeSource={RelativeSource AncestorType=ListBox}}" Value="True">
+        <Setter Property="ToolTip" Value="{Binding Title}" />
+      </DataTrigger>
+    </Style.Triggers>
   </Style>
 
 </ResourceDictionary>

@@ -124,8 +124,12 @@ One window (`MainWindow`) hosts the current screen (configuration, login, forced
 shell) plus two overlay layers: modal dialogs (`IDialogService`) and toasts (`INotificationService`).
 View-models are matched to views by DataTemplates in `App.xaml` and created with `ActivatorUtilities`.
 
-- Left sidebar with large module buttons (icon + label), filtered by role. Top bar: restaurant name,
-  user, device name, clock. Bottom status bar: connection indicator, last sync time, app version.
+- Left sidebar with module buttons (icon + label) grouped by area and filtered by permission; collapses to icons
+  (remembered per terminal); user card with change password and sign out. Top bar (Phase 11): page title and
+  description, search (opens the Ctrl+K command palette), clock, theme toggle, notices bell, help (F1). Bottom
+  status bar: connection indicator, server, terminal, failed prints, app version.
+- Command palette (Ctrl+K): jump to any permitted screen, run shell actions, or type a table code, order number
+  or bill/invoice number to open it. Shortcuts: Ctrl+D dashboard, Ctrl+T tables, Ctrl+B billing, Ctrl+R reports.
 - Full-screen (kiosk-like) mode for Kitchen and Waiter tablets (F11 toggle, remembered).
 - Navigation is view-model-first: `INavigationService.NavigateTo<TViewModel>(parameter)`.
 - The shell survives server outages: navigation still works, data reloads when connectivity returns.

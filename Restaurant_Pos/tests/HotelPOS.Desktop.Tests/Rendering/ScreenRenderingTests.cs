@@ -3,6 +3,7 @@ using System.Runtime.ExceptionServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -74,6 +75,8 @@ public class ScreenRenderingTests
 
             var app = new App();
             app.InitializeComponent();
+            // Each screen is rendered in its own window; closing the first one must not shut the application down.
+            app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             Directory.CreateDirectory(OutputDirectory);
 
             // The bundled Inter files must back every weight the styles use (no silent fallback to Segoe UI).
@@ -152,6 +155,26 @@ public class ScreenRenderingTests
             rendered.Add(await RenderScreenAsync(env, shell, "08-dialog-and-toasts"));
             env.Dialogs.Current?.CancelCommand.Execute(null);
             await Dispatcher.Yield(DispatcherPriority.Background);
+            env.Notifications.Items.Clear();
+
+            shell.HandleShortcut(Key.K, ModifierKeys.Control).Should().BeTrue();
+            shell.Palette.IsOpen.Should().BeTrue();
+            shell.HandleShortcut(Key.Escape, ModifierKeys.None).Should().BeTrue();
+            shell.Palette.IsOpen.Should().BeFalse();
+            await shell.OpenPaletteCommand.ExecuteAsync(null);
+            shell.Palette.Query = "re";
+            rendered.Add(await RenderScreenAsync(env, shell, "48-command-palette"));
+            shell.Palette.CloseCommand.Execute(null);
+
+            env.Notices.Add(new NoticeItem("Server restarting at 23:00 for maintenance. Settle open bills first.", "Administrator", NoticeLevel.Warning, DateTime.Now.AddMinutes(-4)));
+            env.Notices.Add(new NoticeItem("New menu prices apply from tomorrow.", "Meena (Manager)", NoticeLevel.Info, DateTime.Now.AddMinutes(-1)));
+            shell.ToggleNoticesCommand.Execute(null);
+            rendered.Add(await RenderScreenAsync(env, shell, "49-notices"));
+            shell.ToggleNoticesCommand.Execute(null);
+
+            shell.ToggleSidebarCommand.Execute(null);
+            rendered.Add(await RenderScreenAsync(env, shell, "50-sidebar-collapsed"));
+            shell.ToggleSidebarCommand.Execute(null);
 
             env.Theme.Apply(ThemeService.Dark);
             rendered.Add(await RenderScreenAsync(env, shell, "09-admin-users-dark"));
@@ -221,6 +244,8 @@ public class ScreenRenderingTests
             env.Session.Start(TestData.Login("cashier1", roles: "Cashier"));
             var cashierShell = env.Create<ShellViewModel>();
             await cashierShell.OnNavigatedToAsync(null);
+            cashierShell.HandleShortcut(Key.R, ModifierKeys.Control).Should().BeFalse("a cashier has no Reports module");
+            cashierShell.HandleShortcut(Key.B, ModifierKeys.Control).Should().BeTrue();
             env.Realtime.Raise(ConnectionStatus.Connected);
             rendered.Add(await RenderScreenAsync(env, cashierShell, "28-billing-queue"));
 
@@ -315,7 +340,7 @@ public class ScreenRenderingTests
         }
 
         bindingErrors.Errors.Should().BeEmpty("every binding in the views must point at an existing property");
-        rendered.Should().HaveCount(47);
+        rendered.Should().HaveCount(50);
         bodyFontFiles.Should().Equal("inter-regular.ttf", "inter-medium.ttf", "inter-semibold.ttf", "inter-bold.ttf");
     }
 
@@ -413,6 +438,7 @@ public class ScreenRenderingTests
             Dialogs = new DialogService();
             Notifications = new NotificationService(dispatcher, NullLogger<NotificationService>.Instance);
             Theme = new ThemeService(Settings);
+            Notices = new NoticeCenter(dispatcher);
             Main = new MainViewModel(Dialogs, Notifications);
 
             var systemApi = Substitute.For<ISystemApi>();
@@ -485,6 +511,7 @@ public class ScreenRenderingTests
             services.AddSingleton<IDialogService>(Dialogs);
             services.AddSingleton<INotificationService>(Notifications);
             services.AddSingleton(Theme);
+            services.AddSingleton(Notices);
             services.AddSingleton(systemApi);
             services.AddSingleton(usersApi);
             services.AddSingleton(settingsApi);
@@ -527,6 +554,8 @@ public class ScreenRenderingTests
         public NotificationService Notifications { get; }
 
         public ThemeService Theme { get; }
+
+        public NoticeCenter Notices { get; }
 
         public MainViewModel Main { get; }
 

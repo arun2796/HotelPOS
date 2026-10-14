@@ -22,7 +22,7 @@ documents say what to build, in which order, and how to verify it.
 | 9 | [Security & Audit](phase-09-security-and-audit.md) | 1–6 | Editable permissions, lockout, rate limiting, device management, audit viewer, hardening | In progress (open items: phase doc § 15) |
 | 10 | [Production Readiness](phase-10-production-readiness.md) | all | Windows Service hosting, installers, backup/recovery, monitoring, LAN/firewall docs, go-live checklist | In progress (open items: phase doc § 15) |
 | 11 | [UI Design System](phase-11-ui-design-system.md) | 10 | BillingHub look and shell: tokens, MaterialDesign base, Mica, dark mode, command palette, hubs, KPI/report controls, charts, touch density | In progress |
-| 12 | [CQRS Application Layer](phase-12-cqrs-application-layer.md) | 11 | MediatR commands/queries with logging, permission, validation, transaction and audit behaviours; thin controllers | Not started |
+| 12 | [CQRS Application Layer](phase-12-cqrs-application-layer.md) | 11 | MediatR commands/queries with logging, permission, validation, transaction and audit behaviours; thin controllers | In progress (parallel track, branch `phase-12-cqrs-application-layer`) |
 | 13 | [Shifts, Cash & Day End](phase-13-shifts-cash-and-day-end.md) | 12 | Cashier shifts, float and denominations, pay-in/out, X/Z reports, Day End with lock | Not started |
 | 14 | [Templates, PDF & Excel](phase-14-templates-pdf-excel.md) | 12 | One render model, Template Studio, PDF and Excel exports, print log with DUPLICATE | Not started |
 | 15 | [GST Reports & Period Close](phase-15-gst-reports-and-period-close.md) | 13, 14 | GSTR-1 JSON, GSTR-3B, HSN/SAC summary, B2B GSTIN, month/year lock | Not started |

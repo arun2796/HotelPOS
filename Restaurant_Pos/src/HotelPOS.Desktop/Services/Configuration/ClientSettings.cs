@@ -21,6 +21,8 @@ public sealed class ClientSettings
     // "Comfort" or "Compact"; null chooses from the terminal type (touch terminals get Comfort).
     public string? Density { get; set; }
 
+    public bool SidebarCollapsed { get; set; }
+
     public Dictionary<PrintDocumentType, PrinterProfile> Printers { get; set; } = new();
 
     public bool AutoPrintKot { get; set; } = true;
