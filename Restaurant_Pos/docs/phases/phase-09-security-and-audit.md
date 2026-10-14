@@ -235,12 +235,16 @@ branch `phase-09-security-and-audit`, reviewed against this document, and these 
 ## 15. Remaining work (open)
 
 Server
-- [ ] A disabled terminal can log in under a different device name (device identity is self-declared). Decide:
-      bind devices to a registration secret, or document as accepted v1 risk.
+- [x] A disabled terminal can log in under a different device name (device identity is self-declared).
+      **Accepted v1 risk (decided 2026-10-14):** a valid user account is still required, every action is audited
+      with user and device, and admins can disable the user. Device binding (a per-terminal secret) can come with
+      the Phase 10 installer.
 - [ ] Protected core permission set for the non-Admin system roles (spec § 3); today only Admin is protected.
 - [ ] Password complexity configurable (fixed at letters + digits, minimum 8).
-- [ ] Secrets in the repository: a real PostgreSQL password is committed in `appsettings.Development.json` and
-      `tests/Shared/TestPostgres.cs`; move it to user-secrets / `HOTELPOS_TEST_POSTGRES` and rotate it.
+- [x] Secrets in the repository: the PostgreSQL password left `appsettings.Development.json` and
+      `tests/Shared/TestPostgres.cs` (now user-secrets and `HOTELPOS_TEST_POSTGRES`, see `docs/dev-setup.md`);
+      `StaticSecurityChecksTests` fails on any committed connection-string password. Earlier commits still contain
+      the old value, so it should be changed if it is used anywhere else.
 - [ ] Server PCs must run ASP.NET Core runtime 8.0.32 or later (the server's SignalR comes from the shared
       runtime, not from NuGet); add to the Phase 10 install checklist.
 

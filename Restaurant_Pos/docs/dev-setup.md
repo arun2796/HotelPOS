@@ -57,12 +57,15 @@ dotnet test HotelPOS.sln
 
 The Application and API tests create databases named `hotelpos_apptests_<guid>` / `hotelpos_apitests_<guid>`
 on the local PostgreSQL server and drop them afterwards. Only `hotelpos_*` databases are ever created or
-dropped. The default server account is in `tests/Shared/TestPostgres.cs`; to use another server or account
-set a connection string without `Database`:
+dropped. No password is committed: set the server connection string (without `Database`) once per PC as a
+user environment variable, then open a new terminal:
 
 ```powershell
-$env:HOTELPOS_TEST_POSTGRES = "Host=localhost;Port=5432;Username=postgres;Password=<password>"
+[Environment]::SetEnvironmentVariable("HOTELPOS_TEST_POSTGRES", "Host=localhost;Port=5432;Username=postgres;Password=<password>", "User")
 ```
+
+Without it the tests connect as `postgres@localhost` with no password (Npgsql then tries `PGPASSWORD` and the
+pgpass file).
 
 ### Screen rendering test
 
@@ -93,8 +96,14 @@ The `Development` profile:
 
 - listens on `http://0.0.0.0:5000` (all interfaces, so other PCs on the LAN can connect — Windows may ask
   to allow the port through the firewall);
-- uses the PostgreSQL database `hotelpos_dev` (connection string in `appsettings.Development.json`), created
-  and migrated automatically at start-up;
+- uses the PostgreSQL database `hotelpos_dev`, created and migrated automatically at start-up. The committed
+  `appsettings.Development.json` has no password; store the full connection string once per PC in user-secrets
+  (kept under `%APPDATA%\Microsoft\UserSecrets`, never in the repository):
+
+  ```powershell
+  dotnet user-secrets set "ConnectionStrings:HotelPOS" "Host=localhost;Port=5432;Database=hotelpos_dev;Username=postgres;Password=<password>" --project src/HotelPOS.Api
+  ```
+
 - seeds the admin account, demo users, a demo floor (Ground Floor T01–T08, First Floor T11–T14,
   Outdoor O01–O04) and a demo menu (Starters, Biryani, Breads, Beverages, Desserts; MAIN and BAR stations;
   GST 5%/18%; Spice level, Add-ons and Sugar modifiers);
@@ -199,5 +208,5 @@ Delete the settings file to see the first-run screen again. **F11** toggles full
 | API fails with "Jwt:SigningKey must be configured" | Set `Jwt:SigningKey` (≥ 32 characters). Development has one in `appsettings.Development.json`. |
 | Desktop says "Cannot reach the server" | API running? Address and port right? On another PC: firewall rule for TCP 5000 on the server. |
 | Desktop status bar stays amber/red | The hub reconnects automatically (2 s → 15 s back-off); check the API log for errors. |
-| Tests or API fail with "password authentication failed" / "No password has been provided" | Check the password in `appsettings.Development.json` / `tests/Shared/TestPostgres.cs`, or set `HOTELPOS_TEST_POSTGRES`. |
+| Tests or API fail with "password authentication failed" / "No password has been provided" | API: set the user-secret `ConnectionStrings:HotelPOS` (§ 4). Tests: set `HOTELPOS_TEST_POSTGRES` (§ 3) and open a new terminal. |
 | "Connection refused" on port 5432 | Start the Windows service `postgresql-x64-<version>` (`services.msc`). |

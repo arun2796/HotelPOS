@@ -4,7 +4,8 @@ internal static class TestPostgres
 {
     public const string ServerVariable = "HOTELPOS_TEST_POSTGRES";
 
-    private const string DefaultServer = "Host=localhost;Port=5432;Username=postgres;Password=arun27";
+    // No password here: set HOTELPOS_TEST_POSTGRES (or PGPASSWORD / a pgpass file) on each development PC.
+    private const string DefaultServer = "Host=localhost;Port=5432;Username=postgres";
 
     public static string Server =>
         Environment.GetEnvironmentVariable(ServerVariable) is { Length: > 0 } configured ? configured : DefaultServer;
