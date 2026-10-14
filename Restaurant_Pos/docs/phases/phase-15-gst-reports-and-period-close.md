@@ -144,8 +144,10 @@ None. A closed period is read by the next command that needs it.
 
 ## 12. Acceptance criteria
 
-- [ ] GSTR-1 JSON for a month passes the offline tool's validation; totals match the sales reports.
-- [ ] Closed periods reject changes; Definition of Done satisfied.
+- [ ] GSTR-1 JSON for a month passes the offline tool validation (not verifiable here: no portal tool).
+- [x] GSTR-1 totals match the sales reports (tested, and checked by the validation report).
+- [x] Closed periods reject changes (`PERIOD_CLOSED`), reopen is Admin-only, with a reason, audited.
+- [ ] Definition of Done satisfied (manual demo § 11 still to run on two machines).
 
 ## 13. Risks and notes
 
@@ -156,4 +158,50 @@ None. A closed period is read by the next command that needs it.
 
 ## 14. Changes during implementation
 
-(fill in while building)
+**Built (2026-10-15, branch `phase-11-ui-design-system`)**
+
+- Contracts/Domain: `Gstin` (+ `GstStates`) in Contracts so the desktop validates while typing; `GstSupply.Classify`,
+  `GstSplit`, `PeriodClose`, `Periods` in Domain; `Bill` gets legal name, customer state, place of supply, supply type
+  (`StampGst`, called on customer change and at finalize); `MenuItem.HsnSac`. Migration `Phase15_Gst` (also grants
+  `gst.view` to Admin and Manager, `period.close` to Admin). Setting `GstB2clThreshold`.
+- Application: `Features/Gst` (`GstDataLoader` reads a month once; `GstReports` builds GSTR-1, 3B, HSN, validation and the
+  portal JSON; `GstExports` builds Excel/PDF and the pack), `Features/PeriodClosing` (`ClosePeriodCommand` = plain request
+  like Day End: `CloseGstPeriodCommand` transaction + pack + `RecordPeriodPackCommand`; `ReopenPeriodCommand`; status
+  and pre-check queries). `IBusinessDayLock` gained `CheckPeriodAsync` / `LockMonthsExclusiveAsync`; `EnterAsync` (the one
+  pipeline behaviour) now also refuses with `PERIOD_CLOSED`; `ReopenDay` checks it too. `IDayEndPackWriter.WritePeriodAsync`.
+- Api: `GstController`, `PeriodsController`; `PERIOD_CLOSED` → 409. Authorization matrix: 9 added lines, nothing else
+  changed: `api/gst/gstr1`, `/gstr1/json`, `/gstr3b`, `/hsn-summary`, `/validation` and `api/periods` (GET) are `AM---`;
+  `api/periods/precheck` (GET), `/close` (POST), `/reopen` (POST) are `A----`.
+- Desktop: customer panel (GSTIN checked as typed, legal name, state, place of supply), item HSN/SAC field, **Tax Returns**
+  hub and **Period Close** screens (registered, permission-gated); `ScreenRenderingTests` now renders 67 screens, no
+  binding errors.
+- Tests added: 35 domain, 18 application (`Application.Tests/Gst`), 2 API, 4 desktop (+ 2 rendering screens). Full run: Domain 350,
+  Api 172, Desktop 211 (1 skipped, pre-existing) all green; Application 206 green when run alone before the last refactor.
+
+**Decisions and deviations**
+
+- **B2CL threshold is ₹1,00,000, not ₹2,50,000.** The limit for inter-state invoices to unregistered buyers was ₹2.5 lakh
+  until 31 July 2024 and became ₹1 lakh from 1 August 2024 (Notification 12/2024-CT). It is the setting
+  `GstB2clThreshold` (default 100000); "above" is strict (an invoice of exactly the limit is B2CS). Please confirm
+  against the current GSTR-1 instructions.
+- Place of supply defaults to the restaurant's own state (restaurant service is supplied where it is performed), so
+  IGST / B2CL only appear when the cashier picks another state. The customer state is informational (a mismatch with
+  the GSTIN state is a validation warning).
+- Sales are dated by the business day of `SettledAt` (as the sales reports and the Phase 13 lock do), refunds by the day of
+  the refund. An invoice finalized in one month and paid in the next is therefore reported in the second.
+- JSON choices (offline tool v3 field names): `fp` MMYYYY, `gt`/`cur_gt` exported as 0 (the POS does not know the
+  aggregate turnover), `version` `GST3.1.6`, `hash` `"hash"`, item `num` = rate × 100 + 1, only the tax heads that apply
+  (`iamt` or `camt`+`samt`, plus `csamt` 0), `rchrg` N and `inv_typ` R for every invoice, HSN rows with `uqc` NA and `rt`,
+  credit notes without the original invoice number (the v3 `cdnr` has none), empty sections omitted, `doc_issue` types 1
+  (invoices) and 5 (credit notes). Not validated in the real offline tool (no portal tool here).
+- The close writes no backup of its own (Day End already took one per day); the pack is the evidence. No hub events.
+- `Tax Returns` (not "GST Returns") is the sidebar title so the command palette keeps ranking Restaurant Settings first
+  for "gst" (existing ranking test unchanged).
+- HSN totals are gross of credit notes; HSN splits are computed per code/rate group and may differ from the invoice
+  split by rounding paise.
+
+**Not done / deferred**
+
+- GSP / e-invoice IRN upload; amendments, reverse charge, exports/SEZ, GSTR-2B and ITC tables of the 3B.
+- Manual demo (§ 11) and validating the JSON in the GST offline tool.
+- Per-month event to refresh open terminals when a period closes (the next command reports `PERIOD_CLOSED`).

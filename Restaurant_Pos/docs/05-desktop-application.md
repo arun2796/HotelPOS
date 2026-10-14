@@ -179,6 +179,9 @@ Data grids with search, add/edit side panel, activate/deactivate instead of dele
 | Day End (13, `dayend.run`) | Wizard: 1 blocking items with **Open** and **Override…** (reason), 2 totals, payments, shifts and variances, non-till collections (add), 3 run (backup → lock → pack), 4 done (backup file, pack folder and files) |
 | Day End History (13, `dayend.run`) | Closed days with totals, overrides, backup and pack; **Reopen day…** (reason + approval) |
 | Discounts & Payments (13) | Hub tabs: Discounts & payments, **Denominations** (notes and coins; admins edit) |
+| Tax Returns (15, `gst.view`) | Month + year pickers; tabs GSTR-1 (section list: B2B, B2CL, B2CS, credit notes, HSN, documents), GSTR-3B, HSN summary, Validation; banner when validation has errors; **Export JSON** (portal file), **Export Excel**, **Save PDF** for the active tab |
+| Period Close (15, `period.close`, admins) | Financial year's months and the year with status; pre-check list of the selected period; **Close period…** (enabled only when every check passes) and **Reopen period…** (reason) |
+| Bill screen, customer panel (15) | GSTIN checked as typed (hint shows the state), legal name, customer state, place of supply; item editor has an optional HSN/SAC |
 
 Since Phase 9:
 - The sidebar follows the user's **permissions** (`ModuleRegistry.ForUser`); with the default sets it matches the

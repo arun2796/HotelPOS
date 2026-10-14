@@ -104,6 +104,19 @@ Expected cash of a shift = float + cash payments − cash refunds + pay-ins − 
 A closed business day (`BusinessDayCloses.Status = Closed`) refuses bill and payment commands with `DAY_CLOSED`
 (`IBusinessDayLock`, PostgreSQL advisory lock per day: shared for bill commands, exclusive for Day End close/reopen).
 
+### 2.8 GST and period close (Phase 15)
+
+| Entity | Notes |
+|---|---|
+| `Bills` (added) | `CustomerLegalName`, `CustomerStateCode` (2), `PlaceOfSupply` (2, defaults to the restaurant GSTIN state), `SupplyType` (B2B/B2CL/B2CS, set at finalize); `CustomerGstin` is validated (format, state, check character: `Gstin` in Contracts) |
+| `MenuItems.HsnSac` | Optional 4-8 digit override of the `DefaultSacCode` setting (996331) |
+| `PeriodCloses` | `Id`, `Kind` (Month/Year), `PeriodStart`, `PeriodEnd`, `Status` (Closed/Reopened), `ClosedAt/By`, `Checks` (jsonb), `PackFolder?`, `ReopenedAt/By?`, `ReopenReason?`, `RowVersion`; unique (`Kind`, `PeriodStart`). Month key `yyyy-MM`; year = financial year (Apr-Mar) keyed by its first year |
+
+Setting `GstB2clThreshold` (default 100000). Returns are computed from settled bills (no stored return tables):
+period = business day of `SettledAt`, credit notes = refunds by refund date. A closed month or year refuses bill and
+payment commands dated in it with `PERIOD_CLOSED` (same `IBusinessDayLock`: shared advisory lock per month,
+exclusive for close/reopen).
+
 ## 3. Enums (defined in `HotelPOS.Contracts.Enums`)
 
 All enums are numbered from 1, so the default value 0 is never a valid state (validators reject it).
@@ -201,6 +214,7 @@ Bill.PaymentStatus: Pending -> PartiallyPaid -> Paid -> Refunded (full refund)
 CashShift.Status:  Open -> Closed | HandedOver (next shift opens with the counted cash) | ForceClosed (manager)
                    Closed/ForceClosed -> Open (reopen, manager + approval; the close count is cleared)
 BusinessDayClose:  (none) -> Closed -> Reopened -> Closed (Day End again)
+PeriodClose:       (none) -> Closed -> Reopened -> Closed (month or year; reopening a month inside a closed year needs the year reopened first)
 ```
 
 ## 5. Numbering

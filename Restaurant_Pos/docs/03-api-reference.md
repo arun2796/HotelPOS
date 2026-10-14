@@ -52,6 +52,7 @@ endpoint is `tests/HotelPOS.Api.Tests/authorization-matrix.txt`; `AuthorizationM
 | 409 | `SHIFT_REQUIRED` | Cash payment or cash refund on a terminal without an open cash shift (Phase 13) |
 | 409 | `SHIFT_ALREADY_OPEN` | The terminal, or the cashier elsewhere, already has an open shift |
 | 409 | `DAY_CLOSED` | The business day of the bill or payment (or of the shift/collection) is closed by Day End |
+| 409 | `PERIOD_CLOSED` | The bill or payment is dated in a GST month or financial year closed by an administrator (Phase 15); record the correction in the open period or reopen the period |
 | 409 | `VARIANCE_APPROVAL_REQUIRED` | Shift count differs from the expected cash by more than `CashVarianceApprovalLimit`; send `approval` |
 | 422 | `BUSINESS_RULE` | Other domain rule (message explains) |
 | 429 | `RATE_LIMITED` | Too many attempts on `/api/auth/login` or `/api/auth/approval` (per socket IP and per username; `Security:RateLimit` `MaxPerIp` 10, `MaxPerUser` 5, `WindowSeconds` 60); `Retry-After` header |
@@ -231,6 +232,25 @@ business day, or the day the bill was settled in, is closed. Days in routes are 
 
 New approval action types for `POST /api/auth/approval`: `cash-variance`, `pay-out`, `reopen-shift` (approver holds
 `shift.manage`) and `reopen-day` (`dayend.run`).
+
+### 3.12 GST returns and period close (Phase 15)
+
+`period` is `yyyy-MM` (default: the previous month). `format=xlsx|pdf` downloads the figures on the letterhead.
+
+| Method | Route | Permission | Notes |
+|---|---|---|---|
+| GET | `/api/gst/gstr1?period=` | `gst.view` (A, M) | `Gstr1Dto`: B2B, B2CL, B2CS, credit notes (cdnr/cdnur), HSN, documents issued, totals, issue counts |
+| GET | `/api/gst/gstr1/json?period=` | `gst.view` | Portal offline-tool JSON file `GSTR1_<gstin>_<MMYYYY>.json` (422 without a valid restaurant GSTIN) |
+| GET | `/api/gst/gstr3b?period=` | `gst.view` | Table 3.1(a), 3.1(c), 3.2, net of credit notes |
+| GET | `/api/gst/hsn-summary?period=` | `gst.view` | HSN/SAC by code and rate |
+| GET | `/api/gst/validation?period=` | `gst.view` | Errors and warnings (`canFile`) |
+| GET | `/api/periods?financialYear=` | `gst.view` | 12 months + the year with status |
+| GET | `/api/periods/precheck?kind=&period=` | `period.close` (A) | Checks (period ended, days closed, no open bill, no GST error / months closed) |
+| POST | `/api/periods/close` | `period.close` | `{kind: Month\|Year, period}`: checks, lock, then the pack (GSTR-1 JSON, Excel, PDF) beside the backups |
+| POST | `/api/periods/reopen` | `period.close` | `{kind, period, reason}`; audited |
+
+`PUT /api/billing/{id}/customer` also takes `legalName`, `stateCode`, `placeOfSupply` and validates the GSTIN;
+`BillDetailDto` returns them with `supplyType`. Menu item requests carry an optional `hsnSac`.
 
 ## 4. Idempotency protocol (client side)
 
