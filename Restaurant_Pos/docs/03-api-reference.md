@@ -196,7 +196,8 @@ All `GET`, roles A/M, params `from`, `to` (business days, default today, at most
 | GET | `/api/admin/devices` | A | 9 |
 | PUT | `/api/admin/devices/{id}` ; POST `.../deactivate` / `activate` | A | 9 |
 | POST | `/api/admin/backup` ; GET `/api/admin/backups` | A | 10 |
-| GET | `/api/admin/logs?lines=500` | A | 10 |
+| GET | `/api/admin/logs?lines=500&level=WRN` | A (`server.manage`) | 10 — newest entries of the newest `api-*.log` (1–2000; stack traces stay with their entry) |
+| POST | `/api/admin/notice` `{level: Info/Warning/Critical, message}` | A (`server.manage`) | 10 — broadcast `ServerNotice` to every terminal; audited `Server.NoticeSent` |
 
 ## 4. Idempotency protocol (client side)
 

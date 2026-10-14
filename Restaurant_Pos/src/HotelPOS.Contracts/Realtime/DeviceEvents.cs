@@ -13,5 +13,7 @@ public sealed record ServerNoticeEvent
 {
     public string Message { get; init; } = string.Empty;
     public string? Code { get; init; }
+    public Admin.NoticeLevel Level { get; init; } = Admin.NoticeLevel.Info;
+    public string? SentBy { get; init; }
 }
 

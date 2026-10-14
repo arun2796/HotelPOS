@@ -33,7 +33,7 @@ PostgreSQL is the single source of truth.
 | Phase 7 – Printing                 | Done         |
 | Phase 8 – Reports & Dashboard      | Done         |
 | Phase 9 – Security & Audit         | In progress  |
-| Phase 10 – Production Readiness    | Not started  |
+| Phase 10 – Production Readiness    | In progress  |
 
 Update this table (and `docs/phases/README.md`) when a phase starts or finishes.
 

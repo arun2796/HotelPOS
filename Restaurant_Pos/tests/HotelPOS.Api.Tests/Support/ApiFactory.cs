@@ -42,6 +42,7 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             ["Media:RootPath"] = MediaPath,
             ["Security:RateLimit:MaxPerIp"] = "100",
             ["Security:RateLimit:MaxPerUser"] = "100",
+            ["Monitoring:MinFreeDiskMb"] = "0",
         }));
     }
 

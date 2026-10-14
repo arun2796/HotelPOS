@@ -67,7 +67,11 @@ public static class ApiServiceRegistration
         services.AddSingleton<LoginRateLimiter>();
         services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
 
-        services.AddHealthChecks().AddDbContextCheck<AppDbContext>("database");
+        services.AddOptions<MonitoringOptions>().Bind(configuration.GetSection(MonitoringOptions.SectionName));
+        services.AddSingleton<LogTailReader>();
+        services.AddHealthChecks()
+            .AddDbContextCheck<AppDbContext>("database")
+            .AddCheck<DiskSpaceHealthCheck>("disk");
 
         if (environment.IsDevelopment())
         {
@@ -91,6 +95,10 @@ public static class ApiServiceRegistration
             {
                 Status = report.Status.ToString(),
                 Checks = report.Entries.ToDictionary(e => e.Key, e => e.Value.Status.ToString()),
+                Problems = report.Entries
+                    .Where(e => e.Value.Status != HealthStatus.Healthy)
+                    // Descriptions only: /health is anonymous and exception messages can carry connection details.
+                    .ToDictionary(e => e.Key, e => e.Value.Description ?? e.Value.Status.ToString()),
                 ServerTimeUtc = DateTime.UtcNow,
                 ApiVersion,
             },

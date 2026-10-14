@@ -1,6 +1,6 @@
 # Phase 10 — Production Readiness
 
-Status: Not started · Depends on: all previous phases
+Status: In progress (started 2026-10-14; Phase 9 open items in its § 15) · Depends on: all previous phases
 
 ## 1. Goal
 
@@ -139,4 +139,18 @@ prefer the table for the admin list and audit (`Backup.Completed/Failed`). Migra
 
 ## 14. Changes during implementation
 
-(fill in while building)
+**10.1 Hosting and observability (2026-10-14)**
+
+- `UseWindowsService` (service name "HotelPOS API"); as a service the content root is the exe folder.
+- Startup checks in `DatabaseInitializer`: waits up to `Database:StartupWaitSeconds` (default 60, template 120) for
+  PostgreSQL because at boot its service may start after ours; a missing database is fine (the migration creates
+  it); pending migrations with `AutoMigrate` off and missing core settings stop the server. A failed check logs one
+  critical line naming database, host and port (never the password) and exits with code 1 so the service recovery
+  restarts it.
+- `/health` gained a `disk` check (Degraded below `Monitoring:MinFreeDiskMb`, default 1024) over the log, media
+  and (10.2) backup folders, and a `problems` map with the reason; exception text is not exposed because `/health`
+  is anonymous. Low disk is also logged at start-up.
+- `GET /api/admin/logs` and `POST /api/admin/notice` behind a new permission `server.manage` (Admin only by
+  default). `ServerNoticeEvent` gained `level` and `sentBy`.
+- `appsettings.Production.template.json`: the installer copies it to `appsettings.Production.json` (gitignored,
+  it holds the connection string and JWT key) with logs and media under `C:\ProgramData\HotelPOS\Api`.

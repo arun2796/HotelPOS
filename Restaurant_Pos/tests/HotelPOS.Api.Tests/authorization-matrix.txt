@@ -7,6 +7,8 @@ A----  GET    api/admin/devices/{id:guid}
 A----  PUT    api/admin/devices/{id:guid}
 A----  POST   api/admin/devices/{id:guid}/activate
 A----  POST   api/admin/devices/{id:guid}/deactivate
+A----  GET    api/admin/logs
+A----  POST   api/admin/notice
 A----  GET    api/admin/settings
 A----  PUT    api/admin/settings
 AMWKC  POST   api/auth/change-password

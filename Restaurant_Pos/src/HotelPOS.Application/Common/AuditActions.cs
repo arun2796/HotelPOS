@@ -30,6 +30,8 @@ public static class AuditActions
 
     public const string AuditPurged = "Audit.Purged";
 
+    public const string ServerNoticeSent = "Server.NoticeSent";
+
     public const string SectionCreated = "Section.Created";
     public const string SectionUpdated = "Section.Updated";
     public const string SectionActivated = "Section.Activated";

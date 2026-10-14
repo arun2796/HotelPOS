@@ -77,6 +77,25 @@ public sealed class AuditLogQueryValidator : AbstractValidator<AuditLogQuery>
     }
 }
 
+public sealed class ServerNoticeRequestValidator : AbstractValidator<ServerNoticeRequest>
+{
+    public ServerNoticeRequestValidator()
+    {
+        RuleFor(x => x.Level).IsInEnum();
+        RuleFor(x => x.Message).NotEmpty().MaximumLength(ServerNoticeRequest.MaxMessageLength);
+    }
+}
+
+public sealed class LogTailQueryValidator : AbstractValidator<LogTailQuery>
+{
+    public LogTailQueryValidator()
+    {
+        RuleFor(x => x.Lines).InclusiveBetween(1, LogTailQuery.MaxLines);
+        RuleFor(x => x.Level).Must(l => l is null or "VRB" or "DBG" or "INF" or "WRN" or "ERR" or "FTL")
+            .WithMessage("Level must be one of VRB, DBG, INF, WRN, ERR, FTL.");
+    }
+}
+
 public sealed class UpdateRolePermissionsRequestValidator : AbstractValidator<UpdateRolePermissionsRequest>
 {
     public UpdateRolePermissionsRequestValidator()

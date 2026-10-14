@@ -8,6 +8,7 @@ public static class Permissions
     public const string DevicesManage = "devices.manage";
     public const string AuditView = "audit.view";
     public const string BackupManage = "backup.manage";
+    public const string ServerManage = "server.manage";
 
     public const string TablesView = "tables.view";
     public const string TablesOperate = "tables.operate";
@@ -32,7 +33,7 @@ public static class Permissions
 
     public static IReadOnlyList<string> All { get; } = new[]
     {
-        UsersManage, RolesManage, SettingsManage, DevicesManage, AuditView, BackupManage,
+        UsersManage, RolesManage, SettingsManage, DevicesManage, AuditView, BackupManage, ServerManage,
         TablesView, TablesOperate, TablesManage,
         MenuView, MenuManage, MenuAvailability,
         OrdersCreate, OrdersEditAny, OrdersCancelAny,

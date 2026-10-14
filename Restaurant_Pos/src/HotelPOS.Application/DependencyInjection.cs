@@ -1,4 +1,5 @@
 using FluentValidation;
+using HotelPOS.Application.Administration;
 using HotelPOS.Application.Auth;
 using HotelPOS.Application.Billing;
 using HotelPOS.Application.Devices;
@@ -40,6 +41,7 @@ public static class DependencyInjection
         services.AddScoped<IPrintDocumentService, PrintDocumentService>();
         services.AddScoped<IBusinessDays, BusinessDays>();
         services.AddScoped<IReportService, ReportService>();
+        services.AddScoped<IServerNoticeService, ServerNoticeService>();
         services.AddScoped<MenuChanges>();
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IStationService, StationService>();
@@ -54,7 +56,7 @@ public static class DependencyInjection
         services.AddScoped<HotelPOS.Application.Security.IApprovalTokenService, HotelPOS.Application.Security.ApprovalTokenService>();
         services.AddScoped<HotelPOS.Application.Security.ISessionService, HotelPOS.Application.Security.SessionService>();
         services.AddScoped<IDeviceAdminService, DeviceAdminService>();
-        services.AddScoped<HotelPOS.Application.Administration.IAuditQueryService, HotelPOS.Application.Administration.AuditQueryService>();
+        services.AddScoped<IAuditQueryService, AuditQueryService>();
 
         return services;
     }

@@ -8,19 +8,24 @@ using HotelPOS.Infrastructure;
 using HotelPOS.Infrastructure.Media;
 using HotelPOS.Infrastructure.Persistence;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting.WindowsServices;
 using Microsoft.Extensions.Options;
 using Serilog;
 using Serilog.Events;
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args,
+    // As a Windows Service the working directory is System32; content (appsettings, media) lives next to the exe.
+    ContentRootPath = WindowsServiceHelpers.IsWindowsService() ? AppContext.BaseDirectory : default,
+});
+
+// No-op when started from a console or by the tests; under the Service Control Manager it reports start/stop.
+builder.Host.UseWindowsService(options => options.ServiceName = "HotelPOS API");
 
 builder.Host.UseSerilog((context, services, logger) =>
 {
-    var logDirectory = context.Configuration["Logging:Directory"];
-    if (string.IsNullOrWhiteSpace(logDirectory))
-    {
-        logDirectory = Path.Combine(context.HostingEnvironment.ContentRootPath, "logs");
-    }
+    var logDirectory = ServerPaths.LogDirectory(context.Configuration, context.HostingEnvironment);
 
     const string template =
         "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {CorrelationId} {Actor} {SourceContext}: {Message:lj}{NewLine}{Exception}";
@@ -38,7 +43,10 @@ builder.Host.UseSerilog((context, services, logger) =>
             fileSizeLimitBytes: 50 * 1024 * 1024,
             rollOnFileSizeLimit: true,
             outputTemplate: template);
-});
+},
+// The host owns its logger instead of the static Log.Logger, so hosts sharing one process (the API tests) keep
+// their logs apart; disposing the app flushes it.
+preserveStaticLogger: true);
 
 builder.Services
     .AddApplication()
@@ -103,10 +111,22 @@ app.MapControllers();
 app.MapHub<RestaurantHub>(HubRoutes.Restaurant);
 app.MapHealthChecks("/health", ApiServiceRegistration.HealthCheckOptions).AllowAnonymous();
 
-await app.Services.InitializeDatabaseAsync();
+try
+{
+    await app.Services.InitializeDatabaseAsync();
+}
+catch (StartupCheckException ex)
+{
+    // A non-zero exit lets the Windows service recovery settings restart the API once the cause is fixed.
+    app.Logger.LogCritical(ex, "HotelPOS API cannot start: {Reason}", ex.Message);
+    await app.DisposeAsync();
+    return 1;
+}
 
+StartupDiagnostics.WarnAboutLowDiskSpace(app.Services, app.Logger);
 app.Logger.LogInformation("HotelPOS API {Version} starting ({Environment})", ApiServiceRegistration.ApiVersion, app.Environment.EnvironmentName);
 await app.RunAsync();
+return 0;
 
 public partial class Program
 {
