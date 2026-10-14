@@ -14,7 +14,7 @@
       <RowDefinition Height="*" />
     </Grid.RowDefinitions>
 
-    <ListBox Style="{StaticResource ChipList}" ItemsSource="{Binding Tabs}" SelectedIndex="{Binding SelectedTab}" Margin="0,0,0,8" />
+    <ListBox Style="{StaticResource Hub.Tabs}" ItemsSource="{Binding Tabs}" SelectedIndex="{Binding SelectedTab}" AutomationProperties.Name="Sections and tables" />
 
     <admin:TablesView Grid.Row="1" DataContext="{Binding Tables}"
                       Visibility="{Binding DataContext.IsTablesTab, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}" />

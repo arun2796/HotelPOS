@@ -177,3 +177,23 @@ skipped without permission, keyboard wrap), `NoticeCenterTests`; the rendering t
 and adds screenshots 48–50 (palette, notices, collapsed sidebar). The rendering harness now uses explicit shutdown,
 fixing an intermittent "Application object is being shut down" when the first test window closed. Desktop tests:
 186 passed, 1 skipped.
+
+### 11.3 Building blocks (2026-10-14)
+
+Built in `Controls/` with templates in `Themes/Controls.xaml` (merged after `DesignSystem.xaml`). Each block is a
+templated control with explicit properties rather than a view bound by naming convention, so every screen binds only
+what it has and the rendering test keeps catching binding errors:
+- `EmptyState` (icon, title, message, optional action): billing queue, my orders, table map, report with no rows.
+- `KpiTile` (a button, so a tile can open its screen) and `KpiStrip` (equal columns): dashboard.
+- `BusyOverlay` (fades in after 250 ms so quick loads never flicker): report grid, audit log grid.
+- `PageHeader` (title, description, actions): dashboard, reports.
+- `ReportFilterBar` (period preset with readable labels, custom from/to enabled only for "Custom", extra filters,
+  optional search, Run, the screen's actions at the right; wraps on narrow pages): reports, audit log.
+- Hub tabs (`Hub.Tabs` / `Hub.Tab`: text tabs with an accent underline): Menu, Sections & Tables. Billing setup and
+  Restaurant Settings have no tabs today, so they stay single pages.
+
+Fixed: report grids and totals now use Indian grouping and dd-MM-yyyy (`ReportsViewModel.Display`) with numeric
+columns right-aligned and tabular figures; the CSV export keeps the invariant machine format. The Users command bar
+wraps instead of clipping. `ThemeService` changes application resources only on the UI thread: view-model tests that
+save settings ran beside the rendering test and swapped its dictionaries mid-render, which made the full suite hang
+intermittently. Desktop tests: 186 passed, 1 skipped (three full runs).

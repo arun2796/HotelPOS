@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Reports;
+using HotelPOS.Desktop.Modules.Billing;
 using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Navigation;
@@ -255,7 +256,8 @@ public sealed partial class ReportsViewModel : ObservableObject, INavigationAwar
         return true;
     }
 
-    // Every column is text so one grid can show any report; totals follow the same schema as the CSV.
+    // Every column is text so one grid can show any report; columns and totals follow the same schema as the CSV, but
+    // values are formatted for reading (Indian grouping, dd-MM-yyyy) while the CSV stays machine-readable.
     private DataTable BuildTable<T>(IReadOnlyList<T> rows)
     {
         var columns = ReportSchema.Describe<T>();
@@ -267,20 +269,38 @@ public sealed partial class ReportsViewModel : ObservableObject, INavigationAwar
 
         foreach (var row in rows)
         {
-            table.Rows.Add(columns.Select(c => (object)ReportSchema.Format(c.Property.GetValue(row))).ToArray());
+            table.Rows.Add(columns.Select(c => (object)Display(c.Property.GetValue(row))).ToArray());
         }
 
+        NumericColumns = columns.Where(c => c.IsNumeric).Select(c => c.Header).ToHashSet();
         Totals.Clear();
         if (rows.Count > 0)
         {
             foreach (var column in columns.Where(c => c.HasTotal))
             {
-                Totals.Add($"{column.Header}: {ReportSchema.Format(TotalOf(rows, column))}");
+                Totals.Add($"{column.Header}: {Display(TotalOf(rows, column))}");
             }
         }
 
+        OnPropertyChanged(nameof(HasNoRows));
         return table;
     }
+
+    // Headers of the numeric columns, which the grid right-aligns.
+    public IReadOnlySet<string> NumericColumns { get; private set; } = new HashSet<string>();
+
+    public bool HasNoRows => Table is { Rows.Count: 0 };
+
+    public static string Display(object? value) => value switch
+    {
+        null => string.Empty,
+        decimal d => Money.Format(d),
+        double d => d.ToString("N1", CultureInfo.CurrentCulture),
+        int or long => Convert.ToInt64(value, CultureInfo.InvariantCulture).ToString("N0", CultureInfo.CurrentCulture),
+        DateTime t => (t.Kind == DateTimeKind.Utc ? t.ToLocalTime() : t).ToString("dd-MM-yyyy HH:mm", CultureInfo.InvariantCulture),
+        DateOnly d => d.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture),
+        _ => ReportSchema.Format(value),
+    };
 
     private static object TotalOf<T>(IReadOnlyList<T> rows, ReportColumn column)
     {

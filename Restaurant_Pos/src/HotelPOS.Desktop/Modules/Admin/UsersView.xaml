@@ -93,21 +93,21 @@
                    Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}" />
     </Grid>
 
+    <!-- Actions wrap onto a second line when the editor panel narrows the page, instead of being cut off. -->
     <Grid Grid.Row="3" Margin="0,12,0,0">
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="Auto" />
         <ColumnDefinition Width="*" />
         <ColumnDefinition Width="Auto" />
       </Grid.ColumnDefinitions>
-      <StackPanel Orientation="Horizontal">
-        <Button Content="Edit" Command="{Binding EditCommand}" MinWidth="90" />
-        <Button Content="Reset password" Command="{Binding ResetPasswordCommand}" Margin="8,0,0,0" />
-        <Button Content="{Binding ToggleActiveText}" Command="{Binding ToggleActiveCommand}" Margin="8,0,0,0" MinWidth="100" />
-        <Button Content="Unlock" Command="{Binding UnlockCommand}" Margin="8,0,0,0" MinWidth="80" />
-        <Button Content="Sessions" Command="{Binding ViewSessionsCommand}" Margin="8,0,0,0" MinWidth="90" />
-        <Button Content="Log out everywhere" Command="{Binding LogoutAllCommand}" Margin="8,0,0,0" MinWidth="140" />
-      </StackPanel>
-      <StackPanel Grid.Column="2" Orientation="Horizontal">
+      <WrapPanel Margin="0,0,0,-8">
+        <Button Content="Edit" Command="{Binding EditCommand}" MinWidth="90" Margin="0,0,8,8" />
+        <Button Content="Reset password" Command="{Binding ResetPasswordCommand}" Margin="0,0,8,8" />
+        <Button Content="{Binding ToggleActiveText}" Command="{Binding ToggleActiveCommand}" Margin="0,0,8,8" MinWidth="100" />
+        <Button Content="Unlock" Command="{Binding UnlockCommand}" Margin="0,0,8,8" MinWidth="80" />
+        <Button Content="Sessions" Command="{Binding ViewSessionsCommand}" Margin="0,0,8,8" MinWidth="90" />
+        <Button Content="Log out everywhere" Command="{Binding LogoutAllCommand}" Margin="0,0,8,8" MinWidth="140" />
+      </WrapPanel>
+      <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Bottom">
         <Button Command="{Binding PreviousPageCommand}" ToolTip="Previous page">
           <TextBlock Text="&#xE76B;" Style="{StaticResource Text.Icon}" />
         </Button>

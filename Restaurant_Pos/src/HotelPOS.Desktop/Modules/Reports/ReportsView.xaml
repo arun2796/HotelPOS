@@ -4,21 +4,22 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:reports="clr-namespace:HotelPOS.Desktop.Modules.Reports"
+             xmlns:controls="clr-namespace:HotelPOS.Desktop.Controls"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance reports:ReportsViewModel}"
              d:DesignWidth="1100" d:DesignHeight="720">
 
   <Grid Margin="24">
     <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="250" />
+      <ColumnDefinition Width="240" />
       <ColumnDefinition Width="*" />
     </Grid.ColumnDefinitions>
 
     <Border Style="{StaticResource Card}" Padding="8" Margin="0,0,20,0">
-      <ListBox ItemsSource="{Binding Reports}" SelectedItem="{Binding SelectedReport}" BorderThickness="0" Background="Transparent">
+      <ListBox ItemsSource="{Binding Reports}" SelectedItem="{Binding SelectedReport}" AutomationProperties.Name="Reports">
         <ListBox.ItemTemplate>
           <DataTemplate DataType="{x:Type reports:ReportDefinition}">
-            <TextBlock Text="{Binding Title}" Style="{StaticResource Text.Body}" Padding="8,10" />
+            <TextBlock Text="{Binding Title}" Style="{StaticResource Text.Body}" />
           </DataTemplate>
         </ListBox.ItemTemplate>
       </ListBox>
@@ -33,44 +34,40 @@
         <RowDefinition Height="Auto" />
       </Grid.RowDefinitions>
 
-      <StackPanel Margin="0,0,0,12">
-        <TextBlock Text="{Binding SelectedReport.Title}" Style="{StaticResource Text.Title}" />
-        <TextBlock Text="{Binding Description}" Style="{StaticResource Text.Caption}" />
-      </StackPanel>
-
-      <Grid Grid.Row="1" Margin="0,0,0,12">
-        <StackPanel Orientation="Horizontal" Visibility="{Binding IsRange, Converter={StaticResource BoolToVisibility}}">
-          <ComboBox ItemsSource="{Binding Presets}" SelectedItem="{Binding Preset}" Width="150" />
-          <StackPanel Orientation="Horizontal" IsEnabled="{Binding IsCustom}" Margin="12,0,0,0">
-            <DatePicker SelectedDate="{Binding FromDate}" Width="150" VerticalAlignment="Center" />
-            <TextBlock Text="to" Style="{StaticResource Text.Body}" VerticalAlignment="Center" Margin="8,0" />
-            <DatePicker SelectedDate="{Binding ToDate}" Width="150" VerticalAlignment="Center" />
-            <Button Content="Run" Command="{Binding RunCommand}" Style="{StaticResource Button.Primary}" Margin="12,0,0,0" MinWidth="90" />
-          </StackPanel>
-        </StackPanel>
-        <StackPanel Orientation="Horizontal" Visibility="{Binding IsMonthly, Converter={StaticResource BoolToVisibility}}">
-          <TextBlock Text="Year" Style="{StaticResource Text.Body}" VerticalAlignment="Center" Margin="0,0,8,0" />
-          <ComboBox ItemsSource="{Binding Years}" SelectedItem="{Binding Year}" Width="110" />
-        </StackPanel>
-        <Button Command="{Binding ExportCsvCommand}" HorizontalAlignment="Right" MinWidth="150">
+      <controls:PageHeader Title="{Binding SelectedReport.Title}" Description="{Binding Description}">
+        <Button Command="{Binding ExportCsvCommand}" MinWidth="140">
           <StackPanel Orientation="Horizontal">
             <TextBlock Text="&#xE74E;" Style="{StaticResource Text.Icon}" FontSize="14" />
-            <TextBlock Text="EXPORT CSV" Margin="8,0,0,0" />
+            <TextBlock Text="Export CSV" Margin="8,0,0,0" />
           </StackPanel>
         </Button>
-      </Grid>
+      </controls:PageHeader>
+
+      <controls:ReportFilterBar Grid.Row="1" Presets="{Binding Presets}" SelectedPreset="{Binding Preset}"
+                                FromDate="{Binding FromDate}" ToDate="{Binding ToDate}" IsCustomRange="{Binding IsCustom}"
+                                ShowRange="{Binding IsRange}" RunCommand="{Binding RunCommand}">
+        <controls:ReportFilterBar.Filters>
+          <StackPanel Orientation="Horizontal" Visibility="{Binding IsMonthly, Converter={StaticResource BoolToVisibility}}">
+            <TextBlock Text="Year" Style="{StaticResource Text.Label}" VerticalAlignment="Center" Margin="0,0,8,0" />
+            <ComboBox ItemsSource="{Binding Years}" SelectedItem="{Binding Year}" Width="110" AutomationProperties.Name="Year" />
+          </StackPanel>
+        </controls:ReportFilterBar.Filters>
+      </controls:ReportFilterBar>
 
       <Border Grid.Row="2" Style="{StaticResource Banner.Error}" Margin="0,0,0,12"
               Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibility}}">
         <TextBlock Text="{Binding ErrorMessage}" Style="{StaticResource Text.Error}" />
       </Border>
 
-      <Grid Grid.Row="3">
-        <DataGrid ItemsSource="{Binding Table}" AutoGenerateColumns="True" IsReadOnly="True" CanUserAddRows="False"
-                  HorizontalScrollBarVisibility="Auto" />
-        <ProgressBar IsIndeterminate="True" Height="3" VerticalAlignment="Top"
-                     Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}" />
-      </Grid>
+      <controls:BusyOverlay Grid.Row="3" IsBusy="{Binding IsBusy}" Message="Running the report…">
+        <Grid>
+          <DataGrid ItemsSource="{Binding Table}" AutoGenerateColumns="True" IsReadOnly="True" CanUserAddRows="False"
+                    HorizontalScrollBarVisibility="Auto" AutoGeneratingColumn="OnAutoGeneratingColumn" />
+          <controls:EmptyState Glyph="&#xE9D2;" Title="No rows for this period"
+                               Message="Nothing was recorded in the selected period. Choose another period or report."
+                               Visibility="{Binding HasNoRows, Converter={StaticResource BoolToVisibility}}" />
+        </Grid>
+      </controls:BusyOverlay>
 
       <Grid Grid.Row="4" Margin="0,12,0,0">
         <TextBlock Text="{Binding SummaryText}" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
@@ -82,8 +79,9 @@
           </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
             <DataTemplate>
-              <Border Background="{DynamicResource Brush.SurfaceAlt}" CornerRadius="8" Padding="10,4" Margin="8,0,0,0">
-                <TextBlock Text="{Binding}" FontWeight="SemiBold" Foreground="{DynamicResource Brush.TextPrimary}" />
+              <Border Background="{DynamicResource Brush.PrimarySoft}" CornerRadius="8" Padding="12,6" Margin="8,0,0,0">
+                <TextBlock Text="{Binding}" FontWeight="SemiBold" Foreground="{DynamicResource Brush.TextPrimary}"
+                           Typography.NumeralAlignment="Tabular" />
               </Border>
             </DataTemplate>
           </ItemsControl.ItemTemplate>

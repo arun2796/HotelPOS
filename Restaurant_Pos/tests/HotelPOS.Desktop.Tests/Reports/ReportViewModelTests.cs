@@ -49,7 +49,9 @@ public sealed class ReportViewModelTests
         vm.Table!.Columns.Cast<System.Data.DataColumn>().Select(c => c.ColumnName).Should().StartWith(new[] { "Day", "Bills", "Covers" });
         vm.Table.Rows.Count.Should().Be(2);
         vm.Table.Rows[0]["Net sales"].Should().Be("950.00");
-        vm.Totals.Should().Contain("Bills: 5").And.Contain("Net sales: 1450.00");
+        vm.Totals.Should().Contain("Bills: 5").And.Contain("Net sales: 1,450.00");
+        vm.Table.Rows[0]["Day"].Should().Be("06-10-2026");
+        vm.NumericColumns.Should().Contain(new[] { "Bills", "Net sales" }).And.NotContain("Day");
         vm.SummaryText.Should().Contain("2 rows");
     }
 

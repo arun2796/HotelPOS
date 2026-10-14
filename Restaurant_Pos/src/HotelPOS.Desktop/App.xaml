@@ -27,6 +27,7 @@
         <ResourceDictionary Source="Themes/Tokens.Light.xaml" />
         <ResourceDictionary Source="Themes/Density.Compact.xaml" />
         <ResourceDictionary Source="Themes/DesignSystem.xaml" />
+        <ResourceDictionary Source="Themes/Controls.xaml" />
       </ResourceDictionary.MergedDictionaries>
 
       <DataTemplate DataType="{x:Type config:ConfigurationViewModel}">

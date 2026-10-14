@@ -60,8 +60,7 @@ public sealed class ThemeService
     public void Apply(string? theme)
     {
         Current = string.Equals(theme, Dark, StringComparison.OrdinalIgnoreCase) ? Dark : Light;
-        var app = Application.Current;
-        if (app is null)
+        if (OwnApplication() is not { } app)
         {
             return;
         }
@@ -83,11 +82,16 @@ public sealed class ThemeService
     public void ApplyDensity(string? density)
     {
         CurrentDensity = string.Equals(density, Comfort, StringComparison.OrdinalIgnoreCase) ? Comfort : Compact;
-        if (Application.Current is { } app)
+        if (OwnApplication() is { } app)
         {
             Swap(app, "Themes/Density.", $"Themes/Density.{CurrentDensity}.xaml");
         }
     }
+
+    // Application resources belong to the UI thread. A call from any other thread (view-model tests running beside
+    // the rendering test) only records the choice and leaves the resources alone.
+    private static Application? OwnApplication() =>
+        Application.Current is { } app && app.Dispatcher.CheckAccess() ? app : null;
 
     // Applies the title bar colour and Mica backdrop once the window has a handle.
     public void Attach(Window window)

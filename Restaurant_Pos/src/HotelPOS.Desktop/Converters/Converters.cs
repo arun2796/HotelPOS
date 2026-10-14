@@ -122,3 +122,17 @@ public sealed class ImageFileConverter : IValueConverter
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException();
 }
+
+// Enum or identifier to words for display: ThisWeek -> "This week", Today -> "Today".
+public sealed class HumanizeConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var text = value?.ToString() ?? string.Empty;
+        var words = System.Text.RegularExpressions.Regex.Replace(text, "(?<=[a-z0-9])([A-Z])", " $1");
+        return words.Length <= 1 ? words : words[..1] + words[1..].ToLower(culture);
+    }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}

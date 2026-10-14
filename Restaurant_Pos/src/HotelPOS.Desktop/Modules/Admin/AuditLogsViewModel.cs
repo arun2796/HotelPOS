@@ -62,6 +62,8 @@ public sealed partial class AuditLogsViewModel : ObservableObject, INavigationAw
     public const string CustomRange = "Custom";
     public const string AllTimeRange = "All Time";
 
+    public IReadOnlyList<string> DateRanges { get; } = new[] { TodayRange, LastSevenDaysRange, CustomRange, AllTimeRange };
+
     public bool IsCustomRange => DateRange == CustomRange;
 
     [ObservableProperty]

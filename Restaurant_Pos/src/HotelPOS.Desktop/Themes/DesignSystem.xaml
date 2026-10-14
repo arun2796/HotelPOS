@@ -46,6 +46,7 @@
   <conv:ActiveTextConverter x:Key="ActiveText" />
   <conv:BarHeightConverter x:Key="BarHeight" />
   <conv:ImageFileConverter x:Key="ImageFile" />
+  <conv:HumanizeConverter x:Key="Humanize" />
 
   <!-- Keyboard focus ring: shown only when focus arrives from the keyboard, never after a click or tap. -->
   <Style x:Key="Focus.Visual">
@@ -979,6 +980,15 @@
         </ControlTemplate>
       </Setter.Value>
     </Setter>
+  </Style>
+
+  <!-- Numeric columns: right-aligned header and cells with tabular figures (DataGridTextColumn ElementStyle). -->
+  <Style x:Key="DataGrid.NumberHeader" TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+    <Setter Property="HorizontalContentAlignment" Value="Right" />
+  </Style>
+  <Style x:Key="Text.GridNumber" TargetType="TextBlock">
+    <Setter Property="TextAlignment" Value="Right" />
+    <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
   </Style>
 
   <!-- Row hover and selection live on the row (style triggers win over the grid's row/alternating backgrounds). -->
