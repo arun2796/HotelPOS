@@ -4,13 +4,14 @@ using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HotelPOS.Contracts.Admin;
+using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Navigation;
 using HotelPOS.Desktop.Services.Ui;
 
 namespace HotelPOS.Desktop.Modules.Admin;
 
-public sealed partial class AuditLogsViewModel : ObservableObject, INavigationAware, IRefreshable
+public sealed partial class AuditLogsViewModel : ViewModelBase, INavigationAware, IRefreshable
 {
     private const int PageSize = 50;
 
@@ -80,12 +81,6 @@ public sealed partial class AuditLogsViewModel : ObservableObject, INavigationAw
     [NotifyPropertyChangedFor(nameof(PageText))]
     private int _totalCount;
 
-    [ObservableProperty]
-    private bool _isBusy;
-
-    [ObservableProperty]
-    private string? _errorMessage;
-
     public bool HasSelection => SelectedEntry is not null;
 
     public string PageText => $"Page {Page} of {Math.Max(1, TotalPages)} · {TotalCount} audit record(s)";
@@ -138,34 +133,24 @@ public sealed partial class AuditLogsViewModel : ObservableObject, INavigationAw
 
     private static string? Trimmed(string value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-    private async Task LoadAsync()
+    private Task LoadAsync() => ExecuteAsync(async () =>
     {
-        IsBusy = true;
-        ErrorMessage = null;
-        try
+        var page = await FetchAsync(_auditApi.QueryAsync(BuildQuery()));
+        if (page is null)
         {
-            var result = await _auditApi.QueryAsync(BuildQuery());
-            if (!result.Success || result.Data is null)
-            {
-                ErrorMessage = result.Message;
-                return;
-            }
-
-            AuditEntries.Clear();
-            foreach (var item in result.Data.Items)
-            {
-                AuditEntries.Add(item);
-            }
-
-            TotalCount = result.Data.TotalCount;
-            TotalPages = Math.Max(1, result.Data.TotalPages);
-            SelectedEntry = AuditEntries.FirstOrDefault();
+            return;
         }
-        finally
+
+        AuditEntries.Clear();
+        foreach (var item in page.Items)
         {
-            IsBusy = false;
+            AuditEntries.Add(item);
         }
-    }
+
+        TotalCount = page.TotalCount;
+        TotalPages = Math.Max(1, page.TotalPages);
+        SelectedEntry = AuditEntries.FirstOrDefault();
+    });
 
     [RelayCommand]
     private Task SearchAsync()
@@ -199,8 +184,7 @@ public sealed partial class AuditLogsViewModel : ObservableObject, INavigationAw
         var savePath = _filePicker.PickSavePath(defaultFileName, "CSV (*.csv)|*.csv");
         if (string.IsNullOrWhiteSpace(savePath)) return;
 
-        IsBusy = true;
-        try
+        await ExecuteAsync(async () =>
         {
             var result = await _auditApi.ExportCsvAsync(BuildQuery());
             if (result.Success && result.Data is not null)
@@ -212,11 +196,7 @@ public sealed partial class AuditLogsViewModel : ObservableObject, INavigationAw
             {
                 _notifications.Error(result.Message, result.CorrelationId);
             }
-        }
-        finally
-        {
-            IsBusy = false;
-        }
+        });
     }
 
     private static string FormatJson(string? json)

@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HotelPOS.Contracts.Devices;
 using HotelPOS.Contracts.Realtime;
+using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Navigation;
 using HotelPOS.Desktop.Services.Realtime;
@@ -12,7 +13,7 @@ namespace HotelPOS.Desktop.Modules.Admin;
 
 public sealed record StationOption(int? Id, string Name);
 
-public sealed partial class DevicesViewModel : ObservableObject, INavigationAware, IRefreshable
+public sealed partial class DevicesViewModel : ViewModelBase, INavigationAware, IRefreshable
 {
     private static readonly StationOption NoStation = new(null, "(no station: all tickets)");
 
@@ -51,12 +52,6 @@ public sealed partial class DevicesViewModel : ObservableObject, INavigationAwar
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(AssignStationCommand))]
     private StationOption? _selectedStation;
-
-    [ObservableProperty]
-    private bool _isBusy;
-
-    [ObservableProperty]
-    private string? _errorMessage;
 
     public bool HasSelection => SelectedDevice is not null;
 
@@ -128,33 +123,23 @@ public sealed partial class DevicesViewModel : ObservableObject, INavigationAwar
         }
     }
 
-    private async Task LoadAsync()
+    private Task LoadAsync() => ExecuteAsync(async () =>
     {
-        IsBusy = true;
-        ErrorMessage = null;
-        try
+        var devices = await FetchAsync(_devicesApi.ListAsync());
+        if (devices is null)
         {
-            var result = await _devicesApi.ListAsync();
-            if (!result.Success || result.Data is null)
-            {
-                ErrorMessage = result.Message;
-                return;
-            }
-
-            var previousId = SelectedDevice?.Id;
-            Devices.Clear();
-            foreach (var d in result.Data)
-            {
-                Devices.Add(d);
-            }
-
-            SelectedDevice = Devices.FirstOrDefault(d => d.Id == previousId) ?? Devices.FirstOrDefault();
+            return;
         }
-        finally
+
+        var previousId = SelectedDevice?.Id;
+        Devices.Clear();
+        foreach (var d in devices)
         {
-            IsBusy = false;
+            Devices.Add(d);
         }
-    }
+
+        SelectedDevice = Devices.FirstOrDefault(d => d.Id == previousId) ?? Devices.FirstOrDefault();
+    });
 
     [RelayCommand(CanExecute = nameof(HasSelection))]
     private async Task RenameAsync()
@@ -174,28 +159,20 @@ public sealed partial class DevicesViewModel : ObservableObject, INavigationAwar
             ? Task.CompletedTask
             : UpdateAsync(SelectedDevice.Name, SelectedStation.Id, $"'{SelectedDevice.Name}' now shows {SelectedStation.Name}.");
 
-    private async Task UpdateAsync(string name, int? stationId, string successMessage)
+    private Task UpdateAsync(string name, int? stationId, string successMessage) => ExecuteAsync(async () =>
     {
-        IsBusy = true;
-        try
+        // The update and (de)activate endpoints answer without data: success alone decides.
+        var result = await _devicesApi.UpdateAsync(SelectedDevice!.Id, new UpdateDeviceRequest { Name = name, StationId = stationId });
+        if (result.Success)
         {
-            // The update and (de)activate endpoints answer without data: success alone decides.
-            var result = await _devicesApi.UpdateAsync(SelectedDevice!.Id, new UpdateDeviceRequest { Name = name, StationId = stationId });
-            if (result.Success)
-            {
-                _notifications.Success(successMessage);
-                await LoadAsync();
-            }
-            else
-            {
-                _notifications.Error(result.Message, result.CorrelationId);
-            }
+            _notifications.Success(successMessage);
+            await LoadAsync();
         }
-        finally
+        else
         {
-            IsBusy = false;
+            _notifications.Error(result.Message, result.CorrelationId);
         }
-    }
+    });
 
     [RelayCommand(CanExecute = nameof(HasSelection))]
     private async Task ToggleActiveAsync()
@@ -215,27 +192,22 @@ public sealed partial class DevicesViewModel : ObservableObject, INavigationAwar
             }
         }
 
-        IsBusy = true;
-        try
+        var device = SelectedDevice;
+        await ExecuteAsync(async () =>
         {
-            var name = SelectedDevice.Name;
             var result = willDeactivate
-                ? await _devicesApi.DeactivateAsync(SelectedDevice.Id)
-                : await _devicesApi.ActivateAsync(SelectedDevice.Id);
+                ? await _devicesApi.DeactivateAsync(device.Id)
+                : await _devicesApi.ActivateAsync(device.Id);
 
             if (result.Success)
             {
-                _notifications.Success(willDeactivate ? $"Terminal '{name}' deactivated." : $"Terminal '{name}' activated.");
+                _notifications.Success(willDeactivate ? $"Terminal '{device.Name}' deactivated." : $"Terminal '{device.Name}' activated.");
                 await LoadAsync();
             }
             else
             {
                 _notifications.Error(result.Message, result.CorrelationId);
             }
-        }
-        finally
-        {
-            IsBusy = false;
-        }
+        });
     }
 }

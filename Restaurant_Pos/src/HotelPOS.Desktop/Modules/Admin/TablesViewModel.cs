@@ -136,7 +136,7 @@ public sealed partial class TableEditorViewModel : ObservableObject
     };
 }
 
-public sealed partial class TablesViewModel : ObservableObject
+public sealed partial class TablesViewModel : ViewModelBase
 {
     private readonly IFloorApi _floorApi;
     private readonly IDialogService _dialogs;
@@ -167,54 +167,37 @@ public sealed partial class TablesViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(EditCommand), nameof(ToggleServiceCommand))]
     private TableRow? _selectedRow;
 
-    [ObservableProperty]
-    private bool _isBusy;
-
-    [ObservableProperty]
-    private string? _errorMessage;
-
     public bool HasSelection => SelectedRow is not null;
 
     public string ServiceToggleText => SelectedRow?.Table.Status == TableStatus.OutOfService ? "Return to service" : "Set out of service";
 
-    public async Task LoadAsync(int? selectId = null)
+    public Task LoadAsync(int? selectId = null) => ExecuteAsync(async () =>
     {
-        IsBusy = true;
-        ErrorMessage = null;
-        try
+        var sections = await FetchAsync(_floorApi.GetSectionsAsync(includeInactive: true));
+        if (sections is null)
         {
-            var sections = await _floorApi.GetSectionsAsync(includeInactive: true);
-            var map = await _floorApi.GetMapAsync(includeInactive: true);
-            if (!sections.Success || sections.Data is null)
-            {
-                ErrorMessage = sections.Message;
-                return;
-            }
-
-            if (!map.Success || map.Data is null)
-            {
-                ErrorMessage = map.Message;
-                return;
-            }
-
-            Editor.SetSections(sections.Data);
-            var filterId = SectionFilter?.Id ?? 0;
-            SectionFilters.Clear();
-            SectionFilters.Add(new SectionDto { Id = 0, Name = "All sections", IsActive = true });
-            foreach (var section in sections.Data)
-            {
-                SectionFilters.Add(section);
-            }
-
-            _all = map.Data.Sections.SelectMany(s => s.Tables).ToList();
-            SectionFilter = SectionFilters.FirstOrDefault(s => s.Id == filterId) ?? SectionFilters[0];
-            ApplyFilter(selectId ?? SelectedRow?.Table.Id);
+            return;
         }
-        finally
+
+        var map = await FetchAsync(_floorApi.GetMapAsync(includeInactive: true));
+        if (map is null)
         {
-            IsBusy = false;
+            return;
         }
-    }
+
+        Editor.SetSections(sections);
+        var filterId = SectionFilter?.Id ?? 0;
+        SectionFilters.Clear();
+        SectionFilters.Add(new SectionDto { Id = 0, Name = "All sections", IsActive = true });
+        foreach (var section in sections)
+        {
+            SectionFilters.Add(section);
+        }
+
+        _all = map.Sections.SelectMany(s => s.Tables).ToList();
+        SectionFilter = SectionFilters.FirstOrDefault(s => s.Id == filterId) ?? SectionFilters[0];
+        ApplyFilter(selectId ?? SelectedRow?.Table.Id);
+    });
 
     partial void OnSectionFilterChanged(SectionDto? value) => ApplyFilter(SelectedRow?.Table.Id);
 
@@ -268,8 +251,7 @@ public sealed partial class TablesViewModel : ObservableObject
             return;
         }
 
-        IsBusy = true;
-        try
+        await ExecuteAsync(async () =>
         {
             var result = Editor.IsNew
                 ? await _floorApi.CreateTableAsync(Editor.ToCreateRequest())
@@ -293,11 +275,7 @@ public sealed partial class TablesViewModel : ObservableObject
             }
 
             Editor.ErrorMessage = ApiFailures.Describe(result);
-        }
-        finally
-        {
-            IsBusy = false;
-        }
+        });
     }
 
     [RelayCommand(CanExecute = nameof(HasSelection))]

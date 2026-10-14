@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Enums;
+using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Navigation;
 using HotelPOS.Desktop.Services.Ui;
@@ -32,7 +33,7 @@ public sealed record BackupRow(BackupDto Backup)
     public string Trigger => Backup.Trigger == BackupTrigger.Schedule ? "Scheduled" : $"Manual ({Backup.TriggeredBy})";
 }
 
-public sealed partial class BackupViewModel : ObservableObject, INavigationAware, IRefreshable
+public sealed partial class BackupViewModel : ViewModelBase, INavigationAware, IRefreshable
 {
     private readonly IOperationsApi _operations;
     private readonly IAdminSettingsApi _settings;
@@ -46,13 +47,6 @@ public sealed partial class BackupViewModel : ObservableObject, INavigationAware
     }
 
     public ObservableCollection<BackupRow> Backups { get; } = new();
-
-    [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(BackupNowCommand), nameof(SaveSettingsCommand))]
-    private bool _isBusy;
-
-    [ObservableProperty]
-    private string? _errorMessage;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasFailure))]
@@ -81,31 +75,29 @@ public sealed partial class BackupViewModel : ObservableObject, INavigationAware
     [RelayCommand]
     public Task RefreshAsync() => LoadAsync();
 
+    protected override void OnBusyChanged()
+    {
+        BackupNowCommand.NotifyCanExecuteChanged();
+        SaveSettingsCommand.NotifyCanExecuteChanged();
+    }
+
     private bool CanAct() => !IsBusy;
 
     [RelayCommand(CanExecute = nameof(CanAct))]
-    private async Task BackupNowAsync()
+    private Task BackupNowAsync() => ExecuteAsync(async () =>
     {
-        IsBusy = true;
-        try
+        var result = await _operations.BackupNowAsync();
+        if (result.Success && result.Data is not null)
         {
-            var result = await _operations.BackupNowAsync();
-            if (result.Success && result.Data is not null)
-            {
-                _notifications.Success($"Backup {result.Data.FileName} written and verified.");
-            }
-            else
-            {
-                _notifications.Error(result.Message, result.CorrelationId);
-            }
+            _notifications.Success($"Backup {result.Data.FileName} written and verified.");
+        }
+        else
+        {
+            _notifications.Error(result.Message, result.CorrelationId);
+        }
 
-            await LoadAsync();
-        }
-        finally
-        {
-            IsBusy = false;
-        }
-    }
+        await LoadAsync();
+    });
 
     [RelayCommand(CanExecute = nameof(CanAct))]
     private async Task SaveSettingsAsync()
@@ -122,9 +114,7 @@ public sealed partial class BackupViewModel : ObservableObject, INavigationAware
             return;
         }
 
-        IsBusy = true;
-        ErrorMessage = null;
-        try
+        await ExecuteAsync(async () =>
         {
             var result = await _settings.UpdateAsync(new UpdateSettingsRequest
             {
@@ -145,24 +135,18 @@ public sealed partial class BackupViewModel : ObservableObject, INavigationAware
             {
                 ErrorMessage = result.Message;
             }
-        }
-        finally
-        {
-            IsBusy = false;
-        }
+        });
     }
 
     private async Task LoadAsync()
     {
         ErrorMessage = null;
-        var result = await _operations.GetBackupsAsync();
-        if (!result.Success || result.Data is null)
+        var overview = await FetchAsync(_operations.GetBackupsAsync());
+        if (overview is null)
         {
-            ErrorMessage = result.Message;
             return;
         }
 
-        var overview = result.Data;
         Folder = overview.Folder;
         Enabled = overview.Enabled;
         Time = overview.Time;

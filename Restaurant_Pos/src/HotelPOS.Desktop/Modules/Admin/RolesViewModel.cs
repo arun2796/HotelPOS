@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HotelPOS.Contracts.Security;
+using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Navigation;
 using HotelPOS.Desktop.Services.Ui;
@@ -28,7 +29,7 @@ public sealed partial class PermissionItemViewModel : ObservableObject
     private bool _isGranted;
 }
 
-public sealed partial class RolesViewModel : ObservableObject, INavigationAware, IRefreshable
+public sealed partial class RolesViewModel : ViewModelBase, INavigationAware, IRefreshable
 {
     private readonly IUsersApi _usersApi;
     private readonly IDialogService _dialogs;
@@ -51,12 +52,6 @@ public sealed partial class RolesViewModel : ObservableObject, INavigationAware,
 
     [ObservableProperty]
     private bool _forceRelogin = true;
-
-    [ObservableProperty]
-    private bool _isBusy;
-
-    [ObservableProperty]
-    private string? _errorMessage;
 
     public bool HasSelection => SelectedRole is not null;
     public bool IsAdminRole => SelectedRole?.IsSystem == true;
@@ -87,33 +82,23 @@ public sealed partial class RolesViewModel : ObservableObject, INavigationAware,
         }
     }
 
-    private async Task LoadAsync()
+    private Task LoadAsync() => ExecuteAsync(async () =>
     {
-        IsBusy = true;
-        ErrorMessage = null;
-        try
+        var roles = await FetchAsync(_usersApi.ListAllRolePermissionsAsync());
+        if (roles is null)
         {
-            var result = await _usersApi.ListAllRolePermissionsAsync();
-            if (!result.Success || result.Data is null)
-            {
-                ErrorMessage = result.Message;
-                return;
-            }
-
-            var previousRoleId = SelectedRole?.RoleId;
-            Roles.Clear();
-            foreach (var r in result.Data)
-            {
-                Roles.Add(r);
-            }
-
-            SelectedRole = Roles.FirstOrDefault(r => r.RoleId == previousRoleId) ?? Roles.FirstOrDefault();
+            return;
         }
-        finally
+
+        var previousRoleId = SelectedRole?.RoleId;
+        Roles.Clear();
+        foreach (var r in roles)
         {
-            IsBusy = false;
+            Roles.Add(r);
         }
-    }
+
+        SelectedRole = Roles.FirstOrDefault(r => r.RoleId == previousRoleId) ?? Roles.FirstOrDefault();
+    });
 
     [RelayCommand(CanExecute = nameof(CanEdit))]
     private async Task SavePermissionsAsync()
@@ -129,8 +114,8 @@ public sealed partial class RolesViewModel : ObservableObject, INavigationAware,
             return;
         }
 
-        IsBusy = true;
-        try
+        var role = SelectedRole;
+        await ExecuteAsync(async () =>
         {
             var request = new UpdateRolePermissionsRequest
             {
@@ -138,21 +123,17 @@ public sealed partial class RolesViewModel : ObservableObject, INavigationAware,
                 ForceRelogin = ForceRelogin,
             };
 
-            var result = await _usersApi.UpdateRolePermissionsAsync(SelectedRole.RoleId, request);
+            var result = await _usersApi.UpdateRolePermissionsAsync(role.RoleId, request);
             if (result.Success)
             {
-                _notifications.Success($"Permissions for role '{SelectedRole.RoleName}' updated successfully.");
+                _notifications.Success($"Permissions for role '{role.RoleName}' updated successfully.");
                 await LoadAsync();
             }
             else
             {
                 _notifications.Error(result.Message, result.CorrelationId);
             }
-        }
-        finally
-        {
-            IsBusy = false;
-        }
+        });
     }
 
     private static IReadOnlyList<(string Key, string Group, string Label)> GetStandardPermissionDefinitions() => new[]

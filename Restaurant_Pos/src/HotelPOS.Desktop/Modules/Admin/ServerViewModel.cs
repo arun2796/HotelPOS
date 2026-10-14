@@ -3,6 +3,7 @@ using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HotelPOS.Contracts.Admin;
+using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Navigation;
 using HotelPOS.Desktop.Services.Ui;
@@ -12,7 +13,7 @@ namespace HotelPOS.Desktop.Modules.Admin;
 public sealed record LevelOption(string? Code, string Name);
 
 // What a technician needs without a remote-desktop session on the server: the API log and a broadcast message.
-public sealed partial class ServerViewModel : ObservableObject, INavigationAware, IRefreshable
+public sealed partial class ServerViewModel : ViewModelBase, INavigationAware, IRefreshable
 {
     private readonly IOperationsApi _operations;
     private readonly IDialogService _dialogs;
@@ -48,9 +49,6 @@ public sealed partial class ServerViewModel : ObservableObject, INavigationAware
 
     [ObservableProperty]
     private string _logCaption = string.Empty;
-
-    [ObservableProperty]
-    private string? _errorMessage;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SendNoticeCommand))]
@@ -99,23 +97,22 @@ public sealed partial class ServerViewModel : ObservableObject, INavigationAware
     private async Task LoadLogsAsync()
     {
         ErrorMessage = null;
-        var result = await _operations.GetLogsAsync(LineCount, SelectedLevel.Code);
-        if (!result.Success || result.Data is null)
+        var log = await FetchAsync(_operations.GetLogsAsync(LineCount, SelectedLevel.Code));
+        if (log is null)
         {
-            ErrorMessage = result.Message;
             return;
         }
 
         // Newest first: the reason for a problem the technician was just called about is at the top.
         Entries.Clear();
-        foreach (var entry in result.Data.Lines.Reverse())
+        foreach (var entry in log.Lines.Reverse())
         {
             Entries.Add(entry);
         }
 
-        LogCaption = string.IsNullOrEmpty(result.Data.FileName)
+        LogCaption = string.IsNullOrEmpty(log.FileName)
             ? "No API log file yet."
             : string.Create(CultureInfo.CurrentCulture,
-                $"{result.Data.FileName} · last written {result.Data.LastWriteUtc.ToLocalTime():dd MMM HH:mm:ss} · {Entries.Count} entries");
+                $"{log.FileName} · last written {log.LastWriteUtc.ToLocalTime():dd MMM HH:mm:ss} · {Entries.Count} entries");
     }
 }

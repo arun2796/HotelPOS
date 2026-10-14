@@ -81,7 +81,7 @@ public sealed partial class SectionEditorViewModel : ObservableObject
     public UpdateSectionRequest ToUpdateRequest() => new() { Name = Name.Trim(), SortOrder = int.Parse(SortOrder), IsActive = IsActive };
 }
 
-public sealed partial class SectionsViewModel : ObservableObject
+public sealed partial class SectionsViewModel : ViewModelBase
 {
     private readonly IFloorApi _floorApi;
     private readonly INotificationService _notifications;
@@ -101,41 +101,25 @@ public sealed partial class SectionsViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(EditCommand))]
     private SectionDto? _selectedSection;
 
-    [ObservableProperty]
-    private bool _isBusy;
-
-    [ObservableProperty]
-    private string? _errorMessage;
-
     public bool HasSelection => SelectedSection is not null;
 
-    public async Task LoadAsync(int? selectId = null)
+    public Task LoadAsync(int? selectId = null) => ExecuteAsync(async () =>
     {
-        IsBusy = true;
-        ErrorMessage = null;
-        try
+        var sections = await FetchAsync(_floorApi.GetSectionsAsync(includeInactive: true));
+        if (sections is null)
         {
-            var result = await _floorApi.GetSectionsAsync(includeInactive: true);
-            if (!result.Success || result.Data is null)
-            {
-                ErrorMessage = result.Message;
-                return;
-            }
-
-            var keep = selectId ?? SelectedSection?.Id;
-            Sections.Clear();
-            foreach (var section in result.Data)
-            {
-                Sections.Add(section);
-            }
-
-            SelectedSection = Sections.FirstOrDefault(s => s.Id == keep);
+            return;
         }
-        finally
+
+        var keep = selectId ?? SelectedSection?.Id;
+        Sections.Clear();
+        foreach (var section in sections)
         {
-            IsBusy = false;
+            Sections.Add(section);
         }
-    }
+
+        SelectedSection = Sections.FirstOrDefault(s => s.Id == keep);
+    });
 
     [RelayCommand]
     private Task RefreshListAsync() => LoadAsync();
@@ -164,8 +148,7 @@ public sealed partial class SectionsViewModel : ObservableObject
             return;
         }
 
-        IsBusy = true;
-        try
+        await ExecuteAsync(async () =>
         {
             var result = Editor.IsNew
                 ? await _floorApi.CreateSectionAsync(Editor.ToCreateRequest())
@@ -180,10 +163,6 @@ public sealed partial class SectionsViewModel : ObservableObject
             }
 
             Editor.ErrorMessage = ApiFailures.Describe(result);
-        }
-        finally
-        {
-            IsBusy = false;
-        }
+        });
     }
 }
