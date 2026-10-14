@@ -108,7 +108,7 @@ public sealed partial class SoldOutItemViewModel : ObservableObject
     public string ActionText => IsAvailable ? "Mark sold out" : "Available again";
 }
 
-public sealed partial class KitchenDisplayViewModel : ObservableObject, INavigationAware, IRefreshable, IDisposable
+public sealed partial class KitchenDisplayViewModel : ViewModelBase, INavigationAware, IRefreshable, IDisposable
 {
     public const int DefaultWarnMinutes = 10;
     public const int DefaultLateMinutes = 20;
@@ -160,9 +160,6 @@ public sealed partial class KitchenDisplayViewModel : ObservableObject, INavigat
 
     [ObservableProperty]
     private StationFilter? _selectedStation;
-
-    [ObservableProperty]
-    private string? _errorMessage;
 
     [ObservableProperty]
     private bool _isSoldOutOpen;

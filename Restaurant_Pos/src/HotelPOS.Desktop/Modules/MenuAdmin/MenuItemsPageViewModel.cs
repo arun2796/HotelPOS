@@ -239,7 +239,7 @@ public sealed partial class MenuItemEditorViewModel : ObservableObject
     }
 }
 
-public sealed partial class MenuItemsPageViewModel : ObservableObject, IMenuAdminPage
+public sealed partial class MenuItemsPageViewModel : ViewModelBase, IMenuAdminPage
 {
     private readonly IMenuApi _menuApi;
     private readonly IMenuCache _menuCache;
@@ -278,51 +278,32 @@ public sealed partial class MenuItemsPageViewModel : ObservableObject, IMenuAdmi
     [NotifyCanExecuteChangedFor(nameof(EditCommand), nameof(ToggleSoldOutCommand))]
     private MenuItemDto? _selectedItem;
 
-    [ObservableProperty]
-    private bool _isBusy;
-
-    [ObservableProperty]
-    private string? _errorMessage;
-
     public bool HasSelection => SelectedItem is not null;
 
     public string SoldOutText => SelectedItem?.IsAvailable == false ? "Mark available" : "Mark sold out";
 
-    public async Task LoadAsync()
+    public Task LoadAsync() => ExecuteAsync(async () =>
     {
-        IsBusy = true;
-        ErrorMessage = null;
-        try
+        if (await FetchAsync(_menuApi.GetCategoriesAsync(includeInactive: true)) is not { } categories
+            || await FetchAsync(_menuApi.GetTaxesAsync(includeInactive: false)) is not { } taxes
+            || await FetchAsync(_menuApi.GetStationsAsync(includeInactive: false)) is not { } stations
+            || await FetchAsync(_menuApi.GetModifierGroupsAsync(includeInactive: false)) is not { } groups)
         {
-            var categories = await _menuApi.GetCategoriesAsync(includeInactive: true);
-            var taxes = await _menuApi.GetTaxesAsync(includeInactive: false);
-            var stations = await _menuApi.GetStationsAsync(includeInactive: false);
-            var groups = await _menuApi.GetModifierGroupsAsync(includeInactive: false);
-            var failure = new[] { categories.Success ? null : categories.Message, taxes.Success ? null : taxes.Message, stations.Success ? null : stations.Message, groups.Success ? null : groups.Message }
-                .FirstOrDefault(m => m is not null);
-            if (failure is not null)
-            {
-                ErrorMessage = failure;
-                return;
-            }
-
-            Editor.SetLookups(categories.Data!, taxes.Data!, stations.Data!, groups.Data!);
-            var filterId = CategoryFilter?.Id ?? 0;
-            CategoryFilters.Clear();
-            CategoryFilters.Add(new CategoryDto { Id = 0, Name = "All categories", IsActive = true });
-            foreach (var category in categories.Data!)
-            {
-                CategoryFilters.Add(category);
-            }
-
-            CategoryFilter = CategoryFilters.FirstOrDefault(c => c.Id == filterId) ?? CategoryFilters[0];
-            await LoadItemsAsync();
+            return;
         }
-        finally
+
+        Editor.SetLookups(categories, taxes, stations, groups);
+        var filterId = CategoryFilter?.Id ?? 0;
+        CategoryFilters.Clear();
+        CategoryFilters.Add(new CategoryDto { Id = 0, Name = "All categories", IsActive = true });
+        foreach (var category in categories)
         {
-            IsBusy = false;
+            CategoryFilters.Add(category);
         }
-    }
+
+        CategoryFilter = CategoryFilters.FirstOrDefault(c => c.Id == filterId) ?? CategoryFilters[0];
+        await LoadItemsAsync();
+    });
 
     partial void OnCategoryFilterChanged(CategoryDto? value) => _ = LoadItemsAsync();
 
@@ -376,8 +357,7 @@ public sealed partial class MenuItemsPageViewModel : ObservableObject, IMenuAdmi
             return;
         }
 
-        IsBusy = true;
-        try
+        await ExecuteAsync(async () =>
         {
             var result = Editor.IsNew
                 ? await _menuApi.CreateItemAsync(Editor.ToCreateRequest())
@@ -401,11 +381,7 @@ public sealed partial class MenuItemsPageViewModel : ObservableObject, IMenuAdmi
             }
 
             Editor.ErrorMessage = ApiFailures.Describe(result);
-        }
-        finally
-        {
-            IsBusy = false;
-        }
+        });
     }
 
     [RelayCommand]
@@ -423,21 +399,19 @@ public sealed partial class MenuItemsPageViewModel : ObservableObject, IMenuAdmi
             return;
         }
 
-        IsBusy = true;
-        try
+        await ExecuteAsync(async () =>
         {
-            await using var stream = File.OpenRead(path);
-            var result = await _menuApi.UploadImageAsync(Editor.ItemId, stream, info.Name);
-            await ApplyPictureResultAsync(result, "Picture saved.");
-        }
-        catch (IOException ex)
-        {
-            Editor.ErrorMessage = $"Could not read the file: {ex.Message}";
-        }
-        finally
-        {
-            IsBusy = false;
-        }
+            try
+            {
+                await using var stream = File.OpenRead(path);
+                var result = await _menuApi.UploadImageAsync(Editor.ItemId, stream, info.Name);
+                await ApplyPictureResultAsync(result, "Picture saved.");
+            }
+            catch (IOException ex)
+            {
+                Editor.ErrorMessage = $"Could not read the file: {ex.Message}";
+            }
+        });
     }
 
     [RelayCommand]
@@ -497,20 +471,19 @@ public sealed partial class MenuItemsPageViewModel : ObservableObject, IMenuAdmi
     private async Task LoadItemsAsync(int? selectId = null)
     {
         var keep = selectId ?? SelectedItem?.Id;
-        var result = await _menuApi.GetItemsAsync(new MenuItemQuery
+        var items = await FetchAsync(_menuApi.GetItemsAsync(new MenuItemQuery
         {
             CategoryId = CategoryFilter is { Id: > 0 } filter ? filter.Id : null,
             Search = string.IsNullOrWhiteSpace(Search) ? null : Search.Trim(),
             IncludeInactive = ShowInactive,
-        });
-        if (!result.Success || result.Data is null)
+        }));
+        if (items is null)
         {
-            ErrorMessage = result.Message;
             return;
         }
 
         Items.Clear();
-        foreach (var item in result.Data)
+        foreach (var item in items)
         {
             Items.Add(item);
         }

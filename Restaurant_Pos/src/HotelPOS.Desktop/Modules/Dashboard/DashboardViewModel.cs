@@ -8,6 +8,7 @@ using HotelPOS.Contracts.Reports;
 using HotelPOS.Contracts.Security;
 using HotelPOS.Desktop.Controls;
 using HotelPOS.Desktop.Modules.Billing;
+using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Auth;
 using HotelPOS.Desktop.Services.Navigation;
@@ -25,7 +26,7 @@ public sealed record DayBar(string Label, string Amount, double Height, bool IsT
 // One payment method in today's split: ColorIndex picks the chart colour (Brush.Chart.N).
 public sealed record ChartSlice(string Label, string AmountText, string PercentText, int ColorIndex, Geometry Shape);
 
-public sealed partial class DashboardViewModel : ObservableObject, INavigationAware, IRefreshable, IDisposable
+public sealed partial class DashboardViewModel : ViewModelBase, INavigationAware, IRefreshable, IDisposable
 {
     private static readonly string[] RefreshEvents =
     {
@@ -68,12 +69,6 @@ public sealed partial class DashboardViewModel : ObservableObject, INavigationAw
 
     [ObservableProperty]
     private string _businessDayText = string.Empty;
-
-    [ObservableProperty]
-    private string? _errorMessage;
-
-    [ObservableProperty]
-    private bool _isBusy;
 
     public bool HasTopItems => TopItems.Count > 0;
 

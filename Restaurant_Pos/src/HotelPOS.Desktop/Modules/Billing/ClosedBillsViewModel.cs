@@ -40,7 +40,7 @@ public sealed record PaymentRow(PaymentDto Payment)
     public bool CanRefund => Payment.RefundableAmount > 0;
 }
 
-public sealed partial class ClosedBillsViewModel : ObservableObject, INavigationAware, IRefreshable
+public sealed partial class ClosedBillsViewModel : ViewModelBase, INavigationAware, IRefreshable
 {
     private readonly IBillingApi _billingApi;
     private readonly IDialogService _dialogs;
@@ -71,12 +71,6 @@ public sealed partial class ClosedBillsViewModel : ObservableObject, INavigation
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasDetail), nameof(DetailTitle), nameof(DetailLines), nameof(DetailTotals))]
     private BillDetailDto? _detail;
-
-    [ObservableProperty]
-    private string? _errorMessage;
-
-    [ObservableProperty]
-    private bool _isBusy;
 
     public string SummaryText => Bills.Count == 0
         ? "No closed bills"

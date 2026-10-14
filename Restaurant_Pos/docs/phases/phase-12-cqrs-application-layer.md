@@ -71,3 +71,19 @@ All existing tests green after each module; new behaviour tests; matrix snapshot
 ## 14. Changes during implementation
 
 (fill in while building)
+
+### Desktop: ViewModelBase
+
+- `Modules/Common/ViewModelBase` holds `IsBusy`, `ErrorMessage`, `OnBusyChanged()` (where a screen refreshes the
+  commands that depend on `IsBusy`), `ExecuteAsync` and `FetchAsync`. 30 screen view-models derive from it; editor
+  and dialog view-models (section/table/category/item/user editors, modifier picker, ticket cards) do not.
+- `ExecuteAsync` sets `IsBusy`, clears `ErrorMessage` and always resets `IsBusy`. An unexpected exception
+  (not a cancellation) is logged and shown as "Something went wrong. The problem was logged; please try again." on
+  that screen instead of reaching `App.OnDispatcherUnhandledException`.
+- `FetchAsync` (named so it does not read as a call to the screens' own `LoadAsync()`) returns the data or `null`
+  with `ErrorMessage` set: the client's own connection text on a connection failure (never "The change was NOT
+  saved", which `ApiFailures.Describe` uses for saves), otherwise `ApiFailures.Describe`. It keeps the messages the
+  screens showed before; billing setup no longer says "NOT saved" when its load fails.
+- Left on their own flow (base class only): payments, discount approval and bill actions in `BillDetailViewModel`;
+  the dashboard, closed-bills and order-list refreshes, which keep the last error on screen until a refresh succeeds;
+  terminal configuration, whose view has no error banner.

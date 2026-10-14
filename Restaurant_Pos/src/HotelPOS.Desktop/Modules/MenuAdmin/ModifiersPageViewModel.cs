@@ -17,7 +17,7 @@ public sealed record ModifierGroupRow(ModifierGroupDto Group)
     public int OptionCount => Group.Options.Count(o => o.IsActive);
 }
 
-public sealed partial class ModifiersPageViewModel : ObservableObject, IMenuAdminPage
+public sealed partial class ModifiersPageViewModel : ViewModelBase, IMenuAdminPage
 {
     private readonly IMenuApi _menuApi;
     private readonly INotificationService _notifications;
@@ -42,12 +42,6 @@ public sealed partial class ModifiersPageViewModel : ObservableObject, IMenuAdmi
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(EditOptionCommand))]
     private ModifierOptionDto? _selectedOption;
-
-    [ObservableProperty]
-    private bool _isBusy;
-
-    [ObservableProperty]
-    private string? _errorMessage;
 
     [ObservableProperty]
     private bool _isEditorOpen;
@@ -133,8 +127,7 @@ public sealed partial class ModifiersPageViewModel : ObservableObject, IMenuAdmi
             return;
         }
 
-        IsBusy = true;
-        try
+        await ExecuteAsync(async () =>
         {
             ApiResult<ModifierGroupDto> result;
             if (IsEditingOption)
@@ -163,11 +156,7 @@ public sealed partial class ModifiersPageViewModel : ObservableObject, IMenuAdmi
             }
 
             EditorError = ApiFailures.Describe(result);
-        }
-        finally
-        {
-            IsBusy = false;
-        }
+        });
     }
 
     private void OpenGroupEditor(ModifierGroupDto? group)
@@ -226,31 +215,21 @@ public sealed partial class ModifiersPageViewModel : ObservableObject, IMenuAdmi
             : $"Sort order must be a number from 0 to {MenuLimits.MaxSortOrder}.";
     }
 
-    private async Task LoadAsync(int? selectGroupId)
+    private Task LoadAsync(int? selectGroupId) => ExecuteAsync(async () =>
     {
-        IsBusy = true;
-        ErrorMessage = null;
-        try
+        var groups = await FetchAsync(_menuApi.GetModifierGroupsAsync(includeInactive: true));
+        if (groups is null)
         {
-            var result = await _menuApi.GetModifierGroupsAsync(includeInactive: true);
-            if (!result.Success || result.Data is null)
-            {
-                ErrorMessage = result.Message;
-                return;
-            }
-
-            var keep = selectGroupId ?? SelectedGroup?.Group.Id;
-            Groups.Clear();
-            foreach (var group in result.Data)
-            {
-                Groups.Add(new ModifierGroupRow(group));
-            }
-
-            SelectedGroup = Groups.FirstOrDefault(g => g.Group.Id == keep) ?? Groups.FirstOrDefault();
+            return;
         }
-        finally
+
+        var keep = selectGroupId ?? SelectedGroup?.Group.Id;
+        Groups.Clear();
+        foreach (var group in groups)
         {
-            IsBusy = false;
+            Groups.Add(new ModifierGroupRow(group));
         }
-    }
+
+        SelectedGroup = Groups.FirstOrDefault(g => g.Group.Id == keep) ?? Groups.FirstOrDefault();
+    });
 }

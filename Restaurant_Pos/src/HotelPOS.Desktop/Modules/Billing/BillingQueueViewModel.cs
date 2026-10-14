@@ -55,7 +55,7 @@ public sealed partial class BillQueueItemViewModel : ObservableObject
     }
 }
 
-public sealed partial class BillingQueueViewModel : ObservableObject, INavigationAware, IRefreshable, IDisposable
+public sealed partial class BillingQueueViewModel : ViewModelBase, INavigationAware, IRefreshable, IDisposable
 {
     private readonly IBillingApi _billingApi;
     private readonly IRealtimeClient _realtime;
@@ -80,12 +80,6 @@ public sealed partial class BillingQueueViewModel : ObservableObject, INavigatio
     }
 
     public ObservableCollection<BillQueueItemViewModel> Bills { get; } = new();
-
-    [ObservableProperty]
-    private string? _errorMessage;
-
-    [ObservableProperty]
-    private bool _isBusy;
 
     public bool IsEmpty => Bills.Count == 0 && ErrorMessage is null;
 
@@ -159,8 +153,7 @@ public sealed partial class BillingQueueViewModel : ObservableObject, INavigatio
             return;
         }
 
-        IsBusy = true;
-        try
+        await ExecuteAsync(async () =>
         {
             var claim = await _billingApi.ClaimAsync(item.Id);
             if (claim.Success || claim.HasError(ErrorCodes.BillClaimed))
@@ -172,11 +165,7 @@ public sealed partial class BillingQueueViewModel : ObservableObject, INavigatio
 
             _notifications.Error(ApiFailures.Describe(claim), claim.CorrelationId);
             await RefreshAsync();
-        }
-        finally
-        {
-            IsBusy = false;
-        }
+        });
     }
 
     private void Notify()

@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HotelPOS.Contracts.Auth;
+using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Auth;
 using HotelPOS.Desktop.Services.Navigation;
@@ -15,7 +16,7 @@ public enum ChangePasswordMode
     Voluntary,
 }
 
-public sealed partial class ChangePasswordViewModel : ObservableObject, INavigationAware
+public sealed partial class ChangePasswordViewModel : ViewModelBase, INavigationAware
 {
     private readonly IAuthApi _authApi;
     private readonly IAuthSession _session;
@@ -48,13 +49,6 @@ public sealed partial class ChangePasswordViewModel : ObservableObject, INavigat
 
     [ObservableProperty]
     private string _confirmPassword = string.Empty;
-
-    [ObservableProperty]
-    private string? _errorMessage;
-
-    [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
-    private bool _isBusy;
 
     public bool IsForced => Mode == ChangePasswordMode.Forced;
 
@@ -104,6 +98,8 @@ public sealed partial class ChangePasswordViewModel : ObservableObject, INavigat
         OnPropertyChanged(nameof(CancelText));
     }
 
+    protected override void OnBusyChanged() => SaveCommand.NotifyCanExecuteChanged();
+
     private bool CanSave() => !IsBusy;
 
     [RelayCommand(CanExecute = nameof(CanSave))]
@@ -115,8 +111,7 @@ public sealed partial class ChangePasswordViewModel : ObservableObject, INavigat
             return;
         }
 
-        IsBusy = true;
-        try
+        await ExecuteAsync(async () =>
         {
             var result = await _authApi.ChangePasswordAsync(new ChangePasswordRequest
             {
@@ -142,11 +137,7 @@ public sealed partial class ChangePasswordViewModel : ObservableObject, INavigat
             {
                 await _navigation.GoHomeAsync();
             }
-        }
-        finally
-        {
-            IsBusy = false;
-        }
+        });
     }
 
     [RelayCommand]

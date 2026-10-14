@@ -44,7 +44,7 @@ public sealed class MenuTileViewModel
     public bool HasModifiers => Item.ModifierGroupIds.Count > 0;
 }
 
-public sealed partial class OrderBuilderViewModel : ObservableObject, INavigationAware
+public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAware
 {
     public static readonly IReadOnlyList<string> QuickNotes = new[]
     {
@@ -105,9 +105,6 @@ public sealed partial class OrderBuilderViewModel : ObservableObject, INavigatio
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SendCommand), nameof(SaveDraftCommand))]
     private bool _isSending;
-
-    [ObservableProperty]
-    private string? _errorMessage;
 
     [ObservableProperty]
     private string? _connectionBanner;

@@ -5,6 +5,7 @@ using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Floor;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Contracts.Security;
+using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Auth;
 using HotelPOS.Desktop.Services.Navigation;
@@ -34,7 +35,7 @@ public sealed partial class TableMapSectionViewModel : ObservableObject
 
 public sealed record SectionFilter(int? SectionId, string Name);
 
-public sealed partial class TableMapViewModel : ObservableObject, INavigationAware, IRefreshable, IDisposable
+public sealed partial class TableMapViewModel : ViewModelBase, INavigationAware, IRefreshable, IDisposable
 {
     private readonly IFloorApi _floorApi;
     private readonly IRealtimeClient _realtime;
@@ -75,12 +76,6 @@ public sealed partial class TableMapViewModel : ObservableObject, INavigationAwa
 
     [ObservableProperty]
     private TableTileViewModel? _selectedTable;
-
-    [ObservableProperty]
-    private bool _isBusy;
-
-    [ObservableProperty]
-    private string? _errorMessage;
 
     [ObservableProperty]
     private string _summaryText = string.Empty;
@@ -130,24 +125,24 @@ public sealed partial class TableMapViewModel : ObservableObject, INavigationAwa
             return;
         }
 
-        IsBusy = true;
-        ErrorMessage = null;
         try
         {
-            var result = await _floorApi.GetMapAsync();
-            if (!result.Success || result.Data is null)
+            await ExecuteAsync(async () =>
             {
-                ErrorMessage = result.IsConnectionFailure
-                    ? "Connection unavailable. The map will refresh when the server is back."
-                    : result.Message;
-                return;
-            }
+                var result = await _floorApi.GetMapAsync();
+                if (!result.Success || result.Data is null)
+                {
+                    ErrorMessage = result.IsConnectionFailure
+                        ? "Connection unavailable. The map will refresh when the server is back."
+                        : result.Message;
+                    return;
+                }
 
-            ApplyMap(result.Data);
+                ApplyMap(result.Data);
+            });
         }
         finally
         {
-            IsBusy = false;
             Interlocked.Exchange(ref _refreshing, 0);
             OnPropertyChanged(nameof(IsEmpty));
         }

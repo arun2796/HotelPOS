@@ -4,13 +4,14 @@ using CommunityToolkit.Mvvm.Input;
 using HotelPOS.Contracts.Auth;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Users;
+using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Navigation;
 using HotelPOS.Desktop.Services.Ui;
 
 namespace HotelPOS.Desktop.Modules.Admin;
 
-public sealed partial class UsersViewModel : ObservableObject, INavigationAware, IRefreshable
+public sealed partial class UsersViewModel : ViewModelBase, INavigationAware, IRefreshable
 {
     private const int PageSize = 50;
 
@@ -54,12 +55,6 @@ public sealed partial class UsersViewModel : ObservableObject, INavigationAware,
     [NotifyPropertyChangedFor(nameof(PageText))]
     private int _totalCount;
 
-    [ObservableProperty]
-    private bool _isBusy;
-
-    [ObservableProperty]
-    private string? _errorMessage;
-
     public bool HasSelection => SelectedUser is not null;
 
     public bool CanUnlock => SelectedUser?.IsLockedOut == true;
@@ -98,42 +93,31 @@ public sealed partial class UsersViewModel : ObservableObject, INavigationAware,
         }
     }
 
-    private async Task LoadAsync(int? selectId = null)
+    private Task LoadAsync(int? selectId = null) => ExecuteAsync(async () =>
     {
-        IsBusy = true;
-        ErrorMessage = null;
-        try
+        var page = await FetchAsync(_usersApi.ListAsync(new UserQuery
         {
-            var result = await _usersApi.ListAsync(new UserQuery
-            {
-                Page = Page,
-                PageSize = PageSize,
-                Search = string.IsNullOrWhiteSpace(Search) ? null : Search.Trim(),
-                IsActive = ShowInactive ? null : true,
-            });
-
-            if (!result.Success || result.Data is null)
-            {
-                ErrorMessage = result.Message;
-                return;
-            }
-
-            var keep = selectId ?? SelectedUser?.Id;
-            Users.Clear();
-            foreach (var user in result.Data.Items)
-            {
-                Users.Add(user);
-            }
-
-            TotalCount = result.Data.TotalCount;
-            TotalPages = Math.Max(1, result.Data.TotalPages);
-            SelectedUser = Users.FirstOrDefault(u => u.Id == keep);
-        }
-        finally
+            Page = Page,
+            PageSize = PageSize,
+            Search = string.IsNullOrWhiteSpace(Search) ? null : Search.Trim(),
+            IsActive = ShowInactive ? null : true,
+        }));
+        if (page is null)
         {
-            IsBusy = false;
+            return;
         }
-    }
+
+        var keep = selectId ?? SelectedUser?.Id;
+        Users.Clear();
+        foreach (var user in page.Items)
+        {
+            Users.Add(user);
+        }
+
+        TotalCount = page.TotalCount;
+        TotalPages = Math.Max(1, page.TotalPages);
+        SelectedUser = Users.FirstOrDefault(u => u.Id == keep);
+    });
 
     [RelayCommand]
     private Task RefreshListAsync() => LoadAsync();
@@ -187,8 +171,7 @@ public sealed partial class UsersViewModel : ObservableObject, INavigationAware,
             return;
         }
 
-        IsBusy = true;
-        try
+        await ExecuteAsync(async () =>
         {
             var result = Editor.IsNew
                 ? await _usersApi.CreateAsync(Editor.ToCreateRequest())
@@ -212,11 +195,7 @@ public sealed partial class UsersViewModel : ObservableObject, INavigationAware,
             }
 
             Editor.ErrorMessage = DescribeFailure(result);
-        }
-        finally
-        {
-            IsBusy = false;
-        }
+        });
     }
 
     [RelayCommand(CanExecute = nameof(HasSelection))]

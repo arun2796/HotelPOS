@@ -27,7 +27,7 @@ public sealed record OrderRow(OrderSummaryDto Order, string ElapsedText, string 
     public string Detail => $"{Order.ItemCount} items · {Order.GuestCount} guests · {Order.WaiterName}";
 }
 
-public abstract partial class OrderListViewModelBase : ObservableObject, INavigationAware, IRefreshable, IDisposable
+public abstract partial class OrderListViewModelBase : ViewModelBase, INavigationAware, IRefreshable, IDisposable
 {
     private readonly IOrdersApi _ordersApi;
     private readonly IRealtimeClient _realtime;
@@ -50,12 +50,6 @@ public abstract partial class OrderListViewModelBase : ObservableObject, INaviga
     public bool CanOpenTables { get; }
 
     public abstract string EmptyText { get; }
-
-    [ObservableProperty]
-    private bool _isBusy;
-
-    [ObservableProperty]
-    private string? _errorMessage;
 
     [ObservableProperty]
     private bool _isEmpty;

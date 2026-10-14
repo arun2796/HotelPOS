@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HotelPOS.Contracts.Auth;
 using HotelPOS.Contracts.Common;
+using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Auth;
 using HotelPOS.Desktop.Services.Configuration;
@@ -17,7 +18,7 @@ public enum ServerState
     Unreachable,
 }
 
-public sealed partial class LoginViewModel : ObservableObject, INavigationAware
+public sealed partial class LoginViewModel : ViewModelBase, INavigationAware
 {
     private readonly IAuthApi _authApi;
     private readonly ISystemApi _systemApi;
@@ -51,13 +52,6 @@ public sealed partial class LoginViewModel : ObservableObject, INavigationAware
     private string _password = string.Empty;
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(LoginCommand))]
-    private bool _isBusy;
-
-    [ObservableProperty]
-    private string? _errorMessage;
-
-    [ObservableProperty]
     private string? _infoMessage;
 
     [ObservableProperty]
@@ -88,12 +82,10 @@ public sealed partial class LoginViewModel : ObservableObject, INavigationAware
     private bool CanLogin() => !IsBusy && !string.IsNullOrWhiteSpace(Username) && !string.IsNullOrEmpty(Password);
 
     [RelayCommand(CanExecute = nameof(CanLogin))]
-    private async Task LoginAsync()
+    private Task LoginAsync()
     {
-        ErrorMessage = null;
         InfoMessage = null;
-        IsBusy = true;
-        try
+        return ExecuteAsync(async () =>
         {
             var settings = _settings.Current;
             var result = await _authApi.LoginAsync(new LoginRequest
@@ -152,12 +144,10 @@ public sealed partial class LoginViewModel : ObservableObject, INavigationAware
             {
                 await _navigator.ShowShellAsync();
             }
-        }
-        finally
-        {
-            IsBusy = false;
-        }
+        });
     }
+
+    protected override void OnBusyChanged() => LoginCommand.NotifyCanExecuteChanged();
 
     [RelayCommand]
     private async Task CheckServerAsync()

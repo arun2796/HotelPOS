@@ -26,7 +26,7 @@ public enum RangePreset
 
 public sealed record ReportDefinition(string Key, string Title, string Description, bool IsMonthly = false);
 
-public sealed partial class ReportsViewModel : ObservableObject, INavigationAware
+public sealed partial class ReportsViewModel : ViewModelBase, INavigationAware
 {
     public static readonly IReadOnlyList<ReportDefinition> Catalogue = new[]
     {
@@ -88,12 +88,6 @@ public sealed partial class ReportsViewModel : ObservableObject, INavigationAwar
 
     [ObservableProperty]
     private string _summaryText = string.Empty;
-
-    [ObservableProperty]
-    private string? _errorMessage;
-
-    [ObservableProperty]
-    private bool _isBusy;
 
     public bool IsMonthly => SelectedReport.IsMonthly;
 
@@ -159,9 +153,7 @@ public sealed partial class ReportsViewModel : ObservableObject, INavigationAwar
             return;
         }
 
-        IsBusy = true;
-        ErrorMessage = null;
-        try
+        await ExecuteAsync(async () =>
         {
             var from = DateOnly.FromDateTime(FromDate);
             var to = DateOnly.FromDateTime(ToDate);
@@ -186,11 +178,7 @@ public sealed partial class ReportsViewModel : ObservableObject, INavigationAwar
             SummaryText = IsMonthly
                 ? $"{SelectedReport.Title} · {Year} · {Table!.Rows.Count} rows"
                 : $"{SelectedReport.Title} · {FromDate:d MMM yyyy} – {ToDate:d MMM yyyy} · {Table!.Rows.Count} rows";
-        }
-        finally
-        {
-            IsBusy = false;
-        }
+        });
     }
 
     [RelayCommand]
