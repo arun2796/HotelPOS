@@ -59,6 +59,9 @@ public class KitchenApiTests : IClassFixture<ApiFactory>
         allScreen.On<KitchenTicketCreatedEvent>(HubEvents.KitchenTicketCreated, e => allSeen.Add(e.StationId));
         await mainScreen.StartAsync();
         await allScreen.StartAsync();
+        // StartAsync can return before the hub's OnConnectedAsync has put the connection in its groups; a hub call
+        // is only handled after it, so one round trip makes sure the unbound screen is listening.
+        await allScreen.InvokeAsync<DateTime>(HubMethods.Ping);
         await mainScreen.InvokeAsync(HubMethods.JoinStation, main);
 
         var order = await SendOrderAsync("T11", "Chicken Biryani", "Fresh Lime Soda");

@@ -1,6 +1,6 @@
 # Phase 12 — CQRS Application Layer (MediatR)
 
-Status: In progress (started 2026-10-14) · Depends on: Phase 11 (independent in code; scheduled after it) · Reference: BillingHub `Core/CQRS`,
+Status: Done (2026-10-14) · Depends on: Phase 11 (independent in code; scheduled after it) · Reference: BillingHub `Core/CQRS`,
 `Core/Features`, `Infrastructure/Behaviors`
 
 ## 1. Goal
@@ -62,7 +62,7 @@ All existing tests green after each module; new behaviour tests; matrix snapshot
 
 - [x] No `*Service` class left for business use cases; every endpoint dispatches a request (server; see 12.10).
 - [x] Pipeline behaviours tested; matrix and audit completeness tests unchanged and green.
-- [ ] Definition of Done satisfied.
+- [x] Definition of Done satisfied (all suites green after the merge: Domain 286, Application 148, Api 140, Desktop 201 + 1 skipped).
 
 ## 13. Risks and notes
 

@@ -35,7 +35,7 @@ PostgreSQL is the single source of truth.
 | Phase 9 – Security & Audit             | In progress  |
 | Phase 10 – Production Readiness        | In progress  |
 | Phase 11 – UI Design System            | In progress  |
-| Phase 12 – CQRS Application Layer      | In progress  |
+| Phase 12 – CQRS Application Layer      | Done         |
 | Phase 13 – Shifts, Cash & Day End      | Not started  |
 | Phase 14 – Templates, PDF & Excel      | Not started  |
 | Phase 15 – GST & Period Close          | Not started  |
