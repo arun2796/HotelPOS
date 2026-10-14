@@ -1,5 +1,6 @@
 using System.Text;
-using HotelPOS.Application.Billing;
+using HotelPOS.Application.Features.Billing.Commands;
+using HotelPOS.Application.Features.Billing.Queries;
 using HotelPOS.Application.Common.Results;
 using HotelPOS.Application.Features.Floor.Commands;
 using HotelPOS.Application.Features.Kitchen.Commands;
@@ -108,11 +109,11 @@ public class ReportServiceTests : DatabaseTestBase
     {
         var s = await SetupAsync();
         var order = await SendAsync(s, s.Tables[0], Line(s.Biryani, 2));
-        var bill = (await Billing(b => b.RequestBillAsync(order.Id))).Value;
+        var bill = (await SendAsync(new RequestBillCommand(order.Id))).Value;
         AsCashier(s);
-        bill = (await Billing(b => b.SetDiscountAsync(bill.Id, new ApplyDiscountRequest { Type = DiscountType.Percentage, Value = 10m, Reason = "Regular", RowVersion = bill.RowVersion }))).Value;
-        bill = (await Billing(b => b.AddPaymentAsync(bill.Id, new AddPaymentRequest { PaymentMethodId = 1, Amount = 200m, RowVersion = bill.RowVersion }, Guid.NewGuid()))).Value;
-        bill = (await Billing(b => b.AddPaymentAsync(bill.Id, new AddPaymentRequest { PaymentMethodId = 3, Amount = bill.BalanceDue, Reference = "UPI-1", RowVersion = bill.RowVersion }, Guid.NewGuid()))).Value;
+        bill = (await SendAsync(new ApplyBillDiscountCommand(bill.Id, new ApplyDiscountRequest { Type = DiscountType.Percentage, Value = 10m, Reason = "Regular", RowVersion = bill.RowVersion }))).Value;
+        bill = (await SendAsync(new AddPaymentCommand(bill.Id, new AddPaymentRequest { PaymentMethodId = 1, Amount = 200m, RowVersion = bill.RowVersion }, Guid.NewGuid()))).Value;
+        bill = (await SendAsync(new AddPaymentCommand(bill.Id, new AddPaymentRequest { PaymentMethodId = 3, Amount = bill.BalanceDue, Reference = "UPI-1", RowVersion = bill.RowVersion }, Guid.NewGuid()))).Value;
         await RefundAsync(s, bill, 50m);
 
         var payments = await Call<IReportService, IReadOnlyList<PaymentSummaryRowDto>>(r => r.PaymentsAsync(new ReportQuery()));
@@ -164,7 +165,7 @@ public class ReportServiceTests : DatabaseTestBase
         var s = await SetupAsync();
         await SettledBillAsync(s, s.Tables[0], Line(s.Biryani, 1));
         var open = await SendAsync(s, s.Tables[1], Line(s.Naan, 1));
-        var bill = await Billing(b => b.RequestBillAsync(open.Id));
+        var bill = await SendAsync(new RequestBillCommand(open.Id));
         bill.IsSuccess.Should().BeTrue();
 
         var dashboard = await Call<IReportService, DashboardDto>(r => r.DashboardAsync());
@@ -274,9 +275,9 @@ public class ReportServiceTests : DatabaseTestBase
     private async Task<BillDetailDto> SettleAsync(Setup s, int orderId)
     {
         AsWaiter(s);
-        var bill = (await Billing(b => b.RequestBillAsync(orderId))).Value;
+        var bill = (await SendAsync(new RequestBillCommand(orderId))).Value;
         AsCashier(s);
-        var paid = await Billing(b => b.AddPaymentAsync(bill.Id, new AddPaymentRequest { PaymentMethodId = 1, Amount = bill.GrandTotal, RowVersion = bill.RowVersion }, Guid.NewGuid()));
+        var paid = await SendAsync(new AddPaymentCommand(bill.Id, new AddPaymentRequest { PaymentMethodId = 1, Amount = bill.GrandTotal, RowVersion = bill.RowVersion }, Guid.NewGuid()));
         paid.IsSuccess.Should().BeTrue(paid.Error?.Message);
         return paid.Value;
     }
@@ -288,11 +289,10 @@ public class ReportServiceTests : DatabaseTestBase
     {
         CurrentUser.SignIn(s.Manager, "managerx", Roles.Manager);
         var cash = bill.Payments.First(p => p.MethodCode == "CASH");
-        var result = await Billing(b => b.RefundAsync(bill.Id, new RefundRequest { PaymentId = cash.Id, Amount = amount, Reason = "Complaint", RowVersion = bill.RowVersion }, Guid.NewGuid()));
+        var result = await SendAsync(new RefundPaymentCommand(bill.Id, new RefundRequest { PaymentId = cash.Id, Amount = amount, Reason = "Complaint", RowVersion = bill.RowVersion }, Guid.NewGuid()));
         result.IsSuccess.Should().BeTrue(result.Error?.Message);
     }
 
-    private Task<Result<T>> Billing<T>(Func<IBillingService, Task<Result<T>>> call) => Call(call);
 
 
     private async Task<Result<T>> Call<TService, T>(Func<TService, Task<Result<T>>> call)

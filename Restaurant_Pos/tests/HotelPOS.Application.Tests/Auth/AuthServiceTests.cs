@@ -1,5 +1,5 @@
 using HotelPOS.Application.Auth;
-using HotelPOS.Application.Billing;
+using HotelPOS.Application.Features.Billing;
 using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Security;
@@ -274,7 +274,7 @@ public class AuthServiceTests : DatabaseTestBase
         var manager = await CreateUserAsync("mgr", "Pass@1234", Roles.Manager);
         var cashier = await CreateUserAsync("cash", "Pass@1234", Roles.Cashier);
         CurrentUser.SignIn(cashier.Id, "cash", Roles.Cashier);
-        var approvals = Get<IManagerApprovalService>();
+        var approvals = Get<ManagerApprovals>();
 
         for (var i = 0; i < 5; i++)
         {
@@ -295,7 +295,7 @@ public class AuthServiceTests : DatabaseTestBase
     {
         var cashier = await CreateUserAsync("cash", "Pass@1234", Roles.Cashier);
         await CreateUserAsync("mgr", "Pass@1234", Roles.Manager);
-        var approvals = Get<IManagerApprovalService>();
+        var approvals = Get<ManagerApprovals>();
 
         // A cashier granted billing.void voids without asking anyone.
         CurrentUser.SignIn(cashier.Id, "cash", Roles.Cashier);

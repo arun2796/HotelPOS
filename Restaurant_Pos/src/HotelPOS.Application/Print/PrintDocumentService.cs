@@ -1,5 +1,5 @@
 using System.Globalization;
-using HotelPOS.Application.Billing;
+using HotelPOS.Application.Features.Billing;
 using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
@@ -145,7 +145,7 @@ public sealed class PrintDocumentService : IPrintDocumentService
             DiscountLabel = bill.DiscountAmount > 0 ? DiscountLabel(bill, discountName) : null,
             DiscountAmount = bill.DiscountAmount,
             TaxableAmount = bill.TaxableAmount,
-            TaxRows = BillingService.TaxBreakup(bill.Items, settings.GetValueOrDefault(SettingKeys.TaxSplitDisplay))
+            TaxRows = BillTaxBreakup.For(bill.Items, settings.GetValueOrDefault(SettingKeys.TaxSplitDisplay))
                 .Select(t => new TaxRow { Label = t.Label, RatePercent = t.RatePercent, TaxableAmount = t.TaxableAmount, TaxAmount = t.TaxAmount })
                 .ToList(),
             TaxAmount = bill.TaxAmount,

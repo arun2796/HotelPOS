@@ -1,4 +1,5 @@
-using HotelPOS.Application.Billing;
+using HotelPOS.Application.Features.Billing.Commands;
+using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -27,7 +28,7 @@ public sealed class BillClaimCleanupService : BackgroundService
             try
             {
                 await using var scope = _scopes.CreateAsyncScope();
-                var released = await scope.ServiceProvider.GetRequiredService<IBillingService>().ReleaseExpiredClaimsAsync(stoppingToken);
+                var released = (await scope.ServiceProvider.GetRequiredService<ISender>().Send(new ReleaseExpiredBillClaimsCommand(), stoppingToken)).Value;
                 if (released > 0)
                 {
                     _logger.LogInformation("Released {Count} expired bill claims", released);

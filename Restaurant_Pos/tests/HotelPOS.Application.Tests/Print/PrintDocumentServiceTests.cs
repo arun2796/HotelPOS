@@ -1,4 +1,5 @@
-using HotelPOS.Application.Billing;
+using HotelPOS.Application.Features.Billing.Commands;
+using HotelPOS.Application.Features.Billing.Queries;
 using HotelPOS.Application.Common.Results;
 using HotelPOS.Application.Features.Floor.Commands;
 using HotelPOS.Application.Features.Kitchen.Commands;
@@ -59,10 +60,10 @@ public class PrintDocumentServiceTests : DatabaseTestBase
         await SetSettingAsync(SettingKeys.Gstin, "33ABCDE1234F1Z5");
         await SetSettingAsync(SettingKeys.PrintInvoiceCopies, "2");
         var order = await SendAsync(s, new OrderItemInput { MenuItemId = s.Biryani, Quantity = 2, ModifierOptionIds = new[] { s.Mild } }, new OrderItemInput { MenuItemId = s.Naan, Quantity = 4 });
-        var bill = (await Call<IBillingService, BillDetailDto>(b => b.RequestBillAsync(order.Id))).Value;
+        var bill = (await SendAsync(new RequestBillCommand(order.Id))).Value;
         CurrentUser.SignIn(s.Cashier, "cashier1", Roles.Cashier);
-        bill = (await Call<IBillingService, BillDetailDto>(b => b.SetDiscountAsync(bill.Id, new ApplyDiscountRequest { Type = DiscountType.Percentage, Value = 10m, Reason = "Regular", RowVersion = bill.RowVersion }))).Value;
-        bill = (await Call<IBillingService, BillDetailDto>(b => b.AddPaymentAsync(bill.Id, new AddPaymentRequest { PaymentMethodId = 1, Amount = 600m, Tendered = 600m, RowVersion = bill.RowVersion }, Guid.NewGuid()))).Value;
+        bill = (await SendAsync(new ApplyBillDiscountCommand(bill.Id, new ApplyDiscountRequest { Type = DiscountType.Percentage, Value = 10m, Reason = "Regular", RowVersion = bill.RowVersion }))).Value;
+        bill = (await SendAsync(new AddPaymentCommand(bill.Id, new AddPaymentRequest { PaymentMethodId = 1, Amount = 600m, Tendered = 600m, RowVersion = bill.RowVersion }, Guid.NewGuid()))).Value;
 
         var invoice = await Call<IPrintDocumentService, InvoiceDocument>(p => p.BuildInvoiceAsync(bill.Id));
 
@@ -88,9 +89,9 @@ public class PrintDocumentServiceTests : DatabaseTestBase
     {
         var s = await SetupAsync();
         var order = await SendAsync(s, new OrderItemInput { MenuItemId = s.Naan, Quantity = 2 });
-        var bill = (await Call<IBillingService, BillDetailDto>(b => b.RequestBillAsync(order.Id))).Value;
+        var bill = (await SendAsync(new RequestBillCommand(order.Id))).Value;
         CurrentUser.SignIn(s.Cashier, "cashier1", Roles.Cashier);
-        var paid = (await Call<IBillingService, BillDetailDto>(b => b.AddPaymentAsync(bill.Id, new AddPaymentRequest { PaymentMethodId = 1, Amount = 53m, Tendered = 100m, RowVersion = bill.RowVersion }, Guid.NewGuid()))).Value;
+        var paid = (await SendAsync(new AddPaymentCommand(bill.Id, new AddPaymentRequest { PaymentMethodId = 1, Amount = 53m, Tendered = 100m, RowVersion = bill.RowVersion }, Guid.NewGuid()))).Value;
 
         var receipt = await Call<IPrintDocumentService, ReceiptDocument>(p => p.BuildReceiptAsync(paid.Payments.Single().Id));
         receipt.Value.Method.Should().Be("Cash");
@@ -101,10 +102,10 @@ public class PrintDocumentServiceTests : DatabaseTestBase
         receipt.Value.BalanceDue.Should().Be(0m);
 
         var order2 = await SendAsync(s, new OrderItemInput { MenuItemId = s.Naan, Quantity = 1 });
-        var bill2 = (await Call<IBillingService, BillDetailDto>(b => b.RequestBillAsync(order2.Id))).Value;
+        var bill2 = (await SendAsync(new RequestBillCommand(order2.Id))).Value;
         CurrentUser.SignIn(s.Manager, "managerx", Roles.Manager);
-        bill2 = (await Call<IBillingService, BillDetailDto>(b => b.FinalizeAsync(bill2.Id, new BillActionRequest { RowVersion = bill2.RowVersion }))).Value;
-        await Call<IBillingService, BillDetailDto>(b => b.VoidAsync(bill2.Id, new VoidBillRequest { Reason = "Walked out", RowVersion = bill2.RowVersion }));
+        bill2 = (await SendAsync(new FinalizeBillCommand(bill2.Id, new BillActionRequest { RowVersion = bill2.RowVersion }))).Value;
+        await SendAsync(new VoidBillCommand(bill2.Id, new VoidBillRequest { Reason = "Walked out", RowVersion = bill2.RowVersion }));
 
         var voided = await Call<IPrintDocumentService, InvoiceDocument>(p => p.BuildInvoiceAsync(bill2.Id));
         voided.Value.IsCancelled.Should().BeTrue();
@@ -117,7 +118,7 @@ public class PrintDocumentServiceTests : DatabaseTestBase
     {
         var s = await SetupAsync();
         var order = await SendAsync(s, new OrderItemInput { MenuItemId = s.Naan, Quantity = 1 });
-        var bill = (await Call<IBillingService, BillDetailDto>(b => b.RequestBillAsync(order.Id))).Value;
+        var bill = (await SendAsync(new RequestBillCommand(order.Id))).Value;
 
         CurrentUser.SignIn(s.WaiterTwo, "waiter2", Roles.Waiter);
         (await Call<IPrintDocumentService, InvoiceDocument>(p => p.BuildInvoiceAsync(bill.Id))).Error!.Code.Should().Be(ErrorCodes.Forbidden);

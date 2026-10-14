@@ -6,43 +6,40 @@ using HotelPOS.Contracts.Billing;
 using HotelPOS.Contracts.Security;
 using HotelPOS.Domain.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
-namespace HotelPOS.Application.Billing;
+namespace HotelPOS.Application.Features.Billing;
 
-public interface IManagerApprovalService
-{
-    // Returns the approver's user id. A caller who holds the action's permission (ApprovalRules) approves their own.
-    Task<Result<int>> ApproveAsync(ManagerApprovalDto? approval, string actionType, string description, CancellationToken cancellationToken = default);
-}
-
-public sealed class ManagerApprovalService : IManagerApprovalService
+// The approval a void, refund, reopen or large discount needs, checked inside the bill command.
+internal sealed class ManagerApprovals
 {
     private readonly IAppDbContext _db;
     private readonly ICurrentUser _currentUser;
     private readonly IPasswordHasher _hasher;
-    private readonly IAuditService _audit;
     private readonly IApprovalTokenService _approvalTokens;
     private readonly IPermissionService _permissions;
     private readonly IClock _clock;
+    private readonly IServiceScopeFactory _scopes;
 
-    public ManagerApprovalService(
+    public ManagerApprovals(
         IAppDbContext db,
         ICurrentUser currentUser,
         IPasswordHasher hasher,
-        IAuditService audit,
         IApprovalTokenService approvalTokens,
         IPermissionService permissions,
-        IClock clock)
+        IClock clock,
+        IServiceScopeFactory scopes)
     {
         _db = db;
         _currentUser = currentUser;
         _hasher = hasher;
-        _audit = audit;
         _approvalTokens = approvalTokens;
         _permissions = permissions;
         _clock = clock;
+        _scopes = scopes;
     }
 
+    // Returns the approver's user id. A caller who holds the action's permission (ApprovalRules) approves their own.
     public async Task<Result<int>> ApproveAsync(ManagerApprovalDto? approval, string actionType, string description, CancellationToken cancellationToken = default)
     {
         if (ApprovalRules.CallerMayAct(_currentUser, actionType) && _currentUser.UserId is { } self)
@@ -63,8 +60,7 @@ public sealed class ManagerApprovalService : IManagerApprovalService
                 return tokenResult.Value;
             }
 
-            _audit.Record(AuditActions.ApprovalRejected, "User", null, newValues: new { Mode = "ApprovalToken", Action = actionType });
-            await _db.SaveChangesAsync(cancellationToken);
+            await RecordRejectionAsync(null, wrongPasswordAt: null, new { Mode = "ApprovalToken", Action = actionType }, cancellationToken);
             return AppErrors.ApprovalInvalid();
         }
 
@@ -74,28 +70,39 @@ public sealed class ManagerApprovalService : IManagerApprovalService
         }
 
         var normalized = User.Normalize(approval.ApproverUsername);
-        var approver = await _db.Users
+        // Untracked: failed attempts are counted through another context, and the lockout they cause must be seen.
+        var approver = await _db.Users.AsNoTracking()
             .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
             .FirstOrDefaultAsync(u => u.NormalizedUsername == normalized, cancellationToken);
         var now = _clock.UtcNow;
         var canTry = approver is not null && !approver.IsLockedOut(now);
         var passwordOk = canTry && _hasher.Verify(approver!.PasswordHash, approval.ApproverPassword) != PasswordCheck.Failed;
-        if (canTry && !passwordOk)
-        {
-            // Any signed-in terminal can send credentials here, so wrong ones count towards the approver's lockout.
-            await LoginFailures.RecordAsync(_db, _audit, approver!, now, "ApprovalWrongPassword", _currentUser.DeviceName, cancellationToken);
-        }
-
         if (passwordOk && approver!.IsActive && await ApprovalRules.MayApproveAsync(approver, actionType, _permissions, cancellationToken))
         {
             return approver.Id;
         }
 
-        // Saved at once so a rejected attempt is on record even though the action itself is not carried out.
-        _audit.Record(AuditActions.ApprovalRejected, "User", approver?.Id.ToString(), newValues: new { Approver = normalized, Action = actionType });
-        await _db.SaveChangesAsync(cancellationToken);
+        // Any signed-in terminal can send credentials here, so wrong ones count towards the approver's lockout.
+        await RecordRejectionAsync(approver?.Id, canTry && !passwordOk ? now : null, new { Approver = normalized, Action = actionType }, cancellationToken);
         return AppErrors.ApprovalInvalid();
     }
 
-    internal static bool IsManager(ICurrentUser user) => user.IsInRole(Roles.Manager) || user.IsInRole(Roles.Admin);
+    public static bool IsManager(ICurrentUser user) => user.IsInRole(Roles.Manager) || user.IsInRole(Roles.Admin);
+
+    // The rejected attempt must stay on record and count towards the lockout although the command that asked for the
+    // approval fails and its transaction rolls back, so it is written in a scope of its own and committed at once.
+    private async Task RecordRejectionAsync(int? approverId, DateTime? wrongPasswordAt, object newValues, CancellationToken cancellationToken)
+    {
+        await using var scope = _scopes.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<IAppDbContext>();
+        var audit = scope.ServiceProvider.GetRequiredService<IAuditService>();
+        if (approverId is { } id && wrongPasswordAt is { } at)
+        {
+            var approver = await db.Users.FirstAsync(u => u.Id == id, cancellationToken);
+            await LoginFailures.RecordAsync(db, audit, approver, at, "ApprovalWrongPassword", _currentUser.DeviceName, cancellationToken);
+        }
+
+        audit.Record(AuditActions.ApprovalRejected, "User", approverId?.ToString(), newValues: newValues);
+        await db.SaveChangesAsync(cancellationToken);
+    }
 }

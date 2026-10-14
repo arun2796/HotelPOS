@@ -1,5 +1,5 @@
 using HotelPOS.Api.Common;
-using HotelPOS.Application.Billing;
+using HotelPOS.Application.Features.Billing.Commands;
 using HotelPOS.Application.Features.Orders.Commands;
 using HotelPOS.Application.Features.Orders.Queries;
 using HotelPOS.Contracts.Billing;
@@ -19,13 +19,6 @@ public sealed class OrdersController : ApiControllerBase
     private const string OrderTakers = Roles.Admin + "," + Roles.Manager + "," + Roles.Waiter;
 
     private const string BillRequesters = OrderTakers + "," + Roles.Cashier;
-
-    private readonly IBillingService _billing;
-
-    public OrdersController(IBillingService billing)
-    {
-        _billing = billing;
-    }
 
     [HttpPost]
     [Idempotent]
@@ -98,5 +91,5 @@ public sealed class OrdersController : ApiControllerBase
     [Authorize(Roles = BillRequesters)]
     [ProducesResponseType<ApiResponse<BillDetailDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> RequestBill(int id, CancellationToken cancellationToken) =>
-        FromResult(await _billing.RequestBillAsync(id, cancellationToken), message: "Bill sent to the counter.");
+        FromResult(await Sender.Send(new RequestBillCommand(id), cancellationToken), message: "Bill sent to the counter.");
 }

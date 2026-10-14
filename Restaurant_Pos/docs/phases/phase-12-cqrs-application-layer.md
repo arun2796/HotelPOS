@@ -176,3 +176,27 @@ because Phase 11 is reworking the desktop at the same time; it will be done once
   `KitchenSync` / `TicketFactory` moved to `Features/Kitchen` (billing still uses them).
 - `KitchenServiceTests` → `Kitchen/KitchenTests`. Three tests read the kitchen display while a waiter is signed in;
   that read now runs as the admin (a waiter has never had `kitchen.operate` over HTTP).
+
+**12.6 Billing (2026-10-14)**
+
+- `BillingService`, `DiscountService`, `PaymentMethodService` and `ManagerApprovalService` dissolved into
+  `Features/Billing`: queries `ListPendingBills`, `ListClosedBills`, `GetBill`, `ListDiscounts`, `ListPaymentMethods`;
+  commands `RequestBill`, `ClaimBill`, `ReleaseBill`, `ApplyBillDiscount`, `ClearBillDiscount`, `SetBillCustomer`,
+  `FinalizeBill`, `AddPayment`, `CloseBill`, `ReopenBill`, `VoidBill`, `RefundPayment`,
+  `ReleaseExpiredBillClaims` (sent by `BillClaimCleanupService`, no user), and the discount / payment-method
+  create, update and deactivate commands. Helpers: `BillSteps` (loading, detail and summary projections, the waiter
+  visibility rule), `BillWorkflow` (the old `RunAsync` frame plus finalize and settle), `BillEvents`,
+  `ManagerApprovals`, `BillTaxBreakup` (also used by the printed invoice).
+- `RunAsync` lost its explicit transaction; the old "approvals run before the transaction" rule is kept by
+  `ManagerApprovals`: a rejected approval (`Approval.Rejected`) and a wrong approver password (failed-login count,
+  `Auth.LoginFailed` / `User.LockedOut`) are written in a scope of their own and committed at once, because the bill
+  command that asked for the approval fails and rolls back. The approver is read untracked so a lockout recorded that
+  way is seen. New test `Void_WithAWrongApproverPassword_...` checks this through the pipeline.
+- `ClearBillDiscount` takes the row version from the query string as a plain value, not as a DTO: the endpoint
+  never validated it (a missing row version is a 409 conflict), and wrapping it in `BillActionRequest` would have
+  turned that into a 400.
+- `request-bill` (orders controller) now sends `RequestBillCommand`. Role-gated endpoints (bill detail,
+  request-bill, payment-method writes) carry no `IRequirePermission`; discount writes keep the controller's
+  `billing.operate` policy plus their manager role gate.
+- `BillingServiceTests` → `Billing/BillingTests`; `AuthServiceTests` resolves `ManagerApprovals` instead of the old
+  interface. No assertion changed.
