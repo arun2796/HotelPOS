@@ -10,7 +10,7 @@ using HotelPOS.Application.Features.Floor;
 using HotelPOS.Application.Features.Kitchen;
 using HotelPOS.Application.Features.Menu;
 using HotelPOS.Application.Features.Orders;
-using HotelPOS.Application.Print;
+using HotelPOS.Application.Features.Print;
 using HotelPOS.Application.Reports;
 using HotelPOS.Application.Security;
 using HotelPOS.Application.Settings;
@@ -60,7 +60,7 @@ public static class DependencyInjection
         services.AddScoped<BillSteps>();
         services.AddScoped<BillEvents>();
         services.AddScoped<BillWorkflow>();
-        services.AddScoped<IPrintDocumentService, PrintDocumentService>();
+        services.AddScoped<PrintSources>();
         services.AddScoped<IBusinessDays, BusinessDays>();
         services.AddScoped<IReportService, ReportService>();
         services.AddScoped<IServerNoticeService, ServerNoticeService>();

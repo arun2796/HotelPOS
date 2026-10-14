@@ -301,11 +301,4 @@ public class OrderTests : DatabaseTestBase
     }
 
     private Task<Domain.Floor.Table> TableAsync(int id) => QueryAsync(db => db.Tables.AsNoTracking().SingleAsync(t => t.Id == id));
-
-    private async Task<Result<T>> Call<TService, T>(Func<TService, Task<Result<T>>> call)
-        where TService : notnull
-    {
-        await using var scope = Fixture.Services.CreateAsyncScope();
-        return await call(scope.ServiceProvider.GetRequiredService<TService>());
-    }
 }

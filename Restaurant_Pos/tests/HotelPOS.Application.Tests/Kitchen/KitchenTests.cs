@@ -265,18 +265,4 @@ public class KitchenTests : DatabaseTestBase
 
     private Task<TableStatus> TableStatusAsync(int tableId) =>
         QueryAsync(db => db.Tables.Where(t => t.Id == tableId).Select(t => t.Status).SingleAsync());
-
-    private async Task<Result<T>> Call<TService, T>(Func<TService, Task<Result<T>>> call)
-        where TService : notnull
-    {
-        await using var scope = Fixture.Services.CreateAsyncScope();
-        return await call(scope.ServiceProvider.GetRequiredService<TService>());
-    }
-
-    private async Task<T> Call<TService, T>(Func<TService, Task<T>> call)
-        where TService : notnull
-    {
-        await using var scope = Fixture.Services.CreateAsyncScope();
-        return await call(scope.ServiceProvider.GetRequiredService<TService>());
-    }
 }

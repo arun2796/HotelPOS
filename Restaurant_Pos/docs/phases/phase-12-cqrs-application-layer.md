@@ -70,8 +70,9 @@ All existing tests green after each module; new behaviour tests; matrix snapshot
 
 ## 14. Changes during implementation
 
-Server side only for now: the desktop `ViewModelBase` / `ExecuteAsync` work (§ 3, § 4 Desktop row) is **deferred**
-because Phase 11 is reworking the desktop at the same time; it will be done once both branches are merged.
+The entries 12.1 onwards cover the server (branch `phase-12-cqrs-application-layer`). The desktop `ViewModelBase` /
+`ExecuteAsync` part (§ 3, § 4 Desktop row) was not done on this branch, which leaves the desktop projects untouched
+while Phase 11 reworks them.
 
 **12.1 Primitives and pipeline (2026-10-14)**
 
@@ -200,3 +201,12 @@ because Phase 11 is reworking the desktop at the same time; it will be done once
   `billing.operate` policy plus their manager role gate.
 - `BillingServiceTests` → `Billing/BillingTests`; `AuthServiceTests` resolves `ManagerApprovals` instead of the old
   interface. No assertion changed.
+
+**12.7 Print (2026-10-14)**
+
+- `PrintDocumentService` dissolved into `Features/Print`: queries `GetKitchenTicketDocument`, `GetInvoiceDocument`,
+  `GetReceiptDocument` and command `RecordReprint` (the only non-generic `ICommand` so far; it only writes the
+  `Print.Reprint` audit entry). All print endpoints are role-gated, so no request carries a permission. Shared
+  reads (settings, user names) are in `PrintSources`.
+- `PrintDocumentServiceTests` → `Print/PrintTests`; dead `Call<>` helpers left over in the billing, kitchen and order
+  tests were removed.

@@ -8,7 +8,8 @@ using HotelPOS.Application.Features.Menu.Commands;
 using HotelPOS.Application.Features.Menu.Queries;
 using HotelPOS.Application.Features.Orders.Commands;
 using HotelPOS.Application.Features.Orders.Queries;
-using HotelPOS.Application.Print;
+using HotelPOS.Application.Features.Print.Commands;
+using HotelPOS.Application.Features.Print.Queries;
 using HotelPOS.Application.Tests.Support;
 using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Billing;
@@ -25,9 +26,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace HotelPOS.Application.Tests.Print;
 
-public class PrintDocumentServiceTests : DatabaseTestBase
+public class PrintTests : DatabaseTestBase
 {
-    public PrintDocumentServiceTests(DatabaseFixture fixture)
+    public PrintTests(DatabaseFixture fixture)
         : base(fixture)
     {
     }
@@ -39,7 +40,7 @@ public class PrintDocumentServiceTests : DatabaseTestBase
         var order = await SendAsync(s, new OrderItemInput { MenuItemId = s.Biryani, Quantity = 2, Notes = "less oil", ModifierOptionIds = new[] { s.Mild } },
             new OrderItemInput { MenuItemId = s.Naan, Quantity = 4 });
 
-        var kot = await Call<IPrintDocumentService, KitchenTicketDocument>(p => p.BuildKotAsync(order.Tickets.Single().Id));
+        var kot = await SendAsync(new GetKitchenTicketDocumentQuery(order.Tickets.Single().Id));
 
         kot.Value.TicketNumber.Should().Be($"{order.OrderNumber}-1");
         kot.Value.TableCode.Should().Be("T01");
@@ -50,7 +51,7 @@ public class PrintDocumentServiceTests : DatabaseTestBase
             .Should().Equal(("Chicken Biryani", 2, "less oil", "Mild", null), ("Butter Naan", 4, null, string.Empty, null));
 
         await SetSettingAsync(SettingKeys.KotShowPrices, "true");
-        (await Call<IPrintDocumentService, KitchenTicketDocument>(p => p.BuildKotAsync(order.Tickets.Single().Id))).Value.Items[0].UnitPrice.Should().Be(250m);
+        (await SendAsync(new GetKitchenTicketDocumentQuery(order.Tickets.Single().Id))).Value.Items[0].UnitPrice.Should().Be(250m);
     }
 
     [Fact]
@@ -65,7 +66,7 @@ public class PrintDocumentServiceTests : DatabaseTestBase
         bill = (await SendAsync(new ApplyBillDiscountCommand(bill.Id, new ApplyDiscountRequest { Type = DiscountType.Percentage, Value = 10m, Reason = "Regular", RowVersion = bill.RowVersion }))).Value;
         bill = (await SendAsync(new AddPaymentCommand(bill.Id, new AddPaymentRequest { PaymentMethodId = 1, Amount = 600m, Tendered = 600m, RowVersion = bill.RowVersion }, Guid.NewGuid()))).Value;
 
-        var invoice = await Call<IPrintDocumentService, InvoiceDocument>(p => p.BuildInvoiceAsync(bill.Id));
+        var invoice = await SendAsync(new GetInvoiceDocumentQuery(bill.Id));
 
         var doc = invoice.Value;
         doc.InvoiceNumber.Should().Be(bill.InvoiceNumber);
@@ -81,7 +82,7 @@ public class PrintDocumentServiceTests : DatabaseTestBase
         doc.IsCancelled.Should().BeFalse();
 
         await SetSettingAsync(SettingKeys.TaxSplitDisplay, "SINGLE");
-        (await Call<IPrintDocumentService, InvoiceDocument>(p => p.BuildInvoiceAsync(bill.Id))).Value.TaxRows.Select(t => t.Label).Should().Equal("GST 5%");
+        (await SendAsync(new GetInvoiceDocumentQuery(bill.Id))).Value.TaxRows.Select(t => t.Label).Should().Equal("GST 5%");
     }
 
     [Fact]
@@ -93,7 +94,7 @@ public class PrintDocumentServiceTests : DatabaseTestBase
         CurrentUser.SignIn(s.Cashier, "cashier1", Roles.Cashier);
         var paid = (await SendAsync(new AddPaymentCommand(bill.Id, new AddPaymentRequest { PaymentMethodId = 1, Amount = 53m, Tendered = 100m, RowVersion = bill.RowVersion }, Guid.NewGuid()))).Value;
 
-        var receipt = await Call<IPrintDocumentService, ReceiptDocument>(p => p.BuildReceiptAsync(paid.Payments.Single().Id));
+        var receipt = await SendAsync(new GetReceiptDocumentQuery(paid.Payments.Single().Id));
         receipt.Value.Method.Should().Be("Cash");
         receipt.Value.Amount.Should().Be(53m);
         receipt.Value.TenderedAmount.Should().Be(100m);
@@ -107,7 +108,7 @@ public class PrintDocumentServiceTests : DatabaseTestBase
         bill2 = (await SendAsync(new FinalizeBillCommand(bill2.Id, new BillActionRequest { RowVersion = bill2.RowVersion }))).Value;
         await SendAsync(new VoidBillCommand(bill2.Id, new VoidBillRequest { Reason = "Walked out", RowVersion = bill2.RowVersion }));
 
-        var voided = await Call<IPrintDocumentService, InvoiceDocument>(p => p.BuildInvoiceAsync(bill2.Id));
+        var voided = await SendAsync(new GetInvoiceDocumentQuery(bill2.Id));
         voided.Value.IsCancelled.Should().BeTrue();
         voided.Value.CancelReason.Should().Be("Walked out");
         voided.Value.InvoiceNumber.Should().Be(bill2.InvoiceNumber);
@@ -121,14 +122,14 @@ public class PrintDocumentServiceTests : DatabaseTestBase
         var bill = (await SendAsync(new RequestBillCommand(order.Id))).Value;
 
         CurrentUser.SignIn(s.WaiterTwo, "waiter2", Roles.Waiter);
-        (await Call<IPrintDocumentService, InvoiceDocument>(p => p.BuildInvoiceAsync(bill.Id))).Error!.Code.Should().Be(ErrorCodes.Forbidden);
+        (await SendAsync(new GetInvoiceDocumentQuery(bill.Id))).Error!.Code.Should().Be(ErrorCodes.Forbidden);
         CurrentUser.SignIn(s.Waiter, "waiter1", Roles.Waiter);
-        (await Call<IPrintDocumentService, InvoiceDocument>(p => p.BuildInvoiceAsync(bill.Id))).IsSuccess.Should().BeTrue();
+        (await SendAsync(new GetInvoiceDocumentQuery(bill.Id))).IsSuccess.Should().BeTrue();
 
         CurrentUser.SignIn(s.Cashier, "cashier1", Roles.Cashier);
         CurrentUser.DeviceName = "BILLING-01";
-        var recorded = await Call<IPrintDocumentService>(p => p.RecordReprintAsync(new ReprintRequest { DocumentType = PrintDocumentType.Invoice, EntityId = bill.Id, Reason = "Torn" }));
-        var missing = await Call<IPrintDocumentService>(p => p.RecordReprintAsync(new ReprintRequest { DocumentType = PrintDocumentType.Receipt, EntityId = 999, Reason = "x" }));
+        var recorded = await SendAsync(new RecordReprintCommand(new ReprintRequest { DocumentType = PrintDocumentType.Invoice, EntityId = bill.Id, Reason = "Torn" }));
+        var missing = await SendAsync(new RecordReprintCommand(new ReprintRequest { DocumentType = PrintDocumentType.Receipt, EntityId = 999, Reason = "x" }));
 
         recorded.IsSuccess.Should().BeTrue();
         missing.Error!.Code.Should().Be(ErrorCodes.NotFound);
@@ -184,18 +185,4 @@ public class PrintDocumentServiceTests : DatabaseTestBase
 
     private Task SetSettingAsync(string key, string value) =>
         QueryAsync(db => db.Database.ExecuteSqlInterpolatedAsync($"UPDATE \"Settings\" SET \"Value\" = {value} WHERE \"Key\" = {key}"));
-
-    private async Task<Result<T>> Call<TService, T>(Func<TService, Task<Result<T>>> call)
-        where TService : notnull
-    {
-        await using var scope = Fixture.Services.CreateAsyncScope();
-        return await call(scope.ServiceProvider.GetRequiredService<TService>());
-    }
-
-    private async Task<Result> Call<TService>(Func<TService, Task<Result>> call)
-        where TService : notnull
-    {
-        await using var scope = Fixture.Services.CreateAsyncScope();
-        return await call(scope.ServiceProvider.GetRequiredService<TService>());
-    }
 }
