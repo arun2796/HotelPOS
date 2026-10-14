@@ -2,6 +2,8 @@ using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Domain.Administration;
 using HotelPOS.Domain.Billing;
 using HotelPOS.Domain.Cash;
+using HotelPOS.Domain.Customers;
+using HotelPOS.Domain.Licensing;
 using HotelPOS.Domain.Gst;
 using HotelPOS.Domain.Floor;
 using HotelPOS.Domain.Kitchen;
@@ -60,6 +62,10 @@ public sealed class AppDbContext : DbContext, IAppDbContext
     public DbSet<NonTillCollection> NonTillCollections => Set<NonTillCollection>();
     public DbSet<BusinessDayClose> BusinessDayCloses => Set<BusinessDayClose>();
     public DbSet<PeriodClose> PeriodCloses => Set<PeriodClose>();
+    public DbSet<ServerLicense> ServerLicenses => Set<ServerLicense>();
+    public DbSet<Customer> Customers => Set<Customer>();
+    public DbSet<ImportBatch> ImportBatches => Set<ImportBatch>();
+    public DbSet<ImportEntry> ImportEntries => Set<ImportEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

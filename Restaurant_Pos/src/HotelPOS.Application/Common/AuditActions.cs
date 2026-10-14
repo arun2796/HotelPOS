@@ -131,6 +131,9 @@ public static class AuditActions
     public const string PeriodClosed = "Period.Closed";
     public const string PeriodReopened = "Period.Reopened";
     public const string PeriodPackWritten = "Period.PackWritten";
+    public const string LicenseApplied = "License.Applied";
+    public const string ImportApplied = "Import.Applied";
+    public const string ImportUndone = "Import.Undone";
     public const string DayEndReopened = "DayEnd.Reopened";
     public const string NonTillCollectionRecorded = "DayEnd.NonTillCollectionRecorded";
 }

@@ -3,6 +3,8 @@ using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Features.Reports;
 using HotelPOS.Infrastructure.Documents;
 using HotelPOS.Infrastructure.Identity;
+using HotelPOS.Infrastructure.Licensing;
+using HotelPOS.Infrastructure.Updates;
 using HotelPOS.Infrastructure.Media;
 using HotelPOS.Infrastructure.Persistence;
 using HotelPOS.Infrastructure.Persistence.Interceptors;
@@ -59,6 +61,12 @@ public static class DependencyInjection
         services.AddSingleton<IIdempotencyStore, IdempotencyStore>();
         services.AddHostedService<IdempotencyCleanupService>();
         services.AddSingleton<IMenuImageStore, MenuImageStore>();
+
+        // Phase 16: licence machine id, import file reader, the client installer the server hosts under /updates/.
+        services.Configure<UpdateOptions>(configuration.GetSection(UpdateOptions.SectionName));
+        services.AddSingleton<IMachineIdProvider, HardwareMachineIdProvider>();
+        services.AddSingleton<ITabularReader, TabularReader>();
+        services.AddSingleton<IClientUpdateSource, ClientUpdateSource>();
 
         // Phase 14 documents: PDF (QuestPDF), Excel (ClosedXML), QR codes, logo, copy numbers.
         services.AddSingleton<IPdfRenderer, QuestPdfRenderer>();

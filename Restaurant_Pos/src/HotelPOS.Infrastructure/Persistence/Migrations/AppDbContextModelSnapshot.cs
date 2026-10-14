@@ -187,6 +187,95 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                     b.ToTable("IdempotencyRecords", (string)null);
                 });
 
+            modelBuilder.Entity("HotelPOS.Domain.Administration.ImportBatch", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("AppliedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int?>("AppliedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("CreatedCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UndoneAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int?>("UndoneBy")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UpdatedCount")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AppliedBy");
+
+                    b.HasIndex("UndoneBy");
+
+                    b.ToTable("ImportBatches", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_ImportBatches_Kind", "\"Kind\" IN (1, 2)");
+
+                            t.HasCheckConstraint("CK_ImportBatches_Status", "\"Status\" IN (1, 2)");
+                        });
+                });
+
+            modelBuilder.Entity("HotelPOS.Domain.Administration.ImportEntry", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Action")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("BatchId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Before")
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("EntityId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<int>("Seq")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BatchId", "Seq");
+
+                    b.ToTable("ImportEntries", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_ImportEntries_Action", "\"Action\" IN (1, 2)");
+                        });
+                });
+
             modelBuilder.Entity("HotelPOS.Domain.Administration.Setting", b =>
                 {
                     b.Property<string>("Key")
@@ -1047,6 +1136,69 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("HotelPOS.Domain.Customers.Customer", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Gstin")
+                        .HasMaxLength(15)
+                        .HasColumnType("character varying(15)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("LegalName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("StateCode")
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int?>("UpdatedBy")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name");
+
+                    b.HasIndex("Phone")
+                        .IsUnique()
+                        .HasFilter("\"Phone\" IS NOT NULL");
+
+                    b.ToTable("Customers", (string)null);
+                });
+
             modelBuilder.Entity("HotelPOS.Domain.Floor.Section", b =>
                 {
                     b.Property<int>("Id")
@@ -1599,6 +1751,34 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                     b.ToTable("KitchenOrderItems", null, t =>
                         {
                             t.HasCheckConstraint("CK_KitchenOrderItems_Quantity", "\"Quantity\" > 0");
+                        });
+                });
+
+            modelBuilder.Entity("HotelPOS.Domain.Licensing.ServerLicense", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("AppliedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int?>("AppliedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Key")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<DateTime>("TrialStartedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AppliedBy");
+
+                    b.ToTable("ServerLicense", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_ServerLicense_Singleton", "\"Id\" = 1");
                         });
                 });
 
@@ -2258,6 +2438,28 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("HotelPOS.Domain.Administration.ImportBatch", b =>
+                {
+                    b.HasOne("HotelPOS.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("AppliedBy")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("HotelPOS.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("UndoneBy")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("HotelPOS.Domain.Administration.ImportEntry", b =>
+                {
+                    b.HasOne("HotelPOS.Domain.Administration.ImportBatch", null)
+                        .WithMany("Entries")
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("HotelPOS.Domain.Billing.Bill", b =>
                 {
                     b.HasOne("HotelPOS.Domain.Billing.Discount", null)
@@ -2501,6 +2703,14 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                     b.Navigation("OrderItem");
                 });
 
+            modelBuilder.Entity("HotelPOS.Domain.Licensing.ServerLicense", b =>
+                {
+                    b.HasOne("HotelPOS.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("AppliedBy")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
             modelBuilder.Entity("HotelPOS.Domain.Menu.MenuItem", b =>
                 {
                     b.HasOne("HotelPOS.Domain.Menu.Category", "Category")
@@ -2600,6 +2810,11 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                         .HasForeignKey("OrderItemId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("HotelPOS.Domain.Administration.ImportBatch", b =>
+                {
+                    b.Navigation("Entries");
                 });
 
             modelBuilder.Entity("HotelPOS.Domain.Billing.Bill", b =>

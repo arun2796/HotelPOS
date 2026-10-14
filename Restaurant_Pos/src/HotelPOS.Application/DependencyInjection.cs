@@ -7,7 +7,10 @@ using HotelPOS.Application.Features.Billing;
 using HotelPOS.Application.Features.DayEnd;
 using HotelPOS.Application.Features.Devices;
 using HotelPOS.Application.Features.Floor;
+using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Features.Gst;
+using HotelPOS.Application.Features.Licensing;
+using HotelPOS.Application.Features.Import;
 using HotelPOS.Application.Features.Gst.Queries;
 using HotelPOS.Application.Features.PeriodClosing;
 using HotelPOS.Application.Features.Kitchen;
@@ -90,6 +93,10 @@ public static class DependencyInjection
         services.AddScoped<GstExports>();
         services.AddScoped<PeriodChecks>();
         services.AddScoped<DayEndRecords>();
+        services.AddScoped<ILicenseService, LicenseService>();
+        services.AddSingleton<ILicenseTrust, EmbeddedLicenseTrust>();
+        services.AddScoped<ImportSession>();
+        services.AddScoped<ImportExecutor>();
 
         // Read by the access middleware on every request.
         services.AddSingleton<IDeviceAccessCache, DeviceAccessCache>();

@@ -51,6 +51,10 @@ AM---  GET    api/gst/gstr1/json
 AM---  GET    api/gst/gstr3b
 AM---  GET    api/gst/hsn-summary
 AM---  GET    api/gst/validation
+AM---  POST   api/import/apply
+AM---  GET    api/import/last
+AM---  POST   api/import/preview
+AM---  POST   api/import/undo
 AM-K-  GET    api/kitchen/orders
 AM-K-  GET    api/kitchen/orders/completed
 AMWK-  GET    api/kitchen/orders/{ticketId:int}
@@ -59,6 +63,8 @@ AMWK-  POST   api/kitchen/orders/{ticketId:int}/complete
 AM-K-  POST   api/kitchen/orders/{ticketId:int}/ready
 AM-K-  POST   api/kitchen/orders/{ticketId:int}/recall
 AM-K-  POST   api/kitchen/orders/{ticketId:int}/start
+AMWKC  GET    api/license
+A----  POST   api/license/apply
 AMWKC  GET    api/menu
 AMWKC  GET    api/menu-items
 AM---  POST   api/menu-items
