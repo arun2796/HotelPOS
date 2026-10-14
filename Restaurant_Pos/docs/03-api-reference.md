@@ -49,6 +49,10 @@ endpoint is `tests/HotelPOS.Api.Tests/authorization-matrix.txt`; `AuthorizationM
 | 409 | `REQUEST_IN_PROGRESS` | Same key still processing |
 | 409 | `APPROVAL_REQUIRED` / `APPROVAL_INVALID` | Manager approval missing or wrong |
 | 409 | `PAYMENT_EXCEEDS_BALANCE` | Non-cash amount above balance due |
+| 409 | `SHIFT_REQUIRED` | Cash payment or cash refund on a terminal without an open cash shift (Phase 13) |
+| 409 | `SHIFT_ALREADY_OPEN` | The terminal, or the cashier elsewhere, already has an open shift |
+| 409 | `DAY_CLOSED` | The business day of the bill or payment (or of the shift/collection) is closed by Day End |
+| 409 | `VARIANCE_APPROVAL_REQUIRED` | Shift count differs from the expected cash by more than `CashVarianceApprovalLimit`; send `approval` |
 | 422 | `BUSINESS_RULE` | Other domain rule (message explains) |
 | 429 | `RATE_LIMITED` | Too many attempts on `/api/auth/login` or `/api/auth/approval` (per socket IP and per username; `Security:RateLimit` `MaxPerIp` 10, `MaxPerUser` 5, `WindowSeconds` 60); `Retry-After` header |
 | 500 | `SERVER_ERROR` | Unhandled exception (details only in logs) |
@@ -198,6 +202,35 @@ All `GET`, roles A/M, params `from`, `to` (business days, default today, at most
 | POST | `/api/admin/backup` ; GET `/api/admin/backups` | A (`backup.manage`) | 10 — runs a verified backup now (409/422 `BUSINESS_RULE` if one is running or it fails); the list returns folder, schedule, retention, last unresolved failure and the latest 100 backups |
 | GET | `/api/admin/logs?lines=500&level=WRN` | A (`server.manage`) | 10 — newest entries of the newest `api-*.log` (1–2000; stack traces stay with their entry) |
 | POST | `/api/admin/notice` `{level: Info/Warning/Critical, message}` | A (`server.manage`) | 10 — broadcast `ServerNotice` to every terminal; audited `Server.NoticeSent` |
+
+### 3.11 Shifts, cash register and Day End (Phase 13)
+
+Cash payments and cash refunds (`/api/billing/{id}/payments`, `/refunds`) need the terminal's open shift
+(`SHIFT_REQUIRED`). Request bill, finalize, pay, refund, void and reopen a bill answer `DAY_CLOSED` when today's
+business day, or the day the bill was settled in, is closed. Days in routes are `yyyy-MM-dd`.
+
+| Method | Route | Permission (default roles) | Notes |
+|---|---|---|---|
+| GET | `/api/denominations` | `billing.operate` (A, M, C) | All notes and coins, inactive included |
+| PUT | `/api/denominations` | `settings.manage` (A) | `{items:[{id?, value, label, kind, sortOrder, isActive}]}`; never deletes |
+| POST | `/api/shifts` | `shift.operate` (A, M, C) | `{counts:[{denominationId, quantity}]}` opens on the caller's terminal (201); `SHIFT_ALREADY_OPEN` |
+| GET | `/api/shifts/current` | `shift.operate` | This terminal's open shift or `null`; `expectedCash` null under a blind count |
+| GET | `/api/shifts/cashiers` | `shift.operate` | Users who may hold a shift (handover target), with any open shift's terminal |
+| GET | `/api/shifts?day=` | `shift.manage` (A, M) | Shifts of the business day (default today) plus older open ones |
+| POST | `/api/shifts/{id}/movements` | `shift.operate` | `{type: PayIn/PayOut/TillVoucher, amount, reason, approval?}`; money out above `CashPayOutApprovalLimit` needs approval (`pay-out`); returns the X report |
+| GET | `/api/shifts/{id}/x-report` | `shift.operate` | `ShiftReportDto`: X report while open, Z report (`isFinal`) once closed |
+| POST | `/api/shifts/{id}/close` | `shift.operate` | `{counts, varianceReason?, approval?, rowVersion}`; reason for any variance, approval (`cash-variance`) above `CashVarianceApprovalLimit`; returns the Z report |
+| POST | `/api/shifts/{id}/handover` | `shift.operate` | as close plus `nextCashierUserId`; the next shift opens with the counted notes as float |
+| POST | `/api/shifts/{id}/force-close` | `shift.manage` | `{counts, reason, rowVersion}` |
+| POST | `/api/shifts/{id}/reopen` | `shift.manage` | `{reason, approval?, rowVersion}` (`reopen-shift`); its business day must be open |
+| GET | `/api/day-end/precheck?day=` | `dayend.run` (A, M) | Blocking items (`OPEN_ORDERS`, `UNPAID_BILLS`, `OPEN_SHIFTS`, `OPEN_KITCHEN_TICKETS`), totals, default day |
+| POST | `/api/day-end` | `dayend.run` | `{businessDay?, overrides:[{code, reason}]}`: verified backup first (422 and day left open if it fails), then lock + totals snapshot, then the CSV pack |
+| POST | `/api/day-end/{day}/reopen` | `dayend.run` | `{reason, approval?}` (`reopen-day`) |
+| GET | `/api/day-end/history` | `dayend.run` | Latest 90 Day End records |
+| POST | `/api/day-end/{day}/collections` | `dayend.run` | `{method, amount, reference?, note?}` non-till collection (201) |
+
+New approval action types for `POST /api/auth/approval`: `cash-variance`, `pay-out`, `reopen-shift` (approver holds
+`shift.manage`) and `reopen-day` (`dayend.run`).
 
 ## 4. Idempotency protocol (client side)
 

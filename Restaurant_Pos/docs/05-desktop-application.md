@@ -160,6 +160,7 @@ View-models are matched to views by DataTemplates in `App.xaml` and created with
 | Bill Detail | Lines (item, qty, price, line total), subtotal, discount (button), tax breakup, round-off, grand total; customer details; **FINALIZE & PRINT**, **CASH**, **CARD**, **UPI**, **SPLIT** |
 | Payment | Cash: tendered quick buttons (exact, 100, 200, 500, 2000) and change; Card/UPI: reference; Split: lines until balance 0; **CONFIRM** |
 | Closed Bills | Today's settled/voided bills, search, reprint, refund/void (manager approval) |
+| Shift bar (13) | Billing terminals (`DeviceType = Billing`, `shift.operate`), under the top bar: "Shift open since 09:02 · Priya · expected 4,820.00" with **X report**, **Pay in / out**, **Hand over**, **Close shift**; "No shift open" with **Open shift**. Business day closed/reopened notices. Dialogs (counting sheet per note and coin with 48 px steppers, live total, expected and difference unless blind count; Z report with print and preview) open over the page. A cash payment refused with `SHIFT_REQUIRED` offers to open a shift |
 
 ### Manager / Admin
 Users, Roles, Sections/Tables, Categories, Menu Items (list + edit form + image), Modifiers, Taxes,
@@ -174,6 +175,10 @@ Data grids with search, add/edit side panel, activate/deactivate instead of dele
 | Devices (9) | Name, type, station, machine, version, last seen, online badge; rename, assign kitchen station, activate/deactivate |
 | Audit Log (9) | Filters (search, user, terminal, action, today / 7 days / custom local dates / all), paged grid, before/after side by side, export CSV with the same filters |
 | Users (9 additions) | Lockout state with **UNLOCK**, active sessions, **LOG OUT EVERYWHERE**, password hint |
+| Cash Shifts (13, `shift.manage`) | Shifts of a business day (terminal, cashier, float, expected, counted, variance, status); X/Z report, **Force close…** (counting sheet + reason), **Reopen…** (reason + approval) |
+| Day End (13, `dayend.run`) | Wizard: 1 blocking items with **Open** and **Override…** (reason), 2 totals, payments, shifts and variances, non-till collections (add), 3 run (backup → lock → pack), 4 done (backup file, pack folder and files) |
+| Day End History (13, `dayend.run`) | Closed days with totals, overrides, backup and pack; **Reopen day…** (reason + approval) |
+| Discounts & Payments (13) | Hub tabs: Discounts & payments, **Denominations** (notes and coins; admins edit) |
 
 Since Phase 9:
 - The sidebar follows the user's **permissions** (`ModuleRegistry.ForUser`); with the default sets it matches the
