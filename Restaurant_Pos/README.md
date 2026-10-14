@@ -38,7 +38,7 @@ PostgreSQL is the single source of truth.
 | Phase 12 – CQRS Application Layer      | Done         |
 | Phase 13 – Shifts, Cash & Day End      | In progress  |
 | Phase 14 – Templates, PDF & Excel      | In progress  |
-| Phase 15 – GST & Period Close          | Not started  |
+| Phase 15 – GST & Period Close          | In progress  |
 | Phase 16 – Licensing, Updates & Import | Not started  |
 
 Update this table (and `docs/phases/README.md`) when a phase starts or finishes.

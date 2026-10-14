@@ -25,7 +25,7 @@ documents say what to build, in which order, and how to verify it.
 | 12 | [CQRS Application Layer](phase-12-cqrs-application-layer.md) | 11 | MediatR commands/queries with logging, permission, validation, transaction and audit behaviours; thin controllers | Done (2026-10-14) |
 | 13 | [Shifts, Cash & Day End](phase-13-shifts-cash-and-day-end.md) | 12 | Cashier shifts, float and denominations, pay-in/out, X/Z reports, Day End with lock | In progress (code complete; manual demo open) |
 | 14 | [Templates, PDF & Excel](phase-14-templates-pdf-excel.md) | 12 | One render model, Template Studio, PDF and Excel exports, print log with DUPLICATE | In progress (code complete; Day End pack export and manual demo open) |
-| 15 | [GST Reports & Period Close](phase-15-gst-reports-and-period-close.md) | 13, 14 | GSTR-1 JSON, GSTR-3B, HSN/SAC summary, B2B GSTIN, month/year lock | Not started |
+| 15 | [GST Reports & Period Close](phase-15-gst-reports-and-period-close.md) | 13, 14 | GSTR-1 JSON, GSTR-3B, HSN/SAC summary, B2B GSTIN, month/year lock | In progress (code complete; offline-tool check and manual demo open) |
 | 16 | [Licensing, Updates & Import](phase-16-licensing-updates-import.md) | 10 | Machine-locked licence and trial, LAN auto-update, menu/customer import | Not started |
 
 Phases 2 and 3 are independent and can be built in parallel. Phase 7 can start once Phase 5 exists
