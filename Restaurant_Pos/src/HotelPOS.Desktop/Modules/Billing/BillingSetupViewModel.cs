@@ -22,7 +22,7 @@ public sealed record DiscountRow(DiscountDto Discount)
     public string ApprovalText => Discount.RequiresApproval ? "Manager" : "—";
 }
 
-public sealed partial class BillingSetupViewModel : ObservableObject, INavigationAware
+public sealed partial class BillingSetupViewModel : ViewModelBase, INavigationAware
 {
     private readonly IBillingApi _billingApi;
     private readonly INotificationService _notifications;
@@ -47,9 +47,6 @@ public sealed partial class BillingSetupViewModel : ObservableObject, INavigatio
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(EditMethodCommand))]
     private PaymentMethodDto? _selectedMethod;
-
-    [ObservableProperty]
-    private string? _errorMessage;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsEditorOpen), nameof(IsDiscountEditor), nameof(IsMethodEditor))]
@@ -105,23 +102,21 @@ public sealed partial class BillingSetupViewModel : ObservableObject, INavigatio
 
     public async Task LoadAsync()
     {
-        var discounts = await _billingApi.GetDiscountsAsync(includeInactive: true);
-        var methods = await _billingApi.GetPaymentMethodsAsync(includeInactive: true);
-        if (!discounts.Success || !methods.Success)
+        if (await FetchAsync(_billingApi.GetDiscountsAsync(includeInactive: true)) is not { } discounts
+            || await FetchAsync(_billingApi.GetPaymentMethodsAsync(includeInactive: true)) is not { } methods)
         {
-            ErrorMessage = discounts.Success ? ApiFailures.Describe(methods) : ApiFailures.Describe(discounts);
             return;
         }
 
         ErrorMessage = null;
         Discounts.Clear();
-        foreach (var discount in discounts.Data ?? new List<DiscountDto>())
+        foreach (var discount in discounts)
         {
             Discounts.Add(new DiscountRow(discount));
         }
 
         Methods.Clear();
-        foreach (var method in methods.Data ?? new List<PaymentMethodDto>())
+        foreach (var method in methods)
         {
             Methods.Add(method);
         }

@@ -24,7 +24,7 @@ public sealed record OrderLineViewModel(int ItemId, string Text, string Detail, 
     public bool HasDetail => Detail.Length > 0;
 }
 
-public sealed partial class TableDetailsViewModel : ObservableObject
+public sealed partial class TableDetailsViewModel : ViewModelBase
 {
     public const string ChangedByAnotherTerminal = "Table was changed by another terminal. The latest status is shown.";
 
@@ -75,12 +75,6 @@ public sealed partial class TableDetailsViewModel : ObservableObject
 
     [ObservableProperty]
     private string _guestInput = string.Empty;
-
-    [ObservableProperty]
-    private bool _isBusy;
-
-    [ObservableProperty]
-    private string? _errorMessage;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasOrder), nameof(OrderTitle), nameof(OrderStatusText), nameof(OrderTotalText), nameof(ShowKeypad),
@@ -238,9 +232,7 @@ public sealed partial class TableDetailsViewModel : ObservableObject
             return;
         }
 
-        IsBusy = true;
-        ErrorMessage = null;
-        try
+        await ExecuteAsync(async () =>
         {
             var result = await _floorApi.OccupyAsync(table.Id, new OccupyTableRequest { GuestCount = guests, RowVersion = table.RowVersion });
             if (result.Success && result.Data is not null)
@@ -252,12 +244,8 @@ public sealed partial class TableDetailsViewModel : ObservableObject
             }
 
             HandleFailure(result, "occupied");
-        }
-        finally
-        {
-            IsBusy = false;
-            RefreshCommands();
-        }
+        });
+        RefreshCommands();
     }
 
     private bool CanRelease() => !IsBusy && ShowRelease;
@@ -274,9 +262,7 @@ public sealed partial class TableDetailsViewModel : ObservableObject
             return;
         }
 
-        IsBusy = true;
-        ErrorMessage = null;
-        try
+        await ExecuteAsync(async () =>
         {
             var result = await _floorApi.ReleaseAsync(table.Id);
             if (result.Success && result.Data is not null)
@@ -287,12 +273,8 @@ public sealed partial class TableDetailsViewModel : ObservableObject
             }
 
             HandleFailure(result, "released");
-        }
-        finally
-        {
-            IsBusy = false;
-            RefreshCommands();
-        }
+        });
+        RefreshCommands();
     }
 
     private bool CanNewOrder() => !IsBusy && ShowNewOrder;
@@ -352,9 +334,7 @@ public sealed partial class TableDetailsViewModel : ObservableObject
             return;
         }
 
-        IsBusy = true;
-        ErrorMessage = null;
-        try
+        await ExecuteAsync(async () =>
         {
             var result = await _ordersApi.CancelAsync(order.Id, new CancelOrderRequest { Reason = reason });
             if (result.Success)
@@ -367,12 +347,8 @@ public sealed partial class TableDetailsViewModel : ObservableObject
             {
                 ErrorMessage = ApiFailures.Describe(result);
             }
-        }
-        finally
-        {
-            IsBusy = false;
-            await ReloadOrderAsync();
-        }
+        });
+        await ReloadOrderAsync();
     }
 
     private bool CanServe() => !IsBusy && ShowServe;
@@ -381,9 +357,7 @@ public sealed partial class TableDetailsViewModel : ObservableObject
     private async Task ServeAsync()
     {
         var order = Order!;
-        IsBusy = true;
-        ErrorMessage = null;
-        try
+        await ExecuteAsync(async () =>
         {
             var result = await _ordersApi.ServeAsync(order.Id);
             if (result.Success)
@@ -394,12 +368,8 @@ public sealed partial class TableDetailsViewModel : ObservableObject
             {
                 ErrorMessage = ApiFailures.Describe(result);
             }
-        }
-        finally
-        {
-            IsBusy = false;
-            await ReloadOrderAsync();
-        }
+        });
+        await ReloadOrderAsync();
     }
 
     private bool CanRequestBill() => !IsBusy && ShowRequestBill;
@@ -408,9 +378,7 @@ public sealed partial class TableDetailsViewModel : ObservableObject
     private async Task RequestBillAsync()
     {
         var order = Order!;
-        IsBusy = true;
-        ErrorMessage = null;
-        try
+        await ExecuteAsync(async () =>
         {
             // The key survives a lost response, so pressing again cannot create a second bill.
             _billRequestKey ??= Guid.NewGuid();
@@ -430,12 +398,8 @@ public sealed partial class TableDetailsViewModel : ObservableObject
                     ? "Could not confirm the bill request. Check the connection and press REQUEST BILL again."
                     : ApiFailures.Describe(result);
             }
-        }
-        finally
-        {
-            IsBusy = false;
-            await ReloadOrderAsync();
-        }
+        });
+        await ReloadOrderAsync();
     }
 
     [RelayCommand]
@@ -453,9 +417,7 @@ public sealed partial class TableDetailsViewModel : ObservableObject
             return;
         }
 
-        IsBusy = true;
-        ErrorMessage = null;
-        try
+        await ExecuteAsync(async () =>
         {
             var result = await _ordersApi.CancelItemAsync(order.Id, line.ItemId, new CancelOrderItemRequest { Reason = reason });
             if (result.Success)
@@ -466,15 +428,11 @@ public sealed partial class TableDetailsViewModel : ObservableObject
             {
                 ErrorMessage = ApiFailures.Describe(result);
             }
-        }
-        finally
-        {
-            IsBusy = false;
-            await ReloadOrderAsync();
-        }
+        });
+        await ReloadOrderAsync();
     }
 
-    partial void OnIsBusyChanged(bool value) => RefreshCommands();
+    protected override void OnBusyChanged() => RefreshCommands();
 
     private bool CanCancelItem(OrderDetailDto order, OrderItemDto item) => order.CanModify && item.Status == OrderItemStatus.Sent
         && (item.TicketStatus is KitchenOrderStatus.New or KitchenOrderStatus.Accepted

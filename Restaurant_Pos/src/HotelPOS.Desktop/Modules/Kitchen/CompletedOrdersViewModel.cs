@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Kitchen;
 using HotelPOS.Contracts.Print;
+using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Navigation;
 using HotelPOS.Desktop.Services.Printing;
@@ -29,7 +30,7 @@ public sealed record CompletedTicketRow(KitchenTicketDto Ticket)
         from is { } a && to is { } b ? $"{Math.Max(0, (int)Math.Round((b - a).TotalMinutes))} min" : "—";
 }
 
-public sealed partial class CompletedOrdersViewModel : ObservableObject, INavigationAware, IRefreshable
+public sealed partial class CompletedOrdersViewModel : ViewModelBase, INavigationAware, IRefreshable
 {
     private readonly IKitchenApi _kitchenApi;
     private readonly IDocumentPrinter _printer;
@@ -43,9 +44,6 @@ public sealed partial class CompletedOrdersViewModel : ObservableObject, INaviga
     public ObservableCollection<CompletedTicketRow> Rows { get; } = new();
 
     [ObservableProperty]
-    private string? _errorMessage;
-
-    [ObservableProperty]
     private string _summaryText = string.Empty;
 
     public Task OnNavigatedToAsync(object? parameter) => RefreshAsync();
@@ -56,21 +54,20 @@ public sealed partial class CompletedOrdersViewModel : ObservableObject, INaviga
 
     public async Task RefreshAsync()
     {
-        var result = await _kitchenApi.GetCompletedAsync(null);
-        if (!result.Success || result.Data is null)
+        var today = await FetchAsync(_kitchenApi.GetCompletedAsync(null));
+        if (today is null)
         {
-            ErrorMessage = result.Message;
             return;
         }
 
         ErrorMessage = null;
         Rows.Clear();
-        foreach (var ticket in result.Data.Tickets)
+        foreach (var ticket in today.Tickets)
         {
             Rows.Add(new CompletedTicketRow(ticket));
         }
 
-        var completed = result.Data.Tickets.Where(t => t.Status == KitchenOrderStatus.Completed && t.StartedAtUtc is not null && t.ReadyAtUtc is not null).ToList();
+        var completed = today.Tickets.Where(t => t.Status == KitchenOrderStatus.Completed && t.StartedAtUtc is not null && t.ReadyAtUtc is not null).ToList();
         var average = completed.Count == 0 ? 0 : completed.Average(t => (t.ReadyAtUtc!.Value - t.StartedAtUtc!.Value).TotalMinutes);
         SummaryText = $"{Rows.Count} tickets today · average preparation {Math.Round(average)} min";
     }

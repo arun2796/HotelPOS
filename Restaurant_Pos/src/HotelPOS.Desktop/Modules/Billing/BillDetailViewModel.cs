@@ -36,7 +36,7 @@ public sealed record BillLineRow(string Name, string Quantity, string Price, str
 
 public sealed record AmountRow(string Label, string Amount);
 
-public sealed partial class BillDetailViewModel : ObservableObject, INavigationAware, IRefreshable, IDisposable
+public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAware, IRefreshable, IDisposable
 {
     private static readonly TimeSpan ClaimRefresh = TimeSpan.FromMinutes(2);
 
@@ -88,12 +88,6 @@ public sealed partial class BillDetailViewModel : ObservableObject, INavigationA
 
     [ObservableProperty]
     private PaymentViewModel? _payment;
-
-    [ObservableProperty]
-    private bool _isBusy;
-
-    [ObservableProperty]
-    private string? _errorMessage;
 
     [ObservableProperty]
     private string? _panelError;
@@ -586,7 +580,7 @@ public sealed partial class BillDetailViewModel : ObservableObject, INavigationA
     [RelayCommand]
     private Task NextBillAsync() => _navigation.NavigateToAsync(ModuleRegistry.Billing);
 
-    partial void OnIsBusyChanged(bool value)
+    protected override void OnBusyChanged()
     {
         foreach (var name in new[] { nameof(CanEdit), nameof(CanPay), nameof(CanFinalize), nameof(CanReopen), nameof(CanVoid) })
         {

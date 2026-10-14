@@ -3,6 +3,7 @@ using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HotelPOS.Contracts.Print;
+using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Configuration;
 using HotelPOS.Desktop.Services.Navigation;
 using HotelPOS.Desktop.Services.Printing;
@@ -128,7 +129,7 @@ public sealed partial class PrinterProfileEditor : ObservableObject
     }
 }
 
-public sealed partial class PrinterSettingsViewModel : ObservableObject, INavigationAware
+public sealed partial class PrinterSettingsViewModel : ViewModelBase, INavigationAware
 {
     private readonly IClientSettingsService _settings;
     private readonly IDocumentPrinter _printer;
@@ -146,9 +147,6 @@ public sealed partial class PrinterSettingsViewModel : ObservableObject, INaviga
     public ObservableCollection<PrinterProfileEditor> Profiles { get; } = new();
 
     public ObservableCollection<string> InstalledPrinters { get; } = new();
-
-    [ObservableProperty]
-    private string? _errorMessage;
 
     public string DeviceName => _settings.Current.DeviceName;
 
