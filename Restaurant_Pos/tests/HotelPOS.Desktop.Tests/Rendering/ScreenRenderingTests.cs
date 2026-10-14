@@ -17,6 +17,8 @@ using HotelPOS.Contracts.Cash;
 using HotelPOS.Contracts.Gst;
 using HotelPOS.Desktop.Modules.Cash;
 using HotelPOS.Desktop.Modules.Gst;
+using HotelPOS.Desktop.Modules.Licensing;
+using HotelPOS.Desktop.Services.Updates;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Floor;
@@ -382,6 +384,18 @@ public class ScreenRenderingTests
             await Dispatcher.Yield(DispatcherPriority.Background);
             rendered.Add(await RenderScreenAsync(env, setupShell, "67-period-close"));
 
+            await setupShell.NavigateToAsync(ModuleRegistry.License, null);
+            rendered.Add(await RenderScreenAsync(env, setupShell, "68-license"));
+            await setupShell.NavigateToAsync(ModuleRegistry.Import, null);
+            var importFile = Path.Combine(Path.GetTempPath(), "hotelpos-screens-menu.csv");
+            await File.WriteAllTextAsync(importFile, "Category,Item,Price\nStarters,Paneer Tikka,220\n");
+            env.Get<IFilePicker>().PickImportFile().Returns(importFile);
+            var import = (ImportWizardViewModel)setupShell.CurrentPage!;
+            await import.ChooseFileCommand.ExecuteAsync(null);
+            rendered.Add(await RenderScreenAsync(env, setupShell, "69-import-columns"));
+            await import.ShowPreviewCommand.ExecuteAsync(null);
+            rendered.Add(await RenderScreenAsync(env, setupShell, "70-import-preview"));
+
             await setupShell.NavigateToAsync(ModuleRegistry.Reports, null);
             rendered.Add(await RenderScreenAsync(env, setupShell, "40-reports-daily-sales"));
             ((ReportsViewModel)setupShell.CurrentPage!).SelectedReport = ReportsViewModel.Catalogue.Single(r => r.Key == ReportKeys.ItemSales);
@@ -405,7 +419,13 @@ public class ScreenRenderingTests
             await setupShell.NavigateToAsync(ModuleRegistry.Server, null);
             rendered.Add(await RenderScreenAsync(env, setupShell, "46-server"));
             var update = env.Create<UpdateRequiredViewModel>();
-            await setupShell.ShowPageAsync(update, new SystemInfoDto { MinClientVersion = "1.2.0", ApiVersion = "1.2.3" });
+            env.Get<IUpdateService>().OfferFor(Arg.Any<ClientUpdateInfo?>()).Returns(call => call.Arg<ClientUpdateInfo?>());
+            await setupShell.ShowPageAsync(update, new SystemInfoDto
+            {
+                MinClientVersion = "1.2.0",
+                ApiVersion = "1.2.3",
+                ClientUpdate = new ClientUpdateInfo { Version = "1.2.3", File = "HotelPOS-Client-Setup-1.2.3.exe", Sha256 = "AB", Size = 80_000_000 },
+            });
             rendered.Add(await RenderScreenAsync(env, setupShell, "47-update-required"));
 
             await setupShell.NavigateToAsync(ModuleRegistry.Printers, null);
@@ -426,7 +446,7 @@ public class ScreenRenderingTests
         }
 
         bindingErrors.Errors.Should().BeEmpty("every binding in the views must point at an existing property");
-        rendered.Should().HaveCount(67);
+        rendered.Should().HaveCount(70);
         bodyFontFiles.Should().Equal("inter-regular.ttf", "inter-medium.ttf", "inter-semibold.ttf", "inter-bold.ttf");
     }
 
@@ -640,6 +660,10 @@ public class ScreenRenderingTests
             services.AddSingleton(DemoTemplatesApi());
             services.AddSingleton(DemoCashApi());
             services.AddSingleton(DemoGstApi());
+            services.AddSingleton(DemoLicenseApi());
+            services.AddSingleton(DemoImportApi());
+            services.AddSingleton(Substitute.For<IUpdateService>());
+            services.AddSingleton(Substitute.For<IAppLifetime>());
             services.AddSingleton<HotelPOS.Desktop.Services.Printing.IPrinterProfiles, HotelPOS.Desktop.Services.Printing.PrinterProfiles>();
             services.AddSingleton<ShiftReportPrinting>();
             services.AddSingleton(Substitute.For<ISoundPlayer>());
@@ -1212,6 +1236,64 @@ public class ScreenRenderingTests
             {
                 Close(1, BusinessDayStatus.Closed),
                 Close(2, BusinessDayStatus.Reopened),
+            }));
+            return api;
+        }
+
+        private static ILicenseApi DemoLicenseApi()
+        {
+            var api = Substitute.For<ILicenseApi>();
+            api.GetStatusAsync(Arg.Any<CancellationToken>()).Returns(ApiResult<LicenseStatusDto>.Ok(new LicenseStatusDto
+            {
+                State = LicenseStateNames.Trial,
+                Edition = "Trial",
+                MaxTerminals = 10,
+                TerminalsInUse = 3,
+                ExpiresOn = DateOnly.FromDateTime(DateTime.Today.AddDays(5)),
+                DaysRemaining = 5,
+                ShowWarning = true,
+                MachineId = "HP-3F9A12C0DE55B7A1C4E2",
+            }));
+            return api;
+        }
+
+        private static IImportApi DemoImportApi()
+        {
+            var api = Substitute.For<IImportApi>();
+            var fields = new List<ImportFieldDto>
+            {
+                new() { Key = "category", Label = "Category", Required = true },
+                new() { Key = "item", Label = "Item name", Required = true },
+                new() { Key = "price", Label = "Price", Required = true },
+                new() { Key = "tax", Label = "Tax", Hint = "A rate such as 5 or 5%, or the name of an existing tax" },
+                new() { Key = "modifiers", Label = "Modifiers", Hint = "Size: Small, Large +20; Extras: Cheese +15" },
+            };
+            var mapping = new Dictionary<string, string> { ["category"] = "Category", ["item"] = "Item", ["price"] = "Price" };
+            var preview = new ImportPreviewDto
+            {
+                Kind = ImportKind.Menu,
+                FileName = "menu.csv",
+                Headers = new[] { "Category", "Item", "Price" },
+                Fields = fields,
+                SuggestedMapping = mapping,
+                Mapping = mapping,
+                TotalRows = 120,
+                ValidRows = 117,
+                ErrorRows = 3,
+                ToCreate = 100,
+                ToUpdate = 17,
+                Errors = new List<ImportRowErrorDto>
+                {
+                    new() { Row = 14, Field = "Price", Message = "'abc' is not a number." },
+                    new() { Row = 31, Field = "Item name", Message = "Item name is required." },
+                    new() { Row = 77, Field = "Item name", Message = "Same category and item as row 12." },
+                },
+            };
+            api.PreviewAsync(Arg.Any<ImportKind>(), Arg.Any<Stream>(), Arg.Any<string>(), Arg.Any<IReadOnlyDictionary<string, string>?>(), Arg.Any<CancellationToken>())
+                .Returns(ApiResult<ImportPreviewDto>.Ok(preview));
+            api.GetLastAsync(Arg.Any<CancellationToken>()).Returns(ApiResult<ImportBatchDto>.Ok(new ImportBatchDto
+            {
+                Id = 3, Kind = ImportKind.Menu, FileName = "menu-october.xlsx", Status = ImportStatus.Applied, Created = 118, Updated = 4, AppliedAtUtc = DateTime.UtcNow.AddHours(-2), CanUndo = true,
             }));
             return api;
         }

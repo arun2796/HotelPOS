@@ -7,6 +7,8 @@ public interface IFilePicker
     string? PickImage();
 
     string? PickSavePath(string suggestedFileName, string filter);
+
+    string? PickImportFile();
 }
 
 public sealed class WpfFilePicker : IFilePicker
@@ -17,6 +19,17 @@ public sealed class WpfFilePicker : IFilePicker
         {
             Title = "Choose a picture",
             Filter = "Pictures (*.jpg; *.jpeg; *.png)|*.jpg;*.jpeg;*.png",
+            CheckFileExists = true,
+        };
+        return dialog.ShowDialog() == true ? dialog.FileName : null;
+    }
+
+    public string? PickImportFile()
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "Choose the file to import",
+            Filter = "Excel or CSV (*.xlsx; *.csv)|*.xlsx;*.csv",
             CheckFileExists = true,
         };
         return dialog.ShowDialog() == true ? dialog.FileName : null;

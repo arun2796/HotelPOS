@@ -109,8 +109,40 @@
       </Grid.RowDefinitions>
 
       <!-- Cash shift bar on billing terminals (phase 13) -->
-      <cash:ShiftBarView Grid.Row="1" DataContext="{Binding ShiftBar}"
-                         Visibility="{Binding IsVisible, Converter={StaticResource BoolToVisibility}}" />
+      <StackPanel Grid.Row="1">
+        <cash:ShiftBarView DataContext="{Binding ShiftBar}"
+                           Visibility="{Binding IsVisible, Converter={StaticResource BoolToVisibility}}" />
+
+        <!-- Licence (trial / expiry near / expired) and update notes (phase 16) -->
+        <Border DataContext="{Binding Banner}" Margin="16,8,16,0" Visibility="{Binding ShowLicense, Converter={StaticResource BoolToVisibility}}">
+          <Border.Style>
+            <Style TargetType="Border" BasedOn="{StaticResource Banner.Warning}">
+              <Style.Triggers>
+                <DataTrigger Binding="{Binding LicenseIsCritical}" Value="True">
+                  <Setter Property="Background" Value="{DynamicResource Brush.DangerSoft}" />
+                </DataTrigger>
+              </Style.Triggers>
+            </Style>
+          </Border.Style>
+          <DockPanel>
+            <Button DockPanel.Dock="Right" Content="Licence" Command="{Binding OpenLicenseCommand}" Margin="12,0,0,0"
+                    Visibility="{Binding CanOpenLicense, Converter={StaticResource BoolToVisibility}}" />
+            <TextBlock Text="{Binding LicenseText}" Style="{StaticResource Text.Body}" TextWrapping="Wrap" VerticalAlignment="Center" />
+          </DockPanel>
+        </Border>
+        <Border DataContext="{Binding Banner}" Margin="16,8,16,0" Style="{StaticResource Banner.Info}"
+                Visibility="{Binding ShowUpdate, Converter={StaticResource BoolToVisibility}}">
+          <DockPanel>
+            <Button DockPanel.Dock="Right" Content="Update now" Command="{Binding UpdateNowCommand}" Style="{StaticResource Button.Primary}"
+                    Margin="12,0,0,0" IsEnabled="{Binding IsUpdating, Converter={StaticResource InverseBool}}" />
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock Text="{Binding UpdateText}" Style="{StaticResource Text.Body}" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding UpdateError}" Style="{StaticResource Text.Error}" TextWrapping="Wrap"
+                         Visibility="{Binding UpdateError, Converter={StaticResource StringToVisibility}}" />
+            </StackPanel>
+          </DockPanel>
+        </Border>
+      </StackPanel>
 
       <Border Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,0,0,1"
               Padding="24,0,12,0">

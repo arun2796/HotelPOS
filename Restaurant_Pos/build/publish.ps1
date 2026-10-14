@@ -66,10 +66,25 @@ Copy-Item -Recurse (Join-Path $root 'scripts') (Join-Path $out 'server\scripts')
 Set-Content (Join-Path $out 'version.txt') "HotelPOS $version, ASP.NET Core $shipped, built $(Get-Date -Format s)"
 
 if (Test-Path $InnoCompiler) {
-    foreach ($script in 'server.iss', 'client.iss') {
-        & $InnoCompiler "/DAppVersion=$version" "/DPublishDir=$out" "/O$(Join-Path $root 'artifacts\installers')" (Join-Path $root "installer\$script")
-        if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed on $script." }
-    }
+    # The client installer first: the server hosts it under /updates/ (server\updates, which the server installer then
+    # carries), and terminals older than latest.json's version download it from the server over the LAN.
+    $installers = Join-Path $root 'artifacts\installers'
+    & $InnoCompiler "/DAppVersion=$version" "/DPublishDir=$out" "/O$installers" (Join-Path $root 'installer\client.iss')
+    if ($LASTEXITCODE -ne 0) { throw 'Inno Setup failed on client.iss.' }
+
+    $clientSetup = Join-Path $installers "HotelPOS-Client-Setup-$version.exe"
+    $updates = Join-Path $out 'server\updates'
+    New-Item -ItemType Directory -Force $updates | Out-Null
+    Copy-Item $clientSetup $updates
+    [ordered] @{
+        version = $version
+        file    = Split-Path -Leaf $clientSetup
+        sha256  = (Get-FileHash $clientSetup -Algorithm SHA256).Hash
+        size    = (Get-Item $clientSetup).Length
+    } | ConvertTo-Json | Set-Content (Join-Path $updates 'latest.json') -Encoding utf8
+
+    & $InnoCompiler "/DAppVersion=$version" "/DPublishDir=$out" "/O$installers" (Join-Path $root 'installer\server.iss')
+    if ($LASTEXITCODE -ne 0) { throw 'Inno Setup failed on server.iss.' }
 } else {
     Write-Warning "Inno Setup not found at $InnoCompiler; the publish folders are ready but no installers were built."
 }

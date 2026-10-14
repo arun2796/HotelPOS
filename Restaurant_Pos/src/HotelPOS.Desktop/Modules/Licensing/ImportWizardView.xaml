@@ -1,0 +1,138 @@
+<UserControl x:Class="HotelPOS.Desktop.Modules.Licensing.ImportWizardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:lic="clr-namespace:HotelPOS.Desktop.Modules.Licensing"
+             xmlns:controls="clr-namespace:HotelPOS.Desktop.Controls"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance lic:ImportWizardViewModel}"
+             d:DesignWidth="1100" d:DesignHeight="700">
+
+  <Grid Margin="24">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <controls:PageHeader Title="Import"
+                         Description="Bring the menu or customers in from an Excel or CSV file. Nothing changes until you choose Import, and the last import can be undone.">
+      <TextBlock Style="{StaticResource Text.Caption}" VerticalAlignment="Center">
+        <Run Text="Step " /><Run Text="{Binding StepNumber, Mode=OneWay}" /><Run Text=" of 4" />
+      </TextBlock>
+    </controls:PageHeader>
+
+    <Border Grid.Row="1" Style="{StaticResource Banner.Error}" Margin="0,0,0,12"
+            Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibility}}">
+      <TextBlock Text="{Binding ErrorMessage}" Style="{StaticResource Text.Error}" TextWrapping="Wrap" />
+    </Border>
+
+    <!-- 1. File -->
+    <Border Grid.Row="2" Style="{StaticResource Card}" Padding="24" VerticalAlignment="Top" MaxWidth="760" HorizontalAlignment="Left"
+            Visibility="{Binding IsFileStep, Converter={StaticResource BoolToVisibility}}">
+      <StackPanel>
+        <TextBlock Text="1. Choose what to import and the file" Style="{StaticResource Text.Subtitle}" />
+        <TextBlock Text="WHAT" Style="{StaticResource Text.Label}" Margin="0,16,0,4" />
+        <ComboBox ItemsSource="{Binding Kinds}" SelectedItem="{Binding Kind}" Width="220" HorizontalAlignment="Left"
+                  AutomationProperties.Name="What to import" />
+        <TextBlock Text="{Binding KindHelp}" Style="{StaticResource Text.Caption}" TextWrapping="Wrap" Margin="0,8,0,0" />
+        <Button Content="CHOOSE FILE…" Command="{Binding ChooseFileCommand}" Style="{StaticResource Button.Primary}"
+                HorizontalAlignment="Left" Margin="0,20,0,0" MinHeight="48" />
+
+        <Border Style="{StaticResource Banner.Info}" Margin="0,24,0,0" Visibility="{Binding HasLast, Converter={StaticResource BoolToVisibility}}">
+          <StackPanel>
+            <TextBlock Text="{Binding LastText}" Style="{StaticResource Text.Body}" TextWrapping="Wrap" />
+            <Button Content="Undo this import" Command="{Binding UndoCommand}" Style="{StaticResource Button.Danger}"
+                    HorizontalAlignment="Left" Margin="0,10,0,0" Visibility="{Binding CanUndo, Converter={StaticResource BoolToVisibility}}" />
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </Border>
+
+    <!-- 2. Columns -->
+    <Border Grid.Row="2" Style="{StaticResource Card}" Padding="24" MaxWidth="900" HorizontalAlignment="Left"
+            Visibility="{Binding IsColumnsStep, Converter={StaticResource BoolToVisibility}}">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Top">
+          <TextBlock Text="2. Match the columns of your file" Style="{StaticResource Text.Subtitle}" />
+          <TextBlock Style="{StaticResource Text.Caption}" TextWrapping="Wrap" Margin="0,2,0,12">
+            <Run Text="File: " /><Run Text="{Binding FileName, Mode=OneWay}" FontWeight="SemiBold" /><Run Text=". Fields marked * are needed." />
+          </TextBlock>
+        </StackPanel>
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+          <Button Content="Back" Command="{Binding BackCommand}" Margin="0,0,8,0" />
+          <Button Content="CHECK THE ROWS" Command="{Binding ShowPreviewCommand}" Style="{StaticResource Button.Primary}" MinHeight="48" />
+        </StackPanel>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <ItemsControl ItemsSource="{Binding Mapping}" Focusable="False">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate DataType="{x:Type lic:FieldMappingRow}">
+                <Grid Margin="0,0,0,10">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="220" />
+                    <ColumnDefinition Width="280" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Text="{Binding Label}" Style="{StaticResource Text.Body}" VerticalAlignment="Center" />
+                  <ComboBox Grid.Column="1" ItemsSource="{Binding Options}" SelectedItem="{Binding SelectedHeader}"
+                            AutomationProperties.Name="{Binding Label}" />
+                  <TextBlock Grid.Column="2" Text="{Binding Hint}" Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
+                             VerticalAlignment="Center" Margin="12,0,0,0" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </DockPanel>
+    </Border>
+
+    <!-- 3. Preview -->
+    <Grid Grid.Row="2" Visibility="{Binding IsPreviewStep, Converter={StaticResource BoolToVisibility}}">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+        <RowDefinition Height="Auto" />
+      </Grid.RowDefinitions>
+      <StackPanel>
+        <TextBlock Text="3. Check the rows" Style="{StaticResource Text.Subtitle}" />
+        <TextBlock Text="{Binding Summary}" Style="{StaticResource Text.Body}" Margin="0,4,0,12" />
+      </StackPanel>
+      <DataGrid Grid.Row="1" ItemsSource="{Binding Errors}" HorizontalScrollBarVisibility="Disabled" AutomationProperties.Name="Rows with errors"
+                Visibility="{Binding HasErrors, Converter={StaticResource BoolToVisibility}}">
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="ROW" Binding="{Binding Row}" Width="70" />
+          <DataGridTextColumn Header="COLUMN" Binding="{Binding Field}" Width="1*" MinWidth="120" />
+          <DataGridTextColumn Header="PROBLEM" Binding="{Binding Message}" Width="3*" MinWidth="240" />
+        </DataGrid.Columns>
+      </DataGrid>
+      <Border Grid.Row="1" Style="{StaticResource Banner.Success}" VerticalAlignment="Top"
+              Visibility="{Binding HasErrors, Converter={StaticResource InverseBoolToVisibility}}">
+        <TextBlock Text="Every row is valid." Style="{StaticResource Text.Body}" />
+      </Border>
+      <DockPanel Grid.Row="2" Margin="0,16,0,0" LastChildFill="False">
+        <CheckBox DockPanel.Dock="Left" Content="Skip the rows with errors and import the rest" IsChecked="{Binding SkipInvalid}"
+                  VerticalAlignment="Center" Visibility="{Binding HasErrors, Converter={StaticResource BoolToVisibility}}" />
+        <Button DockPanel.Dock="Right" Content="IMPORT" Command="{Binding ApplyCommand}" IsEnabled="{Binding CanApply}"
+                Style="{StaticResource Button.Primary}" MinHeight="48" MinWidth="140" />
+        <Button DockPanel.Dock="Right" Content="Back" Command="{Binding BackCommand}" Margin="0,0,8,0" />
+      </DockPanel>
+    </Grid>
+
+    <!-- 4. Done -->
+    <Border Grid.Row="2" Style="{StaticResource Card}" Padding="24" VerticalAlignment="Top" MaxWidth="760" HorizontalAlignment="Left"
+            Visibility="{Binding IsDoneStep, Converter={StaticResource BoolToVisibility}}">
+      <StackPanel>
+        <TextBlock Text="4. Done" Style="{StaticResource Text.Subtitle}" />
+        <TextBlock Text="{Binding ResultText}" Style="{StaticResource Text.Title}" TextWrapping="Wrap" Margin="0,8,0,0" />
+        <TextBlock Style="{StaticResource Text.Caption}" TextWrapping="Wrap" Margin="0,8,0,0"
+                   Text="Terminals pick up the new menu by themselves. Not what you expected? Undo removes this import completely." />
+        <StackPanel Orientation="Horizontal" Margin="0,20,0,0">
+          <Button Content="UNDO THIS IMPORT" Command="{Binding UndoCommand}" Style="{StaticResource Button.Danger}" Margin="0,0,8,0"
+                  Visibility="{Binding CanUndo, Converter={StaticResource BoolToVisibility}}" />
+          <Button Content="Import another file" Command="{Binding StartOverCommand}" />
+        </StackPanel>
+      </StackPanel>
+    </Border>
+  </Grid>
+</UserControl>

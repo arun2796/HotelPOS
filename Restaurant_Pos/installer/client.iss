@@ -42,8 +42,16 @@ Name: "{autodesktop}\HotelPOS"; Filename: "{app}\HotelPOS.Desktop.exe"
 
 [Run]
 Filename: "{app}\HotelPOS.Desktop.exe"; Description: "Start HotelPOS"; Flags: nowait postinstall skipifsilent
+; Self-update from the server (desktop UpdateService): the app exits, the installer runs silently with /RESTART=1 and
+; starts the new version for the signed-in Windows user.
+Filename: "{app}\HotelPOS.Desktop.exe"; Flags: nowait runasoriginaluser; Check: RestartRequested
 
 [Code]
+function RestartRequested: Boolean;
+begin
+  Result := ExpandConstant('{param:RESTART|0}') = '1';
+end;
+
 function JsonEscape(Value: String): String;
 begin
   Result := Value;

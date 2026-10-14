@@ -35,7 +35,7 @@ public interface IApiClient
 
     Task<ApiResult<T>> DeleteAsync<T>(string path, CancellationToken cancellationToken = default, ApiRequestOptions? options = null);
 
-    Task<ApiResult<T>> UploadAsync<T>(string path, Stream content, string fileName, string contentType, CancellationToken cancellationToken = default);
+    Task<ApiResult<T>> UploadAsync<T>(string path, Stream content, string fileName, string contentType, CancellationToken cancellationToken = default, IReadOnlyDictionary<string, string>? fields = null);
 
     Task<ApiResult<byte[]>> DownloadAsync(string path, CancellationToken cancellationToken = default);
 }
@@ -88,11 +88,16 @@ public sealed class ApiClient : IApiClient
     public Task<ApiResult<T>> DeleteAsync<T>(string path, CancellationToken cancellationToken = default, ApiRequestOptions? options = null) =>
         SendAsync<T>(HttpMethod.Delete, path, null, options, cancellationToken);
 
-    public Task<ApiResult<T>> UploadAsync<T>(string path, Stream content, string fileName, string contentType, CancellationToken cancellationToken = default)
+    public Task<ApiResult<T>> UploadAsync<T>(string path, Stream content, string fileName, string contentType, CancellationToken cancellationToken = default, IReadOnlyDictionary<string, string>? fields = null)
     {
         var file = new StreamContent(content);
         file.Headers.ContentType = new MediaTypeHeaderValue(contentType);
         var form = new MultipartFormDataContent { { file, "file", fileName } };
+        foreach (var (name, value) in fields ?? new Dictionary<string, string>())
+        {
+            form.Add(new StringContent(value), name);
+        }
+
         return SendAsync<T>(HttpMethod.Post, path, form, new ApiRequestOptions { Timeout = TimeSpan.FromSeconds(60) }, cancellationToken);
     }
 
