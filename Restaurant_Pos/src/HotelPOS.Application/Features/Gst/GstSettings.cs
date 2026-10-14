@@ -9,15 +9,15 @@ namespace HotelPOS.Application.Features.Gst;
 // The restaurant's GST identity and the B2CL threshold, read from settings.
 internal sealed record GstSettings(string Gstin, string? StateCode, string DefaultSac, decimal B2clThreshold)
 {
-    public bool GstinValid => Domain.Gst.Gstin.IsValid(Gstin);
+    public bool GstinValid => Contracts.Gst.Gstin.IsValid(Gstin);
 
     public static async Task<GstSettings> ReadAsync(IAppDbContext db, CancellationToken cancellationToken)
     {
-        var gstin = Domain.Gst.Gstin.Normalize(await db.SettingAsync(SettingKeys.Gstin, cancellationToken));
+        var gstin = Contracts.Gst.Gstin.Normalize(await db.SettingAsync(SettingKeys.Gstin, cancellationToken));
         var sac = (await db.SettingAsync(SettingKeys.DefaultSacCode, cancellationToken))?.Trim();
         return new GstSettings(
             gstin,
-            Domain.Gst.Gstin.StateCode(gstin),
+            Contracts.Gst.Gstin.StateCode(gstin),
             string.IsNullOrEmpty(sac) ? "996331" : sac,
             await db.DecimalSettingAsync(SettingKeys.GstB2clThreshold, GstSupply.DefaultB2clThreshold, cancellationToken));
     }

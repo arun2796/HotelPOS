@@ -272,7 +272,29 @@
                 <TextBlock Text="Phone" Style="{StaticResource Text.Label}" />
                 <TextBox Text="{Binding CustomerPhone, UpdateSourceTrigger=PropertyChanged}" MaxLength="20" Margin="0,0,0,12" />
                 <TextBlock Text="GSTIN" Style="{StaticResource Text.Label}" />
-                <TextBox Text="{Binding CustomerGstin, UpdateSourceTrigger=PropertyChanged}" MaxLength="20" CharacterCasing="Upper" />
+                <TextBox Text="{Binding CustomerGstin, UpdateSourceTrigger=PropertyChanged}" MaxLength="15" CharacterCasing="Upper" AutomationProperties.Name="GSTIN" />
+                <TextBlock Text="{Binding GstinHint}" Style="{StaticResource Text.Caption}" TextWrapping="Wrap" Margin="0,4,0,12" />
+                <TextBlock Text="Legal name (as registered)" Style="{StaticResource Text.Label}" />
+                <TextBox Text="{Binding CustomerLegalName, UpdateSourceTrigger=PropertyChanged}" MaxLength="200" Margin="0,0,0,12" AutomationProperties.Name="Legal name" />
+                <Grid Margin="0,0,0,4">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <StackPanel>
+                    <TextBlock Text="Customer state" Style="{StaticResource Text.Label}" />
+                    <ComboBox ItemsSource="{Binding StateChoices}" SelectedValuePath="Code" DisplayMemberPath="Name"
+                              SelectedValue="{Binding CustomerStateCode}" AutomationProperties.Name="Customer state" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="2">
+                    <TextBlock Text="Place of supply" Style="{StaticResource Text.Label}" />
+                    <ComboBox ItemsSource="{Binding StateChoices}" SelectedValuePath="Code" DisplayMemberPath="Name"
+                              SelectedValue="{Binding PlaceOfSupply}" AutomationProperties.Name="Place of supply" />
+                  </StackPanel>
+                </Grid>
+                <TextBlock Text="Place of supply is the restaurant's own state unless the service is supplied in another state (then IGST applies)."
+                           Style="{StaticResource Text.Caption}" TextWrapping="Wrap" />
                 <Button Content="SAVE" Command="{Binding SaveCustomerCommand}" Style="{StaticResource Button.Primary}" MinWidth="120"
                         HorizontalAlignment="Left" Margin="0,16,0,0" />
               </StackPanel>

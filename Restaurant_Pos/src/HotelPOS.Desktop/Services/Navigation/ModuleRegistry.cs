@@ -4,6 +4,7 @@ using HotelPOS.Desktop.Modules.Billing;
 using HotelPOS.Desktop.Modules.Cash;
 using HotelPOS.Desktop.Modules.Config;
 using HotelPOS.Desktop.Modules.Dashboard;
+using HotelPOS.Desktop.Modules.Gst;
 using HotelPOS.Desktop.Modules.Kitchen;
 using HotelPOS.Desktop.Modules.MenuAdmin;
 using HotelPOS.Desktop.Modules.Orders;
@@ -48,6 +49,8 @@ public static class ModuleRegistry
     public const string Shifts = "shifts";
     public const string DayEnd = "day-end";
     public const string DayEndHistory = "day-end-history";
+    public const string Gst = "gst";
+    public const string PeriodClose = "period-close";
 
     private static readonly string[] Management = { Roles.Admin, Roles.Manager };
     private static readonly string[] AdminOnly = { Roles.Admin };
@@ -79,6 +82,10 @@ public static class ModuleRegistry
 
         new(Reports, "Reports", "", "Management", Management, 8,
             "Sales, items, payments, taxes, staff and kitchen performance.", typeof(ReportsViewModel)),
+        new(Gst, "Tax Returns", "", "Management", Management, 15,
+            "GSTR-1, GSTR-3B and the HSN/SAC summary for a month, with the portal JSON, Excel and PDF.", typeof(GstHubViewModel)),
+        new(PeriodClose, "Period Close", "", "Management", AdminOnly, 15,
+            "Close a month or financial year after filing: checks, the lock and the GST pack. Reopen with a reason.", typeof(PeriodCloseViewModel)),
         new(Floor, "Sections & Tables", "", "Management", Management, 2,
             "Create sections and tables, capacity and service state.", typeof(FloorViewModel)),
         new(Menu, "Menu", "", "Management", Management, 3,
@@ -120,6 +127,8 @@ public static class ModuleRegistry
         [Shifts] = Permissions.ShiftManage,
         [DayEnd] = Permissions.DayEndRun,
         [DayEndHistory] = Permissions.DayEndRun,
+        [Gst] = Permissions.GstView,
+        [PeriodClose] = Permissions.PeriodClose,
         [Reports] = Permissions.ReportsView,
         [Floor] = Permissions.TablesManage,
         [Menu] = Permissions.MenuManage,

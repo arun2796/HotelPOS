@@ -61,6 +61,7 @@ public static class AppHost
         services.AddSingleton<IKitchenApi, KitchenApi>();
         services.AddSingleton<IBillingApi, BillingApi>();
         services.AddSingleton<ICashApi, CashApi>();
+        services.AddSingleton<IGstApi, GstApi>();
         services.AddSingleton<ShiftReportPrinting>();
         services.AddSingleton<ShiftBarViewModel>();
         services.AddSingleton<ICashDrawer>(sp => sp.GetRequiredService<ShiftBarViewModel>());

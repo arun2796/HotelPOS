@@ -6,6 +6,7 @@ using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Billing;
 using HotelPOS.Contracts.Cash;
 using HotelPOS.Contracts.Security;
+using HotelPOS.Contracts.Gst;
 using HotelPOS.Domain.Gst;
 using Microsoft.EntityFrameworkCore;
 

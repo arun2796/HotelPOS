@@ -6,6 +6,7 @@ using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Billing;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Enums;
+using HotelPOS.Contracts.Gst;
 using HotelPOS.Contracts.Print;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Contracts.Security;
@@ -114,6 +115,39 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
 
     [ObservableProperty]
     private string _customerGstin = string.Empty;
+
+    [ObservableProperty]
+    private string _customerLegalName = string.Empty;
+
+    // GST state codes ("" = the customer's state follows the GSTIN / the restaurant's state for the place of supply).
+    [ObservableProperty]
+    private string _customerStateCode = string.Empty;
+
+    [ObservableProperty]
+    private string _placeOfSupply = string.Empty;
+
+    public IReadOnlyList<GstStateDto> StateChoices { get; } =
+        new[] { new GstStateDto(string.Empty, "(not set)") }.Concat(GstStates.All).ToList();
+
+    // Live check of the GSTIN as it is typed: the first thing the cashier sees if a character is wrong.
+    public string? GstinProblem => string.IsNullOrWhiteSpace(CustomerGstin) ? null : Gstin.Validate(CustomerGstin);
+
+    public bool HasGstinProblem => GstinProblem is not null;
+
+    public string GstinHint => string.IsNullOrWhiteSpace(CustomerGstin)
+        ? "Leave empty for a customer without a GSTIN."
+        : GstinProblem ?? $"Valid. State {GstStates.Label(Gstin.StateCode(CustomerGstin))}.";
+
+    partial void OnCustomerGstinChanged(string value)
+    {
+        OnPropertyChanged(nameof(GstinProblem));
+        OnPropertyChanged(nameof(HasGstinProblem));
+        OnPropertyChanged(nameof(GstinHint));
+        if (Gstin.StateCode(value) is { } state)
+        {
+            CustomerStateCode = state;
+        }
+    }
 
     [ObservableProperty]
     private string _changeDueText = string.Empty;
@@ -386,6 +420,9 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
         CustomerName = Bill.CustomerName ?? string.Empty;
         CustomerPhone = Bill.CustomerPhone ?? string.Empty;
         CustomerGstin = Bill.CustomerGstin ?? string.Empty;
+        CustomerLegalName = Bill.CustomerLegalName ?? string.Empty;
+        CustomerStateCode = Bill.CustomerStateCode ?? string.Empty;
+        PlaceOfSupply = Bill.PlaceOfSupply ?? string.Empty;
         PanelError = null;
         ActivePanel = BillPanel.Customer;
     }
@@ -398,7 +435,22 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
             return;
         }
 
-        var request = new UpdateCustomerRequest { Name = CustomerName, Phone = CustomerPhone, Gstin = CustomerGstin, RowVersion = Bill.RowVersion };
+        if (GstinProblem is { } problem)
+        {
+            PanelError = problem;
+            return;
+        }
+
+        var request = new UpdateCustomerRequest
+        {
+            Name = CustomerName,
+            Phone = CustomerPhone,
+            Gstin = CustomerGstin,
+            LegalName = CustomerLegalName,
+            StateCode = CustomerStateCode,
+            PlaceOfSupply = PlaceOfSupply,
+            RowVersion = Bill.RowVersion,
+        };
         if (await RunAsync(() => _billingApi.SetCustomerAsync(Bill.Id, request), "Customer details saved.", inPanel: true))
         {
             ClosePanel();

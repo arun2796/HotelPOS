@@ -13,6 +13,7 @@
              xmlns:kitchen="clr-namespace:HotelPOS.Desktop.Modules.Kitchen"
              xmlns:billing="clr-namespace:HotelPOS.Desktop.Modules.Billing"
              xmlns:cash="clr-namespace:HotelPOS.Desktop.Modules.Cash"
+             xmlns:gst="clr-namespace:HotelPOS.Desktop.Modules.Gst"
              xmlns:printing="clr-namespace:HotelPOS.Desktop.Modules.Printing"
              xmlns:dashboard="clr-namespace:HotelPOS.Desktop.Modules.Dashboard"
              xmlns:reports="clr-namespace:HotelPOS.Desktop.Modules.Reports"
@@ -114,6 +115,12 @@
       </DataTemplate>
       <DataTemplate DataType="{x:Type cash:DayEndHistoryViewModel}">
         <cash:DayEndHistoryView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type gst:GstHubViewModel}">
+        <gst:GstHubView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type gst:PeriodCloseViewModel}">
+        <gst:PeriodCloseView />
       </DataTemplate>
       <DataTemplate DataType="{x:Type cash:ShiftCountPanelViewModel}">
         <cash:ShiftCountPanelView />

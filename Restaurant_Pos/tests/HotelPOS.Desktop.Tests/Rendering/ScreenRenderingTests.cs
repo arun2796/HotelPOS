@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Diagnostics;
 using System.Runtime.ExceptionServices;
 using System.Windows;
@@ -13,7 +14,9 @@ using HotelPOS.Contracts.Security;
 using HotelPOS.Desktop.Modules.Admin;
 using HotelPOS.Contracts.Billing;
 using HotelPOS.Contracts.Cash;
+using HotelPOS.Contracts.Gst;
 using HotelPOS.Desktop.Modules.Cash;
+using HotelPOS.Desktop.Modules.Gst;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Floor;
@@ -371,6 +374,14 @@ public class ScreenRenderingTests
             await setupShell.NavigateToAsync(ModuleRegistry.DayEndHistory, null);
             rendered.Add(await RenderScreenAsync(env, setupShell, "64-day-end-history"));
 
+            await setupShell.NavigateToAsync(ModuleRegistry.Gst, null);
+            rendered.Add(await RenderScreenAsync(env, setupShell, "66-gst-returns"));
+            await setupShell.NavigateToAsync(ModuleRegistry.PeriodClose, null);
+            var periodClose = (PeriodCloseViewModel)setupShell.CurrentPage!;
+            periodClose.SelectedPeriod = periodClose.Periods.First(p => p.Period.Period == "2026-09");
+            await Dispatcher.Yield(DispatcherPriority.Background);
+            rendered.Add(await RenderScreenAsync(env, setupShell, "67-period-close"));
+
             await setupShell.NavigateToAsync(ModuleRegistry.Reports, null);
             rendered.Add(await RenderScreenAsync(env, setupShell, "40-reports-daily-sales"));
             ((ReportsViewModel)setupShell.CurrentPage!).SelectedReport = ReportsViewModel.Catalogue.Single(r => r.Key == ReportKeys.ItemSales);
@@ -415,7 +426,7 @@ public class ScreenRenderingTests
         }
 
         bindingErrors.Errors.Should().BeEmpty("every binding in the views must point at an existing property");
-        rendered.Should().HaveCount(65);
+        rendered.Should().HaveCount(67);
         bodyFontFiles.Should().Equal("inter-regular.ttf", "inter-medium.ttf", "inter-semibold.ttf", "inter-bold.ttf");
     }
 
@@ -628,6 +639,7 @@ public class ScreenRenderingTests
             services.AddSingleton(DemoPrintApi());
             services.AddSingleton(DemoTemplatesApi());
             services.AddSingleton(DemoCashApi());
+            services.AddSingleton(DemoGstApi());
             services.AddSingleton<HotelPOS.Desktop.Services.Printing.IPrinterProfiles, HotelPOS.Desktop.Services.Printing.PrinterProfiles>();
             services.AddSingleton<ShiftReportPrinting>();
             services.AddSingleton(Substitute.For<ISoundPlayer>());
@@ -1200,6 +1212,75 @@ public class ScreenRenderingTests
             {
                 Close(1, BusinessDayStatus.Closed),
                 Close(2, BusinessDayStatus.Reopened),
+            }));
+            return api;
+        }
+
+        private static IGstApi DemoGstApi()
+        {
+            var api = Substitute.For<IGstApi>();
+            var gstr1 = new Gstr1Dto
+            {
+                Period = "2026-09",
+                FilingPeriod = "092026",
+                Gstin = "33AAPFU0939F1ZV",
+                B2clThreshold = 100000m,
+                Totals = new GstTotalsDto { Invoices = 412, InvoiceValue = 1_204_560m, TaxableValue = 1_147_200m, Cgst = 28_680m, Sgst = 28_680m, CreditNoteTaxable = 2_400m, CreditNoteTax = 120m },
+                B2b = new[]
+                {
+                    new Gstr1InvoiceRowDto { InvoiceNumber = "INV-202609-000112", InvoiceDate = new DateOnly(2026, 9, 4), CustomerGstin = "27AAPFU0939F1ZV", CustomerName = "Kumar Traders Pvt Ltd", PlaceOfSupply = "33-Tamil Nadu", InvoiceValue = 12_600m, TaxableValue = 12_000m, Cgst = 300m, Sgst = 300m },
+                    new Gstr1InvoiceRowDto { InvoiceNumber = "INV-202609-000230", InvoiceDate = new DateOnly(2026, 9, 12), CustomerGstin = "33AABCT1332L1ZU", CustomerName = "Annapoorna Caterers", PlaceOfSupply = "33-Tamil Nadu", InvoiceValue = 8_400m, TaxableValue = 8_000m, Cgst = 200m, Sgst = 200m },
+                },
+                B2cs = new[] { new Gstr1B2csRowDto { SupplyType = "INTRA", PlaceOfSupply = "33", Rate = 5m, TaxableValue = 1_127_200m, Cgst = 28_180m, Sgst = 28_180m } },
+                Hsn = new[] { new HsnSummaryRowDto { HsnSac = "996331", Description = "Restaurant service", Rate = 5m, Quantity = 3120, TotalValue = 1_204_560m, TaxableValue = 1_147_200m, Cgst = 28_680m, Sgst = 28_680m } },
+                Documents = new[] { new Gstr1DocumentRowDto { Document = "Invoices for outward supply", From = "INV-202609-000001", To = "INV-202609-000415", TotalIssued = 415, Cancelled = 3, NetIssued = 412 } },
+                IssueCount = 1,
+            };
+            api.GetGstr1Async(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(ApiResult<Gstr1Dto>.Ok(gstr1));
+            api.GetGstr3bAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(ApiResult<Gstr3bDto>.Ok(new Gstr3bDto
+            {
+                Period = "2026-09",
+                FilingPeriod = "092026",
+                Gstin = "33AAPFU0939F1ZV",
+                Rows = new[] { new Gstr3bTableRowDto { Table = "3.1(a)", Description = "Outward taxable supplies", TaxableValue = 1_144_800m, Cgst = 28_560m, Sgst = 28_560m } },
+            }));
+            api.GetHsnSummaryAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(ApiResult<List<HsnSummaryRowDto>>.Ok(gstr1.Hsn.ToList()));
+            api.GetValidationAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(ApiResult<GstValidationDto>.Ok(new GstValidationDto
+            {
+                Period = "2026-09",
+                CanFile = true,
+                Issues = new[] { new GstValidationRowDto { Severity = GstIssueSeverity.Warning, Code = GstIssueCodes.CustomerStateMismatch, Reference = "INV-202609-000112", Message = "The customer state 33-Tamil Nadu does not match the GSTIN state 27-Maharashtra." } },
+            }));
+            var periods = new List<PeriodDto>();
+            for (var m = new DateOnly(2026, 4, 1); m <= new DateOnly(2027, 3, 1); m = m.AddMonths(1))
+            {
+                periods.Add(new PeriodDto
+                {
+                    Kind = PeriodKind.Month,
+                    Period = m.ToString("yyyy-MM", CultureInfo.InvariantCulture),
+                    Label = m.ToString("MMMM yyyy", CultureInfo.InvariantCulture),
+                    From = m,
+                    To = m.AddMonths(1).AddDays(-1),
+                    Status = m < new DateOnly(2026, 9, 1) ? PeriodStatus.Closed : PeriodStatus.Open,
+                    ClosedAtUtc = m < new DateOnly(2026, 9, 1) ? m.AddMonths(1).AddDays(9).ToDateTime(TimeOnly.MinValue) : null,
+                    ClosedBy = m < new DateOnly(2026, 9, 1) ? "admin" : null,
+                    PackFolder = m < new DateOnly(2026, 9, 1) ? @"D:\Backups\period-" + m.ToString("yyyy-MM", CultureInfo.InvariantCulture) + "-101500" : null,
+                });
+            }
+
+            periods.Add(new PeriodDto { Kind = PeriodKind.Year, Period = "2026", Label = "Financial year 2026-27", From = new DateOnly(2026, 4, 1), To = new DateOnly(2027, 3, 31), Status = PeriodStatus.Open });
+            api.GetPeriodsAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>()).Returns(ApiResult<List<PeriodDto>>.Ok(periods));
+            api.GetPrecheckAsync(Arg.Any<PeriodKind>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(ApiResult<PeriodPrecheckDto>.Ok(new PeriodPrecheckDto
+            {
+                Kind = PeriodKind.Month,
+                Period = "2026-09",
+                CanClose = false,
+                Checks = new[]
+                {
+                    new PeriodCheckDto { Code = PeriodCheckCodes.PeriodEnded, Title = "September 2026 has ended", Passed = true },
+                    new PeriodCheckDto { Code = PeriodCheckCodes.DaysClosed, Title = "Every business day that traded is closed by Day End", Passed = false, Details = new[] { "29-09-2026 is not closed", "30-09-2026 is not closed" } },
+                    new PeriodCheckDto { Code = PeriodCheckCodes.PendingBills, Title = "No bill is open or unpaid", Passed = true },
+                },
             }));
             return api;
         }

@@ -112,7 +112,7 @@ internal sealed class GstDataLoader
         }
         else if (!settings.GstinValid)
         {
-            issues.Add(Issue(GstIssueSeverity.Error, GstIssueCodes.RestaurantGstinInvalid, settings.Gstin, Domain.Gst.Gstin.Validate(settings.Gstin) ?? "The restaurant GSTIN is invalid."));
+            issues.Add(Issue(GstIssueSeverity.Error, GstIssueCodes.RestaurantGstinInvalid, settings.Gstin, Contracts.Gst.Gstin.Validate(settings.Gstin) ?? "The restaurant GSTIN is invalid."));
         }
 
         var bills = _db.Bills.AsNoTracking().Where(b => b.Status == BillStatus.Settled && b.SettledAt >= window.FromUtc && b.SettledAt < window.ToUtc);
@@ -179,7 +179,7 @@ internal sealed class GstDataLoader
             issues.Add(Issue(GstIssueSeverity.Error, GstIssueCodes.InvoiceNumberMissing, $"Bill {bill.BillNumber}", "A settled bill has no invoice number."));
         }
 
-        var ctin = bill.CustomerGstin is not null && Domain.Gst.Gstin.IsValid(bill.CustomerGstin) ? bill.CustomerGstin : null;
+        var ctin = bill.CustomerGstin is not null && Contracts.Gst.Gstin.IsValid(bill.CustomerGstin) ? bill.CustomerGstin : null;
         if (bill.CustomerGstin is not null && ctin is null)
         {
             issues.Add(Issue(GstIssueSeverity.Warning, GstIssueCodes.CustomerGstinInvalid, number,

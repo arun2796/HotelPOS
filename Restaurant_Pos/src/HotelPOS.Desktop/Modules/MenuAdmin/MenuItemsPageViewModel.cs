@@ -66,6 +66,9 @@ public sealed partial class MenuItemEditorViewModel : ObservableObject
     private string _description = string.Empty;
 
     [ObservableProperty]
+    private string _hsnSac = string.Empty;
+
+    [ObservableProperty]
     private string _sortOrder = "0";
 
     [ObservableProperty]
@@ -118,7 +121,7 @@ public sealed partial class MenuItemEditorViewModel : ObservableObject
     {
         IsNew = true;
         ItemId = 0;
-        Name = Code = Description = RowVersion = string.Empty;
+        Name = Code = Description = RowVersion = HsnSac = string.Empty;
         Price = string.Empty;
         SortOrder = "0";
         IsAvailable = IsActive = true;
@@ -142,6 +145,7 @@ public sealed partial class MenuItemEditorViewModel : ObservableObject
         Name = item.Name;
         Code = item.Code ?? string.Empty;
         Description = item.Description ?? string.Empty;
+        HsnSac = item.HsnSac ?? string.Empty;
         Price = FormNumbers.Money(item.Price);
         SortOrder = FormNumbers.Integer(item.SortOrder);
         IsAvailable = item.IsAvailable;
@@ -200,6 +204,7 @@ public sealed partial class MenuItemEditorViewModel : ObservableObject
             Description = string.IsNullOrWhiteSpace(Description) ? null : Description.Trim(),
             Price = price,
             TaxId = Tax?.Id,
+            HsnSac = string.IsNullOrWhiteSpace(HsnSac) ? null : HsnSac.Trim(),
             PreparationStationId = Station!.Id,
             SortOrder = int.Parse(SortOrder),
             IsAvailable = IsAvailable,
@@ -218,6 +223,7 @@ public sealed partial class MenuItemEditorViewModel : ObservableObject
             Description = create.Description,
             Price = create.Price,
             TaxId = create.TaxId,
+            HsnSac = create.HsnSac,
             PreparationStationId = create.PreparationStationId,
             SortOrder = create.SortOrder,
             IsAvailable = create.IsAvailable,

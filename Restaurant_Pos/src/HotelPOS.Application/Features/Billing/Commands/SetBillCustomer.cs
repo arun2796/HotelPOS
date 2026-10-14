@@ -9,7 +9,7 @@ using HotelPOS.Contracts.Realtime;
 using HotelPOS.Contracts.Security;
 using HotelPOS.Application.Features.Gst;
 using HotelPOS.Domain.Billing;
-using HotelPOS.Domain.Gst;
+using HotelPOS.Contracts.Gst;
 
 namespace HotelPOS.Application.Features.Billing.Commands;
 

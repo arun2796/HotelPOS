@@ -228,6 +228,38 @@ public sealed class BillingViewModelTests
         vm.Dispose();
     }
 
+    [Fact]
+    public async Task CustomerPanel_ChecksTheGstinAsItIsTyped_AndSendsLegalNameAndStates()
+    {
+        var bill = Detail(BillStatus.Open, balance: 630m);
+        _api.GetAsync(9, Arg.Any<CancellationToken>()).Returns(ApiResult<BillDetailDto>.Ok(bill));
+        UpdateCustomerRequest? sent = null;
+        _api.SetCustomerAsync(9, Arg.Do<UpdateCustomerRequest>(r => sent = r), Arg.Any<CancellationToken>())
+            .Returns(ApiResult<BillDetailDto>.Ok(bill with { CustomerGstin = "27AAPFU0939F1ZV" }));
+        var vm = DetailViewModel();
+        await vm.OnNavigatedToAsync(9);
+        vm.ShowCustomerCommand.Execute(null);
+
+        vm.CustomerGstin = "27AAPFU0939F1ZA";
+        vm.HasGstinProblem.Should().BeTrue();
+        vm.GstinHint.Should().Contain("check character");
+        await vm.SaveCustomerCommand.ExecuteAsync(null);
+        vm.PanelError.Should().Contain("check character");
+        await _api.DidNotReceive().SetCustomerAsync(Arg.Any<int>(), Arg.Any<UpdateCustomerRequest>(), Arg.Any<CancellationToken>());
+
+        vm.CustomerGstin = "27AAPFU0939F1ZV";
+        vm.HasGstinProblem.Should().BeFalse();
+        vm.GstinHint.Should().Contain("27-Maharashtra");
+        vm.CustomerStateCode.Should().Be("27", "the state follows a valid GSTIN");
+        vm.CustomerLegalName = "Kumar Traders Pvt Ltd";
+        vm.PlaceOfSupply = "33";
+        await vm.SaveCustomerCommand.ExecuteAsync(null);
+
+        sent.Should().NotBeNull();
+        (sent!.Gstin, sent.LegalName, sent.StateCode, sent.PlaceOfSupply).Should().Be(("27AAPFU0939F1ZV", "Kumar Traders Pvt Ltd", "27", "33"));
+        vm.Dispose();
+    }
+
     private BillDetailViewModel DetailViewModel(string role = "Cashier", IDialogService? dialogs = null)
     {
         var session = Substitute.For<IAuthSession>();

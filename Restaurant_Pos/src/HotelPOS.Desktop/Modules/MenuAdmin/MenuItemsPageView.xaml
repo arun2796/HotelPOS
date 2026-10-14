@@ -169,6 +169,10 @@
             <TextBox Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" MaxLength="500" TextWrapping="Wrap"
                      AcceptsReturn="False" MinHeight="60" VerticalContentAlignment="Top" Margin="0,0,0,12" />
 
+            <TextBlock Text="HSN/SAC code (optional)" Style="{StaticResource Text.Label}" />
+            <TextBox Text="{Binding HsnSac, UpdateSourceTrigger=PropertyChanged}" MaxLength="8" Margin="0,0,0,4" AutomationProperties.Name="HSN or SAC code" />
+            <TextBlock Text="4 to 8 digits. Empty uses the restaurant default (996331 for restaurant service)." Style="{StaticResource Text.Caption}" TextWrapping="Wrap" Margin="0,0,0,12" />
+
             <TextBlock Text="Sort order in its category" Style="{StaticResource Text.Label}" />
             <TextBox Text="{Binding SortOrder, UpdateSourceTrigger=PropertyChanged}" MaxLength="4" Margin="0,0,0,12" />
 

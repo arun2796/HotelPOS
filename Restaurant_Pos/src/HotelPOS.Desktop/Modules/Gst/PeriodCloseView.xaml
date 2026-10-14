@@ -1,0 +1,82 @@
+<UserControl x:Class="HotelPOS.Desktop.Modules.Gst.PeriodCloseView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:gst="clr-namespace:HotelPOS.Desktop.Modules.Gst"
+             xmlns:controls="clr-namespace:HotelPOS.Desktop.Controls"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance gst:PeriodCloseViewModel}"
+             d:DesignWidth="1100" d:DesignHeight="700">
+
+  <Grid Margin="24">
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="*" />
+      <ColumnDefinition Width="400" />
+    </Grid.ColumnDefinitions>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <controls:PageHeader Grid.ColumnSpan="2" Title="Period close"
+                         Description="Close a month after its GST return is filed, and the financial year after its twelve months. Closed periods accept no changes.">
+      <StackPanel Orientation="Horizontal">
+        <TextBlock Text="Financial year" Style="{StaticResource Text.Label}" VerticalAlignment="Center" Margin="0,0,8,0" />
+        <ComboBox ItemsSource="{Binding FinancialYears}" SelectedItem="{Binding FinancialYear}" Width="110" AutomationProperties.Name="Financial year" />
+      </StackPanel>
+    </controls:PageHeader>
+
+    <Border Grid.Row="1" Grid.ColumnSpan="2" Style="{StaticResource Banner.Error}" Margin="0,0,0,12"
+            Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibility}}">
+      <TextBlock Text="{Binding ErrorMessage}" Style="{StaticResource Text.Error}" TextWrapping="Wrap" />
+    </Border>
+
+    <DataGrid Grid.Row="2" ItemsSource="{Binding Periods}" SelectedItem="{Binding SelectedPeriod}" HorizontalScrollBarVisibility="Disabled"
+              AutomationProperties.Name="Periods">
+      <DataGrid.Columns>
+        <DataGridTextColumn Header="PERIOD" Binding="{Binding Label}" Width="1.3*" MinWidth="150" />
+        <DataGridTextColumn Header="STATUS" Binding="{Binding StatusText}" Width="0.7*" MinWidth="90" />
+        <DataGridTextColumn Header="CLOSED" Binding="{Binding ClosedText}" Width="1.5*" MinWidth="160" />
+      </DataGrid.Columns>
+    </DataGrid>
+
+    <Border Grid.Row="2" Grid.Column="1" Style="{StaticResource Card}" Margin="20,0,0,0" Padding="20"
+            Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibility}}">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Bottom" Margin="0,16,0,0">
+          <Button Content="Close period…" Command="{Binding CloseCommand}" IsEnabled="{Binding CanClose}"
+                  Style="{StaticResource Button.Primary}" MinHeight="52" />
+          <Button Content="Reopen period…" Command="{Binding ReopenCommand}" IsEnabled="{Binding CanReopen}"
+                  Style="{StaticResource Button.Danger}" MinHeight="52" Margin="0,8,0,0" />
+        </StackPanel>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <TextBlock Text="{Binding SelectedTitle}" Style="{StaticResource Text.Title}" Margin="0,0,0,4" />
+            <TextBlock Text="{Binding SelectedPeriod.PackText}" Style="{StaticResource Text.Caption}" TextWrapping="Wrap" Margin="0,0,0,12" />
+            <TextBlock Text="CHECKS BEFORE CLOSING" Style="{StaticResource Text.Label}" Margin="0,0,0,4" />
+            <ItemsControl ItemsSource="{Binding Checks}" Focusable="False">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="{x:Type gst:PeriodCheckRow}">
+                  <Grid Margin="0,6">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="28" />
+                      <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{Binding Mark}" Style="{StaticResource Text.Icon}" FontSize="14" VerticalAlignment="Top" Margin="0,2,0,0" />
+                    <StackPanel Grid.Column="1">
+                      <TextBlock Text="{Binding Title}" Style="{StaticResource Text.Body}" TextWrapping="Wrap" />
+                      <TextBlock Text="{Binding Details}" Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
+                                 Visibility="{Binding Details, Converter={StaticResource StringToVisibility}}" />
+                    </StackPanel>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </ScrollViewer>
+      </DockPanel>
+    </Border>
+  </Grid>
+</UserControl>
