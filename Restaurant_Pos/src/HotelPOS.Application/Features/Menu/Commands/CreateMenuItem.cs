@@ -27,6 +27,7 @@ public sealed class CreateMenuItemRequestValidator : AbstractValidator<CreateMen
         RuleFor(x => x.TaxId).GreaterThan(0).When(x => x.TaxId is not null);
         RuleFor(x => x.PreparationStationId).GreaterThan(0).WithMessage("Select a preparation station.");
         RuleFor(x => x.SortOrder).ValidSortOrder();
+        RuleFor(x => x.HsnSac).Matches(@"^[0-9]{4,8}$").When(x => !string.IsNullOrWhiteSpace(x.HsnSac)).WithMessage("An HSN/SAC code is 4 to 8 digits.");
         RuleFor(x => x.ModifierGroupIds).NotNull();
     }
 }
@@ -60,6 +61,7 @@ internal sealed class CreateMenuItemHandler : ICommandHandler<CreateMenuItemComm
             request.TaxId, request.PreparationStationId, request.SortOrder);
         item.SetAvailability(request.IsAvailable);
         item.SetModifierGroups(request.ModifierGroupIds);
+        item.SetHsnSac(request.HsnSac);
 
         _db.MenuItems.Add(item);
         await _db.SaveChangesAsync(cancellationToken);

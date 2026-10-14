@@ -64,6 +64,11 @@ internal sealed class ReopenDayHandler : ICommandHandler<ReopenDayCommand, Busin
     public async Task<Result<BusinessDayCloseDto>> Handle(ReopenDayCommand command, CancellationToken cancellationToken)
     {
         await _days.LockExclusiveAsync(command.Day, cancellationToken);
+        if (await _days.CheckPeriodAsync(command.Day, cancellationToken) is { } periodClosed)
+        {
+            return periodClosed;
+        }
+
         var close = await _db.BusinessDayCloses.FirstOrDefaultAsync(c => c.BusinessDay == command.Day, cancellationToken);
         if (close is null || !close.IsClosed)
         {

@@ -1,4 +1,5 @@
 using HotelPOS.Contracts.Billing;
+using HotelPOS.Contracts.Gst;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Menu;
 using HotelPOS.Domain.Billing;
@@ -65,6 +66,9 @@ internal sealed class BillConfiguration : IEntityTypeConfiguration<Bill>
         builder.Property(b => b.CustomerName).HasMaxLength(BillingLimits.CustomerNameMaxLength);
         builder.Property(b => b.CustomerPhone).HasMaxLength(BillingLimits.PhoneMaxLength);
         builder.Property(b => b.CustomerGstin).HasMaxLength(BillingLimits.GstinMaxLength);
+        builder.Property(b => b.CustomerLegalName).HasMaxLength(BillingLimits.LegalNameMaxLength);
+        builder.Property(b => b.CustomerStateCode).HasMaxLength(GstLimits.StateCodeLength).IsFixedLength();
+        builder.Property(b => b.PlaceOfSupply).HasMaxLength(GstLimits.StateCodeLength).IsFixedLength();
         builder.Property(b => b.RowVersion).IsRowVersion();
 
         builder.HasOne<Order>().WithMany().HasForeignKey(b => b.OrderId).OnDelete(DeleteBehavior.Restrict);

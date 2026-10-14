@@ -1,3 +1,5 @@
+using HotelPOS.Contracts.Common;
+using HotelPOS.Contracts.Gst;
 using HotelPOS.Contracts.Menu;
 using HotelPOS.Domain.Common;
 
@@ -35,6 +37,9 @@ public sealed class MenuItem : BaseEntity, IHasRowVersion
 
     public string? ImagePath { get; private set; }
 
+    // HSN/SAC code when it differs from the restaurant default (setting DefaultSacCode); null uses the default.
+    public string? HsnSac { get; private set; }
+
     public int SortOrder { get; private set; }
     public uint RowVersion { get; set; }
 
@@ -68,6 +73,17 @@ public sealed class MenuItem : BaseEntity, IHasRowVersion
     public void SetAvailability(bool isAvailable) => IsAvailable = isAvailable;
 
     public void SetImage(string? imagePath) => ImagePath = imagePath;
+
+    public void SetHsnSac(string? hsnSac)
+    {
+        var clean = string.IsNullOrWhiteSpace(hsnSac) ? null : hsnSac.Trim();
+        if (clean is not null && (clean.Length is < 4 or > GstLimits.HsnMaxLength || !clean.All(char.IsAsciiDigit)))
+        {
+            throw new DomainException("An HSN/SAC code is 4 to 8 digits.", ErrorCodes.ValidationError);
+        }
+
+        HsnSac = clean;
+    }
 
     public void Activate() => IsActive = true;
 

@@ -128,6 +128,9 @@ public static class AuditActions
     public const string ShiftReopened = "Shift.Reopened";
     public const string DayEndClosed = "DayEnd.Closed";
     public const string DayEndPackWritten = "DayEnd.PackWritten";
+    public const string PeriodClosed = "Period.Closed";
+    public const string PeriodReopened = "Period.Reopened";
+    public const string PeriodPackWritten = "Period.PackWritten";
     public const string DayEndReopened = "DayEnd.Reopened";
     public const string NonTillCollectionRecorded = "DayEnd.NonTillCollectionRecorded";
 }

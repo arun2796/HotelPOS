@@ -63,6 +63,9 @@ public static class SettingKeys
     public const string PdfPaper = "PdfPaper";
     public const string DefaultSacCode = "DefaultSacCode";
 
+    // Phase 15: GST returns. Inter-state B2C invoices above this value are B2CL (GSTR-1 table 5).
+    public const string GstB2clThreshold = "GstB2clThreshold";
+
     public const string BackupEnabled = "BackupEnabled";
     public const string BackupTime = "BackupTime";
     public const string BackupRetentionDays = "BackupRetentionDays";

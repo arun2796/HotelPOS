@@ -35,6 +35,9 @@ public static class Permissions
     public const string ShiftManage = "shift.manage";
     public const string DayEndRun = "dayend.run";
 
+    public const string GstView = "gst.view";
+    public const string PeriodClose = "period.close";
+
     public static IReadOnlyList<string> All { get; } = new[]
     {
         UsersManage, RolesManage, SettingsManage, DevicesManage, AuditView, BackupManage, ServerManage,
@@ -45,6 +48,7 @@ public static class Permissions
         BillingOperate, BillingDiscount, BillingVoid, BillingRefund,
         ReportsView,
         ShiftOperate, ShiftManage, DayEndRun,
+        GstView, PeriodClose,
     };
 }
 

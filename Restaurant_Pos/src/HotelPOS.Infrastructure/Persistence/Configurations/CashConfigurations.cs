@@ -1,6 +1,8 @@
 using HotelPOS.Contracts.Cash;
+using HotelPOS.Contracts.Gst;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Domain.Cash;
+using HotelPOS.Domain.Gst;
 using HotelPOS.Domain.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -121,6 +123,27 @@ internal sealed class BusinessDayCloseConfiguration : IEntityTypeConfiguration<B
         builder.Property(c => c.BackupFile).HasMaxLength(200);
         builder.Property(c => c.PackFolder).HasMaxLength(500);
         builder.Property(c => c.ReopenReason).HasMaxLength(CashLimits.ReasonMaxLength);
+        builder.Property(c => c.RowVersion).IsRowVersion();
+        builder.HasOne<User>().WithMany().HasForeignKey(c => c.ClosedBy).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<User>().WithMany().HasForeignKey(c => c.ReopenedBy).OnDelete(DeleteBehavior.Restrict);
+        builder.Ignore(c => c.IsClosed);
+    }
+}
+
+internal sealed class PeriodCloseConfiguration : IEntityTypeConfiguration<PeriodClose>
+{
+    public void Configure(EntityTypeBuilder<PeriodClose> builder)
+    {
+        builder.ToTable("PeriodCloses", t =>
+        {
+            t.HasCheckConstraint("CK_PeriodCloses_Kind", ConfigurationHelpers.EnumCheck<PeriodKind>("Kind"));
+            t.HasCheckConstraint("CK_PeriodCloses_Status", ConfigurationHelpers.EnumCheck<PeriodStatus>("Status"));
+        });
+        builder.HasKey(c => c.Id);
+        builder.HasIndex(c => new { c.Kind, c.PeriodStart }).IsUnique();
+        builder.Property(c => c.Checks).HasColumnType("jsonb").IsRequired();
+        builder.Property(c => c.PackFolder).HasMaxLength(500);
+        builder.Property(c => c.ReopenReason).HasMaxLength(Periods.ReasonMaxLength);
         builder.Property(c => c.RowVersion).IsRowVersion();
         builder.HasOne<User>().WithMany().HasForeignKey(c => c.ClosedBy).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<User>().WithMany().HasForeignKey(c => c.ReopenedBy).OnDelete(DeleteBehavior.Restrict);

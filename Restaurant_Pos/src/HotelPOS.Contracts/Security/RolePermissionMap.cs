@@ -16,6 +16,7 @@ public static class RolePermissionMap
             Permissions.BillingOperate, Permissions.BillingDiscount, Permissions.BillingVoid, Permissions.BillingRefund,
             Permissions.ReportsView,
             Permissions.ShiftOperate, Permissions.ShiftManage, Permissions.DayEndRun,
+            Permissions.GstView,
         },
         [Roles.Waiter] = new[]
         {

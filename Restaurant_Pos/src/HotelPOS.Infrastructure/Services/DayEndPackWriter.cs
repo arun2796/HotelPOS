@@ -22,12 +22,18 @@ public sealed class DayEndPackWriter : IDayEndPackWriter
         _options = options.Value;
     }
 
-    public async Task<DayEndPackLocation> WriteAsync(DateOnly businessDay, IReadOnlyList<DayEndPackFile> files, CancellationToken cancellationToken = default)
+    public async Task<DayEndPackLocation> WriteAsync(DateOnly businessDay, IReadOnlyList<DayEndPackFile> files, CancellationToken cancellationToken = default) =>
+        await WriteFolderAsync("dayend-" + businessDay.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), files, cancellationToken);
+
+    public async Task<DayEndPackLocation> WritePeriodAsync(string label, IReadOnlyList<DayEndPackFile> files, CancellationToken cancellationToken = default) =>
+        await WriteFolderAsync("period-" + label, files, cancellationToken);
+
+    private async Task<DayEndPackLocation> WriteFolderAsync(string name, IReadOnlyList<DayEndPackFile> files, CancellationToken cancellationToken)
     {
         var configured = await _db.SettingAsync(SettingKeys.BackupPath, cancellationToken);
         var root = string.IsNullOrWhiteSpace(configured) ? _options.DefaultPath : configured.Trim();
         var stamp = TimeZoneInfo.ConvertTimeFromUtc(_clock.UtcNow, TimeZoneInfo.Local).ToString("HHmmss", CultureInfo.InvariantCulture);
-        var folder = Path.Combine(root, $"dayend-{businessDay.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}-{stamp}");
+        var folder = Path.Combine(root, $"{name}-{stamp}");
         Directory.CreateDirectory(folder);
         foreach (var file in files)
         {

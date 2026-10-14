@@ -1,3 +1,4 @@
+using HotelPOS.Contracts.Gst;
 using HotelPOS.Contracts.Enums;
 
 namespace HotelPOS.Contracts.Billing;
@@ -11,6 +12,7 @@ public static class BillingLimits
     public const int CustomerNameMaxLength = 100;
     public const int PhoneMaxLength = 20;
     public const int GstinMaxLength = 20;
+    public const int LegalNameMaxLength = 200;
     public const int SearchMaxLength = 50;
     public const decimal MaxAmount = 10_000_000m;
     public const int ClaimMinutes = 5;
@@ -143,6 +145,10 @@ public sealed record BillDetailDto
     public string? CustomerName { get; init; }
     public string? CustomerPhone { get; init; }
     public string? CustomerGstin { get; init; }
+    public string? CustomerLegalName { get; init; }
+    public string? CustomerStateCode { get; init; }
+    public string? PlaceOfSupply { get; init; }
+    public GstSupplyType? SupplyType { get; init; }
     public string? ClaimedByDevice { get; init; }
     public string? ClaimedByUser { get; init; }
     public DateTime? ClaimExpiresAtUtc { get; init; }
@@ -177,6 +183,9 @@ public sealed record UpdateCustomerRequest
     public string? Name { get; init; }
     public string? Phone { get; init; }
     public string? Gstin { get; init; }
+    public string? LegalName { get; init; }
+    public string? StateCode { get; init; }
+    public string? PlaceOfSupply { get; init; }
     public string RowVersion { get; init; } = string.Empty;
 }
 

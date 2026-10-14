@@ -3,6 +3,7 @@ using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Cqrs;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
+using HotelPOS.Application.Features.Gst;
 using HotelPOS.Application.Features.Floor;
 using HotelPOS.Application.Features.Kitchen;
 using HotelPOS.Contracts.Admin;
@@ -127,6 +128,7 @@ internal sealed class BillWorkflow
 
         var now = _clock.UtcNow;
         bill.Finalize(await _invoices.NextAsync(now, cancellationToken), _bills.UserId, now);
+        await GstSettings.StampAsync(_db, bill, cancellationToken);
         order.MarkBilled();
         _audit.Add(AuditActions.BillFinalized, nameof(Bill), bill.Id.ToString(CultureInfo.InvariantCulture),
             newValues: new { bill.BillNumber, bill.InvoiceNumber, bill.GrandTotal, order.OrderNumber });

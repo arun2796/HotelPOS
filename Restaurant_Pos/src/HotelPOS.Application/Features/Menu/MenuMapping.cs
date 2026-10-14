@@ -34,6 +34,7 @@ internal static class MenuMapping
         Description = item.Description,
         Price = item.Price,
         TaxId = item.TaxId,
+        HsnSac = item.HsnSac,
         TaxName = item.Tax?.Name,
         TaxRatePercent = item.Tax?.RatePercent ?? 0m,
         PreparationStationId = item.PreparationStationId,

@@ -25,6 +25,7 @@ public static class ErrorCodes
     public const string ShiftRequired = "SHIFT_REQUIRED";
     public const string ShiftAlreadyOpen = "SHIFT_ALREADY_OPEN";
     public const string DayClosed = "DAY_CLOSED";
+    public const string PeriodClosed = "PERIOD_CLOSED";
     public const string VarianceApprovalRequired = "VARIANCE_APPROVAL_REQUIRED";
     public const string BusinessRule = "BUSINESS_RULE";
     public const string RateLimited = "RATE_LIMITED";

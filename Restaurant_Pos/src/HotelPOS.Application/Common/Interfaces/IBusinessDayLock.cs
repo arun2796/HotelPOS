@@ -13,5 +13,13 @@ public interface IBusinessDayLock
     // Exclusive: waits for the commands changing the day to commit and keeps new ones out until this transaction ends.
     Task LockExclusiveAsync(DateOnly day, CancellationToken cancellationToken = default);
 
+    // Phase 15: takes the shared lock of the day's month and returns PERIOD_CLOSED when a closed month or financial year
+    // contains the day. EnterAsync does this for every day it covers; commands that lock a day themselves (reopening a
+    // Day End) call it directly.
+    Task<AppError?> CheckPeriodAsync(DateOnly day, CancellationToken cancellationToken = default);
+
+    // Exclusive: period close and reopen wait for the commands changing the months to commit and keep new ones out.
+    Task LockMonthsExclusiveAsync(DateOnly from, DateOnly to, CancellationToken cancellationToken = default);
+
     Task<DateOnly> TodayAsync(CancellationToken cancellationToken = default);
 }

@@ -1,6 +1,8 @@
 using HotelPOS.Contracts.Billing;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Enums;
+using HotelPOS.Contracts.Gst;
+using HotelPOS.Domain.Gst;
 using HotelPOS.Domain.Common;
 using HotelPOS.Domain.Orders;
 
@@ -58,6 +60,14 @@ public sealed class Bill : BaseEntity, IHasRowVersion
     public string? CustomerName { get; private set; }
     public string? CustomerPhone { get; private set; }
     public string? CustomerGstin { get; private set; }
+    public string? CustomerLegalName { get; private set; }
+    public string? CustomerStateCode { get; private set; }
+
+    // Where the supply is made (GST state code); the restaurant's own state unless the cashier says otherwise.
+    public string? PlaceOfSupply { get; private set; }
+
+    // Fixed when the bill is finalized (its value no longer changes then); null before and on bills older than Phase 15.
+    public GstSupplyType? SupplyType { get; private set; }
     public int? ClaimedByUserId { get; private set; }
     public Guid? ClaimedByDeviceId { get; private set; }
     public DateTime? ClaimedAt { get; private set; }
@@ -132,12 +142,40 @@ public sealed class Bill : BaseEntity, IHasRowVersion
         Recalculate(roundOff);
     }
 
-    public void SetCustomer(string? name, string? phone, string? gstin)
+    public void SetCustomer(string? name, string? phone, string? gstin, string? legalName = null, string? stateCode = null, string? placeOfSupply = null)
     {
         EnsurePending("changed");
+        var cleanGstin = Clean(gstin)?.ToUpperInvariant();
+        if (cleanGstin is not null && Gstin.Validate(cleanGstin) is { } problem)
+        {
+            throw new DomainException(problem, ErrorCodes.ValidationError);
+        }
+
+        var state = Clean(stateCode) ?? (cleanGstin is null ? null : cleanGstin[..2]);
+        var supplyState = Clean(placeOfSupply);
+        foreach (var code in new[] { state, supplyState })
+        {
+            if (code is not null && !GstStates.IsKnown(code))
+            {
+                throw new DomainException($"{code} is not a GST state code.", ErrorCodes.ValidationError);
+            }
+        }
+
         CustomerName = Clean(name);
         CustomerPhone = Clean(phone);
-        CustomerGstin = Clean(gstin)?.ToUpperInvariant();
+        CustomerGstin = cleanGstin;
+        CustomerLegalName = Clean(legalName);
+        CustomerStateCode = state;
+        PlaceOfSupply = supplyState;
+    }
+
+    // Decides the GSTR-1 table of this bill from its customer, place of supply and value. Called when the customer
+    // changes and when the bill is finalized, so the stored type matches the final value.
+    public void StampGst(string? restaurantState, decimal b2clThreshold)
+    {
+        PlaceOfSupply ??= restaurantState;
+        var registered = CustomerGstin is not null && Gstin.IsValid(CustomerGstin);
+        SupplyType = GstSupply.Classify(registered, GstSupply.IsInterState(restaurantState, PlaceOfSupply), GrandTotal, b2clThreshold);
     }
 
     public void Finalize(string invoiceNumber, int userId, DateTime nowUtc)

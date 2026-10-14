@@ -134,6 +134,8 @@ public sealed record MenuItemDto
 
     public string? ImageUrl { get; init; }
 
+    public string? HsnSac { get; init; }
+
     public int SortOrder { get; init; }
     public IReadOnlyList<int> ModifierGroupIds { get; init; } = Array.Empty<int>();
 
@@ -159,6 +161,7 @@ public sealed record CreateMenuItemRequest
     public int SortOrder { get; init; }
     public bool IsAvailable { get; init; } = true;
     public IReadOnlyList<int> ModifierGroupIds { get; init; } = Array.Empty<int>();
+    public string? HsnSac { get; init; }
 }
 
 public sealed record UpdateMenuItemRequest
@@ -174,6 +177,7 @@ public sealed record UpdateMenuItemRequest
     public bool IsAvailable { get; init; } = true;
     public bool IsActive { get; init; } = true;
     public IReadOnlyList<int> ModifierGroupIds { get; init; } = Array.Empty<int>();
+    public string? HsnSac { get; init; }
     public string RowVersion { get; init; } = string.Empty;
 }
 

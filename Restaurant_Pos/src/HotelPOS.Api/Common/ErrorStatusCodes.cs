@@ -29,6 +29,7 @@ public static class ErrorStatusCodes
         [ErrorCodes.ShiftRequired] = StatusCodes.Status409Conflict,
         [ErrorCodes.ShiftAlreadyOpen] = StatusCodes.Status409Conflict,
         [ErrorCodes.DayClosed] = StatusCodes.Status409Conflict,
+        [ErrorCodes.PeriodClosed] = StatusCodes.Status409Conflict,
         [ErrorCodes.VarianceApprovalRequired] = StatusCodes.Status409Conflict,
         [ErrorCodes.BusinessRule] = StatusCodes.Status422UnprocessableEntity,
         [ErrorCodes.RateLimited] = StatusCodes.Status429TooManyRequests,

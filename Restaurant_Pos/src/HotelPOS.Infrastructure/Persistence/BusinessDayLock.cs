@@ -3,6 +3,8 @@ using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
 using HotelPOS.Application.Features.Reports;
 using HotelPOS.Contracts.Enums;
+using HotelPOS.Contracts.Gst;
+using HotelPOS.Domain.Gst;
 using Microsoft.EntityFrameworkCore;
 
 namespace HotelPOS.Infrastructure.Persistence;
@@ -13,6 +15,7 @@ namespace HotelPOS.Infrastructure.Persistence;
 public sealed class BusinessDayLock : IBusinessDayLock
 {
     private const int LockNamespace = 13_001;
+    private const int PeriodLockNamespace = 15_001;
 
     private readonly AppDbContext _db;
     private readonly IBusinessDays _businessDays;
@@ -33,6 +36,15 @@ public sealed class BusinessDayLock : IBusinessDayLock
             await _db.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock_shared({LockNamespace}, {day.DayNumber})", cancellationToken);
         }
 
+        // Month locks come after the day locks, always in this order, so Day End and period close never deadlock.
+        foreach (var day in days)
+        {
+            if (await CheckPeriodAsync(day, cancellationToken) is { } periodClosed)
+            {
+                return periodClosed;
+            }
+        }
+
         var closed = await _db.BusinessDayCloses.AsNoTracking()
             .Where(c => days.Contains(c.BusinessDay) && c.Status == BusinessDayStatus.Closed)
             .OrderBy(c => c.BusinessDay)
@@ -40,6 +52,27 @@ public sealed class BusinessDayLock : IBusinessDayLock
             .FirstOrDefaultAsync(cancellationToken);
         return closed is { } closedDay ? AppErrors.DayClosed(closedDay) : null;
     }
+
+    public async Task<AppError?> CheckPeriodAsync(DateOnly day, CancellationToken cancellationToken = default)
+    {
+        await _db.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock_shared({PeriodLockNamespace}, {MonthKey(day)})", cancellationToken);
+        var closed = await _db.PeriodCloses.AsNoTracking()
+            .Where(p => p.Status == PeriodStatus.Closed && p.PeriodStart <= day && p.PeriodEnd >= day)
+            .OrderBy(p => p.Kind)
+            .Select(p => new { p.Kind, p.PeriodStart })
+            .FirstOrDefaultAsync(cancellationToken);
+        return closed is null ? null : AppErrors.PeriodClosed(Periods.Label(closed.Kind, closed.PeriodStart));
+    }
+
+    public async Task LockMonthsExclusiveAsync(DateOnly from, DateOnly to, CancellationToken cancellationToken = default)
+    {
+        for (var month = new DateOnly(from.Year, from.Month, 1); month <= to; month = month.AddMonths(1))
+        {
+            await _db.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock({PeriodLockNamespace}, {MonthKey(month)})", cancellationToken);
+        }
+    }
+
+    private static int MonthKey(DateOnly day) => (day.Year * 12) + day.Month - 1;
 
     public async Task LockExclusiveAsync(DateOnly day, CancellationToken cancellationToken = default) =>
         await _db.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock({LockNamespace}, {day.DayNumber})", cancellationToken);

@@ -1,3 +1,4 @@
+using HotelPOS.Contracts.Gst;
 using HotelPOS.Contracts.Menu;
 using HotelPOS.Domain.Menu;
 using Microsoft.EntityFrameworkCore;
@@ -65,6 +66,7 @@ internal sealed class MenuItemConfiguration : IEntityTypeConfiguration<MenuItem>
         builder.Property(i => i.Code).HasMaxLength(MenuLimits.CodeMaxLength);
         builder.Property(i => i.Description).HasMaxLength(MenuLimits.DescriptionMaxLength);
         builder.Property(i => i.ImagePath).HasMaxLength(200);
+        builder.Property(i => i.HsnSac).HasMaxLength(GstLimits.HsnMaxLength);
         builder.Property(i => i.RowVersion).IsRowVersion();
 
         builder.HasIndex(i => new { i.CategoryId, i.Name }).IsUnique();

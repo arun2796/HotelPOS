@@ -28,6 +28,7 @@ public sealed class UpdateMenuItemRequestValidator : AbstractValidator<UpdateMen
         RuleFor(x => x.TaxId).GreaterThan(0).When(x => x.TaxId is not null);
         RuleFor(x => x.PreparationStationId).GreaterThan(0).WithMessage("Select a preparation station.");
         RuleFor(x => x.SortOrder).ValidSortOrder();
+        RuleFor(x => x.HsnSac).Matches(@"^[0-9]{4,8}$").When(x => !string.IsNullOrWhiteSpace(x.HsnSac)).WithMessage("An HSN/SAC code is 4 to 8 digits.");
         RuleFor(x => x.ModifierGroupIds).NotNull();
         RuleFor(x => x.RowVersion).NotEmpty();
     }
@@ -73,6 +74,7 @@ internal sealed class UpdateMenuItemHandler : ICommandHandler<UpdateMenuItemComm
             request.TaxId, request.PreparationStationId, request.SortOrder);
         item.SetAvailability(request.IsAvailable);
         item.SetModifierGroups(request.ModifierGroupIds);
+        item.SetHsnSac(request.HsnSac);
         if (request.IsActive)
         {
             item.Activate();

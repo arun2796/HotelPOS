@@ -77,6 +77,7 @@ public sealed class DbSeeder
         new Setting(SettingKeys.LogoFile, string.Empty, SettingDataType.String, "Logo for invoices and PDFs (managed by Print templates).", false),
         new Setting(SettingKeys.PdfPaper, "A4", SettingDataType.String, "Paper of invoice and receipt PDFs when the template uses a thermal roll: A4, A5 or 80mm.", false),
         new Setting(SettingKeys.DefaultSacCode, "996331", SettingDataType.String, "SAC code printed for restaurant service when the template shows the HSN/SAC column.", false),
+        new Setting(SettingKeys.GstB2clThreshold, "100000", SettingDataType.Decimal, "GST: an inter-state invoice to an unregistered buyer above this value is reported as B2CL (the portal limit is Rs 1,00,000 from 1 Aug 2024; Rs 2,50,000 before).", false),
         new Setting(SettingKeys.CashVarianceApprovalLimit, "100", SettingDataType.Decimal, "A shift whose counted cash differs from the expected cash by more than this needs a manager's approval to close.", true),
         new Setting(SettingKeys.CashPayOutApprovalLimit, "1000", SettingDataType.Decimal, "Pay-outs and till vouchers above this amount need a manager's approval.", true),
         new Setting(SettingKeys.CashBlindCount, "false", SettingDataType.Bool, "Cashiers count the drawer before they see the expected cash (blind count).", true),

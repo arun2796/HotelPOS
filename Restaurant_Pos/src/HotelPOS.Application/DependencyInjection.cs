@@ -7,6 +7,9 @@ using HotelPOS.Application.Features.Billing;
 using HotelPOS.Application.Features.DayEnd;
 using HotelPOS.Application.Features.Devices;
 using HotelPOS.Application.Features.Floor;
+using HotelPOS.Application.Features.Gst;
+using HotelPOS.Application.Features.Gst.Queries;
+using HotelPOS.Application.Features.PeriodClosing;
 using HotelPOS.Application.Features.Kitchen;
 using HotelPOS.Application.Features.Menu;
 using HotelPOS.Application.Features.Orders;
@@ -82,6 +85,10 @@ public static class DependencyInjection
         services.AddScoped<ShiftEvents>();
         services.AddScoped<DayEndChecks>();
         services.AddScoped<DayEndPack>();
+        services.AddScoped<GstDataLoader>();
+        services.AddScoped<GstPeriodReader>();
+        services.AddScoped<GstExports>();
+        services.AddScoped<PeriodChecks>();
         services.AddScoped<DayEndRecords>();
 
         // Read by the access middleware on every request.

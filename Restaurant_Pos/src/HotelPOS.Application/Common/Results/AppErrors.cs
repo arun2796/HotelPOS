@@ -62,6 +62,9 @@ public static class AppErrors
     public static AppError ShiftAlreadyOpen(string message, object? current = null) =>
         new(ErrorCodes.ShiftAlreadyOpen, message) { Data = current };
 
+    public static AppError PeriodClosed(string period) =>
+        new(ErrorCodes.PeriodClosed, $"{period} is closed for GST. Record the correction in the open period, or ask an administrator to reopen {period} from Period Close.");
+
     public static AppError DayClosed(DateOnly day) =>
         new(ErrorCodes.DayClosed, $"Business day {day:dd-MM-yyyy} is closed. A manager can reopen it from Day End.");
 

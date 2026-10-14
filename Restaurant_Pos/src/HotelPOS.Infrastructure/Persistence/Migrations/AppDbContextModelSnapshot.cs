@@ -262,6 +262,10 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<string>("CustomerLegalName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<string>("CustomerName")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
@@ -269,6 +273,11 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                     b.Property<string>("CustomerPhone")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
+
+                    b.Property<string>("CustomerStateCode")
+                        .HasMaxLength(2)
+                        .HasColumnType("character(2)")
+                        .IsFixedLength();
 
                     b.Property<decimal>("DiscountAmount")
                         .HasPrecision(18, 2)
@@ -312,6 +321,11 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                     b.Property<int>("PaymentStatus")
                         .HasColumnType("integer");
 
+                    b.Property<string>("PlaceOfSupply")
+                        .HasMaxLength(2)
+                        .HasColumnType("character(2)")
+                        .IsFixedLength();
+
                     b.Property<decimal>("RefundedAmount")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
@@ -342,6 +356,9 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                     b.Property<decimal>("Subtotal")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
+
+                    b.Property<int?>("SupplyType")
+                        .HasColumnType("integer");
 
                     b.Property<string>("TableCode")
                         .IsRequired()
@@ -1144,6 +1161,73 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("HotelPOS.Domain.Gst.PeriodClose", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Checks")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime>("ClosedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int>("ClosedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PackFolder")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateOnly>("PeriodEnd")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly>("PeriodStart")
+                        .HasColumnType("date");
+
+                    b.Property<string>("ReopenReason")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTime?>("ReopenedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int?>("ReopenedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClosedBy");
+
+                    b.HasIndex("ReopenedBy");
+
+                    b.HasIndex("Kind", "PeriodStart")
+                        .IsUnique();
+
+                    b.ToTable("PeriodCloses", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_PeriodCloses_Kind", "\"Kind\" IN (0, 1)");
+
+                            t.HasCheckConstraint("CK_PeriodCloses_Status", "\"Status\" IN (0, 1, 2)");
+                        });
+                });
+
             modelBuilder.Entity("HotelPOS.Domain.Identity.Device", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1585,6 +1669,10 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                     b.Property<string>("Description")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
+
+                    b.Property<string>("HsnSac")
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
 
                     b.Property<string>("ImagePath")
                         .HasMaxLength(200)
@@ -2307,6 +2395,20 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                     b.Navigation("CurrentOrder");
 
                     b.Navigation("Section");
+                });
+
+            modelBuilder.Entity("HotelPOS.Domain.Gst.PeriodClose", b =>
+                {
+                    b.HasOne("HotelPOS.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("ClosedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("HotelPOS.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("ReopenedBy")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("HotelPOS.Domain.Identity.Device", b =>
