@@ -3,7 +3,7 @@ using FluentValidation;
 using HotelPOS.Application.Common.Behaviors;
 using HotelPOS.Application.Common.Cqrs;
 using HotelPOS.Application.Administration;
-using HotelPOS.Application.Auth;
+using HotelPOS.Application.Features.Auth;
 using HotelPOS.Application.Features.Billing;
 using HotelPOS.Application.Devices;
 using HotelPOS.Application.Features.Floor;
@@ -14,7 +14,8 @@ using HotelPOS.Application.Features.Print;
 using HotelPOS.Application.Features.Reports;
 using HotelPOS.Application.Security;
 using HotelPOS.Application.Settings;
-using HotelPOS.Application.Users;
+using HotelPOS.Application.Features.Users;
+using HotelPOS.Application.Features.Security;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace HotelPOS.Application;
@@ -42,8 +43,10 @@ public static class DependencyInjection
         services.AddScoped<AfterCommitQueue>();
         services.AddScoped<IAfterCommit>(sp => sp.GetRequiredService<AfterCommitQueue>());
 
-        services.AddScoped<IAuthService, AuthService>();
-        services.AddScoped<IUserService, UserService>();
+        services.AddScoped<AuthTokens>();
+        services.AddScoped<UserAdministration>();
+        services.AddScoped<RolePermissions>();
+        services.AddScoped<ApprovalTokens>();
         services.AddScoped<IDeviceService, DeviceService>();
         services.AddScoped<FloorSections>();
         services.AddScoped<TableEvents>();
@@ -73,9 +76,6 @@ public static class DependencyInjection
         services.AddScoped<SettingsService>();
         services.AddScoped<ISettingsService>(sp => sp.GetRequiredService<SettingsService>());
         services.AddScoped<ISystemInfoService>(sp => sp.GetRequiredService<SettingsService>());
-        services.AddScoped<HotelPOS.Application.Security.IPermissionService, HotelPOS.Application.Security.PermissionService>();
-        services.AddScoped<HotelPOS.Application.Security.IApprovalTokenService, HotelPOS.Application.Security.ApprovalTokenService>();
-        services.AddScoped<HotelPOS.Application.Security.ISessionService, HotelPOS.Application.Security.SessionService>();
         services.AddScoped<IDeviceAdminService, DeviceAdminService>();
         services.AddScoped<IAuditQueryService, AuditQueryService>();
 

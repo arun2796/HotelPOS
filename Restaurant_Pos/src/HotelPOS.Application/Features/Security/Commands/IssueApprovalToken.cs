@@ -1,44 +1,64 @@
-using System.Collections.Concurrent;
+using FluentValidation;
 using HotelPOS.Application.Common;
+using HotelPOS.Application.Common.Cqrs;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
 using HotelPOS.Contracts.Auth;
-using HotelPOS.Contracts.Security;
+using HotelPOS.Contracts.Billing;
 using HotelPOS.Domain.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-namespace HotelPOS.Application.Security;
+namespace HotelPOS.Application.Features.Security.Commands;
 
-public sealed class ApprovalTokenService : IApprovalTokenService
+// A manager approves at the cashier's terminal; the token lets the cashier's next void, refund or reopen through.
+// Anonymous endpoint. A rejected attempt is kept (audit, failed-login count) although the result is a failure.
+public sealed record IssueApprovalTokenCommand(ApprovalTokenRequest Input)
+    : ICommand<ApprovalTokenResponse>, IHasInput<ApprovalTokenRequest>, IAuditedCommand, ICommitOnFailure;
+
+public sealed class ApprovalTokenRequestValidator : AbstractValidator<ApprovalTokenRequest>
 {
-    private static readonly ConcurrentDictionary<string, StoredApprovalToken> Tokens = new(StringComparer.Ordinal);
+    public ApprovalTokenRequestValidator()
+    {
+        RuleFor(x => x.ApproverUsername).NotEmpty().MaximumLength(50);
+        RuleFor(x => x.ApproverPassword).NotEmpty().MaximumLength(PasswordPolicy.MaxLength);
+        RuleFor(x => x.ActionType).NotEmpty()
+            .Must(a => ApprovalActions.All.Contains(a, StringComparer.OrdinalIgnoreCase))
+            .WithMessage($"Action type must be one of: {string.Join(", ", ApprovalActions.All)}.");
+    }
+}
 
+internal sealed class IssueApprovalTokenHandler : ICommandHandler<IssueApprovalTokenCommand, ApprovalTokenResponse>
+{
     private readonly IAppDbContext _db;
     private readonly IPasswordHasher _hasher;
-    private readonly IAuditService _audit;
-    private readonly IPermissionService _permissions;
+    private readonly IAuditTrail _audit;
+    private readonly RolePermissions _permissions;
+    private readonly ApprovalTokens _tokens;
     private readonly IClock _clock;
-    private readonly ILogger<ApprovalTokenService> _logger;
+    private readonly ILogger<IssueApprovalTokenHandler> _logger;
 
-    public ApprovalTokenService(
+    public IssueApprovalTokenHandler(
         IAppDbContext db,
         IPasswordHasher hasher,
-        IAuditService audit,
-        IPermissionService permissions,
+        IAuditTrail audit,
+        RolePermissions permissions,
+        ApprovalTokens tokens,
         IClock clock,
-        ILogger<ApprovalTokenService> logger)
+        ILogger<IssueApprovalTokenHandler> logger)
     {
         _db = db;
         _hasher = hasher;
         _audit = audit;
         _permissions = permissions;
+        _tokens = tokens;
         _clock = clock;
         _logger = logger;
     }
 
-    public async Task<Result<ApprovalTokenResponse>> IssueApprovalTokenAsync(ApprovalTokenRequest request, CancellationToken cancellationToken = default)
+    public async Task<Result<ApprovalTokenResponse>> Handle(IssueApprovalTokenCommand command, CancellationToken cancellationToken)
     {
+        var request = command.Input;
         if (string.IsNullOrWhiteSpace(request.ApproverUsername) || string.IsNullOrEmpty(request.ApproverPassword))
         {
             return AppErrors.ApprovalRequired(request.ActionType);
@@ -64,37 +84,24 @@ public sealed class ApprovalTokenService : IApprovalTokenService
 
         if (!accepted)
         {
-            _audit.Record(AuditActions.ApprovalRejected, "User", approver?.Id.ToString(),
+            _audit.Add(AuditActions.ApprovalRejected, "User", approver?.Id.ToString(),
                 newValues: new { Approver = normalized, Action = request.ActionType, Mode = "TokenRequest" });
             await _db.SaveChangesAsync(cancellationToken);
             _logger.LogWarning("Approval token rejected for approver '{Approver}' on action '{Action}'", request.ApproverUsername, request.ActionType);
             return AppErrors.ApprovalInvalid();
         }
 
-        // Cleanup expired tokens
-        foreach (var (key, value) in Tokens)
-        {
-            if (value.ExpiresAtUtc <= now)
-            {
-                Tokens.TryRemove(key, out _);
-            }
-        }
-
         var token = Guid.NewGuid().ToString("N");
         var expiresAtUtc = now.AddMinutes(2); // 2-minute token bound to action type
-
-        var stored = new StoredApprovalToken(
+        _tokens.Store(token, new StoredApprovalToken(
             approver!.Id,
             approver.Username,
             approver.DisplayName,
             request.ActionType.Trim().ToLowerInvariant(),
-            expiresAtUtc);
+            expiresAtUtc));
 
-        Tokens[token] = stored;
-
-        _audit.Record(AuditActions.ApprovalTokenIssued, "User", approver.Id.ToString(),
+        _audit.Add(AuditActions.ApprovalTokenIssued, "User", approver.Id.ToString(),
             newValues: new { Approver = approver.Username, Action = request.ActionType, ExpiresAt = expiresAtUtc });
-        await _db.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Issued approval token for manager '{Approver}' for action '{Action}' valid until {ExpiresAt}",
             approver.Username, request.ActionType, expiresAtUtc);
@@ -109,35 +116,4 @@ public sealed class ApprovalTokenService : IApprovalTokenService
             ActionType = request.ActionType,
         };
     }
-
-    public Task<Result<int>> ValidateApprovalTokenAsync(string token, string expectedActionType, CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrWhiteSpace(token))
-        {
-            return Task.FromResult<Result<int>>(AppErrors.ApprovalRequired(expectedActionType));
-        }
-
-        // A token presented for the wrong action is rejected without being spent; TryRemove makes the use atomic.
-        if (!Tokens.TryGetValue(token, out var stored)
-            || !string.Equals(stored.ActionType, expectedActionType.Trim(), StringComparison.OrdinalIgnoreCase)
-            || !Tokens.TryRemove(token, out stored))
-        {
-            return Task.FromResult<Result<int>>(AppErrors.ApprovalInvalid());
-        }
-
-        if (stored.ExpiresAtUtc < _clock.UtcNow)
-        {
-            return Task.FromResult<Result<int>>(AppErrors.ApprovalInvalid());
-        }
-
-        return Task.FromResult<Result<int>>(stored.ApproverId);
-    }
-
-    private sealed record StoredApprovalToken(
-        int ApproverId,
-        string ApproverUsername,
-        string ApproverDisplayName,
-        string ActionType,
-        DateTime ExpiresAtUtc);
 }
-

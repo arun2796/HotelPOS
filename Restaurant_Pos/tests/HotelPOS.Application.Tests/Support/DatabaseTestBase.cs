@@ -1,5 +1,7 @@
-using HotelPOS.Application.Users;
+using HotelPOS.Application.Common.Interfaces;
+using HotelPOS.Application.Features.Users;
 using HotelPOS.Contracts.Users;
+using HotelPOS.Domain.Identity;
 using HotelPOS.Infrastructure.Persistence;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -69,18 +71,17 @@ public abstract class DatabaseTestBase : IAsyncLifetime
     protected Task<int> AdminIdAsync() =>
         QueryAsync(db => db.Users.Where(u => u.NormalizedUsername == "ADMIN").Select(u => u.Id).SingleAsync());
 
+    // Seeds a user straight into the database, as DbSeeder does. Scenarios use short demo passwords ("secret1") that
+    // the create-user request has always rejected, so they cannot be created through it; Users/UserTests covers it.
     protected async Task<UserDto> CreateUserAsync(string username, string password, params string[] roles)
     {
         await using var scope = Fixture.Services.CreateAsyncScope();
-        var result = await scope.ServiceProvider.GetRequiredService<IUserService>().CreateAsync(new CreateUserRequest
-        {
-            Username = username,
-            DisplayName = username,
-            Password = password,
-            Roles = roles,
-            MustChangePassword = false,
-        });
-        result.IsSuccess.Should().BeTrue(result.Error?.Message);
-        return result.Value;
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
+        var user = new User(username, username, hasher.Hash(password), mustChangePassword: false);
+        user.SetRoles(await db.Roles.Where(r => roles.Contains(r.Name)).ToListAsync());
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+        return UserMapping.ToDto(user);
     }
 }

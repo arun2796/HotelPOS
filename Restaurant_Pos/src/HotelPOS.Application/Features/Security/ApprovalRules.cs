@@ -3,7 +3,7 @@ using HotelPOS.Contracts.Billing;
 using HotelPOS.Contracts.Security;
 using HotelPOS.Domain.Identity;
 
-namespace HotelPOS.Application.Security;
+namespace HotelPOS.Application.Features.Security;
 
 // Who may carry out an approval-requiring action unasked, and who may approve it for someone else: the holders of the
 // action's permission. Reopening an invoiced bill is as sensitive as voiding it. A discount over the cashier limit has
@@ -26,7 +26,7 @@ internal static class ApprovalRules
     public static async Task<bool> MayApproveAsync(
         User approver,
         string actionType,
-        IPermissionService permissions,
+        RolePermissions permissions,
         CancellationToken cancellationToken)
     {
         if (approver.HasRole(Roles.Admin))
@@ -39,7 +39,7 @@ internal static class ApprovalRules
             return approver.HasRole(Roles.Manager);
         }
 
-        var granted = await permissions.GetPermissionsForRolesAsync(approver.RoleNames, cancellationToken);
+        var granted = await permissions.ForRolesAsync(approver.RoleNames, cancellationToken);
         return granted.Contains(permission, StringComparer.Ordinal);
     }
 }

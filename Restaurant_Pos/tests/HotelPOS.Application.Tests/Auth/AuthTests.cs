@@ -1,10 +1,11 @@
-using HotelPOS.Application.Auth;
+using HotelPOS.Application.Features.Auth.Commands;
 using HotelPOS.Application.Features.Billing;
 using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Interfaces;
-using HotelPOS.Application.Security;
+using HotelPOS.Application.Features.Security;
+using HotelPOS.Application.Features.Security.Commands;
 using HotelPOS.Application.Tests.Support;
-using HotelPOS.Application.Users;
+using HotelPOS.Application.Features.Users.Commands;
 using HotelPOS.Contracts.Auth;
 using HotelPOS.Contracts.Billing;
 using HotelPOS.Contracts.Common;
@@ -15,14 +16,12 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace HotelPOS.Application.Tests.Auth;
 
-public class AuthServiceTests : DatabaseTestBase
+public class AuthTests : DatabaseTestBase
 {
-    public AuthServiceTests(DatabaseFixture fixture)
+    public AuthTests(DatabaseFixture fixture)
         : base(fixture)
     {
     }
-
-    private IAuthService Auth => Get<IAuthService>();
 
     private static LoginRequest Login(string username, string password, string? device = null) => new()
     {
@@ -37,7 +36,7 @@ public class AuthServiceTests : DatabaseTestBase
     [Fact]
     public async Task Login_WithValidCredentials_ReturnsTokensAndProfile()
     {
-        var result = await Auth.LoginAsync(Login("admin", DatabaseFixture.AdminPassword));
+        var result = await SendAsync(new LoginCommand(Login("admin", DatabaseFixture.AdminPassword)));
 
         result.IsSuccess.Should().BeTrue();
         var response = result.Value;
@@ -53,7 +52,7 @@ public class AuthServiceTests : DatabaseTestBase
     [Fact]
     public async Task Login_IsCaseInsensitiveForUsername()
     {
-        var result = await Auth.LoginAsync(Login("ADMIN", DatabaseFixture.AdminPassword));
+        var result = await SendAsync(new LoginCommand(Login("ADMIN", DatabaseFixture.AdminPassword)));
 
         result.IsSuccess.Should().BeTrue();
     }
@@ -61,7 +60,7 @@ public class AuthServiceTests : DatabaseTestBase
     [Fact]
     public async Task Login_WithWrongPassword_FailsCountsAttemptAndAudits()
     {
-        var result = await Auth.LoginAsync(Login("admin", "wrong-password"));
+        var result = await SendAsync(new LoginCommand(Login("admin", "wrong-password")));
 
         result.Error!.Code.Should().Be(ErrorCodes.InvalidCredentials);
         var (failedCount, audits) = await QueryAsync(async db => (
@@ -74,7 +73,7 @@ public class AuthServiceTests : DatabaseTestBase
     [Fact]
     public async Task Login_WithUnknownUser_ReturnsSameErrorAsWrongPassword()
     {
-        var result = await Auth.LoginAsync(Login("nobody", "whatever"));
+        var result = await SendAsync(new LoginCommand(Login("nobody", "whatever")));
 
         result.Error!.Code.Should().Be(ErrorCodes.InvalidCredentials);
         result.Error.Message.Should().Be("Invalid username or password.");
@@ -85,10 +84,10 @@ public class AuthServiceTests : DatabaseTestBase
     {
         var waiter = await CreateUserAsync("waiter1", "secret1", Roles.Waiter);
         CurrentUser.SignIn(await AdminIdAsync(), "admin", Roles.Admin);
-        (await Get<IUserService>().SetActiveAsync(waiter.Id, active: false)).IsSuccess.Should().BeTrue();
+        (await SendAsync(new SetUserActiveCommand(waiter.Id, Active: false))).IsSuccess.Should().BeTrue();
         CurrentUser.Reset();
 
-        var result = await Auth.LoginAsync(Login("waiter1", "secret1"));
+        var result = await SendAsync(new LoginCommand(Login("waiter1", "secret1")));
 
         result.Error!.Code.Should().Be(ErrorCodes.AccountDisabled);
     }
@@ -96,7 +95,7 @@ public class AuthServiceTests : DatabaseTestBase
     [Fact]
     public async Task Login_WithDeviceName_RegistersTheDevice()
     {
-        var result = await Auth.LoginAsync(Login("admin", DatabaseFixture.AdminPassword, device: "waiter-07"));
+        var result = await SendAsync(new LoginCommand(Login("admin", DatabaseFixture.AdminPassword, device: "waiter-07")));
 
         result.Value.DeviceId.Should().NotBeNull();
         var device = await QueryAsync(db => db.Devices.SingleAsync(d => d.Id == result.Value.DeviceId));
@@ -108,7 +107,7 @@ public class AuthServiceTests : DatabaseTestBase
     [Fact]
     public async Task Login_OnDisabledDevice_ReturnsDeviceDisabled()
     {
-        var first = await Auth.LoginAsync(Login("admin", DatabaseFixture.AdminPassword, device: "BILLING-02"));
+        var first = await SendAsync(new LoginCommand(Login("admin", DatabaseFixture.AdminPassword, device: "BILLING-02")));
         await QueryAsync(async db =>
         {
             var device = await db.Devices.SingleAsync(d => d.Id == first.Value.DeviceId);
@@ -116,9 +115,7 @@ public class AuthServiceTests : DatabaseTestBase
             return await db.SaveChangesAsync();
         });
 
-        await using var scope = Fixture.Services.CreateAsyncScope();
-        var result = await scope.ServiceProvider.GetRequiredService<IAuthService>()
-            .LoginAsync(Login("admin", DatabaseFixture.AdminPassword, device: "BILLING-02"));
+        var result = await SendAsync(new LoginCommand(Login("admin", DatabaseFixture.AdminPassword, device: "BILLING-02")));
 
         result.Error!.Code.Should().Be(ErrorCodes.DeviceDisabled);
     }
@@ -126,30 +123,30 @@ public class AuthServiceTests : DatabaseTestBase
     [Fact]
     public async Task Refresh_RotatesTheToken_AndTheOldTokenStopsWorking()
     {
-        var login = (await Auth.LoginAsync(Login("admin", DatabaseFixture.AdminPassword))).Value;
+        var login = (await SendAsync(new LoginCommand(Login("admin", DatabaseFixture.AdminPassword)))).Value;
         Clock.Advance(TimeSpan.FromMinutes(30));
 
-        var refreshed = await Auth.RefreshAsync(new RefreshTokenRequest { RefreshToken = login.RefreshToken });
+        var refreshed = await SendAsync(new RefreshTokenCommand(new RefreshTokenRequest { RefreshToken = login.RefreshToken }));
 
         refreshed.IsSuccess.Should().BeTrue();
         refreshed.Value.RefreshToken.Should().NotBe(login.RefreshToken);
         refreshed.Value.AccessTokenExpiresAtUtc.Should().Be(Clock.UtcNow.AddMinutes(60));
 
-        var again = await Auth.RefreshAsync(new RefreshTokenRequest { RefreshToken = login.RefreshToken });
+        var again = await SendAsync(new RefreshTokenCommand(new RefreshTokenRequest { RefreshToken = login.RefreshToken }));
         again.Error!.Code.Should().Be(ErrorCodes.Unauthenticated);
     }
 
     [Fact]
     public async Task Refresh_ReusingARotatedToken_RevokesEverySessionOfTheUser()
     {
-        var login = (await Auth.LoginAsync(Login("admin", DatabaseFixture.AdminPassword))).Value;
-        var second = (await Auth.RefreshAsync(new RefreshTokenRequest { RefreshToken = login.RefreshToken })).Value;
+        var login = (await SendAsync(new LoginCommand(Login("admin", DatabaseFixture.AdminPassword)))).Value;
+        var second = (await SendAsync(new RefreshTokenCommand(new RefreshTokenRequest { RefreshToken = login.RefreshToken }))).Value;
 
         // Someone replays the first (already rotated) token...
-        (await Auth.RefreshAsync(new RefreshTokenRequest { RefreshToken = login.RefreshToken })).IsFailure.Should().BeTrue();
+        (await SendAsync(new RefreshTokenCommand(new RefreshTokenRequest { RefreshToken = login.RefreshToken }))).IsFailure.Should().BeTrue();
 
         // ...so the legitimate newer token is revoked too.
-        var result = await Auth.RefreshAsync(new RefreshTokenRequest { RefreshToken = second.RefreshToken });
+        var result = await SendAsync(new RefreshTokenCommand(new RefreshTokenRequest { RefreshToken = second.RefreshToken }));
         result.Error!.Code.Should().Be(ErrorCodes.Unauthenticated);
         (await QueryAsync(db => db.AuditLogs.CountAsync(a => a.Action == AuditActions.RefreshTokenReuse))).Should().Be(1);
     }
@@ -157,10 +154,10 @@ public class AuthServiceTests : DatabaseTestBase
     [Fact]
     public async Task Refresh_AfterExpiry_Fails()
     {
-        var login = (await Auth.LoginAsync(Login("admin", DatabaseFixture.AdminPassword))).Value;
+        var login = (await SendAsync(new LoginCommand(Login("admin", DatabaseFixture.AdminPassword)))).Value;
         Clock.Advance(TimeSpan.FromHours(13));
 
-        var result = await Auth.RefreshAsync(new RefreshTokenRequest { RefreshToken = login.RefreshToken });
+        var result = await SendAsync(new RefreshTokenCommand(new RefreshTokenRequest { RefreshToken = login.RefreshToken }));
 
         result.Error!.Code.Should().Be(ErrorCodes.Unauthenticated);
     }
@@ -169,11 +166,11 @@ public class AuthServiceTests : DatabaseTestBase
     public async Task Refresh_AfterUserIsDeactivated_Fails()
     {
         await CreateUserAsync("cashier1", "secret1", Roles.Cashier);
-        var login = (await Auth.LoginAsync(Login("cashier1", "secret1"))).Value;
+        var login = (await SendAsync(new LoginCommand(Login("cashier1", "secret1")))).Value;
         CurrentUser.SignIn(await AdminIdAsync(), "admin", Roles.Admin);
-        await Get<IUserService>().SetActiveAsync(login.User.Id, active: false);
+        await SendAsync(new SetUserActiveCommand(login.User.Id, Active: false));
 
-        var result = await Auth.RefreshAsync(new RefreshTokenRequest { RefreshToken = login.RefreshToken });
+        var result = await SendAsync(new RefreshTokenCommand(new RefreshTokenRequest { RefreshToken = login.RefreshToken }));
 
         result.IsFailure.Should().BeTrue();
     }
@@ -181,11 +178,11 @@ public class AuthServiceTests : DatabaseTestBase
     [Fact]
     public async Task Logout_RevokesTheRefreshToken()
     {
-        var login = (await Auth.LoginAsync(Login("admin", DatabaseFixture.AdminPassword))).Value;
+        var login = (await SendAsync(new LoginCommand(Login("admin", DatabaseFixture.AdminPassword)))).Value;
 
-        (await Auth.LogoutAsync(new LogoutRequest { RefreshToken = login.RefreshToken })).IsSuccess.Should().BeTrue();
+        (await SendAsync(new LogoutCommand(new LogoutRequest { RefreshToken = login.RefreshToken }))).IsSuccess.Should().BeTrue();
 
-        (await Auth.RefreshAsync(new RefreshTokenRequest { RefreshToken = login.RefreshToken })).IsFailure.Should().BeTrue();
+        (await SendAsync(new RefreshTokenCommand(new RefreshTokenRequest { RefreshToken = login.RefreshToken }))).IsFailure.Should().BeTrue();
     }
 
     [Fact]
@@ -193,7 +190,7 @@ public class AuthServiceTests : DatabaseTestBase
     {
         CurrentUser.SignIn(await AdminIdAsync(), "admin", Roles.Admin);
 
-        var result = await Auth.ChangePasswordAsync(new ChangePasswordRequest { CurrentPassword = "nope", NewPassword = "NewPass@1" });
+        var result = await SendAsync(new ChangePasswordCommand(new ChangePasswordRequest { CurrentPassword = "nope", NewPassword = "NewPass@1" }));
 
         result.Error!.Code.Should().Be(ErrorCodes.ValidationError);
         result.Error.Details.Single().Field.Should().Be("currentPassword");
@@ -204,16 +201,16 @@ public class AuthServiceTests : DatabaseTestBase
     {
         CurrentUser.SignIn(await AdminIdAsync(), "admin", Roles.Admin);
 
-        var result = await Auth.ChangePasswordAsync(new ChangePasswordRequest
+        var result = await SendAsync(new ChangePasswordCommand(new ChangePasswordRequest
         {
             CurrentPassword = DatabaseFixture.AdminPassword,
             NewPassword = "NewPass@1",
-        });
+        }));
 
         result.IsSuccess.Should().BeTrue();
         CurrentUser.Reset();
-        (await Auth.LoginAsync(Login("admin", DatabaseFixture.AdminPassword))).IsFailure.Should().BeTrue();
-        var login = await Auth.LoginAsync(Login("admin", "NewPass@1"));
+        (await SendAsync(new LoginCommand(Login("admin", DatabaseFixture.AdminPassword)))).IsFailure.Should().BeTrue();
+        var login = await SendAsync(new LoginCommand(Login("admin", "NewPass@1")));
         login.IsSuccess.Should().BeTrue();
         login.Value.User.MustChangePassword.Should().BeFalse();
     }
@@ -235,22 +232,22 @@ public class AuthServiceTests : DatabaseTestBase
         await CreateUserAsync("lockme", "Pass@1234", Roles.Waiter);
         for (var i = 0; i < 5; i++)
         {
-            await Auth.LoginAsync(Login("lockme", "wrong-password"));
+            await SendAsync(new LoginCommand(Login("lockme", "wrong-password")));
         }
 
-        (await Auth.LoginAsync(Login("lockme", "Pass@1234"))).Error!.Code.Should().Be(ErrorCodes.AccountLocked);
+        (await SendAsync(new LoginCommand(Login("lockme", "Pass@1234")))).Error!.Code.Should().Be(ErrorCodes.AccountLocked);
 
         Clock.Advance(TimeSpan.FromMinutes(16));
 
-        (await Auth.LoginAsync(Login("lockme", "wrong-password"))).Error!.Code.Should().Be(ErrorCodes.InvalidCredentials);
-        (await Auth.LoginAsync(Login("lockme", "Pass@1234"))).IsSuccess.Should().BeTrue();
+        (await SendAsync(new LoginCommand(Login("lockme", "wrong-password")))).Error!.Code.Should().Be(ErrorCodes.InvalidCredentials);
+        (await SendAsync(new LoginCommand(Login("lockme", "Pass@1234")))).IsSuccess.Should().BeTrue();
     }
 
     [Fact]
     public async Task ApprovalToken_WrongPasswords_CountTowardsLockout()
     {
         await CreateUserAsync("mgr", "Pass@1234", Roles.Manager);
-        var approvals = Get<IApprovalTokenService>();
+        var approvals = Get<ApprovalTokens>();
         ApprovalTokenRequest Request(string password) => new()
         {
             ApproverUsername = "mgr",
@@ -260,10 +257,10 @@ public class AuthServiceTests : DatabaseTestBase
 
         for (var i = 0; i < 5; i++)
         {
-            (await approvals.IssueApprovalTokenAsync(Request("wrong-password"))).Error!.Code.Should().Be(ErrorCodes.ApprovalInvalid);
+            (await SendAsync(new IssueApprovalTokenCommand(Request("wrong-password")))).Error!.Code.Should().Be(ErrorCodes.ApprovalInvalid);
         }
 
-        (await approvals.IssueApprovalTokenAsync(Request("Pass@1234"))).Error!.Code.Should().Be(ErrorCodes.ApprovalInvalid);
+        (await SendAsync(new IssueApprovalTokenCommand(Request("Pass@1234")))).Error!.Code.Should().Be(ErrorCodes.ApprovalInvalid);
         var lockedOut = await QueryAsync(db => db.AuditLogs.AnyAsync(a => a.Action == AuditActions.UserLockedOut));
         lockedOut.Should().BeTrue();
     }
@@ -319,33 +316,33 @@ public class AuthServiceTests : DatabaseTestBase
     public async Task ApprovalToken_PresentedForWrongAction_IsRejectedWithoutBeingSpent()
     {
         await CreateUserAsync("mgr", "Pass@1234", Roles.Manager);
-        var approvals = Get<IApprovalTokenService>();
-        var token = (await approvals.IssueApprovalTokenAsync(new ApprovalTokenRequest
+        var approvals = Get<ApprovalTokens>();
+        var token = (await SendAsync(new IssueApprovalTokenCommand(new ApprovalTokenRequest
         {
             ApproverUsername = "mgr",
             ApproverPassword = "Pass@1234",
             ActionType = ApprovalActions.Void,
-        })).Value.Token;
+        }))).Value.Token;
 
-        (await approvals.ValidateApprovalTokenAsync(token, ApprovalActions.Refund)).Error!.Code.Should().Be(ErrorCodes.ApprovalInvalid);
-        (await approvals.ValidateApprovalTokenAsync(token, ApprovalActions.Void)).IsSuccess.Should().BeTrue();
-        (await approvals.ValidateApprovalTokenAsync(token, ApprovalActions.Void)).Error!.Code.Should().Be(ErrorCodes.ApprovalInvalid);
+        (await approvals.ValidateAsync(token, ApprovalActions.Refund)).Error!.Code.Should().Be(ErrorCodes.ApprovalInvalid);
+        (await approvals.ValidateAsync(token, ApprovalActions.Void)).IsSuccess.Should().BeTrue();
+        (await approvals.ValidateAsync(token, ApprovalActions.Void)).Error!.Code.Should().Be(ErrorCodes.ApprovalInvalid);
     }
 
     [Fact]
     public async Task ApprovalToken_AfterTwoMinutes_IsRejected()
     {
         await CreateUserAsync("mgr", "Pass@1234", Roles.Manager);
-        var approvals = Get<IApprovalTokenService>();
-        var token = (await approvals.IssueApprovalTokenAsync(new ApprovalTokenRequest
+        var approvals = Get<ApprovalTokens>();
+        var token = (await SendAsync(new IssueApprovalTokenCommand(new ApprovalTokenRequest
         {
             ApproverUsername = "mgr",
             ApproverPassword = "Pass@1234",
             ActionType = ApprovalActions.Refund,
-        })).Value.Token;
+        }))).Value.Token;
 
         Clock.Advance(TimeSpan.FromMinutes(2).Add(TimeSpan.FromSeconds(1)));
 
-        (await approvals.ValidateApprovalTokenAsync(token, ApprovalActions.Refund)).Error!.Code.Should().Be(ErrorCodes.ApprovalInvalid);
+        (await approvals.ValidateAsync(token, ApprovalActions.Refund)).Error!.Code.Should().Be(ErrorCodes.ApprovalInvalid);
     }
 }

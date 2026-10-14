@@ -1,3 +1,6 @@
+using HotelPOS.Application.Features.Auth.Commands;
+using HotelPOS.Application.Features.Security.Commands;
+using HotelPOS.Application.Features.Users.Commands;
 using HotelPOS.Application.Validation;
 using HotelPOS.Contracts.Auth;
 using HotelPOS.Contracts.Devices;

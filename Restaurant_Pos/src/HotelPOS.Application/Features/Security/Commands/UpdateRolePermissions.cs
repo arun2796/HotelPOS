@@ -1,4 +1,6 @@
+using FluentValidation;
 using HotelPOS.Application.Common;
+using HotelPOS.Application.Common.Cqrs;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
 using HotelPOS.Contracts.Security;
@@ -6,20 +8,34 @@ using HotelPOS.Domain.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-namespace HotelPOS.Application.Security;
+namespace HotelPOS.Application.Features.Security.Commands;
 
-public sealed class PermissionService : IPermissionService
+// Replaces a role's permissions; with ForceRelogin every session of its users must log in again to pick them up.
+public sealed record UpdateRolePermissionsCommand(int RoleId, UpdateRolePermissionsRequest Input)
+    : ICommand, IHasInput<UpdateRolePermissionsRequest>, IRequirePermission, IAuditedCommand
+{
+    public string Permission => Permissions.RolesManage;
+}
+
+public sealed class UpdateRolePermissionsRequestValidator : AbstractValidator<UpdateRolePermissionsRequest>
+{
+    public UpdateRolePermissionsRequestValidator()
+    {
+        RuleFor(x => x.Permissions).NotNull();
+        RuleForEach(x => x.Permissions)
+            .Must(p => HotelPOS.Contracts.Security.Permissions.All.Contains(p, StringComparer.Ordinal))
+            .WithMessage("'{PropertyValue}' is not a known permission.");
+    }
+}
+
+internal sealed class UpdateRolePermissionsHandler : ICommandHandler<UpdateRolePermissionsCommand>
 {
     private readonly IAppDbContext _db;
-    private readonly IAuditService _audit;
+    private readonly IAuditTrail _audit;
     private readonly IClock _clock;
-    private readonly ILogger<PermissionService> _logger;
+    private readonly ILogger<UpdateRolePermissionsHandler> _logger;
 
-    public PermissionService(
-        IAppDbContext db,
-        IAuditService audit,
-        IClock clock,
-        ILogger<PermissionService> logger)
+    public UpdateRolePermissionsHandler(IAppDbContext db, IAuditTrail audit, IClock clock, ILogger<UpdateRolePermissionsHandler> logger)
     {
         _db = db;
         _audit = audit;
@@ -27,33 +43,9 @@ public sealed class PermissionService : IPermissionService
         _logger = logger;
     }
 
-    public async Task<Result<IReadOnlyList<RolePermissionsDto>>> GetAllRolePermissionsAsync(CancellationToken cancellationToken = default)
+    public async Task<Result> Handle(UpdateRolePermissionsCommand command, CancellationToken cancellationToken)
     {
-        var roles = await _db.Roles
-            .Include(r => r.Permissions)
-            .OrderBy(r => r.Name)
-            .ToListAsync(cancellationToken);
-
-        var list = roles.Select(ToDto).ToList();
-        return list;
-    }
-
-    public async Task<Result<RolePermissionsDto>> GetRolePermissionsAsync(int roleId, CancellationToken cancellationToken = default)
-    {
-        var role = await _db.Roles
-            .Include(r => r.Permissions)
-            .FirstOrDefaultAsync(r => r.Id == roleId, cancellationToken);
-
-        if (role is null)
-        {
-            return AppErrors.NotFound("Role", roleId);
-        }
-
-        return ToDto(role);
-    }
-
-    public async Task<Result> UpdateRolePermissionsAsync(int roleId, UpdateRolePermissionsRequest request, CancellationToken cancellationToken = default)
-    {
+        var (roleId, request) = (command.RoleId, command.Input);
         var role = await _db.Roles
             .Include(r => r.Permissions)
             .FirstOrDefaultAsync(r => r.Id == roleId, cancellationToken);
@@ -75,7 +67,6 @@ public sealed class PermissionService : IPermissionService
 
         var oldPerms = role.Permissions.Select(p => p.Permission).OrderBy(p => p).ToList();
 
-        // Clear existing permissions and replace with new set
         var currentRolePermissions = await _db.RolePermissions
             .Where(rp => rp.RoleId == roleId)
             .ToListAsync(cancellationToken);
@@ -86,7 +77,7 @@ public sealed class PermissionService : IPermissionService
             _db.RolePermissions.Add(new RolePermission(role.Id, perm));
         }
 
-        _audit.Record(
+        _audit.Add(
             AuditActions.RolePermissionsUpdated,
             nameof(Role),
             role.Id.ToString(),
@@ -117,38 +108,4 @@ public sealed class PermissionService : IPermissionService
         await _db.SaveChangesAsync(cancellationToken);
         return Result.Success();
     }
-
-    public async Task<IReadOnlyList<string>> GetPermissionsForRolesAsync(IEnumerable<string> roles, CancellationToken cancellationToken = default)
-    {
-        var roleList = roles.ToList();
-        if (roleList.Contains(Roles.Admin, StringComparer.OrdinalIgnoreCase))
-        {
-            return Permissions.All;
-        }
-
-        // No fallback to the default map: a role an admin emptied must stay empty.
-        return await _db.RolePermissions
-            .Where(rp => roleList.Contains(rp.Role!.Name))
-            .Select(rp => rp.Permission)
-            .Distinct()
-            .OrderBy(p => p)
-            .ToListAsync(cancellationToken);
-    }
-
-    private static RolePermissionsDto ToDto(Role role)
-    {
-        var permissions = string.Equals(role.Name, Roles.Admin, StringComparison.OrdinalIgnoreCase)
-            ? Permissions.All
-            : role.Permissions.Select(p => p.Permission).OrderBy(p => p).ToList();
-
-        return new RolePermissionsDto
-        {
-            RoleId = role.Id,
-            RoleName = role.Name,
-            Description = role.Description,
-            IsSystem = role.IsSystem,
-            Permissions = permissions,
-        };
-    }
 }
-

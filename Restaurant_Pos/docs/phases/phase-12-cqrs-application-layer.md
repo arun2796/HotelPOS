@@ -221,3 +221,26 @@ while Phase 11 reworks them.
   and file names stay in the controller (HTTP delivery).
 - `ReportServiceTests` → `Reports/ReportTests`: report reads run as the admin (`SendAsAdminAsync`; the scenarios sign
   in waiters and cashiers, who never had `reports.view`), and "my day" is read signed in as each waiter.
+
+**12.9 Security, users and auth (2026-10-14)**
+
+- `AuthService`, `UserService`, `PermissionService`, `SessionService` and `ApprovalTokenService` dissolved:
+  `Features/Auth` (`Login`, `RefreshToken`, `Logout`, `ChangePassword`, `GetCurrentUser`), `Features/Users`
+  (`ListUsers`, `GetUser`, `GetUserSessions`, `CreateUser`, `UpdateUser`, `SetUserActive`, `ResetUserPassword`,
+  `UnlockUser`, `LogoutUserEverywhere`; all `users.manage`), `Features/Security` (`ListRoles`, `ListRolePermissions`,
+  `GetRolePermissions`, `UpdateRolePermissions`; `roles.manage`; and the anonymous `IssueApprovalToken`). Helpers:
+  `AuthTokens`, `UserAdministration`, `RolePermissions` (permissions of a set of roles), `ApprovalTokens` (the
+  in-memory single-use token store), `ApprovalRules` and `LoginFailures` (now writing to `IAuditTrail`).
+- `Login`, `RefreshToken` and `IssueApprovalToken` are `ICommitOnFailure`: a wrong password must be counted and
+  audited, a replayed refresh token revokes every session, a disabled user or device revokes the token, all while
+  the answer is a failure. Every other path that fails changes nothing, so committing it is a no-op.
+- The billing approval rejection (12.6) is now `RecordApprovalRejectionCommand`, an internal command that
+  `ManagerApprovals` sends in a scope of its own, so it runs with its own transaction and audit like any command.
+- `SetUserActive` updates the access cache and closes the user's hub connections after the commit (as the service
+  did after its save). `CreateUser` lost its explicit transaction.
+- `IDeviceService.UpsertAsync` is still used by login until the device module moves (12.10).
+- Tests: `AuthServiceTests` → `Auth/AuthTests`, `UserServiceTests` → `Users/UserTests`. `DatabaseTestBase.CreateUserAsync`
+  now seeds users directly (as `DbSeeder` does) because the scenarios use demo passwords such as `secret1` that the
+  create-user request has always rejected; the create-user tests send valid passwords (`secret123`) and a valid
+  username (`w09` instead of `w9`), sign in as admin where they ran without a user, and the "non-admin with
+  users.manage" test grants that permission explicitly, as its name says.

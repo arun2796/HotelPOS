@@ -1,9 +1,10 @@
 using HotelPOS.Application.Common;
+using HotelPOS.Application.Common.Cqrs;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Contracts.Admin;
 using HotelPOS.Domain.Identity;
 
-namespace HotelPOS.Application.Security;
+namespace HotelPOS.Application.Features.Security;
 
 // Every place that checks a user's password (login, manager approval) counts a wrong one towards the same lockout,
 // so no endpoint can be used to guess a password without limit.
@@ -11,7 +12,7 @@ internal static class LoginFailures
 {
     public static async Task<bool> RecordAsync(
         IAppDbContext db,
-        IAuditService audit,
+        IAuditTrail audit,
         User user,
         DateTime nowUtc,
         string reason,
@@ -25,12 +26,12 @@ internal static class LoginFailures
         var actor = new AuditActor(user.Id, user.Username);
         if (locked)
         {
-            audit.Record(AuditActions.UserLockedOut, nameof(User), user.Id.ToString(),
+            audit.Add(AuditActions.UserLockedOut, nameof(User), user.Id.ToString(),
                 newValues: new { user.FailedLoginCount, user.LockedUntil, Reason = reason, DeviceName = deviceName }, actor: actor);
         }
         else
         {
-            audit.Record(AuditActions.LoginFailed, nameof(User), user.Id.ToString(),
+            audit.Add(AuditActions.LoginFailed, nameof(User), user.Id.ToString(),
                 newValues: new { Reason = reason, user.FailedLoginCount, DeviceName = deviceName }, actor: actor);
         }
 
