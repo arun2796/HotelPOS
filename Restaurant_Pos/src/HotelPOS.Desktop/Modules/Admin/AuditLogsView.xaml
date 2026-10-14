@@ -51,6 +51,12 @@
             <TextBlock Text="Export Excel" Margin="8,0,0,0" />
           </StackPanel>
         </Button>
+        <Button Command="{Binding SavePdfCommand}" Margin="8,0,0,0">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Text="&#xE8A5;" Style="{StaticResource Text.Icon}" FontSize="14" />
+            <TextBlock Text="Save PDF" Margin="8,0,0,0" />
+          </StackPanel>
+        </Button>
       </StackPanel>
     </controls:ReportFilterBar>
 

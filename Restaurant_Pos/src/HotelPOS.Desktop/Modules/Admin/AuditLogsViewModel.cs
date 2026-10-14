@@ -200,6 +200,27 @@ public sealed partial class AuditLogsViewModel : ViewModelBase, INavigationAware
     }
 
     [RelayCommand]
+    private async Task SavePdfAsync()
+    {
+        var savePath = _filePicker.PickSavePath($"audit_log_{DateTime.UtcNow:yyyyMMdd_HHmmss}.pdf", "PDF (*.pdf)|*.pdf");
+        if (string.IsNullOrWhiteSpace(savePath)) return;
+
+        await ExecuteAsync(async () =>
+        {
+            var result = await _auditApi.ExportPdfAsync(BuildQuery());
+            if (result.Success && result.Data is not null)
+            {
+                await File.WriteAllBytesAsync(savePath, result.Data);
+                _notifications.Success($"Audit log saved to {Path.GetFileName(savePath)}.");
+            }
+            else
+            {
+                _notifications.Error(result.Message, result.CorrelationId);
+            }
+        });
+    }
+
+    [RelayCommand]
     private async Task ExportCsvAsync()
     {
         var defaultFileName = $"audit_log_{DateTime.UtcNow:yyyyMMdd_HHmmss}.csv";

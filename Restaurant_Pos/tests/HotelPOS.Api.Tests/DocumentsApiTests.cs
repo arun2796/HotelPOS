@@ -32,6 +32,7 @@ public class DocumentsApiTests : IClassFixture<ApiFactory>
         { "waiter1", "GET", "/api/print/invoice/1/history", HttpStatusCode.Forbidden },
         { "cashier1", "GET", "/api/reports/sales/items?format=xlsx", HttpStatusCode.Forbidden },
         { "cashier1", "GET", "/api/admin/audit-logs/export?format=xlsx", HttpStatusCode.Forbidden },
+        { "cashier1", "GET", "/api/admin/audit-logs/export?format=pdf", HttpStatusCode.Forbidden },
         { "cashier1", "GET", "/api/print/invoice/999999.pdf", HttpStatusCode.NotFound },
         { "cashier1", "PUT", "/api/print/copies/999999", HttpStatusCode.NotFound },
     };
@@ -129,6 +130,7 @@ public class DocumentsApiTests : IClassFixture<ApiFactory>
         var monthly = await manager.GetAsync("/api/reports/sales/monthly?year=2026&format=xlsx");
         var json = await manager.GetAsync("/api/reports/sales/daily");
         var audit = await admin.GetAsync("/api/admin/audit-logs/export?format=xlsx");
+        var auditPdf = await admin.GetAsync("/api/admin/audit-logs/export?format=pdf");
         var auditCsv = await admin.GetAsync("/api/admin/audit-logs/export");
 
         xlsx.Content.Headers.ContentType!.MediaType.Should().Be(Xlsx);
@@ -140,6 +142,8 @@ public class DocumentsApiTests : IClassFixture<ApiFactory>
         monthly.Content.Headers.ContentType!.MediaType.Should().Be(Xlsx);
         json.Content.Headers.ContentType!.MediaType.Should().Be("application/json");
         audit.Content.Headers.ContentType!.MediaType.Should().Be(Xlsx);
+        auditPdf.Content.Headers.ContentType!.MediaType.Should().Be("application/pdf");
+        Encoding.ASCII.GetString((await auditPdf.Content.ReadAsByteArrayAsync())[..4]).Should().Be("%PDF");
         auditCsv.Content.Headers.ContentType!.MediaType.Should().Be("text/csv");
     }
 

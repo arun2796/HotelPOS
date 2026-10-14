@@ -17,9 +17,9 @@ public sealed class AuditLogsController : ApiControllerBase
     public async Task<IActionResult> List([FromQuery] AuditLogQuery query, CancellationToken cancellationToken) =>
         FromResult(await Sender.Send(new ListAuditLogsQuery(query), cancellationToken));
 
-    // CSV by default; format=xlsx (Phase 14) gives an Excel workbook with typed cells.
+    // CSV by default; format=xlsx (Phase 14) gives an Excel workbook with typed cells, format=pdf a PDF on the letterhead.
     [HttpGet("export")]
-    [Produces("text/csv", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")]
+    [Produces("text/csv", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/pdf")]
     public async Task<IActionResult> Export([FromQuery] AuditLogQuery query, [FromQuery] string? format, CancellationToken cancellationToken)
     {
         var kind = ExportFormats.Parse(format);

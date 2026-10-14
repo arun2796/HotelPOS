@@ -116,6 +116,24 @@ public class ExportTests : PrintScenario
         first.Cell(1).DataType.Should().Be(XLDataType.Number);
         first.Cell(2).DataType.Should().Be(XLDataType.DateTime);
         sheet.CellsUsed().Should().Contain(c => c.GetString() == "Bill.Finalized");
-        (await SendAsync(new ExportAuditLogsQuery(new AuditLogQuery(), ExportFormat.Pdf))).Error!.Code.Should().Be(ErrorCodes.ValidationError);
+        (await SendAsync(new ExportAuditLogsQuery(new AuditLogQuery(), ExportFormat.Json))).Error!.Code.Should().Be(ErrorCodes.ValidationError);
+    }
+
+    [Fact]
+    public async Task AuditLogExport_AsPdf_HasTheLetterheadAndTheSameColumnsAsTheExcel()
+    {
+        await FinalizedBillAsync();
+        CurrentUser.SignIn(await AdminIdAsync(), "admin", Roles.Admin);
+
+        var pdf = await SendAsync(new ExportAuditLogsQuery(new AuditLogQuery(), ExportFormat.Pdf));
+
+        pdf.IsSuccess.Should().BeTrue(pdf.Error?.Message);
+        using var document = PdfDocument.Open(pdf.Value);
+        var text = string.Join(" ", document.GetPages().SelectMany(p => p.GetWords()).Select(w => w.Text));
+        text.Should().Contain("Hotel").And.Contain("Audit").And.Contain("Bill.Finalized");
+        foreach (var header in new[] { "Id", "Time", "Action" })
+        {
+            text.Should().Contain(header);
+        }
     }
 }

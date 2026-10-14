@@ -49,6 +49,9 @@ public interface IAuditApi
 
     // Phase 14: the same rows as an Excel workbook.
     Task<ApiResult<byte[]>> ExportExcelAsync(AuditLogQuery query, CancellationToken cancellationToken = default);
+
+    // The same rows as a PDF on the restaurant letterhead.
+    Task<ApiResult<byte[]>> ExportPdfAsync(AuditLogQuery query, CancellationToken cancellationToken = default);
 }
 
 public sealed class AuditApi : IAuditApi
@@ -70,6 +73,9 @@ public sealed class AuditApi : IAuditApi
 
     public Task<ApiResult<byte[]>> ExportExcelAsync(AuditLogQuery query, CancellationToken cancellationToken = default) =>
         _api.DownloadAsync("api/admin/audit-logs/export?format=xlsx&" + QueryString(query, includePaging: false), cancellationToken);
+
+    public Task<ApiResult<byte[]>> ExportPdfAsync(AuditLogQuery query, CancellationToken cancellationToken = default) =>
+        _api.DownloadAsync("api/admin/audit-logs/export?format=pdf&" + QueryString(query, includePaging: false), cancellationToken);
 
     internal static string QueryString(AuditLogQuery query, bool includePaging)
     {
