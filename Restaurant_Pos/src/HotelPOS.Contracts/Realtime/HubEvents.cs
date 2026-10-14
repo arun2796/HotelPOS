@@ -23,6 +23,9 @@ public static class HubEvents
     public const string PaymentCompleted = "PaymentCompleted";
     public const string DeviceStatusChanged = "DeviceStatusChanged";
     public const string ServerNotice = "ServerNotice";
+    public const string ShiftChanged = "ShiftChanged";
+    public const string BusinessDayClosed = "BusinessDayClosed";
+    public const string BusinessDayReopened = "BusinessDayReopened";
 }
 
 public static class HubMethods

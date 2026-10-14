@@ -60,4 +60,8 @@ public static class SettingKeys
     public const string BackupTime = "BackupTime";
     public const string BackupRetentionDays = "BackupRetentionDays";
     public const string BackupPath = "BackupPath";
+
+    public const string CashVarianceApprovalLimit = "CashVarianceApprovalLimit";
+    public const string CashPayOutApprovalLimit = "CashPayOutApprovalLimit";
+    public const string CashBlindCount = "CashBlindCount";
 }

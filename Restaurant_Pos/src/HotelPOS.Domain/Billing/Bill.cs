@@ -438,7 +438,20 @@ public sealed class Payment : BaseEntity
     public int? RefundOfPaymentId { get; private set; }
     public string? RefundReason { get; private set; }
 
+    // The cash shift whose drawer took (or paid back) this cash; null for card, UPI and payments before Phase 13.
+    public int? CashShiftId { get; private set; }
+
     public bool IsRefund => RefundOfPaymentId is not null;
+
+    public void RecordInShift(int cashShiftId)
+    {
+        if (CashShiftId is not null && CashShiftId != cashShiftId)
+        {
+            throw new DomainException("This payment already belongs to another cash shift.");
+        }
+
+        CashShiftId = cashShiftId;
+    }
 
     internal static Payment RefundOf(Payment original, decimal amount, string reason, int userId, Guid? deviceId, Guid idempotencyKey, DateTime nowUtc) =>
         new(original.PaymentMethodId, -amount, null, null, original.Reference, userId, deviceId, idempotencyKey, nowUtc)

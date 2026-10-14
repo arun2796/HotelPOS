@@ -4,6 +4,7 @@ using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Security;
 using HotelPOS.Domain.Administration;
 using HotelPOS.Domain.Billing;
+using HotelPOS.Domain.Cash;
 using HotelPOS.Domain.Floor;
 using HotelPOS.Domain.Identity;
 using HotelPOS.Domain.Menu;
@@ -68,6 +69,26 @@ public sealed class DbSeeder
         new Setting(SettingKeys.BackupRetentionDays, "14", SettingDataType.Int, "Delete backups older than this many days (at least 1).", false),
         new Setting(SettingKeys.BackupPath, "", SettingDataType.String, "Folder for backups; empty uses the server default (Backup:DefaultPath in appsettings).", false),
         new Setting(SettingKeys.LockoutMinutes, "15", SettingDataType.Int, "Duration in minutes an account remains locked out.", true),
+        new Setting(SettingKeys.CashVarianceApprovalLimit, "100", SettingDataType.Decimal, "A shift whose counted cash differs from the expected cash by more than this needs a manager's approval to close.", true),
+        new Setting(SettingKeys.CashPayOutApprovalLimit, "1000", SettingDataType.Decimal, "Pay-outs and till vouchers above this amount need a manager's approval.", true),
+        new Setting(SettingKeys.CashBlindCount, "false", SettingDataType.Bool, "Cashiers count the drawer before they see the expected cash (blind count).", true),
+    };
+
+    // Current Indian notes and coins; an admin can add, relabel or deactivate them in Billing setup.
+    public static IReadOnlyList<Denomination> DefaultDenominations() => new[]
+    {
+        new Denomination(2000m, "₹2000", DenominationKind.Note, 1),
+        new Denomination(500m, "₹500", DenominationKind.Note, 2),
+        new Denomination(200m, "₹200", DenominationKind.Note, 3),
+        new Denomination(100m, "₹100", DenominationKind.Note, 4),
+        new Denomination(50m, "₹50", DenominationKind.Note, 5),
+        new Denomination(20m, "₹20", DenominationKind.Note, 6),
+        new Denomination(10m, "₹10", DenominationKind.Note, 7),
+        new Denomination(20m, "₹20 coin", DenominationKind.Coin, 8),
+        new Denomination(10m, "₹10 coin", DenominationKind.Coin, 9),
+        new Denomination(5m, "₹5 coin", DenominationKind.Coin, 10),
+        new Denomination(2m, "₹2 coin", DenominationKind.Coin, 11),
+        new Denomination(1m, "₹1 coin", DenominationKind.Coin, 12),
     };
 
     public async Task SeedAsync(SeedOptions options, CancellationToken cancellationToken = default)
@@ -77,6 +98,7 @@ public sealed class DbSeeder
         await SeedSettingsAsync(cancellationToken);
         await SeedPaymentMethodsAsync(cancellationToken);
         await SeedStationsAsync(cancellationToken);
+        await SeedDenominationsAsync(cancellationToken);
         if (options.DemoData)
         {
             await SeedDemoUsersAsync(options.DemoPassword, cancellationToken);
@@ -178,6 +200,16 @@ public sealed class DbSeeder
         if (!await _db.PreparationStations.AnyAsync(cancellationToken))
         {
             _db.PreparationStations.Add(new PreparationStation("Main Kitchen", "MAIN", 1));
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    // Only into an empty master: once an admin has edited the notes, nothing is re-added.
+    private async Task SeedDenominationsAsync(CancellationToken cancellationToken)
+    {
+        if (!await _db.Denominations.AnyAsync(cancellationToken))
+        {
+            _db.Denominations.AddRange(DefaultDenominations());
             await _db.SaveChangesAsync(cancellationToken);
         }
     }

@@ -30,8 +30,12 @@ public static class ApprovalActions
     public const string Void = "void";
     public const string Refund = "refund";
     public const string Reopen = "reopen";
+    public const string CashVariance = "cash-variance";
+    public const string PayOut = "pay-out";
+    public const string ReopenShift = "reopen-shift";
+    public const string ReopenDay = "reopen-day";
 
-    public static IReadOnlyList<string> All { get; } = new[] { Discount, Void, Refund, Reopen };
+    public static IReadOnlyList<string> All { get; } = new[] { Discount, Void, Refund, Reopen, CashVariance, PayOut, ReopenShift, ReopenDay };
 }
 
 public sealed record ManagerApprovalDto

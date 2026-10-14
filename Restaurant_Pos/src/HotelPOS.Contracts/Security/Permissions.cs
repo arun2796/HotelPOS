@@ -31,6 +31,10 @@ public static class Permissions
 
     public const string ReportsView = "reports.view";
 
+    public const string ShiftOperate = "shift.operate";
+    public const string ShiftManage = "shift.manage";
+    public const string DayEndRun = "dayend.run";
+
     public static IReadOnlyList<string> All { get; } = new[]
     {
         UsersManage, RolesManage, SettingsManage, DevicesManage, AuditView, BackupManage, ServerManage,
@@ -40,6 +44,7 @@ public static class Permissions
         KitchenOperate,
         BillingOperate, BillingDiscount, BillingVoid, BillingRefund,
         ReportsView,
+        ShiftOperate, ShiftManage, DayEndRun,
     };
 }
 

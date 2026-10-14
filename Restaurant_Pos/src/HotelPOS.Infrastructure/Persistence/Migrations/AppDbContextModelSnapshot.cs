@@ -143,7 +143,7 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                         {
                             t.HasCheckConstraint("CK_Backups_Status", "\"Status\" IN (1, 2, 3)");
 
-                            t.HasCheckConstraint("CK_Backups_Trigger", "\"Trigger\" IN (1, 2)");
+                            t.HasCheckConstraint("CK_Backups_Trigger", "\"Trigger\" IN (1, 2, 3)");
                         });
                 });
 
@@ -545,6 +545,9 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                     b.Property<int>("BillId")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("CashShiftId")
+                        .HasColumnType("integer");
+
                     b.Property<decimal?>("ChangeAmount")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
@@ -597,6 +600,8 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("BillId");
+
+                    b.HasIndex("CashShiftId");
 
                     b.HasIndex("IdempotencyKey")
                         .IsUnique();
@@ -660,6 +665,369 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("PaymentMethods", (string)null);
+                });
+
+            modelBuilder.Entity("HotelPOS.Domain.Cash.BusinessDayClose", b =>
+                {
+                    b.Property<DateOnly>("BusinessDay")
+                        .HasColumnType("date");
+
+                    b.Property<string>("BackupFile")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("ClosedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int>("ClosedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Overrides")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("PackFolder")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("ReopenReason")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTime?>("ReopenedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int?>("ReopenedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TotalsSnapshot")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.HasKey("BusinessDay");
+
+                    b.HasIndex("ClosedBy");
+
+                    b.HasIndex("ReopenedBy");
+
+                    b.ToTable("BusinessDayCloses", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_BusinessDayCloses_Status", "\"Status\" IN (1, 2)");
+                        });
+                });
+
+            modelBuilder.Entity("HotelPOS.Domain.Cash.CashMovement", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<int?>("ApprovedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<int>("ShiftId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int?>("UpdatedBy")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ShiftId");
+
+                    b.ToTable("CashMovements", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_CashMovements_Amount", "\"Amount\" > 0");
+
+                            t.HasCheckConstraint("CK_CashMovements_Type", "\"Type\" IN (1, 2, 3)");
+                        });
+                });
+
+            modelBuilder.Entity("HotelPOS.Domain.Cash.CashShift", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("BlindCount")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateOnly>("BusinessDay")
+                        .HasColumnType("date");
+
+                    b.Property<int>("CashierUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ClosedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int?>("ClosedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal?>("CountedCash")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("ExpectedCash")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<decimal>("FloatAmount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<string>("ForcedReason")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<int?>("HandedOverToShiftId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("OpenedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int>("OpenedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int?>("UpdatedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal?>("Variance")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<int?>("VarianceApprovedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("VarianceReason")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BusinessDay");
+
+                    b.HasIndex("CashierUserId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_CashShifts_CashierUserId_Open")
+                        .HasFilter("\"Status\" = 1");
+
+                    b.HasIndex("DeviceId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_CashShifts_DeviceId_Open")
+                        .HasFilter("\"Status\" = 1");
+
+                    b.HasIndex("HandedOverToShiftId");
+
+                    b.ToTable("CashShifts", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_CashShifts_Float", "\"FloatAmount\" >= 0");
+
+                            t.HasCheckConstraint("CK_CashShifts_Status", "\"Status\" IN (1, 2, 3, 4)");
+                        });
+                });
+
+            modelBuilder.Entity("HotelPOS.Domain.Cash.CashShiftCount", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("DenominationId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Phase")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ShiftId")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("Value")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DenominationId");
+
+                    b.HasIndex("ShiftId", "Phase", "DenominationId")
+                        .IsUnique();
+
+                    b.ToTable("CashShiftCounts", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_CashShiftCounts_Phase", "\"Phase\" IN (1, 2)");
+
+                            t.HasCheckConstraint("CK_CashShiftCounts_Quantity", "\"Quantity\" >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("HotelPOS.Domain.Cash.Denomination", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int?>("UpdatedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("Value")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Value", "Kind")
+                        .IsUnique();
+
+                    b.ToTable("Denominations", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Denominations_Kind", "\"Kind\" IN (1, 2)");
+
+                            t.HasCheckConstraint("CK_Denominations_Value", "\"Value\" > 0");
+                        });
+                });
+
+            modelBuilder.Entity("HotelPOS.Domain.Cash.NonTillCollection", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<DateOnly>("BusinessDay")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Method")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int>("RecordedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Reference")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int?>("UpdatedBy")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BusinessDay");
+
+                    b.HasIndex("RecordedBy");
+
+                    b.ToTable("NonTillCollections", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_NonTillCollections_Amount", "\"Amount\" > 0");
+                        });
                 });
 
             modelBuilder.Entity("HotelPOS.Domain.Floor.Section", b =>
@@ -1726,6 +2094,11 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("HotelPOS.Domain.Cash.CashShift", null)
+                        .WithMany()
+                        .HasForeignKey("CashShiftId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("HotelPOS.Domain.Billing.PaymentMethod", null)
                         .WithMany()
                         .HasForeignKey("PaymentMethodId")
@@ -1736,6 +2109,67 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("RefundOfPaymentId")
                         .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("HotelPOS.Domain.Cash.BusinessDayClose", b =>
+                {
+                    b.HasOne("HotelPOS.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("ClosedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("HotelPOS.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("ReopenedBy")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("HotelPOS.Domain.Cash.CashMovement", b =>
+                {
+                    b.HasOne("HotelPOS.Domain.Cash.CashShift", null)
+                        .WithMany("Movements")
+                        .HasForeignKey("ShiftId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("HotelPOS.Domain.Cash.CashShift", b =>
+                {
+                    b.HasOne("HotelPOS.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("CashierUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("HotelPOS.Domain.Cash.CashShift", null)
+                        .WithMany()
+                        .HasForeignKey("HandedOverToShiftId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("HotelPOS.Domain.Cash.CashShiftCount", b =>
+                {
+                    b.HasOne("HotelPOS.Domain.Cash.Denomination", null)
+                        .WithMany()
+                        .HasForeignKey("DenominationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("HotelPOS.Domain.Cash.CashShift", null)
+                        .WithMany("Counts")
+                        .HasForeignKey("ShiftId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("HotelPOS.Domain.Cash.NonTillCollection", b =>
+                {
+                    b.HasOne("HotelPOS.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("RecordedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("HotelPOS.Domain.Floor.Table", b =>
@@ -1952,6 +2386,13 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                     b.Navigation("Items");
 
                     b.Navigation("Payments");
+                });
+
+            modelBuilder.Entity("HotelPOS.Domain.Cash.CashShift", b =>
+                {
+                    b.Navigation("Counts");
+
+                    b.Navigation("Movements");
                 });
 
             modelBuilder.Entity("HotelPOS.Domain.Identity.Role", b =>

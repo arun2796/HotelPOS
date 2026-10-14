@@ -1,5 +1,6 @@
 using HotelPOS.Domain.Administration;
 using HotelPOS.Domain.Billing;
+using HotelPOS.Domain.Cash;
 using HotelPOS.Domain.Floor;
 using HotelPOS.Domain.Kitchen;
 using HotelPOS.Domain.Identity;
@@ -42,6 +43,12 @@ public interface IAppDbContext
     DbSet<BillItem> BillItems { get; }
     DbSet<Payment> Payments { get; }
     DbSet<InvoiceCounter> InvoiceCounters { get; }
+    DbSet<Denomination> Denominations { get; }
+    DbSet<CashShift> CashShifts { get; }
+    DbSet<CashShiftCount> CashShiftCounts { get; }
+    DbSet<CashMovement> CashMovements { get; }
+    DbSet<NonTillCollection> NonTillCollections { get; }
+    DbSet<BusinessDayClose> BusinessDayCloses { get; }
 
     DatabaseFacade Database { get; }
 

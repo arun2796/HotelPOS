@@ -11,4 +11,5 @@ public enum BackupTrigger
 {
     Schedule = 1,
     Manual = 2,
+    DayEnd = 3,
 }

@@ -1,6 +1,6 @@
 # Phase 13 — Shifts, Cash Register and Day End
 
-Status: Not started · Depends on: Phase 12 (written as CQRS commands/queries from the start) · Reference: BillingHub
+Status: In progress (started 2026-10-14) · Depends on: Phase 12 (written as CQRS commands/queries from the start) · Reference: BillingHub
 `Entities/CashShift`, `CurrencyDenomination`, `Features/CashRegister`, `RunDayEndCommand`, `GetDayEndPrecheckQuery`,
 `DayCloseGuard`
 
