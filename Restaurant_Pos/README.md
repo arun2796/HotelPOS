@@ -39,7 +39,7 @@ PostgreSQL is the single source of truth.
 | Phase 13 – Shifts, Cash & Day End      | In progress  |
 | Phase 14 – Templates, PDF & Excel      | In progress  |
 | Phase 15 – GST & Period Close          | In progress  |
-| Phase 16 – Licensing, Updates & Import | Not started  |
+| Phase 16 – Licensing, Updates & Import | In progress  |
 
 Update this table (and `docs/phases/README.md`) when a phase starts or finishes.
 
