@@ -1,3 +1,4 @@
+using HotelPOS.Application.Features.Licensing;
 using FluentValidation;
 using HotelPOS.Application.Common.Cqrs;
 using HotelPOS.Application.Common.Interfaces;
@@ -31,12 +32,14 @@ internal sealed class RegisterDeviceHandler : ICommandHandler<RegisterDeviceComm
     private readonly IAppDbContext _db;
     private readonly IClock _clock;
     private readonly DeviceRegistry _devices;
+    private readonly ILicenseService _licenses;
 
-    public RegisterDeviceHandler(IAppDbContext db, IClock clock, DeviceRegistry devices)
+    public RegisterDeviceHandler(IAppDbContext db, IClock clock, DeviceRegistry devices, ILicenseService licenses)
     {
         _db = db;
         _clock = clock;
         _devices = devices;
+        _licenses = licenses;
     }
 
     public async Task<Result<DeviceDto>> Handle(RegisterDeviceCommand command, CancellationToken cancellationToken)
@@ -46,6 +49,11 @@ internal sealed class RegisterDeviceHandler : ICommandHandler<RegisterDeviceComm
             && !await _db.PreparationStations.AnyAsync(s => s.Id == stationId && s.IsActive, cancellationToken))
         {
             return AppErrors.Validation("stationId", $"Preparation station {stationId} does not exist or is inactive.");
+        }
+
+        if (await _licenses.CheckTerminalAsync(request.Name, cancellationToken) is { } limit)
+        {
+            return limit;
         }
 
         var device = await _devices.UpsertAsync(request.Name, request.Type, request.MachineName, request.AppVersion, request.StationId, cancellationToken);

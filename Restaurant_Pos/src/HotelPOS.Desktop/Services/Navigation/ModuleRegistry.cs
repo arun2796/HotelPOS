@@ -6,6 +6,7 @@ using HotelPOS.Desktop.Modules.Config;
 using HotelPOS.Desktop.Modules.Dashboard;
 using HotelPOS.Desktop.Modules.Gst;
 using HotelPOS.Desktop.Modules.Kitchen;
+using HotelPOS.Desktop.Modules.Licensing;
 using HotelPOS.Desktop.Modules.MenuAdmin;
 using HotelPOS.Desktop.Modules.Orders;
 using HotelPOS.Desktop.Modules.Printing;
@@ -51,6 +52,8 @@ public static class ModuleRegistry
     public const string DayEndHistory = "day-end-history";
     public const string Gst = "gst";
     public const string PeriodClose = "period-close";
+    public const string License = "license";
+    public const string Import = "import";
 
     private static readonly string[] Management = { Roles.Admin, Roles.Manager };
     private static readonly string[] AdminOnly = { Roles.Admin };
@@ -86,6 +89,8 @@ public static class ModuleRegistry
             "GSTR-1, GSTR-3B and the HSN/SAC summary for a month, with the portal JSON, Excel and PDF.", typeof(GstHubViewModel)),
         new(PeriodClose, "Period Close", "", "Management", AdminOnly, 15,
             "Close a month or financial year after filing: checks, the lock and the GST pack. Reopen with a reason.", typeof(PeriodCloseViewModel)),
+        new(Import, "Import", "\uE896", "Management", Management, 16,
+            "Bring the menu or customers in from Excel or CSV: map columns, check the rows, import, undo.", typeof(ImportWizardViewModel)),
         new(Floor, "Sections & Tables", "", "Management", Management, 2,
             "Create sections and tables, capacity and service state.", typeof(FloorViewModel)),
         new(Menu, "Menu", "", "Management", Management, 3,
@@ -101,6 +106,8 @@ public static class ModuleRegistry
             "Fine-grained permissions per role.", typeof(RolesViewModel)),
         new(Devices, "Devices", "", "Administration", AdminOnly, 9,
             "Registered terminals and which are online.", typeof(DevicesViewModel)),
+        new(License, "Licence", "\uE72E", "Administration", AdminOnly, 16,
+            "Trial or licence status, terminals allowed, the machine id and where to apply a key.", typeof(LicenseViewModel)),
         new(Settings, "Restaurant Settings", "", "Administration", AdminOnly, 1,
             "Restaurant name, invoice details, print templates and other settings.", typeof(SettingsHubViewModel)),
         new(Backup, "Backup", "", "Administration", AdminOnly, 10,
@@ -129,6 +136,8 @@ public static class ModuleRegistry
         [DayEndHistory] = Permissions.DayEndRun,
         [Gst] = Permissions.GstView,
         [PeriodClose] = Permissions.PeriodClose,
+        [License] = Permissions.LicenseManage,
+        [Import] = Permissions.ImportRun,
         [Reports] = Permissions.ReportsView,
         [Floor] = Permissions.TablesManage,
         [Menu] = Permissions.MenuManage,

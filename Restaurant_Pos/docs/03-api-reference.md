@@ -53,6 +53,9 @@ endpoint is `tests/HotelPOS.Api.Tests/authorization-matrix.txt`; `AuthorizationM
 | 409 | `SHIFT_ALREADY_OPEN` | The terminal, or the cashier elsewhere, already has an open shift |
 | 409 | `DAY_CLOSED` | The business day of the bill or payment (or of the shift/collection) is closed by Day End |
 | 409 | `PERIOD_CLOSED` | The bill or payment is dated in a GST month or financial year closed by an administrator (Phase 15); record the correction in the open period or reopen the period |
+| 403 | `LICENSE_TERMINAL_LIMIT` / `LICENSE_EXPIRED` | The licence covers fewer terminals than are registered / the licence or trial has expired and the server is read-only (Phase 16) |
+| 400 | `LICENSE_INVALID` | Licence key rejected: not genuine, damaged, issued for another PC, or already expired |
+| 422 | `IMPORT_HAS_ERRORS` | Import file rows are invalid; fix them or send `skipInvalid` |
 | 409 | `VARIANCE_APPROVAL_REQUIRED` | Shift count differs from the expected cash by more than `CashVarianceApprovalLimit`; send `approval` |
 | 422 | `BUSINESS_RULE` | Other domain rule (message explains) |
 | 429 | `RATE_LIMITED` | Too many attempts on `/api/auth/login` or `/api/auth/approval` (per socket IP and per username; `Security:RateLimit` `MaxPerIp` 10, `MaxPerUser` 5, `WindowSeconds` 60); `Retry-After` header |
@@ -251,6 +254,23 @@ New approval action types for `POST /api/auth/approval`: `cash-variance`, `pay-o
 
 `PUT /api/billing/{id}/customer` also takes `legalName`, `stateCode`, `placeOfSupply` and validates the GSTIN;
 `BillDetailDto` returns them with `supplyType`. Menu item requests carry an optional `hsnSac`.
+
+### 3.13 Licence, import and updates (Phase 16)
+
+| Method | Route | Permission | Notes |
+|---|---|---|---|
+| GET | `/api/license` | any signed-in user | `LicenseStatusDto`: state (Trial/Licensed/Expired), edition, customer, terminals used/allowed, expiry, `showWarning`, `machineId` (the key is never returned) |
+| POST | `/api/license/apply` | `license.manage` (A) | `{ key }`; 400 `LICENSE_INVALID` when the signature, machine id or expiry is wrong |
+| POST | `/api/import/preview` | `import.run` (A, M) | multipart `file` (.xlsx/.csv, 5 MB, 5,000 rows), `kind` Menu\|Customers, `mapping` (JSON field -> header, optional): headers, suggested mapping, counts, row errors (max 200) |
+| POST | `/api/import/apply` | `import.run` | same form plus `skipInvalid`; one transaction; 422 `IMPORT_HAS_ERRORS` when rows are invalid and not skipped |
+| POST | `/api/import/undo` | `import.run` | reverts the latest import, once |
+| GET | `/api/import/last` | `import.run` | the latest batch and `canUndo` |
+| GET | `/updates/latest.json`, `/updates/<file>` | anonymous | the client installer the server hosts (folder `Updates:Path`, default `updates` beside the exe) |
+
+`GET /api/system/info` also returns `clientUpdate` (`version`, `file`, `sha256`, `size`) when an installer is hosted.
+While the licence is Expired every non-GET request except `/api/auth/*`, `/api/license/*` and `/api/admin/backup`
+answers 403 `LICENSE_EXPIRED`. Login answers 403 `LICENSE_TERMINAL_LIMIT` for a terminal over the licensed count and
+403 `LICENSE_EXPIRED` for non-administrators after expiry. Device registration applies the same terminal limit.
 
 ## 4. Idempotency protocol (client side)
 

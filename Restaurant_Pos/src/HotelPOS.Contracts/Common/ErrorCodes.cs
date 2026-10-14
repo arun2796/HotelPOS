@@ -26,6 +26,10 @@ public static class ErrorCodes
     public const string ShiftAlreadyOpen = "SHIFT_ALREADY_OPEN";
     public const string DayClosed = "DAY_CLOSED";
     public const string PeriodClosed = "PERIOD_CLOSED";
+    public const string LicenseTerminalLimit = "LICENSE_TERMINAL_LIMIT";
+    public const string LicenseExpired = "LICENSE_EXPIRED";
+    public const string LicenseInvalid = "LICENSE_INVALID";
+    public const string ImportHasErrors = "IMPORT_HAS_ERRORS";
     public const string VarianceApprovalRequired = "VARIANCE_APPROVAL_REQUIRED";
     public const string BusinessRule = "BUSINESS_RULE";
     public const string RateLimited = "RATE_LIMITED";

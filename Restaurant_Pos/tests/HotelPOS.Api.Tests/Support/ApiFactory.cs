@@ -10,8 +10,10 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace HotelPOS.Api.Tests.Support;
 
@@ -46,7 +48,17 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             ["Monitoring:MinFreeDiskMb"] = "0",
             ["Backup:Scheduler"] = "false",
             ["Backup:DefaultPath"] = Path.Combine(MediaPath, "backups"),
+            ["Updates:Path"] = Path.Combine(MediaPath, "updates"),
         }));
+
+        // The tests issue their own licence keys for a fixed machine id (see TestLicense).
+        builder.ConfigureTestServices(services =>
+        {
+            services.RemoveAll<HotelPOS.Application.Common.Interfaces.IMachineIdProvider>();
+            services.AddSingleton<HotelPOS.Application.Common.Interfaces.IMachineIdProvider, TestLicense.FixedMachine>();
+            services.RemoveAll<HotelPOS.Application.Common.Interfaces.ILicenseTrust>();
+            services.AddSingleton<HotelPOS.Application.Common.Interfaces.ILicenseTrust, TestLicense.FixedTrust>();
+        });
     }
 
     public Task InitializeAsync() => Task.CompletedTask;

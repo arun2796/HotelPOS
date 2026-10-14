@@ -14,6 +14,7 @@
              xmlns:billing="clr-namespace:HotelPOS.Desktop.Modules.Billing"
              xmlns:cash="clr-namespace:HotelPOS.Desktop.Modules.Cash"
              xmlns:gst="clr-namespace:HotelPOS.Desktop.Modules.Gst"
+             xmlns:licensing="clr-namespace:HotelPOS.Desktop.Modules.Licensing"
              xmlns:printing="clr-namespace:HotelPOS.Desktop.Modules.Printing"
              xmlns:dashboard="clr-namespace:HotelPOS.Desktop.Modules.Dashboard"
              xmlns:reports="clr-namespace:HotelPOS.Desktop.Modules.Reports"
@@ -118,6 +119,12 @@
       </DataTemplate>
       <DataTemplate DataType="{x:Type gst:GstHubViewModel}">
         <gst:GstHubView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type licensing:LicenseViewModel}">
+        <licensing:LicenseView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type licensing:ImportWizardViewModel}">
+        <licensing:ImportWizardView />
       </DataTemplate>
       <DataTemplate DataType="{x:Type gst:PeriodCloseViewModel}">
         <gst:PeriodCloseView />

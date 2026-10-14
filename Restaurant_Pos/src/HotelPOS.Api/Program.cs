@@ -7,6 +7,7 @@ using HotelPOS.Contracts.Realtime;
 using HotelPOS.Infrastructure;
 using HotelPOS.Infrastructure.Media;
 using HotelPOS.Infrastructure.Persistence;
+using HotelPOS.Infrastructure.Updates;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting.WindowsServices;
 using Microsoft.Extensions.Options;
@@ -100,11 +101,23 @@ app.UseStaticFiles(new StaticFileOptions
     OnPrepareResponse = context => context.Context.Response.Headers.CacheControl = "public, max-age=31536000, immutable",
 });
 
+// The terminal installer and latest.json for the auto-update. Anonymous (a terminal that is too old cannot sign in),
+// not cacheable (latest.json must be fresh), and limited to the files publish.ps1 puts there.
+var updatesFolder = app.Services.GetRequiredService<IOptions<UpdateOptions>>().Value.Folder;
+Directory.CreateDirectory(updatesFolder);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(updatesFolder),
+    RequestPath = "/updates",
+    OnPrepareResponse = context => context.Context.Response.Headers.CacheControl = "no-cache",
+});
+
 app.UseMiddleware<LoginRateLimitingMiddleware>();
 app.UseAuthentication();
 app.UseMiddleware<RequestContextLoggingMiddleware>();
 app.UseAuthorization();
 app.UseMiddleware<AccessEnforcementMiddleware>();
+app.UseMiddleware<LicenseEnforcementMiddleware>();
 app.UseMiddleware<IdempotencyMiddleware>();
 
 app.MapControllers();

@@ -36,6 +36,13 @@
         <TextBlock Style="{StaticResource Text.Body}" TextWrapping="Wrap" Margin="0,20,0,0"
                    Text="Run the HotelPOS client installer from the server's installation folder (or ask your administrator), then start HotelPOS again. Orders already sent are safe on the server." />
 
+        <StackPanel Margin="0,16,0,0" Visibility="{Binding Offer, Converter={StaticResource NullToVisibility}}">
+          <TextBlock Style="{StaticResource Text.Body}" TextWrapping="Wrap"
+                     Text="This server has the new version ready. UPDATE NOW downloads it from the server and installs it; HotelPOS restarts by itself." />
+          <ProgressBar Minimum="0" Maximum="100" Value="{Binding Progress}" Height="6" Margin="0,10,0,0"
+                       Visibility="{Binding IsUpdating, Converter={StaticResource BoolToVisibility}}" />
+        </StackPanel>
+
         <Border Style="{StaticResource Banner.Error}" Margin="0,16,0,0"
                 Visibility="{Binding Message, Converter={StaticResource StringToVisibility}}">
           <TextBlock Text="{Binding Message}" Style="{StaticResource Text.Error}" />
@@ -43,7 +50,9 @@
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,24,0,0">
           <Button Content="Server settings" Command="{Binding OpenServerSettingsCommand}" Margin="0,0,8,0" />
-          <Button Content="CHECK AGAIN" Command="{Binding CheckAgainCommand}" Style="{StaticResource Button.Primary}" />
+          <Button Content="UPDATE NOW" Command="{Binding UpdateNowCommand}" IsEnabled="{Binding CanUpdate}" Margin="0,0,8,0"
+                  Style="{StaticResource Button.Primary}" Visibility="{Binding Offer, Converter={StaticResource NullToVisibility}}" />
+          <Button Content="CHECK AGAIN" Command="{Binding CheckAgainCommand}" />
         </StackPanel>
       </StackPanel>
     </Border>

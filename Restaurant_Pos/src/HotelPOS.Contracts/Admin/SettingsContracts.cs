@@ -27,6 +27,9 @@ public sealed record SystemInfoDto
     public string RestaurantName { get; init; } = string.Empty;
     public string ApiVersion { get; init; } = string.Empty;
     public string MinClientVersion { get; init; } = string.Empty;
+
+    // The newest terminal installer this server hosts under /updates/; null when none was published.
+    public ClientUpdateInfo? ClientUpdate { get; init; }
     public DateTime ServerTimeUtc { get; init; }
 }
 

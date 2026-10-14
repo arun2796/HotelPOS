@@ -6,6 +6,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\HotelPOS.Domain\HotelPOS.Domain.csproj" />
+    <!-- The vendor tool is exercised here (round trip); no shipped project references it. -->
+    <ProjectReference Include="..\..\tools\HotelPOS.LicenseGenerator\HotelPOS.LicenseGenerator.csproj" />
   </ItemGroup>
 
 </Project>

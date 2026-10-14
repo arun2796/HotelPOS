@@ -75,6 +75,7 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
         StatusBar = new StatusBarViewModel(realtime, settings, printQueue);
         Palette = ActivatorUtilities.CreateInstance<CommandPaletteViewModel>(services);
         ShiftBar = services.GetService<ShiftBarViewModel>() ?? ActivatorUtilities.CreateInstance<ShiftBarViewModel>(services);
+        Banner = services.GetService<StatusBannerViewModel>() ?? ActivatorUtilities.CreateInstance<StatusBannerViewModel>(services);
         _isSidebarCollapsed = settings.Current.SidebarCollapsed;
     }
 
@@ -85,6 +86,9 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
     public CommandPaletteViewModel Palette { get; }
 
     public ShiftBarViewModel ShiftBar { get; }
+
+    // Licence and update notes above the page.
+    public StatusBannerViewModel Banner { get; }
 
     public NoticeCenter Notices { get; }
 
@@ -135,6 +139,7 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
         _kotPrinter.Start();
 
         await ShiftBar.StartAsync();
+        _ = Banner.RefreshAsync();
         await GoHomeAsync();
         await LoadRestaurantNameAsync();
     }

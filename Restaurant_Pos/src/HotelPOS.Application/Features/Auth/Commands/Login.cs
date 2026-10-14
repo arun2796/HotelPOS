@@ -4,8 +4,11 @@ using HotelPOS.Application.Common.Cqrs;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
 using HotelPOS.Application.Features.Devices;
+using HotelPOS.Application.Features.Licensing;
 using HotelPOS.Application.Features.Security;
 using HotelPOS.Contracts.Auth;
+using HotelPOS.Contracts.Common;
+using HotelPOS.Contracts.Security;
 using HotelPOS.Contracts.Devices;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Domain.Identity;
@@ -46,6 +49,7 @@ internal sealed class LoginHandler : ICommandHandler<LoginCommand, LoginResponse
     private readonly RolePermissions _permissions;
     private readonly AuthTokens _tokens;
     private readonly IClock _clock;
+    private readonly ILicenseService _licenses;
     private readonly ILogger<LoginHandler> _logger;
 
     public LoginHandler(
@@ -56,6 +60,7 @@ internal sealed class LoginHandler : ICommandHandler<LoginCommand, LoginResponse
         RolePermissions permissions,
         AuthTokens tokens,
         IClock clock,
+        ILicenseService licenses,
         ILogger<LoginHandler> logger)
     {
         _db = db;
@@ -65,6 +70,7 @@ internal sealed class LoginHandler : ICommandHandler<LoginCommand, LoginResponse
         _permissions = permissions;
         _tokens = tokens;
         _clock = clock;
+        _licenses = licenses;
         _logger = logger;
     }
 
@@ -114,6 +120,21 @@ internal sealed class LoginHandler : ICommandHandler<LoginCommand, LoginResponse
             return AppErrors.AccountDisabled();
         }
 
+        var permissions = await _permissions.ForRolesAsync(user.RoleNames, cancellationToken);
+
+        // Licence: when expired only an administrator may sign in (to see the data and apply a key); a terminal over
+        // the licensed count is refused before it is registered.
+        var licence = await _licenses.EvaluateAsync(cancellationToken);
+        if (licence.IsExpired && !permissions.Contains(Permissions.LicenseManage))
+        {
+            return new AppError(ErrorCodes.LicenseExpired, licence.Problem ?? "The licence has expired. Ask an administrator to apply a new licence key.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.DeviceName) && await _licenses.CheckTerminalAsync(request.DeviceName, cancellationToken) is { } limit)
+        {
+            return limit;
+        }
+
         Device? device = null;
         if (!string.IsNullOrWhiteSpace(request.DeviceName))
         {
@@ -139,7 +160,6 @@ internal sealed class LoginHandler : ICommandHandler<LoginCommand, LoginResponse
         }
 
         user.RecordSuccessfulLogin(now);
-        var permissions = await _permissions.ForRolesAsync(user.RoleNames, cancellationToken);
         var response = _tokens.Issue(user, device, permissions, now);
         _audit.Add(AuditActions.LoginSucceeded, nameof(User), user.Id.ToString(),
             newValues: new { DeviceName = device?.Name },

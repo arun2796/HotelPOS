@@ -18,7 +18,13 @@ Upgrade outside service hours. Allow 30 minutes; the database part usually takes
 
 ## 3. Terminals
 
-Install the new `HotelPOS-Client-Setup-<version>.exe` on each terminal; their settings are kept. When a release
+**Automatic (from Phase 16):** the server installer also places the client installer in the server's `updates`
+folder (with `latest.json`). A terminal that runs an older version shows **Update now** in the banner at the top; the
+cashier or waiter taps it when convenient (about a minute, Windows asks for administrator permission once), and
+HotelPOS restarts on the new version. Check a terminal's version in the status bar (bottom right) or under
+Administration → Devices. If a terminal cannot update itself, install by hand as below.
+
+**By hand:** install the new `HotelPOS-Client-Setup-<version>.exe` on each terminal; their settings are kept. When a release
 raises the minimum client version, terminals still on the old version show **Update required** instead of the
 sign-in screen until they are updated, so no old terminal can talk to the new server by mistake.
 

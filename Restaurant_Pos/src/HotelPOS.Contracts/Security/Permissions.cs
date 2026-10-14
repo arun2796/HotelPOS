@@ -38,6 +38,9 @@ public static class Permissions
     public const string GstView = "gst.view";
     public const string PeriodClose = "period.close";
 
+    public const string LicenseManage = "license.manage";
+    public const string ImportRun = "import.run";
+
     public static IReadOnlyList<string> All { get; } = new[]
     {
         UsersManage, RolesManage, SettingsManage, DevicesManage, AuditView, BackupManage, ServerManage,
@@ -49,6 +52,7 @@ public static class Permissions
         ReportsView,
         ShiftOperate, ShiftManage, DayEndRun,
         GstView, PeriodClose,
+        LicenseManage, ImportRun,
     };
 }
 

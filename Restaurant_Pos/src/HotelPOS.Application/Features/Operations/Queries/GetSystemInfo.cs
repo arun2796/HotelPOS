@@ -16,12 +16,14 @@ internal sealed class GetSystemInfoHandler : IQueryHandler<GetSystemInfoQuery, S
     private readonly IAppDbContext _db;
     private readonly IClock _clock;
     private readonly AppOptions _app;
+    private readonly IClientUpdateSource _updates;
 
-    public GetSystemInfoHandler(IAppDbContext db, IClock clock, IOptions<AppOptions> app)
+    public GetSystemInfoHandler(IAppDbContext db, IClock clock, IOptions<AppOptions> app, IClientUpdateSource updates)
     {
         _db = db;
         _clock = clock;
         _app = app.Value;
+        _updates = updates;
     }
 
     public async Task<Result<SystemInfoDto>> Handle(GetSystemInfoQuery request, CancellationToken cancellationToken)
@@ -36,6 +38,7 @@ internal sealed class GetSystemInfoHandler : IQueryHandler<GetSystemInfoQuery, S
             RestaurantName = name ?? "HotelPOS",
             ApiVersion = _app.ApiVersion,
             MinClientVersion = _app.MinClientVersion,
+            ClientUpdate = _updates.Latest(),
             ServerTimeUtc = _clock.UtcNow,
         };
     }
