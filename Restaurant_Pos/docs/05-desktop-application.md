@@ -48,6 +48,8 @@ HotelPOS.Desktop/
 - Long-running work is `async`; UI thread never blocks. All API calls support `CancellationToken`.
 - Every view-model that shows server data has `LoadAsync()` (initial) and `RefreshAsync()` (resync).
 - View-models are unit-testable (`HotelPOS.Desktop.Tests`) with fake services.
+- Screen view-models derive from `ViewModelBase` (Phase 12): one `IsBusy`, one `ErrorMessage`, `ExecuteAsync` for
+  work (an unexpected fault is logged and shown on that screen) and `FetchAsync` for loads.
 
 ## 3. Startup and configuration
 
