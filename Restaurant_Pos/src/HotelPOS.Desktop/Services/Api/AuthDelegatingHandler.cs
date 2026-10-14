@@ -42,7 +42,7 @@ public sealed class AuthDelegatingHandler : DelegatingHandler
         var response = await base.SendAsync(request, cancellationToken);
         if (response.StatusCode != HttpStatusCode.Unauthorized || token is null)
         {
-            await EndSessionIfDeviceDisabledAsync(response, cancellationToken);
+            await EndSessionIfAccessRevokedAsync(response, cancellationToken);
             return response;
         }
 
@@ -56,13 +56,13 @@ public sealed class AuthDelegatingHandler : DelegatingHandler
         using var retry = Clone(request);
         retry.Headers.Authorization = new AuthenticationHeaderValue("Bearer", refreshed);
         var retried = await base.SendAsync(retry, cancellationToken);
-        await EndSessionIfDeviceDisabledAsync(retried, cancellationToken);
+        await EndSessionIfAccessRevokedAsync(retried, cancellationToken);
         return retried;
     }
 
-    // An administrator disabled this terminal while it was in use: every further call would be refused, so sign out
-    // with the reason instead of leaving the user on a screen where nothing works.
-    private async Task EndSessionIfDeviceDisabledAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    // An administrator disabled this terminal or this account while it was in use: every further call would be
+    // refused, so sign out with the reason instead of leaving the user on a screen where nothing works.
+    private async Task EndSessionIfAccessRevokedAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
         if (response.StatusCode != HttpStatusCode.Forbidden
             || response.Content.Headers.ContentType?.MediaType?.Contains("json", StringComparison.OrdinalIgnoreCase) != true)
@@ -75,7 +75,7 @@ public sealed class AuthDelegatingHandler : DelegatingHandler
         try
         {
             var envelope = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(PosJson.Options, cancellationToken);
-            var error = envelope?.Errors.FirstOrDefault(e => e.Code == ErrorCodes.DeviceDisabled);
+            var error = envelope?.Errors.FirstOrDefault(e => e.Code is ErrorCodes.DeviceDisabled or ErrorCodes.AccountDisabled);
             if (error is not null)
             {
                 _session.Expire(error.Message);

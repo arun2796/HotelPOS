@@ -232,6 +232,12 @@ branch `phase-09-security-and-audit`, reviewed against this document, and these 
   only with an interpolated literal). `dotnet list package --vulnerable` found CVE-2026-70159 (SignalR DoS) in
   `Microsoft.AspNetCore.SignalR.Common` 8.0.31; ASP.NET Core packages raised to 8.0.32, scan clean.
 
+**Found during Phase 10 (2026-10-14).** Deactivating a user revoked their refresh tokens, but the access token they
+already held kept working for up to an hour, and their hub connections stayed open. `AccessEnforcementMiddleware`
+(was `DeviceEnforcementMiddleware`) now refuses a deactivated user on every request with 403 `ACCOUNT_DISABLED`
+(cached like devices, set after the admin's commit); the hub refuses their new connections and the deactivation
+closes the open ones; the desktop signs out with the reason, as for a disabled terminal.
+
 ## 15. Remaining work (open)
 
 Server

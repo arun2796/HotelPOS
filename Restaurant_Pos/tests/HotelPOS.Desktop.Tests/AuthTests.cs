@@ -248,6 +248,7 @@ public class AuthDelegatingHandlerTests
 
     [Theory]
     [InlineData(ErrorCodes.DeviceDisabled, true)]
+    [InlineData(ErrorCodes.AccountDisabled, true)]
     [InlineData(ErrorCodes.Forbidden, false)]
     public async Task Forbidden_EndsTheSessionOnlyWhenTheDeviceIsDisabled(string code, bool expires)
     {

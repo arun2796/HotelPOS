@@ -104,7 +104,7 @@ app.UseMiddleware<LoginRateLimitingMiddleware>();
 app.UseAuthentication();
 app.UseMiddleware<RequestContextLoggingMiddleware>();
 app.UseAuthorization();
-app.UseMiddleware<DeviceEnforcementMiddleware>();
+app.UseMiddleware<AccessEnforcementMiddleware>();
 app.UseMiddleware<IdempotencyMiddleware>();
 
 app.MapControllers();

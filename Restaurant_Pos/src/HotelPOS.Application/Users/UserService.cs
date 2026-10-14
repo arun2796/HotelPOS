@@ -1,6 +1,7 @@
 using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
+using HotelPOS.Application.Security;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Security;
 using HotelPOS.Contracts.Users;
@@ -33,14 +34,25 @@ public sealed class UserService : IUserService
     private readonly IAuditService _audit;
     private readonly ICurrentUser _currentUser;
     private readonly IClock _clock;
+    private readonly IUserAccessCache _userAccess;
+    private readonly IOnlineDeviceTracker _connections;
 
-    public UserService(IAppDbContext db, IPasswordHasher hasher, IAuditService audit, ICurrentUser currentUser, IClock clock)
+    public UserService(
+        IAppDbContext db,
+        IPasswordHasher hasher,
+        IAuditService audit,
+        ICurrentUser currentUser,
+        IClock clock,
+        IUserAccessCache userAccess,
+        IOnlineDeviceTracker connections)
     {
         _db = db;
         _hasher = hasher;
         _audit = audit;
         _currentUser = currentUser;
         _clock = clock;
+        _userAccess = userAccess;
+        _connections = connections;
     }
 
     public async Task<PagedResult<UserDto>> ListAsync(UserQuery query, CancellationToken cancellationToken = default)
@@ -209,6 +221,15 @@ public sealed class UserService : IUserService
         }
 
         await _db.SaveChangesAsync(cancellationToken);
+
+        // After the commit, so a request racing the change cannot cache the old state. Revoking the refresh tokens
+        // alone would leave the current access token (up to an hour) and any open hub connection working.
+        _userAccess.Remember(user.Id, deactivated: !active);
+        if (!active)
+        {
+            await _connections.DisconnectUserAsync(user.Id, cancellationToken);
+        }
+
         return ToDto(user);
     }
 

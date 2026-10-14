@@ -35,6 +35,7 @@ public static class DependencyInjection
         services.AddScoped<IKitchenService, KitchenService>();
         services.AddScoped<IManagerApprovalService, ManagerApprovalService>();
         services.AddSingleton<IDeviceAccessCache, DeviceAccessCache>();
+        services.AddSingleton<IUserAccessCache, UserAccessCache>();
         services.AddScoped<IBillingService, BillingService>();
         services.AddScoped<IDiscountService, DiscountService>();
         services.AddScoped<IPaymentMethodService, PaymentMethodService>();

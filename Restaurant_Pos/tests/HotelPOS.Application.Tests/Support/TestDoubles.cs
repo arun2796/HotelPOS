@@ -86,3 +86,22 @@ public sealed class RecordingRealtimeNotifier : IRealtimeNotifier
         }
     }
 }
+
+public sealed class RecordingConnectionTracker : IOnlineDeviceTracker
+{
+    public List<int> DisconnectedUsers { get; } = new();
+
+    public IReadOnlySet<Guid> OnlineDeviceIds() => new HashSet<Guid>();
+
+    public bool IsDeviceOnline(Guid deviceId) => false;
+
+    public Task<int> DisconnectDeviceAsync(Guid deviceId, CancellationToken cancellationToken = default) => Task.FromResult(0);
+
+    public Task<int> DisconnectUserAsync(int userId, CancellationToken cancellationToken = default)
+    {
+        DisconnectedUsers.Add(userId);
+        return Task.FromResult(1);
+    }
+
+    public void Reset() => DisconnectedUsers.Clear();
+}

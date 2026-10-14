@@ -57,4 +57,7 @@ public interface IOnlineDeviceTracker
 
     // Closes every open real-time connection of the device; returns how many were closed.
     Task<int> DisconnectDeviceAsync(Guid deviceId, CancellationToken cancellationToken = default);
+
+    // Closes every open real-time connection of the user (deactivated account); returns how many were closed.
+    Task<int> DisconnectUserAsync(int userId, CancellationToken cancellationToken = default);
 }

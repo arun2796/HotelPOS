@@ -7,6 +7,7 @@ using HotelPOS.Contracts.Realtime;
 using HotelPOS.Contracts.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 
 namespace HotelPOS.Api.Hubs;
 
@@ -15,13 +16,20 @@ public sealed class RestaurantHub : Hub
 {
     private readonly ConnectionTracker _tracker;
     private readonly IDeviceService _devices;
+    private readonly IAppDbContext _db;
     private readonly IRealtimeNotifier _realtime;
     private readonly ILogger<RestaurantHub> _logger;
 
-    public RestaurantHub(ConnectionTracker tracker, IDeviceService devices, IRealtimeNotifier realtime, ILogger<RestaurantHub> logger)
+    public RestaurantHub(
+        ConnectionTracker tracker,
+        IDeviceService devices,
+        IAppDbContext db,
+        IRealtimeNotifier realtime,
+        ILogger<RestaurantHub> logger)
     {
         _tracker = tracker;
         _devices = devices;
+        _db = db;
         _realtime = realtime;
         _logger = logger;
     }
@@ -52,6 +60,15 @@ public sealed class RestaurantHub : Hub
         {
             _tracker.Remove(Context.ConnectionId);
             _logger.LogWarning("Deactivated device {DeviceId} attempted to connect to the hub; connection refused", device);
+            Context.Abort();
+            return;
+        }
+
+        // A deactivated user's access token stays valid until it expires; it must not reopen a hub connection.
+        if (await _db.Users.AsNoTracking().AnyAsync(u => u.Id == userId && !u.IsActive))
+        {
+            _tracker.Remove(Context.ConnectionId);
+            _logger.LogWarning("Deactivated user {UserId} attempted to connect to the hub; connection refused", userId);
             Context.Abort();
             return;
         }

@@ -123,6 +123,11 @@ public class UserServiceTests : DatabaseTestBase
 
         var activeTokens = await QueryAsync(db => db.RefreshTokens.CountAsync(t => t.UserId == login.User.Id && t.RevokedAt == null));
         activeTokens.Should().Be(0);
+        Fixture.Connections.DisconnectedUsers.Should().Equal(login.User.Id);
+        Get<Application.Security.IUserAccessCache>().IsDeactivated(login.User.Id).Should().BeTrue();
+
+        await Users.SetActiveAsync(login.User.Id, active: true);
+        Get<Application.Security.IUserAccessCache>().IsDeactivated(login.User.Id).Should().BeFalse();
     }
 
     [Fact]

@@ -23,8 +23,7 @@ For the manager or the person looking after the system. Five minutes a day, ten 
 ## People
 
 - One account per person; never share passwords. When someone leaves: **Users → Deactivate** — do not delete, the
-  audit trail keeps their name. They cannot sign in again and their sessions are not renewed, but a session already
-  open can last up to an hour; if that matters (e.g. a dismissal), also deactivate the terminal they are using.
+  audit trail keeps their name. Their open sessions stop working at once, on every terminal.
 - A forgotten password: **Users → Reset password** (they must change it at sign-in). A locked account unlocks by
   itself after 15 minutes or with **Unlock**.
 - New terminal: install the client ([01](01-installation.md) § 5); it registers itself at the first sign-in.

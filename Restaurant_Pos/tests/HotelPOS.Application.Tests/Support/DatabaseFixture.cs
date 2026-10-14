@@ -30,6 +30,8 @@ public sealed class DatabaseFixture : IAsyncLifetime
 
     public RecordingRealtimeNotifier Realtime { get; } = new();
 
+    public RecordingConnectionTracker Connections { get; } = new();
+
     public ServiceProvider Services { get; private set; } = default!;
 
     public async Task InitializeAsync()
@@ -55,6 +57,7 @@ public sealed class DatabaseFixture : IAsyncLifetime
         services.AddSingleton<IClock>(Clock);
         services.AddSingleton<ICurrentUser>(CurrentUser);
         services.AddSingleton<IRealtimeNotifier>(Realtime);
+        services.AddSingleton<IOnlineDeviceTracker>(Connections);
         services.Configure<AppOptions>(o => o.ApiVersion = "test");
         services.AddApplication();
         services.AddInfrastructure(configuration);
@@ -71,6 +74,7 @@ public sealed class DatabaseFixture : IAsyncLifetime
         Clock.Reset();
         CurrentUser.Reset();
         Realtime.Reset();
+        Connections.Reset();
 
         await using var scope = Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();

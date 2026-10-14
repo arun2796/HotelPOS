@@ -367,6 +367,37 @@ public class SecurityApiTests : IClassFixture<ApiFactory>
         await admin.PostAsync($"/api/admin/devices/{deviceId}/activate", null);
     }
 
+    [Fact]
+    public async Task DeactivatedUser_IsRefusedAtOnce_EvenWithAnUnexpiredAccessToken()
+    {
+        var admin = await _factory.CreateAuthenticatedClientAsync("admin", ApiFactory.AdminPassword);
+        var username = "leaver_" + Guid.NewGuid().ToString("N")[..8];
+        var created = (await (await admin.PostAsJsonAsync("/api/users", new CreateUserRequest
+        {
+            Username = username,
+            DisplayName = "Leaver",
+            Password = "Password123",
+            Roles = new[] { Roles.Waiter },
+            MustChangePassword = false,
+        }, PosJson.Options)).ReadEnvelopeAsync<UserDto>()).Data!;
+        var login = await _factory.LoginAsync(username, "Password123");
+        using var leaver = _factory.CreateClient();
+        leaver.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", login.AccessToken);
+        (await leaver.GetAsync("/api/tables")).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        (await admin.PostAsync($"/api/users/{created.Id}/deactivate", null)).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var refused = await leaver.GetAsync("/api/tables");
+        refused.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await refused.ReadEnvelopeAsync<object>()).Errors.Single().Code.Should().Be(ErrorCodes.AccountDisabled);
+        await using var hub = _factory.CreateHubConnection(login.AccessToken);
+        var connect = () => hub.StartAsync();
+        await connect.Should().ThrowAsync<Exception>("a deactivated user's token must not open a hub connection");
+
+        (await admin.PostAsync($"/api/users/{created.Id}/activate", null)).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await leaver.GetAsync("/api/tables")).StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
     private static async Task WaitUntilAsync(Func<bool> condition)
     {
         var deadline = DateTime.UtcNow.AddSeconds(10);

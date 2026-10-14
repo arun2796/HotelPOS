@@ -35,9 +35,15 @@ public sealed class ConnectionTracker : IOnlineDeviceTracker
     public bool IsDeviceOnline(Guid deviceId) =>
         _connections.Values.Any(e => e.Info.DeviceId == deviceId);
 
-    public async Task<int> DisconnectDeviceAsync(Guid deviceId, CancellationToken cancellationToken = default)
+    public Task<int> DisconnectDeviceAsync(Guid deviceId, CancellationToken cancellationToken = default) =>
+        AbortAsync(e => e.DeviceId == deviceId, cancellationToken);
+
+    public Task<int> DisconnectUserAsync(int userId, CancellationToken cancellationToken = default) =>
+        AbortAsync(e => e.UserId == userId, cancellationToken);
+
+    private async Task<int> AbortAsync(Func<HubConnectionInfo, bool> match, CancellationToken cancellationToken)
     {
-        var targets = _connections.Values.Where(e => e.Info.DeviceId == deviceId).Select(e => e.Context).ToList();
+        var targets = _connections.Values.Where(e => match(e.Info)).Select(e => e.Context).ToList();
         if (targets.Count == 0)
         {
             return 0;
