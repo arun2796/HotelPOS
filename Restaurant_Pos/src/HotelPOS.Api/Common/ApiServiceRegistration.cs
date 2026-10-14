@@ -47,7 +47,7 @@ public static class ApiServiceRegistration
             }
         });
 
-        services.AddControllers(options => options.Filters.Add<ValidationFilter>())
+        services.AddControllers()
             .AddJsonOptions(options => PosJson.Apply(options.JsonSerializerOptions))
             .ConfigureApiBehaviorOptions(options => options.InvalidModelStateResponseFactory = InvalidModelState);
 
@@ -69,6 +69,7 @@ public static class ApiServiceRegistration
 
         services.AddOptions<MonitoringOptions>().Bind(configuration.GetSection(MonitoringOptions.SectionName));
         services.AddSingleton<LogTailReader>();
+        services.AddSingleton<ILogTailSource>(sp => sp.GetRequiredService<LogTailReader>());
         services.AddSingleton<IExtraMonitoredPath, BackupFolderPath>();
         services.AddHealthChecks()
             .AddDbContextCheck<AppDbContext>("database")

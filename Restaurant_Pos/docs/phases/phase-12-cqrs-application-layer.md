@@ -60,8 +60,8 @@ All existing tests green after each module; new behaviour tests; matrix snapshot
 
 ## 12. Acceptance criteria
 
-- [ ] No `*Service` class left for business use cases; every endpoint dispatches a request.
-- [ ] Pipeline behaviours tested; matrix and audit completeness tests unchanged and green.
+- [x] No `*Service` class left for business use cases; every endpoint dispatches a request (server; see 12.10).
+- [x] Pipeline behaviours tested; matrix and audit completeness tests unchanged and green.
 - [ ] Definition of Done satisfied.
 
 ## 13. Risks and notes
@@ -244,3 +244,40 @@ while Phase 11 reworks them.
   create-user request has always rejected; the create-user tests send valid passwords (`secret123`) and a valid
   username (`w09` instead of `w9`), sign in as admin where they ran without a user, and the "non-admin with
   users.manage" test grants that permission explicitly, as its name says.
+
+**12.10 Operations: devices, settings, server, audit log, backups (2026-10-14)**
+
+- `DeviceService`, `DeviceAdminService`, `SettingsService` (with `ISystemInfoService`), `ServerNoticeService` and
+  `AuditQueryService` dissolved: `Features/Devices` (`RegisterDevice`, `UpdateDevice`, `ActivateDevice`,
+  `DeactivateDevice`, `TouchDevice`, `ListDevices`, `GetDevice`; helper `DeviceRegistry`, now also used by login) and
+  `Features/Operations` (`GetSystemInfo`, `GetPublicSettings`, `GetAllSettings`, `UpdateSettings`,
+  `SendServerNotice`, `GetLogTail`, `ListAuditLogs`, `ExportAuditLogs`, `GetBackupOverview`, `RunBackup`).
+- Device activation / deactivation update the access cache, send the "terminal disabled" notice, close the
+  device's connections and announce its status after the commit, in the order the service did. The hub records
+  presence with `TouchDeviceCommand` and reads devices directly; it no longer needs a service.
+- The log tail is read through a new port, `ILogTailSource`, implemented by the Api's `LogTailReader`.
+- **Deviation: `RunBackupCommand` is a plain MediatR request, not an `ICommand`.** It still goes through logging and
+  authorization, but `TransactionBehavior` must not wrap it: `IBackupService` commits the Running row before
+  `pg_dump` starts (the row is part of the dump and a server stop leaves it to be closed as interrupted), records a
+  failed backup as well as a successful one, and a transaction must not stay open for the minutes a dump can take.
+  `IBackupService` stays an Infrastructure port (the daily `BackupHostedService` calls it too).
+- `ValidationFilter` (Api) removed: every bound DTO with a validator is now an `IHasInput` request, so the pipeline
+  is the single place where FluentValidation runs; the 400 answers are unchanged (Api tests).
+- Infrastructure ports that stay as interfaces (they are adapters, not use-case services): `IBackupService`,
+  `IAuditService`, `ITokenService`, `IInvoiceNumberService`, `IReportQueries`, `IIdempotencyStore`.
+- Docs: `01-architecture.md` (folder layout, request pipeline, § 4 decision, § 6.2 / 6.5 / 6.6, ADR 2) and the
+  naming table in `06-conventions-and-dod.md` describe the commands and queries.
+- Tests: `SettingsServiceTests` → `Settings/SettingsTests` (signed in as admin). The Api test that makes
+  `/api/system/info` throw now substitutes the `GetSystemInfoQuery` handler instead of the removed service; its
+  assertions are unchanged.
+
+**Behaviour notes for the whole server migration**
+
+- Steps queued on `IAfterCommit` that throw are logged and do not fail the request (docs/04 § 4 rule 2, now for
+  every step). Before, a failing hub disconnect after a user or device deactivation would have answered 500 although
+  the change was saved.
+- A command that fails after saving now rolls back what it saved. No migrated handler returned a failure after a
+  save except the deliberate cases kept by `ICommitOnFailure` (login, refresh, approval token) and the inline
+  approval rejection (own command, own transaction).
+- Tests that called a service with input the DTO validator rejects, or as a role that never held the endpoint's
+  permission, were adjusted in their setup only (listed per module above); no assertion was weakened.

@@ -2,20 +2,18 @@ using System.Reflection;
 using FluentValidation;
 using HotelPOS.Application.Common.Behaviors;
 using HotelPOS.Application.Common.Cqrs;
-using HotelPOS.Application.Administration;
 using HotelPOS.Application.Features.Auth;
 using HotelPOS.Application.Features.Billing;
-using HotelPOS.Application.Devices;
+using HotelPOS.Application.Features.Devices;
 using HotelPOS.Application.Features.Floor;
 using HotelPOS.Application.Features.Kitchen;
 using HotelPOS.Application.Features.Menu;
 using HotelPOS.Application.Features.Orders;
 using HotelPOS.Application.Features.Print;
 using HotelPOS.Application.Features.Reports;
-using HotelPOS.Application.Security;
-using HotelPOS.Application.Settings;
-using HotelPOS.Application.Features.Users;
 using HotelPOS.Application.Features.Security;
+using HotelPOS.Application.Features.Users;
+using HotelPOS.Application.Security;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace HotelPOS.Application;
@@ -43,14 +41,21 @@ public static class DependencyInjection
         services.AddScoped<AfterCommitQueue>();
         services.AddScoped<IAfterCommit>(sp => sp.GetRequiredService<AfterCommitQueue>());
 
+        // Steps shared by the handlers of a feature.
         services.AddScoped<AuthTokens>();
         services.AddScoped<UserAdministration>();
         services.AddScoped<RolePermissions>();
         services.AddScoped<ApprovalTokens>();
-        services.AddScoped<IDeviceService, DeviceService>();
+        services.AddScoped<DeviceRegistry>();
         services.AddScoped<FloorSections>();
-        services.AddScoped<TableEvents>();
         services.AddScoped<FloorTables>();
+        services.AddScoped<TableEvents>();
+        services.AddScoped<MenuChanges>();
+        services.AddScoped<MenuCategories>();
+        services.AddScoped<MenuItems>();
+        services.AddScoped<MenuModifiers>();
+        services.AddScoped<MenuStations>();
+        services.AddScoped<MenuTaxes>();
         services.AddScoped<OrderItemFactory>();
         services.AddScoped<OrderSteps>();
         services.AddScoped<OrderEvents>();
@@ -58,26 +63,16 @@ public static class DependencyInjection
         services.AddScoped<KitchenSync>();
         services.AddScoped<KitchenTickets>();
         services.AddScoped<ManagerApprovals>();
-        services.AddSingleton<IDeviceAccessCache, DeviceAccessCache>();
-        services.AddSingleton<IUserAccessCache, UserAccessCache>();
         services.AddScoped<BillSteps>();
         services.AddScoped<BillEvents>();
         services.AddScoped<BillWorkflow>();
         services.AddScoped<PrintSources>();
         services.AddScoped<IBusinessDays, BusinessDays>();
         services.AddScoped<ReportRanges>();
-        services.AddScoped<IServerNoticeService, ServerNoticeService>();
-        services.AddScoped<MenuChanges>();
-        services.AddScoped<MenuCategories>();
-        services.AddScoped<MenuItems>();
-        services.AddScoped<MenuModifiers>();
-        services.AddScoped<MenuStations>();
-        services.AddScoped<MenuTaxes>();
-        services.AddScoped<SettingsService>();
-        services.AddScoped<ISettingsService>(sp => sp.GetRequiredService<SettingsService>());
-        services.AddScoped<ISystemInfoService>(sp => sp.GetRequiredService<SettingsService>());
-        services.AddScoped<IDeviceAdminService, DeviceAdminService>();
-        services.AddScoped<IAuditQueryService, AuditQueryService>();
+
+        // Read by the access middleware on every request.
+        services.AddSingleton<IDeviceAccessCache, DeviceAccessCache>();
+        services.AddSingleton<IUserAccessCache, UserAccessCache>();
 
         return services;
     }

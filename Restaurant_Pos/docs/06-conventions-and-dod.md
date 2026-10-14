@@ -22,7 +22,7 @@ Last updated: 2026-10-07
 |---|---|---|
 | Entity | singular noun | `Order`, `KitchenOrder` |
 | DbSet / table | plural | `Orders`, `KitchenOrders` |
-| Application service | `<Feature>Service` / `I<Feature>Service` | `IOrderService` |
+| Command / query | `<Verb><Thing>Command` / `<Verb><Thing>Query`, handler `<Verb><Thing>Handler` | `SubmitOrderCommand` |
 | Request DTO | `<Verb><Entity>Request` | `CreateOrderRequest`, `ApplyDiscountRequest` |
 | Response DTO | `<Entity>Dto`, `<Entity>SummaryDto`, `<Entity>DetailDto` | `OrderDetailDto` |
 | Validator | `<Request>Validator` | `CreateOrderRequestValidator` |

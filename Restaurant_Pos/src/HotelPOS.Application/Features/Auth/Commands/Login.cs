@@ -3,7 +3,7 @@ using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Cqrs;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
-using HotelPOS.Application.Devices;
+using HotelPOS.Application.Features.Devices;
 using HotelPOS.Application.Features.Security;
 using HotelPOS.Contracts.Auth;
 using HotelPOS.Contracts.Devices;
@@ -42,7 +42,7 @@ internal sealed class LoginHandler : ICommandHandler<LoginCommand, LoginResponse
     private readonly IAppDbContext _db;
     private readonly IPasswordHasher _hasher;
     private readonly IAuditTrail _audit;
-    private readonly IDeviceService _devices;
+    private readonly DeviceRegistry _devices;
     private readonly RolePermissions _permissions;
     private readonly AuthTokens _tokens;
     private readonly IClock _clock;
@@ -52,7 +52,7 @@ internal sealed class LoginHandler : ICommandHandler<LoginCommand, LoginResponse
         IAppDbContext db,
         IPasswordHasher hasher,
         IAuditTrail audit,
-        IDeviceService devices,
+        DeviceRegistry devices,
         RolePermissions permissions,
         AuthTokens tokens,
         IClock clock,
