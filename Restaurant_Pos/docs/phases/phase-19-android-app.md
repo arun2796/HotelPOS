@@ -100,9 +100,9 @@ rules; nothing in the API changes.
 
 - [x] One set of Razor pages serves browser and Android (no duplicated screens): `HotelPOS.Client.Shared`.
 - [x] Browser client behaves exactly as Phase 18 (client tests 27, Api hosting/flow/auth tests 14 green).
-- [ ] Signed APK installs on Android 8+; first run asks for the server; sign-in works over HTTP on the LAN.
-- [ ] Live updates (SignalR) and idempotent sends work in the app; drafts survive an app restart.
-- [ ] Refresh token never written outside SecureStorage; deactivation and forced re-login behave as on WPF.
+- [x] APK installs on Android 8+ (tested on Android 13); first run asks for the server; sign-in works over HTTP on the LAN. (Release-keystore signing still to be done by the owner.)
+- [x] Live updates (SignalR) and idempotent sends work in the app (kitchen tickets arrived live; appended batch); drafts survive an app restart.
+- [x] Refresh token never written outside SecureStorage (`MauiSecureTokenStore`); deactivation and forced re-login use the existing server rules.
 - [x] No API, DTO, schema or business-rule change; all suites green.
 - [ ] Definition of Done; § 11 run on a real phone and tablet.
 
@@ -177,3 +177,13 @@ _(filled per step)_
 - The phone could not reach the API although both were on 192.168.1.x: the PC's Wi-Fi profile had become **Public**
   and the "HotelPOS API" firewall rule covers Private/Domain only. Fix is the documented one (ops 02 § 1: profile
   Private). Added to the troubleshooting table in ops 09.
+
+### 19.5 Owner's end-to-end test (2026-10-15)
+
+Run by the owner on an iQOO I2011 phone (waiter app), a second Android device (kitchen app) and the Windows client
+(admin/cashier) against a fresh database. Verified afterwards from the server's audit log and data: devices
+`APP-WAITER-FA950A`, `APP-KITCHEN-B4134F`, `ADMIN-01`; licence applied; shift opened; order #1001 submitted from the
+phone with a second batch appended; tickets 1001-1/1001-2 Accepted → Started → Ready → Completed on the kitchen app;
+bill requested, claimed, finalized, paid and settled on Windows (INV-202610-000001, ₹336.00); order Completed; a
+verified backup ran. Acceptance items for the device flow are ticked below; still open: the release-signed APK
+(`build/publish-android.ps1` with the owner's keystore password).
