@@ -1,3 +1,5 @@
+using System.Globalization;
+using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Enums;
 
 namespace HotelPOS.Contracts.Auth;
@@ -69,18 +71,78 @@ public sealed record ApprovalTokenResponse
 
 public static class PasswordPolicy
 {
+    // The shortest minimum length an admin may configure, and the longest password accepted at all.
     public const int MinLength = 8;
     public const int MaxLength = 100;
+}
 
-    public static bool MeetsComplexity(string password)
+// The password rule an admin configures in Settings (Password* keys); the default is the original
+// "8 characters, letters and digits". Shared so the server and the desktop describe the same rule.
+public sealed record PasswordRules
+{
+    public int MinLength { get; init; } = PasswordPolicy.MinLength;
+    public bool RequireLetter { get; init; } = true;
+    public bool RequireDigit { get; init; } = true;
+    public bool RequireUpperAndLower { get; init; }
+    public bool RequireSymbol { get; init; }
+
+    public static PasswordRules Default { get; } = new();
+
+    // Reads the rule from a settings lookup; missing or unreadable values keep the default, the length is kept in range.
+    public static PasswordRules FromSettings(Func<string, string?> setting)
     {
-        if (string.IsNullOrEmpty(password) || password.Length < MinLength)
+        bool Flag(string key, bool fallback) => bool.TryParse(setting(key), out var v) ? v : fallback;
+
+        var min = int.TryParse(setting(SettingKeys.PasswordMinLength), NumberStyles.Integer, CultureInfo.InvariantCulture, out var length)
+            ? length
+            : PasswordPolicy.MinLength;
+        return new PasswordRules
         {
-            return false;
+            MinLength = Math.Clamp(min, PasswordPolicy.MinLength, PasswordPolicy.MaxLength),
+            RequireLetter = Flag(SettingKeys.PasswordRequireLetter, true),
+            RequireDigit = Flag(SettingKeys.PasswordRequireDigit, true),
+            RequireUpperAndLower = Flag(SettingKeys.PasswordRequireUpperAndLower, false),
+            RequireSymbol = Flag(SettingKeys.PasswordRequireSymbol, false),
+        };
+    }
+
+    // "Password must be at least 8 characters and contain letters and digits."
+    public string Describe()
+    {
+        var kinds = new List<string>();
+        if (RequireUpperAndLower)
+        {
+            kinds.Add("both upper and lower case letters");
+        }
+        else if (RequireLetter)
+        {
+            kinds.Add("letters");
         }
 
-        var hasLetter = password.Any(char.IsLetter);
-        var hasDigit = password.Any(char.IsDigit);
-        return hasLetter && hasDigit;
+        if (RequireDigit)
+        {
+            kinds.Add("digits");
+        }
+
+        if (RequireSymbol)
+        {
+            kinds.Add("a symbol");
+        }
+
+        var text = $"Password must be at least {MinLength} characters";
+        return kinds.Count == 0
+            ? text + "."
+            : $"{text} and contain {(kinds.Count == 1 ? kinds[0] : string.Join(", ", kinds.Take(kinds.Count - 1)) + " and " + kinds[^1])}.";
     }
+
+    public bool IsMet(string? password) =>
+        !string.IsNullOrEmpty(password)
+        && password.Length >= MinLength
+        && (!(RequireLetter || RequireUpperAndLower) || password.Any(char.IsLetter))
+        && (!RequireDigit || password.Any(char.IsDigit))
+        && (!RequireUpperAndLower || (password.Any(char.IsUpper) && password.Any(char.IsLower)))
+        && (!RequireSymbol || password.Any(c => !char.IsLetterOrDigit(c) && !char.IsWhiteSpace(c)));
+
+    // Null when the password meets the rule, otherwise the message to show.
+    public string? Check(string? password) => IsMet(password) ? null : Describe();
 }

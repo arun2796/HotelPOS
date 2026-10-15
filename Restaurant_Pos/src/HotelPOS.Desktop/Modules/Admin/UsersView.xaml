@@ -139,7 +139,7 @@
             <StackPanel Visibility="{Binding IsNew, Converter={StaticResource BoolToVisibility}}">
               <TextBlock Text="Initial password" Style="{StaticResource Text.Label}" />
               <PasswordBox controls:PasswordBoxAssistant.BoundPassword="{Binding Password, Mode=TwoWay}" Margin="0,0,0,4" />
-              <TextBlock Text="{x:Static admin:UsersViewModel.PasswordHint}" Style="{StaticResource Text.Caption}"
+              <TextBlock Text="{Binding PasswordHint}" Style="{StaticResource Text.Caption}"
                          TextWrapping="Wrap" Margin="0,0,0,8" />
               <CheckBox Content="Must change password at first sign-in" IsChecked="{Binding MustChangePassword}" Margin="0,0,0,14" />
             </StackPanel>

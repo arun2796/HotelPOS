@@ -18,17 +18,22 @@ public sealed partial class UsersViewModel : ViewModelBase, INavigationAware, IR
     private readonly IUsersApi _usersApi;
     private readonly IDialogService _dialogs;
     private readonly INotificationService _notifications;
+    private readonly ISystemApi _systemApi;
 
-    public UsersViewModel(IUsersApi usersApi, IDialogService dialogs, INotificationService notifications)
+    public UsersViewModel(IUsersApi usersApi, IDialogService dialogs, INotificationService notifications, ISystemApi systemApi)
     {
         _usersApi = usersApi;
         _dialogs = dialogs;
         _notifications = notifications;
+        _systemApi = systemApi;
     }
 
     public ObservableCollection<UserDto> Users { get; } = new();
 
     public UserEditorViewModel Editor { get; } = new();
+
+    // The configured password rule, loaded with the screen; null means the server decides.
+    private PasswordRules? _rules;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelection), nameof(ToggleActiveText), nameof(CanUnlock))]
@@ -59,9 +64,6 @@ public sealed partial class UsersViewModel : ViewModelBase, INavigationAware, IR
 
     public bool CanUnlock => SelectedUser?.IsLockedOut == true;
 
-    public static string PasswordHint { get; } =
-        $"Passwords need at least {PasswordPolicy.MinLength} characters, with both letters and digits.";
-
     public string ToggleActiveText => SelectedUser?.IsActive == false ? "Activate" : "Deactivate";
 
     public string PageText => $"Page {Page} of {Math.Max(1, TotalPages)} · {TotalCount} user(s)";
@@ -69,6 +71,8 @@ public sealed partial class UsersViewModel : ViewModelBase, INavigationAware, IR
     public async Task OnNavigatedToAsync(object? parameter)
     {
         await LoadRolesAsync();
+        _rules = await _systemApi.GetPasswordRulesAsync();
+        Editor.SetPasswordRules(_rules);
         await LoadAsync();
     }
 
@@ -217,9 +221,9 @@ public sealed partial class UsersViewModel : ViewModelBase, INavigationAware, IR
             return;
         }
 
-        if (!PasswordPolicy.MeetsComplexity(password))
+        if (_rules is not null && !_rules.IsMet(password))
         {
-            _notifications.Warning(PasswordHint);
+            _notifications.Warning(_rules.Describe());
             return;
         }
 

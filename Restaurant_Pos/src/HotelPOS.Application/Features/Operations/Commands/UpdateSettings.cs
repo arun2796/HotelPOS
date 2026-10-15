@@ -4,6 +4,7 @@ using HotelPOS.Application.Common.Cqrs;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
 using HotelPOS.Contracts.Admin;
+using HotelPOS.Contracts.Auth;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Security;
 using HotelPOS.Domain.Administration;
@@ -63,6 +64,12 @@ internal sealed class UpdateSettingsHandler : ICommandHandler<UpdateSettingsComm
             else if (!Setting.IsValidValue(setting.DataType, item.Value.Trim()))
             {
                 errors.Add(new ApiError(ErrorCodes.ValidationError, $"'{item.Value}' is not a valid {setting.DataType} value.", item.Key));
+            }
+            else if (setting.Key == SettingKeys.PasswordMinLength
+                && int.Parse(item.Value.Trim(), System.Globalization.CultureInfo.InvariantCulture) is var length
+                && (length < PasswordPolicy.MinLength || length > PasswordPolicy.MaxLength))
+            {
+                errors.Add(new ApiError(ErrorCodes.ValidationError, $"The minimum password length must be between {PasswordPolicy.MinLength} and {PasswordPolicy.MaxLength}.", item.Key));
             }
         }
 

@@ -479,6 +479,38 @@ public class SecurityApiTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task PasswordPolicy_ConfiguredInSettings_AppliesToNewUsers_AndIsPublicToSignedInUsers()
+    {
+        var admin = await _factory.CreateAuthenticatedClientAsync("admin", ApiFactory.AdminPassword);
+        async Task SetMinLengthAsync(string value) => (await admin.PutAsJsonAsync("/api/admin/settings", new UpdateSettingsRequest
+        {
+            Items = new[] { new SettingValue { Key = SettingKeys.PasswordMinLength, Value = value } },
+        }, PosJson.Options)).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        await SetMinLengthAsync("14");
+        try
+        {
+            var publicSettings = (await (await admin.GetAsync("/api/settings")).ReadEnvelopeAsync<IReadOnlyList<SettingDto>>()).Data!;
+            var rules = PasswordRules.FromSettings(key => publicSettings.FirstOrDefault(s => s.Key == key)?.Value);
+            rules.MinLength.Should().Be(14);
+
+            var weak = await admin.PostAsJsonAsync("/api/users", new CreateUserRequest
+            {
+                Username = "policy_" + Guid.NewGuid().ToString("N")[..6],
+                DisplayName = "Policy",
+                Password = "Password123",
+                Roles = new[] { "Waiter" },
+            }, PosJson.Options);
+            weak.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            (await weak.ReadEnvelopeAsync<object>()).Errors.Should().Contain(e => e.Message == rules.Describe());
+        }
+        finally
+        {
+            await SetMinLengthAsync("8");
+        }
+    }
+
+    [Fact]
     public async Task AuditLogs_Query_AndCsvExport_WithUtf8Bom()
     {
         var admin = await _factory.CreateAuthenticatedClientAsync("admin", ApiFactory.AdminPassword);

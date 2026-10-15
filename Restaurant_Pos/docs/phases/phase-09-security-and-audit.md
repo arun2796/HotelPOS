@@ -234,6 +234,8 @@ branch `phase-09-security-and-audit`, reviewed against this document, and these 
 
 - **Protected core permissions (2026-10-15).** Each built-in role has a minimum set in `RolePermissionMap.CoreFor` (Contracts, shared by server and desktop): Manager keeps tables, menu view, orders (create, edit any, cancel any), billing (operate, void, refund) and reports; Waiter tables view, menu view, orders create; Kitchen menu view and kitchen operate; Cashier tables view, billing operate, shift operate. `UpdateRolePermissions` rejects a system role update that drops any of them (400 validation, message lists the missing keys); custom roles are free. `RolePermissionsDto.CorePermissions` carries the set; the Roles screen shows them checked and locked with a lock icon and the tooltip "Core permission for this system role". The screen also stopped treating every system role as read-only (only Admin is) and lists the Phase 13 to 16 permissions so a save no longer drops them.
 
+- **Configurable password rule (2026-10-15).** Stored in the existing admin settings store (no migration; `DbSeeder` adds missing keys): `PasswordMinLength` (8 to 100, enforced on save), `PasswordRequireLetter`, `PasswordRequireDigit`, `PasswordRequireUpperAndLower`, `PasswordRequireSymbol`, edited on the Settings screen and audited as `Settings.Updated`. Defaults equal the old rule (8 characters, letters and digits). `PasswordRules` (Contracts) evaluates and describes the rule; create-user, reset and change-password validators read it through `IPasswordPolicySource` and answer with the actual rule ("Password must be at least 12 characters and contain letters, digits and a symbol."). The keys are public settings, so the desktop reads them from `GET /api/settings` (no new endpoint): the user editor, reset prompt and change-password screen show the rule as a hint and check it client-side; if the server cannot be asked the client checks nothing and shows the server message. Login and approval tokens still only cap the length.
+
 **Found during Phase 10 (2026-10-14).** Deactivating a user revoked their refresh tokens, but the access token they
 already held kept working for up to an hour, and their hub connections stayed open. `AccessEnforcementMiddleware`
 (was `DeviceEnforcementMiddleware`) now refuses a deactivated user on every request with 403 `ACCOUNT_DISABLED`
@@ -248,7 +250,7 @@ Server
       with user and device, and admins can disable the user. Device binding (a per-terminal secret) can come with
       the Phase 10 installer.
 - [x] Protected core permission set for the non-Admin system roles (spec § 3), see § 14 (2026-10-15).
-- [ ] Password complexity configurable (fixed at letters + digits, minimum 8).
+- [x] Password complexity configurable, see § 14 (2026-10-15).
 - [x] Secrets in the repository: the PostgreSQL password left `appsettings.Development.json` and
       `tests/Shared/TestPostgres.cs` (now user-secrets and `HOTELPOS_TEST_POSTGRES`, see `docs/dev-setup.md`);
       `StaticSecurityChecksTests` fails on any committed connection-string password. Earlier commits still contain

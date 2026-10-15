@@ -59,6 +59,13 @@ public static class SettingKeys
     public const string AuditRetentionDays = "AuditRetentionDays";
     public const string LockoutMinutes = "LockoutMinutes";
 
+    // Password rule (Phase 9): minimum length (8 to 100) and which kinds of characters are required.
+    public const string PasswordMinLength = "PasswordMinLength";
+    public const string PasswordRequireLetter = "PasswordRequireLetter";
+    public const string PasswordRequireDigit = "PasswordRequireDigit";
+    public const string PasswordRequireUpperAndLower = "PasswordRequireUpperAndLower";
+    public const string PasswordRequireSymbol = "PasswordRequireSymbol";
+
     // Phase 14: print templates and PDFs.
     public const string UpiVpa = "UpiVpa";
     public const string UpiPayeeName = "UpiPayeeName";

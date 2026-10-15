@@ -142,7 +142,17 @@ public class ChangePasswordTests
     [InlineData("old-pass", "newpass1", "newpass1", true)]
     public void Validate_ChecksBeforeCallingTheServer(string current, string next, string confirm, bool valid)
     {
-        (ChangePasswordViewModel.Validate(current, next, confirm) is null).Should().Be(valid);
+        (ChangePasswordViewModel.Validate(current, next, confirm, PasswordRules.Default) is null).Should().Be(valid);
+    }
+
+    [Fact]
+    public void Validate_UsesTheConfiguredRule_AndLeavesTheCheckToTheServerWithoutOne()
+    {
+        var strict = new PasswordRules { MinLength = 12, RequireUpperAndLower = true, RequireSymbol = true };
+
+        ChangePasswordViewModel.Validate("old", "newpass1234", "newpass1234", strict).Should().Be(strict.Describe());
+        ChangePasswordViewModel.Validate("old", "Newpass-1234", "Newpass-1234", strict).Should().BeNull();
+        ChangePasswordViewModel.Validate("old", "short", "short", null).Should().BeNull();
     }
 }
 

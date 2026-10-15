@@ -3,6 +3,7 @@ using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Cqrs;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
+using HotelPOS.Application.Features.Security;
 using HotelPOS.Contracts.Security;
 using HotelPOS.Contracts.Users;
 using HotelPOS.Domain.Identity;
@@ -19,13 +20,18 @@ public sealed record CreateUserCommand(CreateUserRequest Input)
 public sealed class CreateUserRequestValidator : AbstractValidator<CreateUserRequest>
 {
     public CreateUserRequestValidator()
+        : this(null)
+    {
+    }
+
+    public CreateUserRequestValidator(IPasswordPolicySource? passwordPolicy)
     {
         RuleFor(x => x.Username)
             .NotEmpty()
             .Length(3, 50)
             .Matches("^[A-Za-z0-9._-]+$").WithMessage("Username may contain letters, digits, '.', '-' and '_' only.");
         RuleFor(x => x.DisplayName).NotEmpty().MaximumLength(100);
-        RuleFor(x => x.Password).ValidPassword();
+        RuleFor(x => x.Password).ValidPassword(passwordPolicy);
         RuleFor(x => x.Roles).ValidRoles();
     }
 }

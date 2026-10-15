@@ -3,6 +3,7 @@ using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Cqrs;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
+using HotelPOS.Application.Features.Security;
 using HotelPOS.Contracts.Security;
 using HotelPOS.Contracts.Users;
 using HotelPOS.Domain.Identity;
@@ -20,8 +21,13 @@ public sealed record ResetUserPasswordCommand(int Id, ResetPasswordRequest Input
 public sealed class ResetPasswordRequestValidator : AbstractValidator<ResetPasswordRequest>
 {
     public ResetPasswordRequestValidator()
+        : this(null)
     {
-        RuleFor(x => x.NewPassword).ValidPassword();
+    }
+
+    public ResetPasswordRequestValidator(IPasswordPolicySource? passwordPolicy)
+    {
+        RuleFor(x => x.NewPassword).ValidPassword(passwordPolicy);
     }
 }
 

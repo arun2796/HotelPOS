@@ -3,6 +3,7 @@ using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Cqrs;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
+using HotelPOS.Application.Features.Security;
 using HotelPOS.Application.Features.Users;
 using HotelPOS.Contracts.Auth;
 using HotelPOS.Domain.Identity;
@@ -16,9 +17,15 @@ public sealed record ChangePasswordCommand(ChangePasswordRequest Input) : IComma
 public sealed class ChangePasswordRequestValidator : AbstractValidator<ChangePasswordRequest>
 {
     public ChangePasswordRequestValidator()
+        : this(null)
+    {
+    }
+
+    public ChangePasswordRequestValidator(IPasswordPolicySource? passwordPolicy)
     {
         RuleFor(x => x.CurrentPassword).NotEmpty();
-        RuleFor(x => x.NewPassword).ValidPassword()
+        RuleFor(x => x.NewPassword).ValidPassword(passwordPolicy);
+        RuleFor(x => x.NewPassword)
             .NotEqual(x => x.CurrentPassword).WithMessage("The new password must be different from the current one.");
     }
 }
@@ -30,14 +37,16 @@ internal sealed class ChangePasswordHandler : ICommandHandler<ChangePasswordComm
     private readonly IAuditTrail _audit;
     private readonly ICurrentUser _currentUser;
     private readonly IClock _clock;
+    private readonly IPasswordPolicySource _policy;
 
-    public ChangePasswordHandler(IAppDbContext db, IPasswordHasher hasher, IAuditTrail audit, ICurrentUser currentUser, IClock clock)
+    public ChangePasswordHandler(IAppDbContext db, IPasswordHasher hasher, IAuditTrail audit, ICurrentUser currentUser, IClock clock, IPasswordPolicySource policy)
     {
         _db = db;
         _hasher = hasher;
         _audit = audit;
         _currentUser = currentUser;
         _clock = clock;
+        _policy = policy;
     }
 
     public async Task<Result> Handle(ChangePasswordCommand command, CancellationToken cancellationToken)
@@ -54,9 +63,10 @@ internal sealed class ChangePasswordHandler : ICommandHandler<ChangePasswordComm
             return AppErrors.Unauthenticated();
         }
 
-        if (!PasswordPolicy.MeetsComplexity(request.NewPassword))
+        var passwordProblem = (await _policy.GetAsync(cancellationToken)).Check(request.NewPassword);
+        if (passwordProblem is not null)
         {
-            return AppErrors.Validation(nameof(request.NewPassword).ToCamelCase(), "Password must be at least 8 characters long and contain both letters and digits.");
+            return AppErrors.Validation(nameof(request.NewPassword).ToCamelCase(), passwordProblem);
         }
 
         if (_hasher.Verify(user.PasswordHash, request.CurrentPassword) == PasswordCheck.Failed)

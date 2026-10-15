@@ -115,6 +115,35 @@ public sealed class SecurityViewModelTests
     }
 
     [Fact]
+    public async Task UsersViewModel_UsesThePasswordRuleFromTheServerSettings()
+    {
+        var usersApi = Substitute.For<IUsersApi>();
+        usersApi.ListAsync(Arg.Any<UserQuery>(), Arg.Any<CancellationToken>())
+            .Returns(ApiResult<PagedResult<UserDto>>.Ok(new PagedResult<UserDto> { Items = new List<UserDto>(), Page = 1, PageSize = 25 }));
+        usersApi.GetRolesAsync(Arg.Any<CancellationToken>())
+            .Returns(ApiResult<List<RoleDto>>.Ok(new List<RoleDto> { new() { Id = 1, Name = "Waiter" } }));
+        var systemApi = Substitute.For<ISystemApi>();
+        systemApi.GetPublicSettingsAsync(Arg.Any<CancellationToken>()).Returns(ApiResult<List<SettingDto>>.Ok(new List<SettingDto>
+        {
+            new() { Key = SettingKeys.PasswordMinLength, Value = "12", DataType = HotelPOS.Contracts.Enums.SettingDataType.Int },
+            new() { Key = SettingKeys.PasswordRequireSymbol, Value = "true", DataType = HotelPOS.Contracts.Enums.SettingDataType.Bool },
+        }));
+
+        var vm = new UsersViewModel(usersApi, Substitute.For<IDialogService>(), Substitute.For<INotificationService>(), systemApi);
+        await vm.OnNavigatedToAsync(null);
+
+        vm.Editor.PasswordHint.Should().Be("Password must be at least 12 characters and contain letters, digits and a symbol.");
+        vm.Editor.BeginCreate();
+        vm.Editor.Username = "waiter9";
+        vm.Editor.DisplayName = "Waiter Nine";
+        vm.Editor.Password = "secret123";
+        vm.Editor.Validate().Should().Be(vm.Editor.PasswordHint);
+        vm.Editor.Password = "secret-123456";
+        vm.Editor.Roles.First().IsSelected = true;
+        vm.Editor.Validate().Should().BeNull();
+    }
+
+    [Fact]
     public async Task DevicesViewModel_Loads_TogglesActive_AndHandlesRealtimeStatusUpdate()
     {
         var devicesApi = Substitute.For<IDevicesApi>();
@@ -291,7 +320,7 @@ public sealed class SecurityViewModelTests
         dialogs.ConfirmAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>())
             .Returns(true);
 
-        var vm = new UsersViewModel(usersApi, dialogs, notifications);
+        var vm = new UsersViewModel(usersApi, dialogs, notifications, Substitute.For<ISystemApi>());
         await vm.OnNavigatedToAsync(null);
 
         vm.Users.Should().HaveCount(1);

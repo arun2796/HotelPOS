@@ -55,6 +55,7 @@ public static class DependencyInjection
         services.AddScoped<AuthTokens>();
         services.AddScoped<UserAdministration>();
         services.AddScoped<RolePermissions>();
+        services.AddScoped<IPasswordPolicySource, PasswordPolicySource>();
         services.AddScoped<ApprovalTokens>();
         services.AddScoped<DeviceRegistry>();
         services.AddScoped<FloorSections>();

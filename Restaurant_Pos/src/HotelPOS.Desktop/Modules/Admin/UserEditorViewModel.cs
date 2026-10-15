@@ -24,6 +24,17 @@ public sealed partial class RoleOptionViewModel : ObservableObject
 
 public sealed partial class UserEditorViewModel : ObservableObject
 {
+    // The admin-configured password rule; null when the server could not be asked (the server then decides and explains).
+    private PasswordRules? _rules;
+
+    public string PasswordHint => _rules?.Describe() ?? "Passwords must meet the password policy set in Settings.";
+
+    public void SetPasswordRules(PasswordRules? rules)
+    {
+        _rules = rules;
+        OnPropertyChanged(nameof(PasswordHint));
+    }
+
     [ObservableProperty]
     private bool _isOpen;
 
@@ -120,9 +131,9 @@ public sealed partial class UserEditorViewModel : ObservableObject
             return "Enter the name shown on screens and tickets.";
         }
 
-        if (IsNew && !PasswordPolicy.MeetsComplexity(Password))
+        if (IsNew && _rules is not null && !_rules.IsMet(Password))
         {
-            return $"Password must be at least {PasswordPolicy.MinLength} characters and contain both letters and numbers.";
+            return _rules.Describe();
         }
 
         return SelectedRoles.Count == 0 ? "Select at least one role." : null;
