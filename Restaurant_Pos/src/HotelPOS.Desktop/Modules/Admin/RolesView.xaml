@@ -22,7 +22,7 @@
       </Grid.ColumnDefinitions>
       <StackPanel>
         <TextBlock Text="Roles &amp; Permissions Matrix" Style="{StaticResource Text.Title}" FontSize="20" />
-        <TextBlock Text="Configure fine-grained access policies per role. Admin permissions are fixed and protected."
+        <TextBlock Text="Configure fine-grained access policies per role. Admin permissions are fixed; locked permissions are the core of each system role."
                    Style="{StaticResource Text.Caption}" FontSize="13" Margin="0,4,0,0" />
       </StackPanel>
       <Button Grid.Column="1" Command="{Binding RefreshCommand}" ToolTip="Reload from server">
@@ -115,8 +115,14 @@
                       </Grid.ColumnDefinitions>
                       <TextBlock Text="{Binding Group}" Style="{StaticResource Text.Caption}" FontWeight="SemiBold" VerticalAlignment="Center" />
                       <TextBlock Grid.Column="1" Text="{Binding Label}" Style="{StaticResource Text.Body}" VerticalAlignment="Center" />
-                      <CheckBox Grid.Column="2" IsChecked="{Binding IsGranted}" IsEnabled="{Binding IsReadOnly, Converter={StaticResource InverseBool}}"
-                                VerticalAlignment="Center" Margin="12,0,0,0" />
+                      <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center"
+                                  ToolTip="{Binding LockTooltip}" ToolTipService.ShowOnDisabled="True">
+                        <TextBlock Text="&#xE72E;" Style="{StaticResource Text.Icon}" FontSize="13" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource Brush.TextSecondary}"
+                                   Visibility="{Binding IsCore, Converter={StaticResource BoolToVisibility}}" />
+                        <CheckBox IsChecked="{Binding IsGranted}" IsEnabled="{Binding IsReadOnly, Converter={StaticResource InverseBool}}"
+                                  VerticalAlignment="Center" Margin="8,0,0,0" ToolTipService.ShowOnDisabled="True" />
+                      </StackPanel>
                     </Grid>
                   </Border>
                 </DataTemplate>

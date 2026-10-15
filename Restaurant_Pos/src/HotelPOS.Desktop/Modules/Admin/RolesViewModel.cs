@@ -11,19 +11,24 @@ namespace HotelPOS.Desktop.Modules.Admin;
 
 public sealed partial class PermissionItemViewModel : ObservableObject
 {
-    public PermissionItemViewModel(string key, string group, string label, bool isGranted, bool isReadOnly)
+    public PermissionItemViewModel(string key, string group, string label, bool isGranted, bool isReadOnly, bool isCore = false)
     {
         Key = key;
         Group = group;
         Label = label;
         _isGranted = isGranted;
         IsReadOnly = isReadOnly;
+        IsCore = isCore;
     }
 
     public string Key { get; }
     public string Group { get; }
     public string Label { get; }
     public bool IsReadOnly { get; }
+
+    // A core permission of a system role: shown checked and locked (the server refuses to remove it).
+    public bool IsCore { get; }
+    public string? LockTooltip => IsCore ? "Core permission for this system role" : null;
 
     [ObservableProperty]
     private bool _isGranted;
@@ -54,7 +59,7 @@ public sealed partial class RolesViewModel : ViewModelBase, INavigationAware, IR
     private bool _forceRelogin = true;
 
     public bool HasSelection => SelectedRole is not null;
-    public bool IsAdminRole => SelectedRole?.IsSystem == true;
+    public bool IsAdminRole => string.Equals(SelectedRole?.RoleName, HotelPOS.Contracts.Security.Roles.Admin, StringComparison.OrdinalIgnoreCase);
     public bool CanEdit => HasSelection && !IsAdminRole;
 
     public Task OnNavigatedToAsync(object? parameter) => LoadAsync();
@@ -68,7 +73,8 @@ public sealed partial class RolesViewModel : ViewModelBase, INavigationAware, IR
         if (value is null) return;
 
         var granted = new HashSet<string>(value.Permissions, StringComparer.OrdinalIgnoreCase);
-        var isReadOnly = value.IsSystem;
+        var isAdmin = IsAdminRole;
+        var core = new HashSet<string>(value.CorePermissions, StringComparer.OrdinalIgnoreCase);
 
         var allDefinitions = GetStandardPermissionDefinitions();
         foreach (var def in allDefinitions)
@@ -77,8 +83,9 @@ public sealed partial class RolesViewModel : ViewModelBase, INavigationAware, IR
                 def.Key,
                 def.Group,
                 def.Label,
-                granted.Contains(def.Key) || value.IsSystem,
-                isReadOnly));
+                granted.Contains(def.Key) || isAdmin || core.Contains(def.Key),
+                isAdmin || core.Contains(def.Key),
+                core.Contains(def.Key)));
         }
     }
 
@@ -157,6 +164,10 @@ public sealed partial class RolesViewModel : ViewModelBase, INavigationAware, IR
         (Permissions.BillingVoid, "Billing", "Void bills"),
         (Permissions.BillingRefund, "Billing", "Issue refunds for settled bills"),
 
+        (Permissions.ShiftOperate, "Cash", "Open and close own cash shift"),
+        (Permissions.ShiftManage, "Cash", "View and close any shift, set up the cash drawer"),
+        (Permissions.DayEndRun, "Cash", "Run the day-end close"),
+
         (Permissions.ReportsView, "Management", "View sales and operational reports"),
         (Permissions.AuditView, "Management", "View system audit trail"),
         (Permissions.BackupManage, "Management", "Create and restore database backups"),
@@ -165,6 +176,12 @@ public sealed partial class RolesViewModel : ViewModelBase, INavigationAware, IR
         (Permissions.RolesManage, "Administration", "Edit roles and assign permissions"),
         (Permissions.SettingsManage, "Administration", "Modify restaurant system settings"),
         (Permissions.DevicesManage, "Administration", "Manage authorized terminals and stations"),
+        (Permissions.ServerManage, "Administration", "Server status, update hosting"),
+        (Permissions.LicenseManage, "Administration", "Manage the licence"),
+        (Permissions.ImportRun, "Administration", "Import data from other systems"),
+
+        (Permissions.GstView, "GST", "View GST reports"),
+        (Permissions.PeriodClose, "GST", "Close and reopen GST periods"),
     };
 }
 

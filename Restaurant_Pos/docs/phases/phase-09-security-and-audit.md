@@ -232,6 +232,8 @@ branch `phase-09-security-and-audit`, reviewed against this document, and these 
   only with an interpolated literal). `dotnet list package --vulnerable` found CVE-2026-70159 (SignalR DoS) in
   `Microsoft.AspNetCore.SignalR.Common` 8.0.31; ASP.NET Core packages raised to 8.0.32, scan clean.
 
+- **Protected core permissions (2026-10-15).** Each built-in role has a minimum set in `RolePermissionMap.CoreFor` (Contracts, shared by server and desktop): Manager keeps tables, menu view, orders (create, edit any, cancel any), billing (operate, void, refund) and reports; Waiter tables view, menu view, orders create; Kitchen menu view and kitchen operate; Cashier tables view, billing operate, shift operate. `UpdateRolePermissions` rejects a system role update that drops any of them (400 validation, message lists the missing keys); custom roles are free. `RolePermissionsDto.CorePermissions` carries the set; the Roles screen shows them checked and locked with a lock icon and the tooltip "Core permission for this system role". The screen also stopped treating every system role as read-only (only Admin is) and lists the Phase 13 to 16 permissions so a save no longer drops them.
+
 **Found during Phase 10 (2026-10-14).** Deactivating a user revoked their refresh tokens, but the access token they
 already held kept working for up to an hour, and their hub connections stayed open. `AccessEnforcementMiddleware`
 (was `DeviceEnforcementMiddleware`) now refuses a deactivated user on every request with 403 `ACCOUNT_DISABLED`
@@ -245,7 +247,7 @@ Server
       **Accepted v1 risk (decided 2026-10-14):** a valid user account is still required, every action is audited
       with user and device, and admins can disable the user. Device binding (a per-terminal secret) can come with
       the Phase 10 installer.
-- [ ] Protected core permission set for the non-Admin system roles (spec § 3); today only Admin is protected.
+- [x] Protected core permission set for the non-Admin system roles (spec § 3), see § 14 (2026-10-15).
 - [ ] Password complexity configurable (fixed at letters + digits, minimum 8).
 - [x] Secrets in the repository: the PostgreSQL password left `appsettings.Development.json` and
       `tests/Shared/TestPostgres.cs` (now user-secrets and `HOTELPOS_TEST_POSTGRES`, see `docs/dev-setup.md`);

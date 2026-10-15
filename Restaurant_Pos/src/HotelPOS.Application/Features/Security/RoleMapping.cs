@@ -19,6 +19,7 @@ internal static class RoleMapping
             Description = role.Description,
             IsSystem = role.IsSystem,
             Permissions = permissions,
+            CorePermissions = role.IsSystem ? RolePermissionMap.CoreFor(role.Name) : Array.Empty<string>(),
         };
     }
 }

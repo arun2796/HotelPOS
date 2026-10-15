@@ -65,7 +65,17 @@ internal sealed class UpdateRolePermissionsHandler : ICommandHandler<UpdateRoleP
             .Distinct(StringComparer.Ordinal)
             .ToList();
 
-        var oldPerms = role.Permissions.Select(p => p.Permission).OrderBy(p => p).ToList();
+        // A built-in role keeps the minimum it needs to do its job; custom roles are free.
+        var missingCore = role.IsSystem
+            ? RolePermissionMap.CoreFor(role.Name).Except(validPermissions, StringComparer.Ordinal).ToList()
+            : new List<string>();
+        if (missingCore.Count > 0)
+        {
+            return AppErrors.Validation(nameof(request.Permissions),
+                $"The {role.Name} role must keep its core permissions: {string.Join(", ", missingCore)}.");
+        }
+
+        var oldPerms =role.Permissions.Select(p => p.Permission).OrderBy(p => p).ToList();
 
         var currentRolePermissions = await _db.RolePermissions
             .Where(rp => rp.RoleId == roleId)

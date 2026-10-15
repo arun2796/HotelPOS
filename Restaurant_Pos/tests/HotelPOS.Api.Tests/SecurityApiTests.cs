@@ -451,10 +451,20 @@ public class SecurityApiTests : IClassFixture<ApiFactory>
 
         var tempLogin = await _factory.LoginAsync(tempUser, "Password123");
 
+        // A system role cannot lose its core permissions
+        var stripCoreRes = await admin.PutAsJsonAsync($"/api/roles/{kitchenRole.RoleId}/permissions", new UpdateRolePermissionsRequest
+        {
+            Permissions = new List<string> { Permissions.MenuView },
+        }, PosJson.Options);
+        stripCoreRes.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var stripBody = await stripCoreRes.ReadEnvelopeAsync<object>();
+        stripBody.Errors.Single().Code.Should().Be(ErrorCodes.ValidationError);
+        stripBody.Errors.Single().Message.Should().Contain(Permissions.KitchenOperate);
+
         // Update Kitchen permissions with ForceRelogin = true
         var updateKitchenRes = await admin.PutAsJsonAsync($"/api/roles/{kitchenRole.RoleId}/permissions", new UpdateRolePermissionsRequest
         {
-            Permissions = new List<string> { Permissions.KitchenOperate },
+            Permissions = new List<string> { Permissions.KitchenOperate, Permissions.MenuView },
             ForceRelogin = true,
         }, PosJson.Options);
         updateKitchenRes.StatusCode.Should().Be(HttpStatusCode.OK);

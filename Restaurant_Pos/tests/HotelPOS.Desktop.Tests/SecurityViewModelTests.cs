@@ -85,6 +85,36 @@ public sealed class SecurityViewModelTests
     }
 
     [Fact]
+    public async Task RolesViewModel_ShowsCorePermissionsOfSystemRoleCheckedAndLocked()
+    {
+        var usersApi = Substitute.For<IUsersApi>();
+        var waiter = new RolePermissionsDto
+        {
+            RoleId = 3,
+            RoleName = "Waiter",
+            IsSystem = true,
+            Permissions = RolePermissionMap.For(new[] { "Waiter" }),
+            CorePermissions = RolePermissionMap.CoreFor("Waiter"),
+        };
+        usersApi.ListAllRolePermissionsAsync(Arg.Any<CancellationToken>())
+            .Returns(ApiResult<List<RolePermissionsDto>>.Ok(new List<RolePermissionsDto> { waiter }));
+
+        var vm = new RolesViewModel(usersApi, Substitute.For<IDialogService>(), Substitute.For<INotificationService>());
+        await vm.OnNavigatedToAsync(null);
+
+        // A system role other than Admin stays editable, but its core permissions are locked on.
+        vm.CanEdit.Should().BeTrue();
+        var orders = vm.PermissionItems.Single(p => p.Key == Permissions.OrdersCreate);
+        orders.IsGranted.Should().BeTrue();
+        orders.IsReadOnly.Should().BeTrue();
+        orders.LockTooltip.Should().Be("Core permission for this system role");
+
+        var billing = vm.PermissionItems.Single(p => p.Key == Permissions.BillingOperate);
+        billing.IsReadOnly.Should().BeFalse();
+        billing.LockTooltip.Should().BeNull();
+    }
+
+    [Fact]
     public async Task DevicesViewModel_Loads_TogglesActive_AndHandlesRealtimeStatusUpdate()
     {
         var devicesApi = Substitute.For<IDevicesApi>();

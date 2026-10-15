@@ -63,6 +63,9 @@ public sealed record RolePermissionsDto
     public string? Description { get; init; }
     public bool IsSystem { get; init; }
     public IReadOnlyList<string> Permissions { get; init; } = Array.Empty<string>();
+
+    // Permissions a system role cannot lose (shown locked in the editor); empty for custom roles.
+    public IReadOnlyList<string> CorePermissions { get; init; } = Array.Empty<string>();
 }
 
 public sealed record UpdateRolePermissionsRequest
