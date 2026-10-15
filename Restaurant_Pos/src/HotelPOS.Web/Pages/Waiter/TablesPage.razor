@@ -1,7 +1,15 @@
 @page "/tables"
 @attribute [Authorize]
+@implements IDisposable
+@using HotelPOS.Contracts.Floor
+@using HotelPOS.Contracts.Realtime
 @inject WebAuthState Auth
+@inject WaiterApi Api
+@inject WebRealtimeClient Realtime
+@inject DraftStore Drafts
 @inject ShellState Shell
+@inject ToastService Toasts
+@inject NavigationManager Navigation
 
 <PageTitle>Tables · HotelPOS</PageTitle>
 
@@ -11,9 +19,156 @@
 }
 else
 {
-    <div class="empty">Tables are built in step 18.3.</div>
+    <div class="row" style="gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:4px">
+        <button class="chip-btn @(_sectionId is null ? "on" : null)" @onclick="() => _sectionId = null">All</button>
+        @foreach (var sec in Sections)
+        {
+            <button class="chip-btn @(_sectionId == sec.Id ? "on" : null)" @onclick="() => _sectionId = sec.Id">@sec.Name</button>
+        }
+    </div>
+
+    @if (_error is not null)
+    {
+        <div class="banner error">@_error <button class="btn ghost" @onclick="RefreshAsync">Retry</button></div>
+    }
+    else if (_map is null)
+    {
+        <div class="empty">Loading tables…</div>
+    }
+    else
+    {
+        <div class="muted small" style="margin-bottom:8px">@Summary</div>
+        @foreach (var sec in VisibleSections)
+        {
+            @if (_sectionId is null)
+            {
+                <h2 style="margin:12px 0 8px">@sec.Name</h2>
+            }
+            <div class="tiles">
+                @foreach (var table in sec.Tables.Where(t => t.IsActive))
+                {
+                    <button class="tile st-@table.Status.ToString().ToLowerInvariant()" @onclick="() => Open(table)">
+                        <div class="row between">
+                            <span class="tile-code">@table.Code</span>
+                            @if (Elapsed(table) is { } elapsed)
+                            {
+                                <span class="tile-time">@elapsed</span>
+                            }
+                        </div>
+                        <div class="tile-status">@StatusText(table)</div>
+                        <div class="tile-sub">@SubText(table)</div>
+                        @if (_draftTables.Contains(table.Id))
+                        {
+                            <span class="chip warning" style="margin-top:6px">Draft on this phone</span>
+                        }
+                    </button>
+                }
+            </div>
+        }
+        <div class="legend muted small">
+            <span class="dot st-available"></span>Available <span class="dot st-occupied"></span>Occupied <span class="dot st-ordering"></span>Ordering
+            <span class="dot st-preparing"></span>Preparing <span class="dot st-ready"></span>Ready <span class="dot st-billing"></span>Billing <span class="dot st-outofservice"></span>Out of service
+        </div>
+    }
 }
 
 @code {
-    protected override void OnInitialized() => Shell.Set("Tables", "Live table map");
+    private TableMapDto? _map;
+    private string? _error;
+    private int? _sectionId;
+    private TimeSpan _clockOffset;
+    private HashSet<int> _draftTables = new();
+    private readonly List<IDisposable> _subscriptions = new();
+    private CancellationTokenSource? _debounce;
+
+    private IEnumerable<TableMapSectionDto> Sections => (_map?.Sections ?? Array.Empty<TableMapSectionDto>()).Where(s => s.IsActive).OrderBy(s => s.SortOrder);
+    private IEnumerable<TableMapSectionDto> VisibleSections => Sections.Where(s => _sectionId is null || s.Id == _sectionId);
+
+    private string Summary
+    {
+        get
+        {
+            var tables = Sections.SelectMany(s => s.Tables).Where(t => t.IsActive).ToList();
+            var free = tables.Count(t => t.Status == TableStatus.Available);
+            var inUse = tables.Count(t => t.Status is not TableStatus.Available and not TableStatus.OutOfService);
+            return $"{free} available · {inUse} in use · {tables.Count} tables";
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Shell.Set("Tables", "Live table map");
+        await Realtime.StartAsync();
+        foreach (var name in new[] { HubEvents.TableStatusChanged, HubEvents.OrderUpdated, HubEvents.OrderCancelled, HubEvents.BillUpdated,
+                                     HubEvents.KitchenTicketUpdated, HubEvents.OrderReady, HubEvents.OrderAccepted, HubEvents.OrderPreparing, HubEvents.OrderServed, HubEvents.PaymentCompleted })
+        {
+            _subscriptions.Add(Realtime.Subscribe<System.Text.Json.JsonElement>(name, _ => ScheduleRefresh()));
+        }
+
+        Realtime.Reconnected += RefreshAsync;
+        await RefreshAsync();
+    }
+
+    private async Task RefreshAsync()
+    {
+        var result = await Api.GetTableMapAsync();
+        if (result.Success && result.Data is { } map)
+        {
+            _map = map;
+            _clockOffset = map.ServerTimeUtc - DateTime.UtcNow;
+            _error = null;
+        }
+        else if (_map is null)
+        {
+            _error = result.Message;
+        }
+        else
+        {
+            Toasts.Error(result.Message);
+        }
+
+        _draftTables = (await Drafts.TablesWithDraftsAsync()).ToHashSet();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    // Several events arrive for one change; one refresh a quarter second later is enough.
+    private void ScheduleRefresh()
+    {
+        _debounce?.Cancel();
+        var cts = _debounce = new CancellationTokenSource();
+        _ = Task.Delay(250, cts.Token).ContinueWith(t => { if (!t.IsCanceled) { _ = InvokeAsync(RefreshAsync); } }, TaskScheduler.Default);
+    }
+
+    private void Open(TableDto table) => Navigation.NavigateTo($"tables/{table.Id}");
+
+    private string? Elapsed(TableDto table)
+    {
+        if (table.OccupiedAtUtc is not { } since)
+        {
+            return null;
+        }
+
+        var span = DateTime.UtcNow + _clockOffset - since;
+        return span.TotalHours >= 1 ? $"{(int)span.TotalHours} h {span.Minutes} min" : $"{Math.Max(0, (int)span.TotalMinutes)} min";
+    }
+
+    private static string StatusText(TableDto table) => table.Status switch
+    {
+        TableStatus.Available => "Available",
+        TableStatus.OutOfService => "Out of service",
+        var s => table.CurrentOrderNumber is { } n ? $"{s} · #{n}" : s.ToString(),
+    };
+
+    private static string SubText(TableDto table) =>
+        table.GuestCount is { } guests ? $"{guests} / {table.Capacity} guests" : $"{table.Capacity} seats";
+
+    public void Dispose()
+    {
+        Realtime.Reconnected -= RefreshAsync;
+        _debounce?.Cancel();
+        foreach (var subscription in _subscriptions)
+        {
+            subscription.Dispose();
+        }
+    }
 }

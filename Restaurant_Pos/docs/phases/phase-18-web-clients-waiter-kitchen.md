@@ -214,3 +214,22 @@ _(filled per step)_
   `/api/**`, `/hubs/**`, other paths are not caught). The test host uses a stand-in web root (`TestWebRoot`) because a
   redirected OutDir has no static-web-assets manifest; framework-file serving is covered by the manual demo and publish.
 - Open for 18.3/18.4: real pages behind `/tables`, `/my-orders`, `/kitchen`, `/kitchen/completed`, `/kitchen/station`.
+
+### 18.3 Waiter screens (2026-10-15)
+
+- `Services/WaiterApi.cs`: the existing routes only — `api/tables` (map), `api/tables/{id}` (+ `occupy`, `release`),
+  `api/menu` (cached until `MenuChanged`), `api/orders` (create with `Submit = true`, `{id}/items` append, `serve`,
+  `cancel`, `request-bill`), `api/orders/active`, `api/orders/{id}`. Writes that the desktop sends with an
+  Idempotency-Key send one here too.
+- `Services/OrderComposer.cs`: the cart and its rules as pure code (line merge by item + options + note, quantity and
+  guests 1–99, notes ≤ 500, option-group Min/Max wording and checks, draft round-trip, `OrderItemInput` output).
+- Pages: `Tables` (section chips, coloured tiles with the desktop legend's meanings, elapsed time from the server clock,
+  "Draft on this phone" badge; refreshes on the same events as the desktop map, debounced), `Table details` (occupy
+  with a guests stepper, order lines with ticket chips, and the desktop's action rules: New/Resume order, Add items,
+  Served, Request bill, Release, Cancel with reason), `Order builder` (category chips, food-image cards with SOLD OUT,
+  options bottom sheet, quick notes, cart with steppers, guests, Save draft, Send; the pending key is stored in the
+  draft so a retry after a reload reuses it; definite refusals spend the key, unknown outcomes keep it), `My orders`
+  (own active orders, Ready first). All pages are permission-gated from the server's `/me`.
+- Styles appended to `app.css` (tiles, item cards, cart, sheets, steppers); 4:3 picture cards match Phase 17.
+- Tests: `OrderComposerTests` (9 cases) — total web tests 16. Razor lessons: no `section` loop variable, no `>` or
+  nested quotes inside inline attribute expressions, lambda parameters must not be `_` when the body discards.
