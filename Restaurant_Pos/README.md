@@ -40,6 +40,7 @@ PostgreSQL is the single source of truth.
 | Phase 14 – Templates, PDF & Excel      | In progress  |
 | Phase 15 – GST & Period Close          | In progress  |
 | Phase 16 – Licensing, Updates & Import | In progress  |
+| Phase 17 – Enterprise UI Refresh | Not started  |
 
 Update this table (and `docs/phases/README.md`) when a phase starts or finishes.
 
@@ -76,7 +77,7 @@ Development sign-in: `admin` / `Admin@123` (must change it), or `manager1`, `wai
 | [docs/dev-setup.md](docs/dev-setup.md) | Build, run and test on a development PC; release build and load test |
 | [docs/ops/](docs/ops/01-installation.md) | For venue technicians: installation, LAN and firewall, backup and recovery, upgrade, troubleshooting, daily operations, go-live checklist |
 | [docs/phases/README.md](docs/phases/README.md) | Roadmap and phase index |
-| [docs/phases/phase-01-foundation.md](docs/phases/phase-01-foundation.md) … [phase-16](docs/phases/phase-16-licensing-updates-import.md) | One document per phase |
+| [docs/phases/phase-01-foundation.md](docs/phases/phase-01-foundation.md) … [phase-17](docs/phases/phase-17-enterprise-ui-refresh.md) | One document per phase |
 
 ## Golden rules (short form)
 
