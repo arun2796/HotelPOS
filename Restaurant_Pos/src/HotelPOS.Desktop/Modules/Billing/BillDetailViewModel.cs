@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Billing;
 using HotelPOS.Contracts.Common;
+using HotelPOS.Contracts.Customers;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Gst;
 using HotelPOS.Contracts.Print;
@@ -41,6 +42,7 @@ public sealed record AmountRow(string Label, string Amount);
 public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAware, IRefreshable, IDisposable
 {
     private static readonly TimeSpan ClaimRefresh = TimeSpan.FromMinutes(2);
+    private static readonly TimeSpan SearchDelay = TimeSpan.FromMilliseconds(250);
 
     private readonly IBillingApi _billingApi;
     private readonly ISystemApi _systemApi;
@@ -50,6 +52,10 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
     private readonly INotificationService _notifications;
     private readonly IDocumentPrinter _printer;
     private readonly ICashDrawer? _cashDrawer;
+    private readonly ICustomersApi? _customers;
+    private CustomerDto? _picked;
+    private bool _settingSearch;
+    private CancellationTokenSource? _searchPause;
     private readonly bool _isManager;
     private readonly List<IDisposable> _subscriptions = new();
     private IReadOnlyList<PaymentMethodDto> _methods = Array.Empty<PaymentMethodDto>();
@@ -65,8 +71,10 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
         INotificationService notifications,
         IAuthSession session,
         IDocumentPrinter printer,
-        ICashDrawer? cashDrawer = null)
+        ICashDrawer? cashDrawer = null,
+        ICustomersApi? customers = null)
     {
+        _customers = customers;
         _printer = printer;
         _cashDrawer = cashDrawer;
         _billingApi = billingApi;
@@ -83,7 +91,7 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
     [NotifyPropertyChangedFor(nameof(Title), nameof(Subtitle), nameof(Lines), nameof(SubtotalText), nameof(HasDiscount), nameof(DiscountLabel),
         nameof(DiscountText), nameof(TaxRows), nameof(HasRoundOff), nameof(RoundOffText), nameof(GrandTotalText), nameof(HasPayments),
         nameof(PaymentRows), nameof(PaidText), nameof(BalanceText), nameof(IsHeldByOther), nameof(HeldByText), nameof(CanEdit), nameof(CanPay),
-        nameof(CanFinalize), nameof(FinalizeText), nameof(CanReopen), nameof(CanVoid), nameof(CanTakeOver), nameof(CustomerText), nameof(StatusText),
+        nameof(CanFinalize), nameof(FinalizeText), nameof(CanReopen), nameof(CanVoid), nameof(CanTakeOver), nameof(CustomerText), nameof(CanClearCustomer), nameof(StatusText),
         nameof(InvoiceTitle))]
     private BillDetailDto? _bill;
 
@@ -148,6 +156,132 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
             CustomerStateCode = state;
         }
     }
+
+    // The customer picker: a search over the customer list. Picking fills the fields below (and the GSTIN panel with
+    // them); the server then copies the same customer onto the bill. Editing a filled field afterwards makes it a
+    // one-off change for this bill, so the picked customer is no longer sent.
+    public ObservableCollection<CustomerDto> CustomerMatches { get; } = new();
+
+    public bool HasCustomerPicker => _customers is not null;
+
+    public bool HasCustomerMatches => CustomerMatches.Count > 0;
+
+    public bool HasNoCustomerMatches => !string.IsNullOrWhiteSpace(CustomerSearch) && CustomerMatches.Count == 0;
+
+    public bool CanClearCustomer => Bill is { CustomerName: not null } or { CustomerGstin: not null };
+
+    [ObservableProperty]
+    private string _customerSearch = string.Empty;
+
+    [ObservableProperty]
+    private string? _pickedCustomerName;
+
+    partial void OnCustomerSearchChanged(string value)
+    {
+        if (!_settingSearch)
+        {
+            _ = SearchAfterPauseAsync();
+        }
+    }
+
+    private async Task SearchAfterPauseAsync()
+    {
+        _searchPause?.Cancel();
+        var pause = _searchPause = new CancellationTokenSource();
+        try
+        {
+            await Task.Delay(SearchDelay, pause.Token);
+            await SearchCustomersAsync(pause.Token);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    // The first few customers by name when the search is empty, so the cashier can pick without typing.
+    public async Task SearchCustomersAsync(CancellationToken cancellationToken = default)
+    {
+        if (_customers is null)
+        {
+            return;
+        }
+
+        var result = await _customers.SearchAsync(new CustomerQuery
+        {
+            Search = string.IsNullOrWhiteSpace(CustomerSearch) ? null : CustomerSearch.Trim(),
+            PageSize = CustomerLimits.PickerPageSize,
+        }, cancellationToken);
+        if (!result.Success || result.Data is null || cancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
+
+        CustomerMatches.Clear();
+        foreach (var customer in result.Data.Items)
+        {
+            CustomerMatches.Add(customer);
+        }
+
+        OnPropertyChanged(nameof(HasCustomerMatches));
+        OnPropertyChanged(nameof(HasNoCustomerMatches));
+    }
+
+    [RelayCommand]
+    private void PickCustomer(CustomerDto? customer)
+    {
+        if (customer is null)
+        {
+            return;
+        }
+
+        _picked = customer;
+        PickedCustomerName = customer.Name;
+        CustomerName = BillFieldName(customer);
+        CustomerPhone = customer.Phone ?? string.Empty;
+        CustomerLegalName = customer.LegalName ?? string.Empty;
+        CustomerStateCode = customer.StateCode ?? string.Empty;
+        CustomerGstin = customer.Gstin ?? string.Empty;
+        PanelError = null;
+        ResetSearch();
+    }
+
+    // Takes the customer off the bill at once (the same save as emptying every field).
+    [RelayCommand]
+    private async Task ClearCustomerAsync()
+    {
+        if (Bill is null)
+        {
+            return;
+        }
+
+        _picked = null;
+        PickedCustomerName = null;
+        CustomerName = CustomerPhone = CustomerGstin = CustomerLegalName = CustomerStateCode = string.Empty;
+        ResetSearch();
+        await SaveCustomerAsync();
+    }
+
+    private void ResetSearch()
+    {
+        _settingSearch = true;
+        CustomerSearch = string.Empty;
+        _settingSearch = false;
+        CustomerMatches.Clear();
+        OnPropertyChanged(nameof(HasCustomerMatches));
+        OnPropertyChanged(nameof(HasNoCustomerMatches));
+    }
+
+    // The bill's name column is shorter than the customer list's.
+    private static string BillFieldName(CustomerDto customer) =>
+        customer.Name.Length > CustomerLimits.NameMaxLength ? customer.Name[..CustomerLimits.NameMaxLength] : customer.Name;
+
+    private bool PickedStillMatchesTheFields() =>
+        _picked is { } c
+        && CustomerName == BillFieldName(c)
+        && CustomerPhone == (c.Phone ?? string.Empty)
+        && CustomerGstin == (c.Gstin ?? string.Empty)
+        && CustomerLegalName == (c.LegalName ?? string.Empty)
+        && CustomerStateCode == (c.StateCode ?? Gstin.StateCode(c.Gstin) ?? string.Empty);
 
     [ObservableProperty]
     private string _changeDueText = string.Empty;
@@ -281,6 +415,9 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
         _heartbeat?.Cancel();
         _heartbeat?.Dispose();
         _heartbeat = null;
+        _searchPause?.Cancel();
+        _searchPause?.Dispose();
+        _searchPause = null;
     }
 
     public async Task RefreshAsync()
@@ -424,7 +561,11 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
         CustomerStateCode = Bill.CustomerStateCode ?? string.Empty;
         PlaceOfSupply = Bill.PlaceOfSupply ?? string.Empty;
         PanelError = null;
+        _picked = null;
+        PickedCustomerName = null;
+        ResetSearch();
         ActivePanel = BillPanel.Customer;
+        _ = SearchCustomersAsync();
     }
 
     [RelayCommand]
@@ -449,6 +590,7 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
             LegalName = CustomerLegalName,
             StateCode = CustomerStateCode,
             PlaceOfSupply = PlaceOfSupply,
+            CustomerId = PickedStillMatchesTheFields() ? _picked!.Id : null,
             RowVersion = Bill.RowVersion,
         };
         if (await RunAsync(() => _billingApi.SetCustomerAsync(Bill.Id, request), "Customer details saved.", inPanel: true))

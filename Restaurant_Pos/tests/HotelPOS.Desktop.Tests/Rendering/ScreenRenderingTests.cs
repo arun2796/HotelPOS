@@ -20,6 +20,7 @@ using HotelPOS.Desktop.Modules.Gst;
 using HotelPOS.Desktop.Modules.Licensing;
 using HotelPOS.Desktop.Services.Updates;
 using HotelPOS.Contracts.Common;
+using HotelPOS.Contracts.Customers;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Floor;
 using HotelPOS.Contracts.Menu;
@@ -31,6 +32,7 @@ using HotelPOS.Desktop.Modules.Reports;
 using HotelPOS.Desktop.Modules.Printing;
 using HotelPOS.Desktop.Services.Printing;
 using HotelPOS.Desktop.Modules.Billing;
+using HotelPOS.Desktop.Modules.Customers;
 using HotelPOS.Desktop.Modules.Orders;
 using HotelPOS.Desktop.Services.Orders;
 using HotelPOS.Desktop.Modules.MenuAdmin;
@@ -292,6 +294,12 @@ public class ScreenRenderingTests
             env.Dialogs.Current?.CancelCommand.Execute(null);
             await Dispatcher.Yield(DispatcherPriority.Background);
             bill.ClosePanelCommand.Execute(null);
+            bill.ShowCustomerCommand.Execute(null);
+            await bill.SearchCustomersAsync();
+            rendered.Add(await RenderScreenAsync(env, cashierShell, "71-bill-customer-picker"));
+            bill.PickCustomerCommand.Execute(bill.CustomerMatches.First(c => c.Gstin is not null));
+            rendered.Add(await RenderScreenAsync(env, cashierShell, "72-bill-customer-picked"));
+            bill.ClosePanelCommand.Execute(null);
             await bill.FinalizeCommand.ExecuteAsync(null);
             env.Notifications.Items.Clear();
             rendered.Add(await RenderScreenAsync(env, cashierShell, "34-invoice-preview"));
@@ -396,6 +404,12 @@ public class ScreenRenderingTests
             await import.ShowPreviewCommand.ExecuteAsync(null);
             rendered.Add(await RenderScreenAsync(env, setupShell, "70-import-preview"));
 
+            await setupShell.NavigateToAsync(ModuleRegistry.Customers, null);
+            var customers = (CustomersViewModel)setupShell.CurrentPage!;
+            customers.SelectedCustomer = customers.Customers.First();
+            customers.EditCommand.Execute(null);
+            rendered.Add(await RenderScreenAsync(env, setupShell, "73-customers"));
+
             await setupShell.NavigateToAsync(ModuleRegistry.Reports, null);
             rendered.Add(await RenderScreenAsync(env, setupShell, "40-reports-daily-sales"));
             ((ReportsViewModel)setupShell.CurrentPage!).SelectedReport = ReportsViewModel.Catalogue.Single(r => r.Key == ReportKeys.ItemSales);
@@ -446,7 +460,7 @@ public class ScreenRenderingTests
         }
 
         bindingErrors.Errors.Should().BeEmpty("every binding in the views must point at an existing property");
-        rendered.Should().HaveCount(70);
+        rendered.Should().HaveCount(73);
         bodyFontFiles.Should().Equal("inter-regular.ttf", "inter-medium.ttf", "inter-semibold.ttf", "inter-bold.ttf");
     }
 
@@ -662,6 +676,7 @@ public class ScreenRenderingTests
             services.AddSingleton(DemoGstApi());
             services.AddSingleton(DemoLicenseApi());
             services.AddSingleton(DemoImportApi());
+            services.AddSingleton(DemoCustomersApi());
             services.AddSingleton(Substitute.For<IUpdateService>());
             services.AddSingleton(Substitute.For<IAppLifetime>());
             services.AddSingleton<HotelPOS.Desktop.Services.Printing.IPrinterProfiles, HotelPOS.Desktop.Services.Printing.PrinterProfiles>();
@@ -1237,6 +1252,24 @@ public class ScreenRenderingTests
                 Close(1, BusinessDayStatus.Closed),
                 Close(2, BusinessDayStatus.Reopened),
             }));
+            return api;
+        }
+
+        private static ICustomersApi DemoCustomersApi()
+        {
+            var api = Substitute.For<ICustomersApi>();
+            var customers = new List<CustomerDto>
+            {
+                new() { Id = 1, Name = "Kumar Traders", Phone = "9876543210", Gstin = "33AABCT1332L1ZU", LegalName = "Kumar Traders Pvt Ltd", StateCode = "33", Address = "12 Anna Salai, Chennai", IsActive = true },
+                new() { Id = 2, Name = "Annapoorna Caterers", Phone = "9845011223", Gstin = "33AABCT1332L1ZU", IsActive = true },
+                new() { Id = 3, Name = "Meena Stores", Phone = "9000000001", IsActive = true },
+                new() { Id = 4, Name = "Ravi Kumar", Email = "ravi@example.com", IsActive = false },
+            };
+            api.SearchAsync(Arg.Any<CustomerQuery>(), Arg.Any<CancellationToken>()).Returns(call =>
+            {
+                var items = customers.Where(c => c.IsActive || call.Arg<CustomerQuery>().IncludeInactive).ToList();
+                return ApiResult<PagedResult<CustomerDto>>.Ok(new PagedResult<CustomerDto> { Items = items, Page = 1, PageSize = 25, TotalCount = items.Count });
+            });
             return api;
         }
 

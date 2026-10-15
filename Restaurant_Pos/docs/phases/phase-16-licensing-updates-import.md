@@ -173,11 +173,12 @@ test `DeactivatingDevice_ClosesItsOpenHubConnection...` timed out under load and
 - Machine id = Windows MachineGuid + processor id: reinstalling Windows or swapping the CPU needs a new key.
 - There was no customer master, so `Customers` was added for the customer import; nothing reads it yet (bills keep
   their own snapshot).
+- **Customer list and bill picker (2026-10-15).** `Customers` screen (Billing group, `billing.operate`, so Admin, Manager and Cashier; no new permission, so no migration for existing role rows): search by name, phone or GSTIN, add, edit, deactivate/activate. API in `docs/03-api-reference.md` § 3.13. The bill's Customer panel has a search box (first 8 customers when empty, 250 ms pause), tap a row to fill the name, phone, GSTIN, legal name and state (the GSTIN panel), and CLEAR CUSTOMER. A pick sends `customerId`; the server copies the customer onto the bill (the bill still stores its own snapshot, not a link, so later edits to the customer never change issued invoices). Editing a filled field first makes it a one-off change for that bill. Customer name is limited to 100 characters in the form (the bill's limit); imported longer names are cut on the bill. No row version on `Customers` (last save wins).
 - Phone numbers are stored as 10 national digits (+91 / leading 0 dropped) so re-imports match.
 - Undo only reverts the latest batch, once; created rows already used by orders are deactivated, not deleted.
 
 **Not done / deferred**
 
 - Manual demo (§ 11), including a real publish with Inno Setup and an actual terminal self-update.
-- Customer picker on the bill / customer list screen; the vendor UI (console only); edition-based feature gating.
+- The vendor UI (console only); edition-based feature gating.
 - The trial/licence can be reset by restoring an old database backup (documented in § 13).

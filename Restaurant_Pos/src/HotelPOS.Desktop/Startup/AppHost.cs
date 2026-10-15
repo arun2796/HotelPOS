@@ -61,6 +61,7 @@ public static class AppHost
         services.AddSingleton<IOrderSubmitter, OrderSubmitter>();
         services.AddSingleton<IKitchenApi, KitchenApi>();
         services.AddSingleton<IBillingApi, BillingApi>();
+        services.AddSingleton<ICustomersApi, CustomersApi>();
         services.AddSingleton<ICashApi, CashApi>();
         services.AddSingleton<IGstApi, GstApi>();
         services.AddSingleton<ILicenseApi, LicenseApi>();

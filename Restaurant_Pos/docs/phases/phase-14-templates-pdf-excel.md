@@ -40,7 +40,7 @@ DUPLICATE.
 - **Print log**: every print or PDF of a document is logged (type, id, copy number, printer or "PDF", terminal,
   user, time, result). Copy 1 is the original; later copies are DUPLICATE (`PrintedCopy` audit). Reprint screens show
   the history.
-- **Optional (stretch)**: e-mail an invoice PDF to the customer (SMTP settings, audited). Only if the owner asks.
+- **Not planned**: e-mail an invoice PDF to the customer (SMTP settings, audited); dropped by the owner on 2026-10-15.
 
 **Out**
 - Free-form drag-and-drop designers (the column/section model covers restaurant documents).
@@ -156,7 +156,7 @@ open a shift on the counter because Phase 13 requires one for cash.
 
 **Done after review.** Day End pack: `day-end-<date>.xlsx` (one sheet per report, same columns and totals as the CSVs) and `day-end-<date>.pdf` (letterhead, one page run per report) beside the CSVs, listed on the Day End result like them (`IPdfRenderer.Reports`). Audit Log: `format=pdf` on `api/admin/audit-logs/export` and a "Save PDF" button (same route, so the authorization matrix is unchanged). Fonts: Inter plus Noto Sans Tamil and Devanagari (OFL texts beside them) were already bundled and registered as fallbacks; `IndicFontTests` renders Tamil and Hindi names with missing-glyph checks on.
 
-**Deferred.** E-mail invoice; manual demo (§ 11) open.
+**Deferred.** Manual demo (§ 11) open. E-mail invoice is not planned (owner decision 2026-10-15).
 
 **Matrix lines added** (14): `api/print/*` copies, invoice/receipt PDFs and history, and `api/templates/*`
 (list, type, save, activate, preview, logo).

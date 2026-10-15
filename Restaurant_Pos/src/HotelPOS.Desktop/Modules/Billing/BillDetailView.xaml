@@ -4,6 +4,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:billing="clr-namespace:HotelPOS.Desktop.Modules.Billing"
+             xmlns:customers="clr-namespace:HotelPOS.Contracts.Customers;assembly=HotelPOS.Contracts"
              xmlns:contracts="clr-namespace:HotelPOS.Contracts.Billing;assembly=HotelPOS.Contracts"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance billing:BillDetailViewModel}"
@@ -267,6 +268,37 @@
               <StackPanel Visibility="{Binding IsCustomerPanel, Converter={StaticResource BoolToVisibility}}">
                 <TextBlock Text="Customer details" Style="{StaticResource Text.Title}" />
                 <TextBlock Text="Printed on the invoice. A GSTIN is needed for a business (B2B) invoice." Style="{StaticResource Text.Caption}" Margin="0,4,0,12" />
+                <StackPanel Visibility="{Binding HasCustomerPicker, Converter={StaticResource BoolToVisibility}}" Margin="0,0,0,16">
+                  <TextBlock Text="Find a customer" Style="{StaticResource Text.Label}" />
+                  <TextBox Text="{Binding CustomerSearch, UpdateSourceTrigger=PropertyChanged}" MinHeight="44"
+                           ToolTip="Search by name, phone or GSTIN" AutomationProperties.Name="Find a customer" />
+                  <ItemsControl ItemsSource="{Binding CustomerMatches}" Focusable="False" Margin="0,6,0,0"
+                                Visibility="{Binding HasCustomerMatches, Converter={StaticResource BoolToVisibility}}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate DataType="{x:Type customers:CustomerDto}">
+                        <Button Command="{Binding DataContext.PickCustomerCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                CommandParameter="{Binding}" HorizontalContentAlignment="Stretch" MinHeight="48" Margin="0,0,0,4"
+                                AutomationProperties.Name="{Binding Name}">
+                          <StackPanel>
+                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                            <StackPanel Orientation="Horizontal">
+                              <TextBlock Text="{Binding Phone}" Style="{StaticResource Text.Caption}" />
+                              <TextBlock Text="{Binding Gstin}" Style="{StaticResource Text.Caption}" Margin="12,0,0,0" />
+                            </StackPanel>
+                          </StackPanel>
+                        </Button>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <TextBlock Text="No customer matches. Fill in the details below, or add the customer on the Customers screen."
+                             Style="{StaticResource Text.Caption}" TextWrapping="Wrap" Margin="0,6,0,0"
+                             Visibility="{Binding HasNoCustomerMatches, Converter={StaticResource BoolToVisibility}}" />
+                  <TextBlock Text="{Binding PickedCustomerName, StringFormat='Picked: {0}'}" Style="{StaticResource Text.Caption}" Margin="0,6,0,0"
+                             Visibility="{Binding PickedCustomerName, Converter={StaticResource StringToVisibility}}" />
+                  <Button Content="CLEAR CUSTOMER" Command="{Binding ClearCustomerCommand}" HorizontalAlignment="Left" MinHeight="44" Margin="0,8,0,0"
+                          ToolTip="Take the customer off this bill"
+                          Visibility="{Binding CanClearCustomer, Converter={StaticResource BoolToVisibility}}" />
+                </StackPanel>
                 <TextBlock Text="Name" Style="{StaticResource Text.Label}" />
                 <TextBox Text="{Binding CustomerName, UpdateSourceTrigger=PropertyChanged}" MaxLength="100" Margin="0,0,0,12" />
                 <TextBlock Text="Phone" Style="{StaticResource Text.Label}" />

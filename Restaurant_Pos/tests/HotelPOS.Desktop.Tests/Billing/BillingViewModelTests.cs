@@ -1,6 +1,7 @@
 using HotelPOS.Contracts.Auth;
 using HotelPOS.Contracts.Billing;
 using HotelPOS.Contracts.Common;
+using HotelPOS.Contracts.Customers;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Desktop.Modules.Billing;
@@ -259,15 +260,92 @@ public sealed class BillingViewModelTests
         (sent!.Gstin, sent.LegalName, sent.StateCode, sent.PlaceOfSupply).Should().Be(("27AAPFU0939F1ZV", "Kumar Traders Pvt Ltd", "27", "33"));
         vm.Dispose();
     }
+    private static CustomerDto Asha => new() { Id = 7, Name = "Asha Traders", Phone = "9876543210", Gstin = "27AAPFU0939F1ZV", LegalName = "Asha Traders Pvt Ltd", IsActive = true };
 
-    private BillDetailViewModel DetailViewModel(string role = "Cashier", IDialogService? dialogs = null)
+    private static ICustomersApi CustomersFor(params CustomerDto[] customers)
+    {
+        var api = Substitute.For<ICustomersApi>();
+        api.SearchAsync(Arg.Any<CustomerQuery>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            var text = call.Arg<CustomerQuery>().Search;
+            var items = customers.Where(c => text is null || c.Name.Contains(text, StringComparison.OrdinalIgnoreCase)).ToList();
+            return ApiResult<PagedResult<CustomerDto>>.Ok(new PagedResult<CustomerDto> { Items = items, Page = 1, PageSize = 8, TotalCount = items.Count });
+        });
+        return api;
+    }
+
+    [Fact]
+    public async Task CustomerPicker_SearchesPicksAndFillsTheGstinPanel_ThenSendsThePickedCustomer()
+    {
+        var bill = Detail(BillStatus.Open, balance: 630m);
+        _api.GetAsync(9, Arg.Any<CancellationToken>()).Returns(ApiResult<BillDetailDto>.Ok(bill));
+        UpdateCustomerRequest? sent = null;
+        _api.SetCustomerAsync(9, Arg.Do<UpdateCustomerRequest>(r => sent = r), Arg.Any<CancellationToken>()).Returns(ApiResult<BillDetailDto>.Ok(bill));
+        var vm = DetailViewModel(customers: CustomersFor(Asha, new CustomerDto { Id = 8, Name = "Meena Stores", IsActive = true }));
+        await vm.OnNavigatedToAsync(9);
+        vm.ShowCustomerCommand.Execute(null);
+        await vm.SearchCustomersAsync();
+        vm.CustomerMatches.Should().HaveCount(2, "the first customers are offered before anything is typed");
+
+        vm.CustomerSearch = "asha";
+        await vm.SearchCustomersAsync();
+        vm.CustomerMatches.Should().ContainSingle().Which.Id.Should().Be(7);
+        vm.PickCustomerCommand.Execute(vm.CustomerMatches[0]);
+
+        (vm.CustomerName, vm.CustomerGstin, vm.CustomerLegalName, vm.CustomerStateCode).Should().Be(("Asha Traders", "27AAPFU0939F1ZV", "Asha Traders Pvt Ltd", "27"));
+        vm.PickedCustomerName.Should().Be("Asha Traders");
+        vm.CustomerMatches.Should().BeEmpty();
+        await vm.SaveCustomerCommand.ExecuteAsync(null);
+        sent!.CustomerId.Should().Be(7);
+
+        vm.CustomerName = "Asha Traders (Anna Nagar)";
+        await vm.SaveCustomerCommand.ExecuteAsync(null);
+        sent!.CustomerId.Should().BeNull("the cashier changed the details for this bill only");
+        vm.Dispose();
+    }
+
+    [Fact]
+    public async Task CustomerPicker_ClearTakesTheCustomerOffTheBill()
+    {
+        var bill = Detail(BillStatus.Open, balance: 630m) with { CustomerName = "Asha Traders", CustomerGstin = "27AAPFU0939F1ZV" };
+        _api.GetAsync(9, Arg.Any<CancellationToken>()).Returns(ApiResult<BillDetailDto>.Ok(bill));
+        UpdateCustomerRequest? sent = null;
+        _api.SetCustomerAsync(9, Arg.Do<UpdateCustomerRequest>(r => sent = r), Arg.Any<CancellationToken>())
+            .Returns(ApiResult<BillDetailDto>.Ok(bill with { CustomerName = null, CustomerGstin = null }));
+        var vm = DetailViewModel(customers: CustomersFor(Asha));
+        await vm.OnNavigatedToAsync(9);
+        vm.ShowCustomerCommand.Execute(null);
+        vm.CustomerName.Should().Be("Asha Traders");
+        vm.CanClearCustomer.Should().BeTrue();
+
+        await vm.ClearCustomerCommand.ExecuteAsync(null);
+
+        (sent!.Name, sent.Gstin, sent.CustomerId).Should().Be(("", "", null));
+        vm.CanClearCustomer.Should().BeFalse();
+        vm.Dispose();
+    }
+
+    [Fact]
+    public async Task CustomerPanel_WithoutTheCustomerList_HidesThePicker()
+    {
+        var bill = Detail(BillStatus.Open, balance: 630m);
+        _api.GetAsync(9, Arg.Any<CancellationToken>()).Returns(ApiResult<BillDetailDto>.Ok(bill));
+        var vm = DetailViewModel();
+        await vm.OnNavigatedToAsync(9);
+
+        vm.HasCustomerPicker.Should().BeFalse();
+        vm.Dispose();
+    }
+
+
+    private BillDetailViewModel DetailViewModel(string role = "Cashier", IDialogService? dialogs = null, ICustomersApi? customers = null)
     {
         var session = Substitute.For<IAuthSession>();
         session.User.Returns(TestData.Login("cashier1", roles: role).User);
         var system = Substitute.For<ISystemApi>();
         system.GetPublicSettingsAsync(Arg.Any<CancellationToken>()).Returns(ApiResult<List<Contracts.Admin.SettingDto>>.Ok(new List<Contracts.Admin.SettingDto>()));
         return new BillDetailViewModel(_api, system, new FakeRealtimeClient(), Substitute.For<INavigationService>(),
-            dialogs ?? Substitute.For<IDialogService>(), Substitute.For<INotificationService>(), session, Substitute.For<HotelPOS.Desktop.Services.Printing.IDocumentPrinter>());
+            dialogs ?? Substitute.For<IDialogService>(), Substitute.For<INotificationService>(), session, Substitute.For<HotelPOS.Desktop.Services.Printing.IDocumentPrinter>(), customers: customers);
     }
 
     private static BillSummaryDto Summary(int id, string table, string? claimedBy, int minutesAgo) => new()

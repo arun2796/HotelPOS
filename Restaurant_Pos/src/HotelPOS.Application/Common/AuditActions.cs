@@ -116,6 +116,10 @@ public static class AuditActions
 
     public const string DiscountCreated = "Discount.Created";
     public const string DiscountUpdated = "Discount.Updated";
+    public const string CustomerCreated = "Customer.Created";
+    public const string CustomerUpdated = "Customer.Updated";
+    public const string CustomerDeactivated = "Customer.Deactivated";
+    public const string CustomerActivated = "Customer.Activated";
     public const string PaymentMethodCreated = "PaymentMethod.Created";
     public const string PaymentMethodUpdated = "PaymentMethod.Updated";
 

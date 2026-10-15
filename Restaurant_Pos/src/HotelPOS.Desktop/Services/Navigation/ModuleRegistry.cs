@@ -1,6 +1,7 @@
 using HotelPOS.Contracts.Security;
 using HotelPOS.Desktop.Modules.Admin;
 using HotelPOS.Desktop.Modules.Billing;
+using HotelPOS.Desktop.Modules.Customers;
 using HotelPOS.Desktop.Modules.Cash;
 using HotelPOS.Desktop.Modules.Config;
 using HotelPOS.Desktop.Modules.Dashboard;
@@ -54,6 +55,7 @@ public static class ModuleRegistry
     public const string PeriodClose = "period-close";
     public const string License = "license";
     public const string Import = "import";
+    public const string Customers = "customers";
 
     private static readonly string[] Management = { Roles.Admin, Roles.Manager };
     private static readonly string[] AdminOnly = { Roles.Admin };
@@ -76,6 +78,8 @@ public static class ModuleRegistry
             "Pending bills, discounts, tax and split payments.", typeof(BillingQueueViewModel)),
         new(ClosedBills, "Closed Bills", "", "Billing", new[] { Roles.Admin, Roles.Manager, Roles.Cashier }, 6,
             "Settled and voided bills, reprints and refunds.", typeof(ClosedBillsViewModel)),
+        new(Customers, "Customers", "","Billing", new[] { Roles.Admin, Roles.Manager, Roles.Cashier }, 16,
+            "Search, add, edit and deactivate customers; bills pick from this list.", typeof(CustomersViewModel)),
         new(Shifts, "Cash Shifts", "\uE8C7", "Billing", Management, 13,
             "Every cash shift of the day: float, expected, counted and variance; X/Z reports and force close.", typeof(ShiftsViewModel)),
         new(DayEnd, "Day End", "\uE930", "Billing", Management, 13,
@@ -131,6 +135,7 @@ public static class ModuleRegistry
         [KitchenCompleted] = Permissions.KitchenOperate,
         [Billing] = Permissions.BillingOperate,
         [ClosedBills] = Permissions.BillingOperate,
+        [Customers] = Permissions.BillingOperate,
         [Shifts] = Permissions.ShiftManage,
         [DayEnd] = Permissions.DayEndRun,
         [DayEndHistory] = Permissions.DayEndRun,

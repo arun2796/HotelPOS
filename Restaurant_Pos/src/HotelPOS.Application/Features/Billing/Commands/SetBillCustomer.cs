@@ -9,6 +9,7 @@ using HotelPOS.Contracts.Realtime;
 using HotelPOS.Contracts.Security;
 using HotelPOS.Application.Features.Gst;
 using HotelPOS.Domain.Billing;
+using Microsoft.EntityFrameworkCore;
 using HotelPOS.Contracts.Gst;
 
 namespace HotelPOS.Application.Features.Billing.Commands;
@@ -58,11 +59,25 @@ internal sealed class SetBillCustomerHandler : ICommandHandler<SetBillCustomerCo
             step: async scope =>
             {
                 var bill = scope.Bill;
+                var (name, phone, gstin, legalName, stateCode) = (request.Name, request.Phone, request.Gstin, request.LegalName, request.StateCode);
+                if (request.CustomerId is { } customerId)
+                {
+                    var customer = await _db.Customers.AsNoTracking().FirstOrDefaultAsync(c => c.Id == customerId, cancellationToken);
+                    if (customer is null || !customer.IsActive)
+                    {
+                        return AppErrors.NotFound("Customer", customerId);
+                    }
+
+                    // The bill's name column is shorter than the customer master's.
+                    var billName = customer.Name.Length > BillingLimits.CustomerNameMaxLength ? customer.Name[..BillingLimits.CustomerNameMaxLength] : customer.Name;
+                    (name, phone, gstin, legalName, stateCode) = (billName, customer.Phone, customer.Gstin, customer.LegalName, customer.StateCode);
+                }
+
                 var before = new { bill.CustomerName, bill.CustomerPhone, bill.CustomerGstin, bill.CustomerLegalName, bill.CustomerStateCode, bill.PlaceOfSupply };
-                bill.SetCustomer(request.Name, request.Phone, request.Gstin, request.LegalName, request.StateCode, request.PlaceOfSupply);
+                bill.SetCustomer(name, phone, gstin, legalName, stateCode, request.PlaceOfSupply);
                 await GstSettings.StampAsync(_db, bill, cancellationToken);
                 _audit.Add(AuditActions.BillCustomerUpdated, nameof(Bill), bill.Id.ToString(CultureInfo.InvariantCulture), before,
-                    new { bill.CustomerName, bill.CustomerPhone, bill.CustomerGstin, bill.CustomerLegalName, bill.CustomerStateCode, bill.PlaceOfSupply, bill.SupplyType });
+                    new { bill.CustomerName, bill.CustomerPhone, bill.CustomerGstin, bill.CustomerLegalName, bill.CustomerStateCode, bill.PlaceOfSupply, bill.SupplyType, request.CustomerId });
                 _afterCommit.Enqueue(() => _events.PublishBillUpdatedAsync(bill, BillChangeTypes.CustomerChanged));
                 return (AppError?)null;
             },

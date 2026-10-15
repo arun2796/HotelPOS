@@ -34,6 +34,11 @@ AM---  POST   api/categories
 AM---  DELETE api/categories/{id:int}
 AMWKC  GET    api/categories/{id:int}
 AM---  PUT    api/categories/{id:int}
+AM--C  GET    api/customers
+AM--C  POST   api/customers
+AM--C  PUT    api/customers/{id:int}
+AM--C  POST   api/customers/{id:int}/activate
+AM--C  POST   api/customers/{id:int}/deactivate
 AM---  POST   api/day-end
 AM---  GET    api/day-end/history
 AM---  GET    api/day-end/precheck

@@ -14,6 +14,7 @@
              xmlns:billing="clr-namespace:HotelPOS.Desktop.Modules.Billing"
              xmlns:cash="clr-namespace:HotelPOS.Desktop.Modules.Cash"
              xmlns:gst="clr-namespace:HotelPOS.Desktop.Modules.Gst"
+             xmlns:customers="clr-namespace:HotelPOS.Desktop.Modules.Customers"
              xmlns:licensing="clr-namespace:HotelPOS.Desktop.Modules.Licensing"
              xmlns:printing="clr-namespace:HotelPOS.Desktop.Modules.Printing"
              xmlns:dashboard="clr-namespace:HotelPOS.Desktop.Modules.Dashboard"
@@ -50,6 +51,9 @@
       </DataTemplate>
       <DataTemplate DataType="{x:Type common:PlaceholderViewModel}">
         <common:PlaceholderView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type customers:CustomersViewModel}">
+        <customers:CustomersView />
       </DataTemplate>
       <DataTemplate DataType="{x:Type admin:UsersViewModel}">
         <admin:UsersView />

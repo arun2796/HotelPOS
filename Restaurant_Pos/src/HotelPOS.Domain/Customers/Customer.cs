@@ -51,5 +51,7 @@ public sealed class Customer : BaseEntity
 
     public void Deactivate() => IsActive = false;
 
+    public void Activate() => IsActive = true;
+
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

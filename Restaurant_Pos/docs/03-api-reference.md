@@ -266,6 +266,11 @@ New approval action types for `POST /api/auth/approval`: `cash-variance`, `pay-o
 | POST | `/api/import/undo` | `import.run` | reverts the latest import, once |
 | GET | `/api/import/last` | `import.run` | the latest batch and `canUndo` |
 | GET | `/updates/latest.json`, `/updates/<file>` | anonymous | the client installer the server hosts (folder `Updates:Path`, default `updates` beside the exe) |
+| GET | `/api/customers` | `billing.operate` (A, M, C) | `search` (name, legal name, GSTIN or phone digits), `includeInactive`, `page`, `pageSize` (the bill's picker asks for 8): `PagedResult<CustomerDto>` |
+| POST | `/api/customers` | `billing.operate` | `SaveCustomerRequest`; 409 `DUPLICATE` when another customer has the phone (stored as 10 national digits) |
+| PUT | `/api/customers/{id}` | `billing.operate` | same body |
+| POST | `/api/customers/{id}/deactivate`, `/activate` | `billing.operate` | hides the customer from the picker; bills keep their own copy |
+| PUT | `/api/billing/{id}/customer` | `billing.operate` | `UpdateCustomerRequest`; with `customerId` the server copies that active customer (name cut to 100 characters) onto the bill, 404 when it is unknown or deactivated; empty fields clear the bill's customer |
 
 `GET /api/system/info` also returns `clientUpdate` (`version`, `file`, `sha256`, `size`) when an installer is hosted.
 While the licence is Expired every non-GET request except `/api/auth/*`, `/api/license/*` and `/api/admin/backup`

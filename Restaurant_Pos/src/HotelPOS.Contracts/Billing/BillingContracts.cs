@@ -186,6 +186,10 @@ public sealed record UpdateCustomerRequest
     public string? LegalName { get; init; }
     public string? StateCode { get; init; }
     public string? PlaceOfSupply { get; init; }
+
+    // A customer picked from the customer list: the server copies its details onto the bill (Name, Phone, Gstin,
+    // LegalName and StateCode are then ignored; PlaceOfSupply still applies). The bill keeps its own copy, not a link.
+    public int? CustomerId { get; init; }
     public string RowVersion { get; init; } = string.Empty;
 }
 
