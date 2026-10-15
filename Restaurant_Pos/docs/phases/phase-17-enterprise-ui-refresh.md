@@ -211,7 +211,7 @@ Two machines (billing PC + waiter tablet), light then dark theme:
   through the existing `IMenuCache.GetImageFileAsync` exactly as `PreviewItemViewModel` does. No contract or API
   change: the compact menu already carried `ImageUrl`.
 - Tables, table details, My Orders needed no markup change (status tiles and chips already on tokens). Cart column
-  was already 380 px. Known nit: the picture's top corners are square inside the rounded card (WPF clip); cosmetic.
+  was already 380 px. The picture's top corners are rounded with a `VisualBrush` opacity mask (WPF `ClipToBounds` ignores `CornerRadius`).
 - Tests: Orders + rendering + token contract green (13); 73 screens.
 
 ### 17.4 Kitchen and 17.5 Billing dialogs (2026-10-15)

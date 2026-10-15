@@ -106,6 +106,14 @@
                   <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <Border Background="{DynamicResource Brush.SurfaceSubtle}" CornerRadius="8,8,0,0" ClipToBounds="True">
+                  <!-- ClipToBounds ignores CornerRadius in WPF; the mask rounds the picture's top corners to match. -->
+                  <Border.OpacityMask>
+                    <VisualBrush>
+                      <VisualBrush.Visual>
+                        <Border Width="170" Height="112" CornerRadius="8,8,0,0" Background="Black" />
+                      </VisualBrush.Visual>
+                    </VisualBrush>
+                  </Border.OpacityMask>
                   <Grid>
                     <TextBlock Text="&#xEB9F;" Style="{StaticResource Text.Icon}" FontSize="30" HorizontalAlignment="Center"
                                VerticalAlignment="Center" Foreground="{DynamicResource Brush.TextTertiary}" />
