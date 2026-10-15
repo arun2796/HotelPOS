@@ -44,7 +44,7 @@ Each release: `.\build\publish-android.ps1 -UpdatesFolder 'C:\ProgramData\HotelP
 
 | Symptom | Cause / fix |
 |---|---|
-| "No HotelPOS server answered at that address" | Wrong address or port, phone on guest Wi-Fi, or port 5000 blocked ([02 § 2](02-lan-and-firewall.md)). Try the same address in the phone's browser. |
+| "No HotelPOS server answered at that address" | Wrong address or port, phone on guest Wi-Fi, or port 5000 blocked: on the server PC the Wi-Fi/LAN profile must be **Private** (the firewall rule does not apply to Public networks) — [02 § 1–2](02-lan-and-firewall.md). Try the same address in the phone's browser. |
 | HTTPS address refused | The root CA is not installed on the device, or the certificate does not name the address used ([02 § 5](02-lan-and-firewall.md)). |
 | "This licence covers N terminals and M are registered" | Every app install and browser profile is a terminal. Deactivate unused ones under Administration → Devices, or extend the licence. |
 | "This device was deactivated by an administrator" | Re-activate it under Administration → Devices. |

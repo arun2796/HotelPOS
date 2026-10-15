@@ -21,6 +21,8 @@
     <!-- The Android toolchain emits informational warnings (XA*, trimming) that must not break the build. -->
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <AndroidPackageFormat>apk</AndroidPackageFormat>
+    <!-- Debug APKs must also run when installed by file: no "fast deployment" (assemblies outside the APK). -->
+    <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
     <RuntimeIdentifiers>android-arm64;android-arm;android-x64</RuntimeIdentifiers>
   </PropertyGroup>
 

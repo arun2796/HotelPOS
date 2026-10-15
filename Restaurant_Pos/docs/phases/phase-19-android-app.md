@@ -166,3 +166,14 @@ _(filled per step)_
 - `docs/ops/09-android-app.md` (install, update, build, troubleshooting); `ops/01 § 5a`, `01` and the README doc
   table mention the app. Status: In progress (code complete; device demo open).
 - Open: § 11 on a real phone and tablet; the release keystore (owner's password); an in-app "new version" notice.
+
+### 19.4 First device test (2026-10-15, iQOO I2011, Android 13)
+
+- Release APK installs and runs: `adb logcat` shows a clean start (activity displayed in 1.3 s, WebView 154) and the
+  Server page renders (dark theme follows the phone). The all-green first impression was the splash during a long
+  first cold start; nothing was wrong with the app.
+- A Debug APK installed by file aborted at start ("No assemblies found … Fast Deployment"): Debug builds kept their
+  assemblies outside the package. `EmbedAssembliesIntoApk=true` is now set for every configuration.
+- The phone could not reach the API although both were on 192.168.1.x: the PC's Wi-Fi profile had become **Public**
+  and the "HotelPOS API" firewall rule covers Private/Domain only. Fix is the documented one (ops 02 § 1: profile
+  Private). Added to the troubleshooting table in ops 09.
