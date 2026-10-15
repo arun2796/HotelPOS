@@ -9,15 +9,16 @@
        views use; keep them stable. -->
 
   <!-- ============================ Typography ============================ -->
-  <!-- Inter is bundled (Resources/Fonts, SIL OFL); Segoe UI Variable / Segoe UI are the fallbacks. -->
-  <FontFamily x:Key="Font.Body">/HotelPOS.Desktop;component/Resources/Fonts/#Inter, Segoe UI Variable Text, Segoe UI</FontFamily>
+  <!-- Phase 17: Segoe UI Variable first (enterprise look); the bundled Inter (Resources/Fonts, SIL OFL) is the fallback. -->
+  <FontFamily x:Key="Font.Body">Segoe UI Variable Text, Segoe UI, /HotelPOS.Desktop;component/Resources/Fonts/#Inter</FontFamily>
   <FontFamily x:Key="Font.Icons">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
   <FontFamily x:Key="Font.Mono">Cascadia Mono, Consolas</FontFamily>
 
   <!-- ============================ Shape ============================ -->
   <CornerRadius x:Key="Radius.Input">6</CornerRadius>
   <CornerRadius x:Key="Radius.Button">8</CornerRadius>
-  <CornerRadius x:Key="Radius.Card">12</CornerRadius>
+  <CornerRadius x:Key="Radius.Card">8</CornerRadius>
+  <CornerRadius x:Key="Radius.Dialog">10</CornerRadius>
   <CornerRadius x:Key="Radius.Pill">999</CornerRadius>
 
   <!-- Neutral ramp (zinc), identical in both themes; prefer the semantic Brush.* tokens in views. -->
@@ -61,13 +62,13 @@
 
   <!-- ============================ Text ============================ -->
   <Style x:Key="Text.Display" TargetType="TextBlock">
-    <Setter Property="FontSize" Value="32" />
+    <Setter Property="FontSize" Value="28" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
     <Setter Property="TextWrapping" Value="Wrap" />
   </Style>
   <Style x:Key="Text.Title" TargetType="TextBlock">
-    <Setter Property="FontSize" Value="22" />
+    <Setter Property="FontSize" Value="24" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
     <Setter Property="TextWrapping" Value="Wrap" />

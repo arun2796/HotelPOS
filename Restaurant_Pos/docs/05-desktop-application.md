@@ -33,7 +33,7 @@ HotelPOS.Desktop/
                                 TicketCard, TableTile, ConnectionIndicator)
   Themes/                       Tokens.Light/Dark.xaml (colours), Density.Comfort/Compact.xaml (sizes),
                                 DesignSystem.xaml (fonts, converters, every style) — Phase 11
-  Resources/Fonts/              Inter (SIL OFL), the design system typeface
+  Resources/Fonts/              Inter (SIL OFL), fallback typeface (Segoe UI Variable is first since Phase 17)
   Converters/, Behaviors/
   Assets/                       icons (Segoe Fluent Icons / Material icon font), sounds
 ```
@@ -194,7 +194,7 @@ Since Phase 9:
 ## 9. UX guidelines
 
 - Minimum touch target 48 x 48 px; primary action buttons at least 56 px tall.
-- Base font 15 px (Comfort) / 14 px (Compact), Inter; kitchen cards 20-24 px; table tiles show code at 28 px.
+- Base font 15 px (Comfort) / 14 px (Compact), Segoe UI Variable (Inter fallback); kitchen cards 20-24 px; table tiles show code at 28 px.
 - Status colours (same on all screens): Available green, Occupied blue, Ordering purple,
   Preparing amber, Ready red-accent (needs attention), Billing teal, OutOfService grey.
 - One primary action per screen, placed bottom-right. Destructive actions need confirmation.

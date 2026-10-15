@@ -85,11 +85,11 @@
       <DataTemplate.Triggers>
         <DataTrigger Binding="{Binding Urgency}" Value="Warn">
           <Setter TargetName="Timer" Property="Background" Value="{DynamicResource Brush.Warning}" />
-          <Setter TargetName="TimerText" Property="Foreground" Value="#FFFFFF" />
+          <Setter TargetName="TimerText" Property="Foreground" Value="{DynamicResource Brush.PrimaryText}" />
         </DataTrigger>
         <DataTrigger Binding="{Binding Urgency}" Value="Late">
           <Setter TargetName="Timer" Property="Background" Value="{DynamicResource Brush.Danger}" />
-          <Setter TargetName="TimerText" Property="Foreground" Value="#FFFFFF" />
+          <Setter TargetName="TimerText" Property="Foreground" Value="{DynamicResource Brush.PrimaryText}" />
           <Setter TargetName="Card" Property="BorderBrush" Value="{DynamicResource Brush.Danger}" />
         </DataTrigger>
         <DataTrigger Binding="{Binding IsHighlighted}" Value="True">

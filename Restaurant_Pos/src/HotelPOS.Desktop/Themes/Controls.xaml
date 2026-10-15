@@ -306,4 +306,63 @@
     </Setter>
   </Style>
 
+  <!-- ============================ Phase 17 shared pieces ============================ -->
+
+  <!-- One frame for every dialog and pop-up panel: surface, 1 px border, 10 px radius, popup shadow.
+       Title / body / validation row / right-aligned actions are laid out by the view inside it. -->
+  <Style x:Key="Dialog.Frame" TargetType="Border">
+    <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{StaticResource Radius.Dialog}" />
+    <Setter Property="Padding" Value="24" />
+    <Setter Property="MinWidth" Value="360" />
+    <Setter Property="MaxWidth" Value="760" />
+    <Setter Property="Effect" Value="{DynamicResource Shadow.Popup}" />
+  </Style>
+
+  <!-- Status chips: soft background + strong text, pill shaped. Text colour is inherited by child TextBlocks.
+       Status is never colour-only: the chip always carries a label (and an icon where the screen has one). -->
+  <Style x:Key="Chip.Base" TargetType="Border">
+    <Setter Property="CornerRadius" Value="{StaticResource Radius.Pill}" />
+    <Setter Property="Padding" Value="8,2" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="TextElement.FontSize" Value="{DynamicResource Font.Size.Caption}" />
+    <Setter Property="TextElement.FontWeight" Value="SemiBold" />
+    <Setter Property="Background" Value="{DynamicResource Brush.SurfaceSubtle}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+  </Style>
+  <Style x:Key="Chip.Success" TargetType="Border" BasedOn="{StaticResource Chip.Base}">
+    <Setter Property="Background" Value="{DynamicResource Brush.SuccessSoft}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Success}" />
+  </Style>
+  <Style x:Key="Chip.Warning" TargetType="Border" BasedOn="{StaticResource Chip.Base}">
+    <Setter Property="Background" Value="{DynamicResource Brush.WarningSoft}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Warning}" />
+  </Style>
+  <Style x:Key="Chip.Danger" TargetType="Border" BasedOn="{StaticResource Chip.Base}">
+    <Setter Property="Background" Value="{DynamicResource Brush.DangerSoft}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.DangerText}" />
+  </Style>
+  <Style x:Key="Chip.Info" TargetType="Border" BasedOn="{StaticResource Chip.Base}">
+    <Setter Property="Background" Value="{DynamicResource Brush.InfoSoft}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Info}" />
+  </Style>
+  <Style x:Key="Chip.Primary" TargetType="Border" BasedOn="{StaticResource Chip.Base}">
+    <Setter Property="Background" Value="{DynamicResource Brush.PrimarySoft}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Primary}" />
+  </Style>
+
+  <!-- Numbers in grids and totals: right-aligned, tabular digits so columns of amounts line up. -->
+  <Style x:Key="Text.Numeric" TargetType="TextBlock" BasedOn="{StaticResource Text.Body}">
+    <Setter Property="TextAlignment" Value="Right" />
+    <Setter Property="HorizontalAlignment" Value="Right" />
+    <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
+  </Style>
+
+  <!-- Section card inside a screen: a Card with a tighter 16 px padding, used to group a form or a summary. -->
+  <Style x:Key="Card.Section" TargetType="Border" BasedOn="{StaticResource Card}">
+    <Setter Property="Padding" Value="16" />
+  </Style>
+
 </ResourceDictionary>

@@ -177,4 +177,18 @@ Two machines (billing PC + waiter tablet), light then dark theme:
 
 ## 14. Changes during implementation
 
-_(filled per step)_
+### 17.1 Foundation (2026-10-15)
+
+- `Tokens.Light.xaml` / `Tokens.Dark.xaml`: values re-tuned exactly as § 8.1 (green primary, cool greys, light
+  sidebar; dark counterparts). Same key set as before — no view had to change for the palette.
+- `DesignSystem.xaml`: `Font.Body` now Segoe UI Variable → Segoe UI → bundled Inter; `Radius.Card` 12 → 8; new
+  `Radius.Dialog` 10; `Text.Title` 22 → 24; `Text.Display` 32 → 28 (KPI values).
+- `Controls.xaml`: new shared pieces `Dialog.Frame`, `Chip.Base/Success/Warning/Danger/Info/Primary`,
+  `Text.Numeric` (right-aligned tabular digits), `Card.Section`. Not yet applied to screens; later steps use them.
+- Two literal `#FFFFFF` foregrounds (Kitchen ticket timer, Menu preview SOLD OUT) replaced by `Brush.PrimaryText`.
+  The invoice preview in `BillDetailView` keeps its white-paper/dark-ink literals on purpose (allow-listed).
+- New `ThemeTokenContractTests`: light and dark define the same keys; `Brush.Status.*` identical in both themes;
+  no literal colours in `Modules/**` and `Shell/**` XAML outside the allow-list.
+- `ScreenRenderingTests`: the body-font assertion now accepts Segoe UI Variable / Segoe UI / Inter files (it
+  asserted Inter before). Still 73 screens, zero binding errors, both themes.
+- Reviewed: Dashboard (light), Order Builder (light), Bill (dark). Order Builder cards get pictures in 17.3.

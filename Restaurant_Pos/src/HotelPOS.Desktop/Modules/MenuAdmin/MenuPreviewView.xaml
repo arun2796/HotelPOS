@@ -47,7 +47,7 @@
                     <Border Background="{DynamicResource Brush.Danger}" CornerRadius="10" Padding="10,3" Margin="8"
                             HorizontalAlignment="Left" VerticalAlignment="Top"
                             Visibility="{Binding IsSoldOut, Converter={StaticResource BoolToVisibility}}">
-                      <TextBlock Text="SOLD OUT" Foreground="#FFFFFF" FontWeight="Bold" FontSize="11" />
+                      <TextBlock Text="SOLD OUT" Foreground="{DynamicResource Brush.PrimaryText}" FontWeight="Bold" FontSize="11" />
                     </Border>
                   </Grid>
                 </Border>
