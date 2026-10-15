@@ -72,6 +72,9 @@ endpoint is `tests/HotelPOS.Api.Tests/authorization-matrix.txt`; `AuthorizationM
 | POST | `/api/auth/refresh` | anon | Rotates refresh token |
 | POST | `/api/auth/approval` | anon | `{approverUsername, approverPassword, actionType}` -> 2-minute single-use approval token for `discount`, `void`, `refund`, `reopen`. The approver must hold the action's permission (`billing.void` for void and reopen, `billing.refund` for refund; Manager or Admin role for an over-limit discount). Wrong passwords count towards lockout; rate-limited |
 | POST | `/api/auth/logout` | anon | Revokes the given refresh token (possession is the authorization, so it works with an expired access token) |
+| POST | `/api/auth/web/login` | anon | Phase 18, browser client. Same as `/api/auth/login`, but the refresh token is set as cookie `hp_rt` (HttpOnly, SameSite=Strict, Path=/api/auth/web, Secure on HTTPS) and omitted from the body |
+| POST | `/api/auth/web/refresh` | anon | Cookie `hp_rt` + header `X-Requested-With: HotelPOS.Web` -> new access token and rotated cookie; a failed refresh clears the cookie |
+| POST | `/api/auth/web/logout` | anon | Revokes the cookie's refresh token and clears the cookie |
 | GET | `/api/auth/me` | * | Current user, roles, permissions |
 | POST | `/api/auth/change-password` | * | |
 | GET | `/health` | anon | Liveness (DB check) |

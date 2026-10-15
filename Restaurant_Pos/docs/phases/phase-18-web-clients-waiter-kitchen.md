@@ -174,3 +174,20 @@ None change. Presentation/security rules this phase adds:
 ## 14. Changes during implementation
 
 _(filled per step)_
+
+### 18.1 Browser sign-in endpoints (2026-10-15)
+
+- Reordered against § 9: the `/app` hosting lines need the web project to exist, so they move to 18.2 together with the
+  project and the fallback-precedence test. 18.1 delivers the browser sign-in.
+- `src/HotelPOS.Api/Controllers/WebAuthController.cs` — `POST api/auth/web/login|refresh|logout`. Same `LoginCommand`,
+  `RefreshTokenCommand`, `LogoutCommand` as the desktop endpoints; the refresh token is removed from the response body and
+  carried in cookie `hp_rt` (`HttpOnly; SameSite=Strict; Path=/api/auth/web; Secure` when the request is HTTPS). Refresh
+  additionally requires header `X-Requested-With: HotelPOS.Web`; a failed refresh clears the cookie. No Contracts, handler,
+  DTO or schema change. Rotation and reuse detection are the existing handler's (`RefreshToken.cs`).
+- `LoginRateLimitingMiddleware`: `/api/auth/web/login` added to the guarded paths (same limiter as `/api/auth/login`).
+- Authorization matrix unchanged: all three routes are anonymous by design, like `/api/auth/login|refresh|logout`.
+- Tests: `tests/HotelPOS.Api.Tests/WebAuthTests.cs` (6): cookie attributes and no token in the body; rotation + replay
+  refused; header required; no cookie → 401; logout clears and revokes; wrong password → 401 without cookie. The test client
+  runs with `HandleCookies = false` so the rotated cookie cannot leak in from the client's cookie jar.
+- Build note: pass an **absolute** `-p:OutDir` inside the repo; a relative one is applied per project and creates
+  `src/*/tests/...` output folders that break the Api build (removed).

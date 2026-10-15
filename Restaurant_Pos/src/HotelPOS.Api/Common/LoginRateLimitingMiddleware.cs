@@ -123,6 +123,7 @@ public sealed class LoginRateLimitingMiddleware
     private static readonly (PathString Path, string UsernameField)[] Guarded =
     {
         (new PathString("/api/auth/login"), "username"),
+        (new PathString("/api/auth/web/login"), "username"),
         (new PathString("/api/auth/approval"), "approverUsername"),
     };
 
