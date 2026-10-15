@@ -124,3 +124,32 @@ rules; nothing in the API changes.
 ## 14. Changes during implementation
 
 _(filled per step)_
+
+### 19.1 Shared client library (2026-10-15)
+
+- `src/HotelPOS.Client.Shared` (Razor class library, root namespace `HotelPOS.Client`) now holds the Phase 18 pages,
+  layout, components, services and CSS (served to hosts as `_content/HotelPOS.Client.Shared/css/*`). The browser
+  project keeps `Program.cs`, `App.razor`, `index.html`, the service worker, `JsBrowserStorage` and `BrowserClientHost`.
+- Host abstractions (`Services/ClientHost.cs`): `IClientHost` (server base, `IsConfigured`, `DeviceNamePrefix`,
+  `AppVersion`, `CanChangeServer`), `ISessionTransport` with `CookieSessionTransport` (browser, `/api/auth/web/*`) and
+  `TokenSessionTransport` (app, `/api/auth/*` + `ISecureTokenStore`), `IBrowserStorage` interface only.
+  `WebAuthState` uses the transport; `WebApiClient` and `WebRealtimeClient` build absolute URLs from the host, so the
+  app can change its server at runtime; `DeviceIdentity` takes the prefix from the host (WEB / APP); menu pictures go
+  through `IClientHost.ImageUrl` (absolute), needed inside a native WebView. `AddHotelPosClient()` registers the rest.
+- Sign-in shows a "Server settings" link when the host allows changing the server (the app).
+- Tests moved to `tests/HotelPOS.Client.Tests` (+ `SessionTransportTests`, 4): 27 green. Browser host builds; the
+  Api hosting tests are re-run after the toolchain install (the installer temporarily hides `wasm-tools`).
+
+### 19.2 Android host (2026-10-15)
+
+- `src/HotelPOS.Android` (.NET MAUI Blazor Hybrid, `net8.0-android`, `com.hotelpos.staff`, "HotelPOS Staff", min
+  Android 8.0): `MauiProgram` registers the host pieces (`MauiClientHost` → Preferences, `MauiStorage` → Preferences
+  with a key index, `MauiSecureTokenStore` → SecureStorage, `TokenSessionTransport`) and `AddHotelPosClient()`;
+  `Routes.razor` restores the session then routes, and sends an unconfigured app to the **Server** page
+  (`Pages/ServerPage.razor`: address normalised like the desktop, Test connection via `/api/system/info`, Save signs
+  out when the server changed). `MainActivity` keeps the screen on while the app is in front (kitchen tablets).
+- Manifest: INTERNET, cleartext allowed and user CAs trusted (`network_security_config.xml`); `allowBackup=false`.
+  Icon and splash: white plate-and-cloche mark on the brand green. `TreatWarningsAsErrors` is off in this project
+  only (Android toolchain informational warnings).
+- Package versions: `Microsoft.Maui.Controls` and `Microsoft.AspNetCore.Components.WebView.Maui` follow
+  `$(MauiVersion)` from the installed workload (central package management).

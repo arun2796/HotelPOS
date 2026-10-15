@@ -1,0 +1,107 @@
+@page "/server"
+@layout EmptyLayout
+@using HotelPOS.Android.Services
+@using HotelPOS.Client.Layout
+@using HotelPOS.Client.Services
+@using HotelPOS.Contracts.Admin
+@using HotelPOS.Contracts.Common
+@using System.Net.Http.Json
+@inject MauiClientHost Host
+@inject HttpClient Http
+@inject WebAuthState Auth
+@inject WebRealtimeClient Realtime
+@inject NavigationManager Navigation
+
+<PageTitle>Server · HotelPOS Staff</PageTitle>
+
+<div class="signin">
+    <div class="card">
+        <div class="muted small">HotelPOS Staff</div>
+        <h1 style="margin-bottom:4px">Server</h1>
+        <p class="muted" style="margin:0 0 16px">The address of the restaurant's HotelPOS server. Ask your administrator.</p>
+
+        <label class="field">
+            <span>Server address</span>
+            <input class="input" @bind="_address" placeholder="http://192.168.1.100:5000" inputmode="url" autocapitalize="none" autocomplete="off" />
+        </label>
+
+        @if (_message is not null)
+        {
+            <div class="banner @(_ok ? "success" : "error")">@_message</div>
+        }
+
+        <div class="row" style="gap:10px">
+            <button class="btn grow" @onclick="TestAsync" disabled="@_busy">Test connection</button>
+            <button class="btn primary grow" @onclick="SaveAsync" disabled="@(_busy || !_ok)">Save</button>
+        </div>
+        @if (Host.IsConfigured)
+        {
+            <a class="btn block ghost" style="margin-top:8px" href="">Cancel</a>
+        }
+        <div class="muted small" style="margin-top:16px">Changing the server signs you out. App version @Host.AppVersion.</div>
+    </div>
+</div>
+
+@code {
+    private string _address = string.Empty;
+    private string? _message;
+    private bool _ok;
+    private bool _busy;
+    private Uri? _tested;
+
+    protected override void OnInitialized() => _address = Host.IsConfigured ? Host.ServerBase.ToString().TrimEnd('/') : "http://192.168.1.100:5000";
+
+    private async Task TestAsync()
+    {
+        _ok = false;
+        _tested = null;
+        if (!ServerAddress.TryNormalize(_address, out var uri, out var error))
+        {
+            _message = error;
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            using var response = await Http.GetAsync(new Uri(uri, "api/system/info"));
+            var result = await WebApiClient.ReadAsync<SystemInfoDto>(response, CancellationToken.None);
+            if (result.Success && result.Data is { } info)
+            {
+                _ok = true;
+                _tested = uri;
+                _message = $"Connected to \"{info.RestaurantName}\" (server version {info.ApiVersion}).";
+            }
+            else
+            {
+                _message = result.Message;
+            }
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            _message = "No HotelPOS server answered at that address. Check the Wi-Fi and the address.";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_tested is null)
+        {
+            return;
+        }
+
+        var changed = !Host.IsConfigured || Host.ServerBase != _tested;
+        Host.SetServer(_tested);
+        if (changed && Auth.IsSignedIn)
+        {
+            await Realtime.StopAsync();
+            await Auth.SignOutAsync();
+        }
+
+        Navigation.NavigateTo("signin", replace: true);
+    }
+}

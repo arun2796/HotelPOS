@@ -1,0 +1,60 @@
+@using HotelPOS.Client.Layout
+@using HotelPOS.Client.Services
+@using HotelPOS.Client.Shared
+@inject IClientHost Host
+@inject WebAuthState Auth
+@inject NavigationManager Navigation
+
+@if (!_ready)
+{
+    <div class="splash"><div class="splash-logo">HotelPOS</div><div class="splash-text">Starting…</div></div>
+}
+else
+{
+    <CascadingAuthenticationState>
+        <Router AppAssembly="@typeof(Routes).Assembly" AdditionalAssemblies="new[] { typeof(MainLayout).Assembly }">
+            <Found Context="routeData">
+                <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+                    <NotAuthorized>
+                        @if (Host.IsConfigured)
+                        {
+                            <RedirectToSignIn />
+                        }
+                        else
+                        {
+                            <RedirectToServer />
+                        }
+                    </NotAuthorized>
+                    <Authorizing>
+                        <div class="splash"><div class="splash-text">Checking sign-in…</div></div>
+                    </Authorizing>
+                </AuthorizeRouteView>
+                <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+            </Found>
+            <NotFound>
+                <LayoutView Layout="@typeof(MainLayout)">
+                    <div class="empty">This page does not exist. <a href="">Go to the start</a>.</div>
+                </LayoutView>
+            </NotFound>
+        </Router>
+    </CascadingAuthenticationState>
+}
+
+@code {
+    private bool _ready;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Same as the browser host's Program.cs: restore the session (SecureStorage) before the first route renders.
+        if (Host.IsConfigured)
+        {
+            await Auth.TryRestoreAsync();
+        }
+
+        _ready = true;
+        if (!Host.IsConfigured)
+        {
+            Navigation.NavigateTo("server", replace: true);
+        }
+    }
+}

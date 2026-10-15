@@ -45,6 +45,10 @@
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="8.0.32" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="8.0.32" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.Authorization" Version="8.0.32" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.Web" Version="8.0.32" />
+    <!-- Phase 19 Android app: MauiVersion comes from the installed maui-android workload. -->
+    <PackageVersion Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="$(MauiVersion)" />
     <PackageVersion Include="bunit" Version="1.40.0" />
     <PackageVersion Include="Serilog.Extensions.Hosting" Version="8.0.0" />
     <PackageVersion Include="Serilog.Sinks.File" Version="5.0.0" />

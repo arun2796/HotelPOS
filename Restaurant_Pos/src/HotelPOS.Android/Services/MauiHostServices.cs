@@ -1,0 +1,165 @@
+using System.Text.Json;
+using HotelPOS.Client.Services;
+
+namespace HotelPOS.Android.Services;
+
+/// <summary>The server address and app identity on Android. The address is kept in Preferences and can change on the Server page.</summary>
+public sealed class MauiClientHost : IClientHost
+{
+    private const string ServerKey = "hotelpos.server";
+    private Uri? _server;
+
+    public MauiClientHost()
+    {
+        var saved = Preferences.Default.Get(ServerKey, string.Empty);
+        _server = Uri.TryCreate(saved, UriKind.Absolute, out var uri) ? uri : null;
+    }
+
+    public Uri ServerBase => _server ?? throw new InvalidOperationException("The server address has not been set yet.");
+
+    public bool IsConfigured => _server is not null;
+
+    public string DeviceNamePrefix => "APP";
+
+    public string? AppVersion => AppInfo.Current.VersionString;
+
+    public bool CanChangeServer => true;
+
+    public void SetServer(Uri server)
+    {
+        _server = server;
+        Preferences.Default.Set(ServerKey, server.ToString());
+    }
+}
+
+/// <summary>Validation of a typed server address, the same rules as the desktop's first-run screen.</summary>
+public static class ServerAddress
+{
+    public static bool TryNormalize(string? input, out Uri uri, out string? error)
+    {
+        uri = null!;
+        error = null;
+        var text = (input ?? string.Empty).Trim();
+        if (text.Length == 0)
+        {
+            error = "Enter the server address.";
+            return false;
+        }
+
+        if (!text.Contains("://", StringComparison.Ordinal))
+        {
+            text = "http://" + text;
+        }
+
+        if (!Uri.TryCreate(text, UriKind.Absolute, out var parsed)
+            || (parsed.Scheme != Uri.UriSchemeHttp && parsed.Scheme != Uri.UriSchemeHttps)
+            || string.IsNullOrEmpty(parsed.Host))
+        {
+            error = "Use the form http://192.168.1.100:5000 or https://hotelpos-server:5001.";
+            return false;
+        }
+
+        if (!string.IsNullOrEmpty(parsed.Query) || !string.IsNullOrEmpty(parsed.Fragment))
+        {
+            error = "The address must not contain ? or #.";
+            return false;
+        }
+
+        uri = new Uri(parsed.GetLeftPart(UriPartial.Authority) + "/");
+        return true;
+    }
+}
+
+/// <summary>Device-local key/value storage (device name, drafts, preferences) in Preferences, with an index so prefixes can be listed.</summary>
+public sealed class MauiStorage : IBrowserStorage
+{
+    private const string IndexKey = "hotelpos.storage.keys";
+    private readonly object _gate = new();
+
+    public ValueTask<string?> GetAsync(string key) =>
+        new(Preferences.Default.ContainsKey(key) ? Preferences.Default.Get(key, string.Empty) : null);
+
+    public ValueTask SetAsync(string key, string value)
+    {
+        lock (_gate)
+        {
+            Preferences.Default.Set(key, value);
+            var keys = ReadIndex();
+            if (keys.Add(key))
+            {
+                WriteIndex(keys);
+            }
+        }
+
+        return default;
+    }
+
+    public ValueTask RemoveAsync(string key)
+    {
+        lock (_gate)
+        {
+            Preferences.Default.Remove(key);
+            var keys = ReadIndex();
+            if (keys.Remove(key))
+            {
+                WriteIndex(keys);
+            }
+        }
+
+        return default;
+    }
+
+    public ValueTask<IReadOnlyList<string>> KeysAsync(string prefix)
+    {
+        lock (_gate)
+        {
+            return new(ReadIndex().Where(k => k.StartsWith(prefix, StringComparison.Ordinal)).ToList());
+        }
+    }
+
+    private static HashSet<string> ReadIndex()
+    {
+        var json = Preferences.Default.Get(IndexKey, "[]");
+        try
+        {
+            return JsonSerializer.Deserialize<HashSet<string>>(json) ?? new HashSet<string>(StringComparer.Ordinal);
+        }
+        catch (JsonException)
+        {
+            return new HashSet<string>(StringComparer.Ordinal);
+        }
+    }
+
+    private static void WriteIndex(HashSet<string> keys) => Preferences.Default.Set(IndexKey, JsonSerializer.Serialize(keys));
+}
+
+/// <summary>The refresh token, and only the refresh token, in Android SecureStorage (Keystore-backed).</summary>
+public sealed class MauiSecureTokenStore : ISecureTokenStore
+{
+    private const string Key = "hotelpos.refresh-token";
+
+    public async ValueTask<string?> GetRefreshTokenAsync()
+    {
+        try
+        {
+            return await SecureStorage.Default.GetAsync(Key);
+        }
+        catch (Exception)
+        {
+            // A corrupted keystore entry (after a restore from backup, for example) behaves like "signed out".
+            SecureStorage.Default.Remove(Key);
+            return null;
+        }
+    }
+
+    public async ValueTask SetRefreshTokenAsync(string? refreshToken)
+    {
+        if (string.IsNullOrEmpty(refreshToken))
+        {
+            SecureStorage.Default.Remove(Key);
+            return;
+        }
+
+        await SecureStorage.Default.SetAsync(Key, refreshToken);
+    }
+}
