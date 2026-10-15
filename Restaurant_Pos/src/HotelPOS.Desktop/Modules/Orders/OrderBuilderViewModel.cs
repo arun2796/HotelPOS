@@ -25,7 +25,7 @@ public sealed record OrderBuilderContext(
     int? OrderId = null,
     int? OrderNumber = null);
 
-public sealed class MenuTileViewModel
+public sealed partial class MenuTileViewModel : ObservableObject
 {
     public MenuTileViewModel(MenuEntryDto item, string priceText)
     {
@@ -42,6 +42,10 @@ public sealed class MenuTileViewModel
     public bool IsSoldOut => !Item.IsAvailable;
 
     public bool HasModifiers => Item.ModifierGroupIds.Count > 0;
+
+    // Presentation only (Phase 17): the cached picture file for the tile, loaded after the tile is shown.
+    [ObservableProperty]
+    private string? _imageFile;
 }
 
 public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAware
@@ -604,7 +608,11 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
 
         foreach (var item in menu.Items.Where(i => i.CategoryId == SelectedCategory.Id))
         {
-            Items.Add(new MenuTileViewModel(item, $"{_currency}{item.Price.ToString("N2", CultureInfo.CurrentCulture)}"));
+            var tile = new MenuTileViewModel(item, $"{_currency}{item.Price.ToString("N2", CultureInfo.CurrentCulture)}");
+            Items.Add(tile);
+            _ = LoadImageAsync(tile);
         }
     }
+
+    private async Task LoadImageAsync(MenuTileViewModel tile) => tile.ImageFile = await _menuCache.GetImageFileAsync(tile.Item.ImageUrl);
 }

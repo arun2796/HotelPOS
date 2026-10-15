@@ -201,3 +201,15 @@ Two machines (billing PC + waiter tablet), light then dark theme:
 - Header 64 → 56 px: 32 px page-icon box, 16 px title, search box 320 × 36. Status bar 34 → 28 px.
 - Nav item, user block, banners, palette, notices and cash-shift bar needed no markup change — they already follow
   the tokens. Reviewed: Tables (light, expanded) and Users (collapsed rail). Rendering 73 screens green.
+
+### 17.3 Service: Order Builder cards (2026-10-15)
+
+- Order Builder item tiles are now 172 px food-image cards: 112 px picture (neutral placeholder icon when the item
+  has none), name up to two lines, price, "+ options" hint, SOLD OUT chip on the picture. Same command, parameter,
+  sold-out disabling and automation name as before.
+- Allowed view-model exception (§ 4): `MenuTileViewModel` gained a presentation-only `ImageFile` property, loaded
+  through the existing `IMenuCache.GetImageFileAsync` exactly as `PreviewItemViewModel` does. No contract or API
+  change: the compact menu already carried `ImageUrl`.
+- Tables, table details, My Orders needed no markup change (status tiles and chips already on tokens). Cart column
+  was already 380 px. Known nit: the picture's top corners are square inside the rounded card (WPF clip); cosmetic.
+- Tests: Orders + rendering + token contract green (13); 73 screens.

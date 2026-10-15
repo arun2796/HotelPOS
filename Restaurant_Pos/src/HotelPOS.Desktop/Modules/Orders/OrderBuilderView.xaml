@@ -93,24 +93,38 @@
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
           <DataTemplate DataType="{x:Type orders:MenuTileViewModel}">
-            <Button Width="160" Height="100" Margin="0,0,10,10" Padding="12,10" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
+            <!-- Food-image card (Phase 17): picture on top (neutral placeholder when the item has none), name,
+                 price and the options hint below. Same command, parameter and sold-out rule as before. -->
+            <Button Width="172" Margin="0,0,12,12" Padding="0" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
                     Background="{DynamicResource Brush.Surface}"
                     IsEnabled="{Binding IsSoldOut, Converter={StaticResource InverseBool}}"
                     Command="{Binding DataContext.AddItemCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                     CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name}">
               <Grid>
                 <Grid.RowDefinitions>
-                  <RowDefinition Height="*" />
+                  <RowDefinition Height="112" />
                   <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
-                <TextBlock Text="{Binding Name}" TextWrapping="Wrap" FontSize="15" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                <Grid Grid.Row="1">
-                  <TextBlock Text="{Binding PriceText}" Foreground="{DynamicResource Brush.Primary}" FontWeight="SemiBold" />
-                  <TextBlock Text="+ options" Style="{StaticResource Text.Caption}" HorizontalAlignment="Right"
-                             Visibility="{Binding HasModifiers, Converter={StaticResource BoolToVisibility}}" />
-                  <TextBlock Text="SOLD OUT" Foreground="{DynamicResource Brush.Danger}" FontWeight="Bold" FontSize="11" HorizontalAlignment="Right"
-                             Visibility="{Binding IsSoldOut, Converter={StaticResource BoolToVisibility}}" />
-                </Grid>
+                <Border Background="{DynamicResource Brush.SurfaceSubtle}" CornerRadius="8,8,0,0" ClipToBounds="True">
+                  <Grid>
+                    <TextBlock Text="&#xEB9F;" Style="{StaticResource Text.Icon}" FontSize="30" HorizontalAlignment="Center"
+                               VerticalAlignment="Center" Foreground="{DynamicResource Brush.TextTertiary}" />
+                    <Image Source="{Binding ImageFile, Converter={StaticResource ImageFile}}" Stretch="UniformToFill" />
+                    <Border Style="{StaticResource Chip.Danger}" Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top"
+                            Visibility="{Binding IsSoldOut, Converter={StaticResource BoolToVisibility}}">
+                      <TextBlock Text="SOLD OUT" />
+                    </Border>
+                  </Grid>
+                </Border>
+                <StackPanel Grid.Row="1" Margin="12,8,12,10">
+                  <TextBlock Text="{Binding Name}" TextWrapping="Wrap" MaxHeight="40" FontSize="14" FontWeight="SemiBold"
+                             TextTrimming="CharacterEllipsis" Foreground="{DynamicResource Brush.TextPrimary}" />
+                  <Grid Margin="0,4,0,0">
+                    <TextBlock Text="{Binding PriceText}" Foreground="{DynamicResource Brush.Primary}" FontWeight="SemiBold" />
+                    <TextBlock Text="+ options" Style="{StaticResource Text.Caption}" HorizontalAlignment="Right"
+                               Visibility="{Binding HasModifiers, Converter={StaticResource BoolToVisibility}}" />
+                  </Grid>
+                </StackPanel>
               </Grid>
             </Button>
           </DataTemplate>
