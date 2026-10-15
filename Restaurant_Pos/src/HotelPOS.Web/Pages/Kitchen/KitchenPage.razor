@@ -1,7 +1,14 @@
 @page "/kitchen"
 @attribute [Authorize]
+@implements IDisposable
+@using HotelPOS.Contracts.Kitchen
+@using HotelPOS.Contracts.Menu
+@using HotelPOS.Contracts.Realtime
 @inject WebAuthState Auth
+@inject KitchenApi Api
+@inject WebRealtimeClient Realtime
 @inject ShellState Shell
+@inject ToastService Toasts
 
 <PageTitle>Kitchen · HotelPOS</PageTitle>
 
@@ -11,9 +18,186 @@
 }
 else
 {
-    <div class="empty">The kitchen display is built in step 18.4.</div>
+    <div class="row between" style="margin-bottom:8px">
+        <div class="row" style="gap:8px;overflow-x:auto">
+            <button class="chip-btn @(_stationId is null ? "on" : null)" @onclick="() => SetStationAsync(null)">All stations</button>
+            @foreach (var station in _stations)
+            {
+                <button class="chip-btn @(_stationId == station.Id ? "on" : null)" @onclick="() => SetStationAsync(station.Id)">@station.Name</button>
+            }
+        </div>
+        <button class="btn icon" title="Refresh" @onclick="RefreshAsync">↻</button>
+    </div>
+
+    @if (_error is not null)
+    {
+        <div class="banner error">@_error <button class="btn ghost" @onclick="RefreshAsync">Retry</button></div>
+    }
+    else if (_tickets is null)
+    {
+        <div class="empty">Loading tickets…</div>
+    }
+    else
+    {
+        <div class="kds">
+            @foreach (var column in new[] { TicketColumn.New, TicketColumn.Preparing, TicketColumn.Ready })
+            {
+                var tickets = _tickets.Where(t => KitchenRules.ColumnOf(t.Status) == column).OrderBy(t => t.CreatedAtUtc).ToList();
+                <section class="kds-col">
+                    <h2 class="kds-head">@column.ToString().ToUpperInvariant() · @tickets.Count</h2>
+                    @if (tickets.Count == 0)
+                    {
+                        <div class="empty small">—</div>
+                    }
+                    @foreach (var ticket in tickets)
+                    {
+                        var timing = KitchenRules.Timing(ticket.CreatedAtUtc, Now, _warn, _late);
+                        <article class="ticket @(timing == TicketTiming.Late ? "late" : timing == TicketTiming.Warn ? "warn" : null)">
+                            <div class="row between">
+                                <div class="row">
+                                    <span class="ticket-table">@ticket.TableCode</span>
+                                    @if (KitchenRules.IsAddedItems(ticket))
+                                    {
+                                        <span class="chip primary">+ADD</span>
+                                    }
+                                </div>
+                                <span class="chip @(timing == TicketTiming.Late ? "danger" : timing == TicketTiming.Warn ? "warning" : null)">@KitchenRules.ElapsedText(ticket.CreatedAtUtc, Now)</span>
+                            </div>
+                            <div class="muted small">@ticket.TicketNumber · @ticket.WaiterName · @ticket.Status@(_stationId is null ? $" · {ticket.StationCode}" : null)</div>
+                            <div class="ticket-lines">
+                                @foreach (var line in ticket.Items)
+                                {
+                                    <div class="@(line.IsCancelled ? "cancelled" : null)">
+                                        <div class="ticket-line"><b>@line.Quantity ×</b> @line.Name</div>
+                                        @if (line.Modifiers.Count > 0)
+                                        {
+                                            <div class="muted small" style="margin-left:24px">@string.Join(", ", line.Modifiers)</div>
+                                        }
+                                        @if (!string.IsNullOrEmpty(line.Notes))
+                                        {
+                                            <div class="ticket-note">@line.Notes</div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                            <div class="row" style="margin-top:10px;gap:8px">
+                                @foreach (var action in KitchenRules.ActionsFor(ticket.Status))
+                                {
+                                    <button class="btn lg @(action is KitchenRules.Recall ? null : "primary")" disabled="@(_busyTicket == ticket.Id)" @onclick="() => ActAsync(ticket, action)">@KitchenRules.Label(action)</button>
+                                }
+                            </div>
+                        </article>
+                    }
+                </section>
+            }
+        </div>
+    }
 }
 
 @code {
-    protected override void OnInitialized() => Shell.Set("Kitchen Display");
+    private List<KitchenTicketDto>? _tickets;
+    private List<StationDto> _stations = new();
+    private int? _stationId;
+    private int _warn = KitchenRules.DefaultWarnMinutes;
+    private int _late = KitchenRules.DefaultLateMinutes;
+    private string? _error;
+    private int? _busyTicket;
+    private TimeSpan _clockOffset;
+    private readonly List<IDisposable> _subscriptions = new();
+    private CancellationTokenSource? _debounce;
+    private System.Threading.Timer? _clock;
+
+    private DateTime Now => DateTime.UtcNow + _clockOffset;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Shell.Set("Kitchen Display", "New, preparing and ready tickets");
+        await Realtime.StartAsync();
+        _subscriptions.Add(Realtime.Subscribe<KitchenTicketCreatedEvent>(HubEvents.KitchenTicketCreated, _ => ScheduleRefresh()));
+        _subscriptions.Add(Realtime.Subscribe<KitchenTicketUpdatedEvent>(HubEvents.KitchenTicketUpdated, _ => ScheduleRefresh()));
+        _subscriptions.Add(Realtime.Subscribe<MenuChangedEvent>(HubEvents.MenuChanged, _ => ScheduleRefresh()));
+        Realtime.Reconnected += RefreshAsync;
+
+        _stationId = await Api.GetStationPreferenceAsync();
+        await Realtime.JoinStationAsync(_stationId);
+
+        var stations = await Api.GetStationsAsync();
+        if (stations.Success && stations.Data is { } list)
+        {
+            _stations = list.Where(s => s.IsActive).OrderBy(s => s.SortOrder).ToList();
+        }
+
+        var settings = await Api.GetPublicSettingsAsync();
+        (_warn, _late) = KitchenRules.ReadTiming(settings.Data);
+
+        // Re-colour the tickets every 30 s even when nothing changes on the server.
+        _clock = new System.Threading.Timer(_ => _ = InvokeAsync(StateHasChanged), null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
+        await RefreshAsync();
+    }
+
+    private async Task SetStationAsync(int? stationId)
+    {
+        _stationId = stationId;
+        await Api.SetStationPreferenceAsync(stationId);
+        await Realtime.JoinStationAsync(stationId);
+        await RefreshAsync();
+    }
+
+    private async Task RefreshAsync()
+    {
+        var result = await Api.ListAsync(_stationId);
+        if (result.Success && result.Data is { } data)
+        {
+            _tickets = data.Tickets.ToList();
+            _clockOffset = data.ServerTimeUtc - DateTime.UtcNow;
+            _error = null;
+        }
+        else if (_tickets is null)
+        {
+            _error = result.Message;
+        }
+        else
+        {
+            Toasts.Error(result.Message);
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void ScheduleRefresh()
+    {
+        _debounce?.Cancel();
+        var cts = _debounce = new CancellationTokenSource();
+        _ = Task.Delay(250, cts.Token).ContinueWith(t => { if (!t.IsCanceled) { _ = InvokeAsync(RefreshAsync); } }, TaskScheduler.Default);
+    }
+
+    private async Task ActAsync(KitchenTicketDto ticket, string action)
+    {
+        _busyTicket = ticket.Id;
+        try
+        {
+            var result = await Api.ActAsync(ticket.Id, action);
+            if (!result.Success)
+            {
+                Toasts.Error(result.Message);
+            }
+
+            await RefreshAsync();
+        }
+        finally
+        {
+            _busyTicket = null;
+        }
+    }
+
+    public void Dispose()
+    {
+        Realtime.Reconnected -= RefreshAsync;
+        _debounce?.Cancel();
+        _clock?.Dispose();
+        foreach (var subscription in _subscriptions)
+        {
+            subscription.Dispose();
+        }
+    }
 }

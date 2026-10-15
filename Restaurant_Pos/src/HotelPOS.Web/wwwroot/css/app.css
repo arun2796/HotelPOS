@@ -171,3 +171,17 @@ textarea.input { padding: 10px 12px; min-height: 72px; resize: vertical; }
 @media (min-width: 900px) {
   .items { grid-template-columns: repeat(auto-fill, minmax(172px, 1fr)); }
 }
+
+/* ---- Phase 18.4: kitchen display (tablet landscape first, stacks in portrait) ---- */
+.kds { display: grid; grid-template-columns: 1fr; gap: 12px; }
+@media (min-width: 720px) { .kds { grid-template-columns: repeat(3, 1fr); align-items: start; } }
+.kds-head { font-size: 13px; letter-spacing: 0.04em; color: var(--text-2); margin: 4px 0 8px; }
+.ticket { background: var(--surface); border: 2px solid var(--border); border-radius: var(--radius-card); padding: 12px; margin-bottom: 10px; }
+.ticket.warn { border-color: var(--warning); }
+.ticket.late { border-color: var(--danger); }
+.ticket-table { font-size: 24px; font-weight: 700; margin-right: 8px; }
+.ticket-lines { margin-top: 8px; font-size: 17px; }
+.ticket-line { padding: 2px 0; }
+.ticket-note { margin-left: 24px; color: var(--warning); font-style: italic; font-size: 14px; }
+.ticket .btn.lg { flex: 1; min-height: 52px; font-size: 16px; }
+.empty.small { padding: 12px; }

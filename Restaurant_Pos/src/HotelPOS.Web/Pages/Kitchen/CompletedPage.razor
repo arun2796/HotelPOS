@@ -1,0 +1,95 @@
+@page "/kitchen/completed"
+@attribute [Authorize]
+@implements IDisposable
+@using HotelPOS.Contracts.Kitchen
+@using HotelPOS.Contracts.Realtime
+@inject WebAuthState Auth
+@inject KitchenApi Api
+@inject WebRealtimeClient Realtime
+@inject ShellState Shell
+
+<PageTitle>Completed · HotelPOS</PageTitle>
+
+@if (!Auth.Has(Permissions.KitchenOperate))
+{
+    <div class="banner error">You do not have access to the kitchen display.</div>
+}
+else if (_error is not null)
+{
+    <div class="banner error">@_error <button class="btn ghost" @onclick="RefreshAsync">Retry</button></div>
+}
+else if (_tickets is null)
+{
+    <div class="empty">Loading…</div>
+}
+else if (_tickets.Count == 0)
+{
+    <div class="empty">No tickets completed today yet.</div>
+}
+else
+{
+    <div class="muted small" style="margin-bottom:8px">@_tickets.Count tickets today · average preparation @AveragePrep min</div>
+    <div class="stack">
+        @foreach (var ticket in _tickets.OrderByDescending(t => t.CompletedAtUtc ?? t.CancelledAtUtc))
+        {
+            <div class="card">
+                <div class="row between">
+                    <b>@ticket.TicketNumber · @ticket.TableCode</b>
+                    <span class="chip @(ticket.Status == KitchenOrderStatus.Cancelled ? "danger" : "success")">@ticket.Status</span>
+                </div>
+                <div class="muted small">@string.Join(", ", ticket.Items.Where(i => !i.IsCancelled).Select(i => $"{i.Quantity} × {i.Name}"))</div>
+                <div class="muted small">in @ticket.CreatedAtUtc.ToLocalTime().ToString("HH:mm") · wait @Minutes(ticket.CreatedAtUtc, ticket.AcceptedAtUtc ?? ticket.StartedAtUtc) · prep @Minutes(ticket.StartedAtUtc ?? ticket.AcceptedAtUtc, ticket.ReadyAtUtc) · total @Minutes(ticket.CreatedAtUtc, ticket.CompletedAtUtc ?? ticket.ReadyAtUtc)</div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<KitchenTicketDto>? _tickets;
+    private string? _error;
+    private IDisposable? _subscription;
+
+    private string AveragePrep
+    {
+        get
+        {
+            var preps = _tickets!.Where(t => t.ReadyAtUtc is not null && (t.StartedAtUtc ?? t.AcceptedAtUtc) is not null)
+                .Select(t => (t.ReadyAtUtc!.Value - (t.StartedAtUtc ?? t.AcceptedAtUtc)!.Value).TotalMinutes).ToList();
+            return preps.Count == 0 ? "—" : Math.Round(preps.Average()).ToString("0");
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Shell.Set("Completed Orders", "Tickets completed today with preparation times");
+        await Realtime.StartAsync();
+        _subscription = Realtime.Subscribe<KitchenTicketUpdatedEvent>(HubEvents.KitchenTicketUpdated, updated => _ = InvokeAsync(RefreshAsync));
+        Realtime.Reconnected += RefreshAsync;
+        await RefreshAsync();
+    }
+
+    private async Task RefreshAsync()
+    {
+        var result = await Api.CompletedAsync();
+        if (result.Success && result.Data is { } data)
+        {
+            _tickets = data.Tickets.ToList();
+            _error = null;
+        }
+        else if (_tickets is null)
+        {
+            _error = result.Message;
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private static string Minutes(DateTime? from, DateTime? to) =>
+        from is { } f && to is { } t ? $"{Math.Max(0, (int)(t - f).TotalMinutes)} min" : "—";
+
+    public void Dispose()
+    {
+        Realtime.Reconnected -= RefreshAsync;
+        _subscription?.Dispose();
+    }
+}

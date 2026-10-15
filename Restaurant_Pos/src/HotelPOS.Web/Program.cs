@@ -19,6 +19,7 @@ builder.Services.AddScoped<WebAuthState>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<WebAuthState>());
 builder.Services.AddScoped<WebApiClient>();
 builder.Services.AddScoped<WaiterApi>();
+builder.Services.AddScoped<KitchenApi>();
 builder.Services.AddScoped<IdempotentSender>();
 builder.Services.AddScoped<DraftStore>();
 builder.Services.AddScoped<WebRealtimeClient>();

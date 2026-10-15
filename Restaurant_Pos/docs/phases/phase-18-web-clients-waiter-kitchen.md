@@ -233,3 +233,15 @@ _(filled per step)_
 - Styles appended to `app.css` (tiles, item cards, cart, sheets, steppers); 4:3 picture cards match Phase 17.
 - Tests: `OrderComposerTests` (9 cases) — total web tests 16. Razor lessons: no `section` loop variable, no `>` or
   nested quotes inside inline attribute expressions, lambda parameters must not be `_` when the body discards.
+
+### 18.4 Kitchen screens (2026-10-15)
+
+- `Services/KitchenApi.cs`: `api/kitchen/orders[?stationId]`, `…/completed`, `…/{id}/accept|start|ready|complete|recall`,
+  `api/stations`, `api/settings` (warn/late minutes); the chosen station is kept on the tablet (`hotelpos.kitchen.station`).
+- `Services/KitchenRules.cs`: timing (amber after warn, red after late, late never below warn — as the desktop),
+  elapsed text, column per status (NEW = New + Accepted), buttons per status (Accept/Start, Start, Ready, Done/Recall),
+  "+ADD" for batch > 1.
+- Pages: `Kitchen Display` (station chips, three columns, large tickets with notes and struck cancelled lines, 52 px
+  buttons, 30 s re-colour tick, hub station group joined/left with the choice), `Completed` (today's tickets with wait,
+  prep and total minutes), `Station` (first-run choice). Landscape: three columns from 720 px; portrait: stacked.
+- Tests: `KitchenRulesTests` (7 cases) — web tests total 23.

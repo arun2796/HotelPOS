@@ -1,0 +1,63 @@
+@page "/kitchen/station"
+@attribute [Authorize]
+@using HotelPOS.Contracts.Menu
+@inject WebAuthState Auth
+@inject KitchenApi Api
+@inject WebRealtimeClient Realtime
+@inject ShellState Shell
+@inject NavigationManager Navigation
+
+<PageTitle>Station · HotelPOS</PageTitle>
+
+@if (!Auth.Has(Permissions.KitchenOperate))
+{
+    <div class="banner error">You do not have access to the kitchen display.</div>
+}
+else
+{
+    <div class="card">
+        <h2>Which station is this tablet?</h2>
+        <p class="muted">Only that station's tickets are shown and pushed to this tablet. "All stations" shows everything.</p>
+        <div class="stack" style="margin-top:12px">
+            <button class="btn block lg @(_stationId is null ? "primary" : null)" @onclick="() => ChooseAsync(null)">All stations</button>
+            @foreach (var station in _stations)
+            {
+                <button class="btn block lg @(_stationId == station.Id ? "primary" : null)" @onclick="() => ChooseAsync(station.Id)">@station.Name <span class="muted small">(@station.Code)</span></button>
+            }
+        </div>
+        @if (_error is not null)
+        {
+            <div class="banner error" style="margin-top:12px">@_error</div>
+        }
+    </div>
+}
+
+@code {
+    private List<StationDto> _stations = new();
+    private int? _stationId;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Shell.Set("Station", "Choose this tablet's preparation station");
+        _stationId = await Api.GetStationPreferenceAsync();
+        var stations = await Api.GetStationsAsync();
+        if (stations.Success && stations.Data is { } list)
+        {
+            _stations = list.Where(s => s.IsActive).OrderBy(s => s.SortOrder).ToList();
+        }
+        else
+        {
+            _error = stations.Message;
+        }
+    }
+
+    private async Task ChooseAsync(int? stationId)
+    {
+        _stationId = stationId;
+        await Api.SetStationPreferenceAsync(stationId);
+        await Realtime.StartAsync();
+        await Realtime.JoinStationAsync(stationId);
+        Navigation.NavigateTo("kitchen");
+    }
+}
