@@ -83,6 +83,9 @@ Waiters on phones and the kitchen on tablets use the browser client instead of a
 4. Kitchen tablets: pick the preparation station on the *Station* tab once; only that station's tickets are shown.
 5. Printing stays on the Windows PCs: the kitchen PC prints the KOTs, the billing PC the invoices.
 
+Android phones and tablets can use the **HotelPOS Staff** app instead of the browser: same screens, an app icon, full
+screen and a remembered server address, no certificate needed on plain HTTP. See [09](09-android-app.md).
+
 Cashiers, managers and administrators keep the Windows client (installer above).
 
 ## 6. First sign-in and setup

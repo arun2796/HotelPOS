@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <!-- Phase 19: HotelPOS Staff — the waiter/kitchen screens of HotelPOS.Client.Shared inside a native Android app
+       (.NET MAUI Blazor Hybrid). Android only; the project shape allows an iOS target later. -->
+  <PropertyGroup>
+    <TargetFrameworks>net8.0-android</TargetFrameworks>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>HotelPOS.Android</RootNamespace>
+    <UseMaui>true</UseMaui>
+    <SingleProject>true</SingleProject>
+    <EnableDefaultCssItems>false</EnableDefaultCssItems>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <ApplicationTitle>HotelPOS Staff</ApplicationTitle>
+    <ApplicationId>com.hotelpos.staff</ApplicationId>
+    <ApplicationDisplayVersion>0.1.0</ApplicationDisplayVersion>
+    <ApplicationVersion>1</ApplicationVersion>
+    <SupportedOSPlatformVersion>26.0</SupportedOSPlatformVersion>
+
+    <!-- The Android toolchain emits informational warnings (XA*, trimming) that must not break the build. -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <AndroidPackageFormat>apk</AndroidPackageFormat>
+    <RuntimeIdentifiers>android-arm64;android-arm;android-x64</RuntimeIdentifiers>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#078B45" />
+    <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#078B45" BaseSize="128,128" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\HotelPOS.Client.Shared\HotelPOS.Client.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Maui.Controls" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" />
+  </ItemGroup>
+
+</Project>

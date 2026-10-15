@@ -1,6 +1,6 @@
+using HotelPOS.Client.Services;
 using HotelPOS.Web;
 using HotelPOS.Web.Services;
-using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 
@@ -10,21 +10,13 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 
 // The app is served from /app/ by the API; API, hub and images live at the same origin's root.
 var origin = new Uri(new Uri(builder.HostEnvironment.BaseAddress).GetLeftPart(UriPartial.Authority) + "/");
-builder.Services.AddScoped(_ => new HttpClient { BaseAddress = origin });
+var version = typeof(Program).Assembly.GetName().Version?.ToString(3);
 
-builder.Services.AddAuthorizationCore();
+builder.Services.AddScoped(_ => new HttpClient());
+builder.Services.AddScoped<IClientHost>(_ => new BrowserClientHost(origin, version));
 builder.Services.AddScoped<IBrowserStorage, JsBrowserStorage>();
-builder.Services.AddScoped<DeviceIdentity>();
-builder.Services.AddScoped<WebAuthState>();
-builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<WebAuthState>());
-builder.Services.AddScoped<WebApiClient>();
-builder.Services.AddScoped<WaiterApi>();
-builder.Services.AddScoped<KitchenApi>();
-builder.Services.AddScoped<IdempotentSender>();
-builder.Services.AddScoped<DraftStore>();
-builder.Services.AddScoped<WebRealtimeClient>();
-builder.Services.AddScoped<ToastService>();
-builder.Services.AddScoped<ShellState>();
+builder.Services.AddScoped<ISessionTransport, CookieSessionTransport>();
+builder.Services.AddHotelPosClient();
 
 var host = builder.Build();
 

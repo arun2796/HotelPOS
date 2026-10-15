@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <!-- Phase 19: the staff client's pages, components and services, shared by the browser host (HotelPOS.Web,
+       served under /app) and the Android host (HotelPOS.Android, .NET MAUI Blazor Hybrid). Hosts supply
+       IClientHost, ISessionTransport, IBrowserStorage and an HttpClient; everything else lives here. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>HotelPOS.Client</RootNamespace>
+    <AddRazorSupportForMvc>false</AddRazorSupportForMvc>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\HotelPOS.Contracts\HotelPOS.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
+  </ItemGroup>
+
+</Project>
