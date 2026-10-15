@@ -93,6 +93,7 @@ public static class DependencyInjection
         services.AddScoped<GstPeriodReader>();
         services.AddScoped<GstExports>();
         services.AddScoped<PeriodChecks>();
+        services.AddScoped<PeriodEvents>();
         services.AddScoped<DayEndRecords>();
         services.AddScoped<ILicenseService, LicenseService>();
         services.AddSingleton<ILicenseTrust, EmbeddedLicenseTrust>();

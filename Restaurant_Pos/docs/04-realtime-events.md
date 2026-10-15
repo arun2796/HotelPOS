@@ -62,6 +62,7 @@ it receives only its station's ticket events; `LeaveStation` puts it back. The c
 | `ShiftChanged` | role:manager, role:admin, `device:{id}` of the shift | `shiftId, deviceId, deviceName, cashierName, businessDay, status, changeType` (Opened/MovementAdded/Closed/HandedOver/ForceClosed/Reopened) | shift opened, cash movement, close, handover, force close, reopen | 13 |
 | `BusinessDayClosed` | all | `businessDay, status, changedBy` (`entityId` = day number) | Day End closed the day | 13 |
 | `BusinessDayReopened` | all | same | a manager reopened a closed day | 13 |
+| `PeriodStatusChanged` | all | `PeriodStatusChangedEvent` (kind, period, label, from, to, closed, changedBy, reason) | an administrator closed or reopened a GST month or financial year | 15 |
 
 Event names are constants in `HotelPOS.Contracts.Realtime.HubEvents`. Phase 13 resync: the shift bar reloads
 `GET /api/shifts/current` on reconnect; screens re-read on navigation.

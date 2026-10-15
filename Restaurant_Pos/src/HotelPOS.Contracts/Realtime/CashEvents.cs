@@ -1,4 +1,5 @@
 using HotelPOS.Contracts.Enums;
+using HotelPOS.Contracts.Gst;
 
 namespace HotelPOS.Contracts.Realtime;
 
@@ -29,4 +30,18 @@ public sealed record BusinessDayChangedEvent : RealtimeEvent
     public DateOnly BusinessDay { get; init; }
     public BusinessDayStatus Status { get; init; }
     public string ChangedBy { get; init; } = string.Empty;
+}
+
+// A GST month or financial year was closed or reopened; EntityId is the period's first day number. Terminals refresh the
+// period screens and tell the user that bills dated in it can (not) change.
+public sealed record PeriodStatusChangedEvent : RealtimeEvent
+{
+    public PeriodKind Kind { get; init; }
+    public string Period { get; init; } = string.Empty;
+    public string Label { get; init; } = string.Empty;
+    public DateOnly From { get; init; }
+    public DateOnly To { get; init; }
+    public bool Closed { get; init; }
+    public string ChangedBy { get; init; } = string.Empty;
+    public string? Reason { get; init; }
 }

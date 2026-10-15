@@ -130,8 +130,10 @@ internal sealed class CloseGstPeriodHandler : ICommandHandler<CloseGstPeriodComm
     private readonly IClock _clock;
     private readonly IBusinessDayLock _days;
     private readonly PeriodChecks _checks;
+    private readonly IAfterCommit _afterCommit;
+    private readonly PeriodEvents _events;
 
-    public CloseGstPeriodHandler(IAppDbContext db, IAuditTrail audit, ICurrentUser currentUser, IClock clock, IBusinessDayLock days, PeriodChecks checks)
+    public CloseGstPeriodHandler(IAppDbContext db, IAuditTrail audit, ICurrentUser currentUser, IClock clock, IBusinessDayLock days, PeriodChecks checks, IAfterCommit afterCommit, PeriodEvents events)
     {
         _db = db;
         _audit = audit;
@@ -139,6 +141,8 @@ internal sealed class CloseGstPeriodHandler : ICommandHandler<CloseGstPeriodComm
         _clock = clock;
         _days = days;
         _checks = checks;
+        _afterCommit = afterCommit;
+        _events = events;
     }
 
     public async Task<Result<PeriodDto>> Handle(CloseGstPeriodCommand command, CancellationToken cancellationToken)
@@ -185,6 +189,8 @@ internal sealed class CloseGstPeriodHandler : ICommandHandler<CloseGstPeriodComm
 
         await _db.SaveChangesAsync(cancellationToken);
         _audit.Add(AuditActions.PeriodClosed, "Period", Periods.Key(command.Kind, start), newValues: new { command.Kind, From = start, To = end, Checks = precheck.Checks.Select(c => c.Code) });
+        var by = _currentUser.UserName ?? string.Empty;
+        _afterCommit.Enqueue(() => _events.PublishAsync(close, closed: true, by));
         return (await _checks.ToDtosAsync(new[] { close }, cancellationToken))[0];
     }
 }

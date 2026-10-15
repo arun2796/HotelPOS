@@ -37,8 +37,10 @@ internal sealed class ReopenPeriodHandler : ICommandHandler<ReopenPeriodCommand,
     private readonly IClock _clock;
     private readonly IBusinessDayLock _days;
     private readonly PeriodChecks _checks;
+    private readonly IAfterCommit _afterCommit;
+    private readonly PeriodEvents _events;
 
-    public ReopenPeriodHandler(IAppDbContext db, IAuditTrail audit, ICurrentUser currentUser, IClock clock, IBusinessDayLock days, PeriodChecks checks)
+    public ReopenPeriodHandler(IAppDbContext db, IAuditTrail audit, ICurrentUser currentUser, IClock clock, IBusinessDayLock days, PeriodChecks checks, IAfterCommit afterCommit, PeriodEvents events)
     {
         _db = db;
         _audit = audit;
@@ -46,6 +48,8 @@ internal sealed class ReopenPeriodHandler : ICommandHandler<ReopenPeriodCommand,
         _clock = clock;
         _days = days;
         _checks = checks;
+        _afterCommit = afterCommit;
+        _events = events;
     }
 
     public async Task<Result<PeriodDto>> Handle(ReopenPeriodCommand command, CancellationToken cancellationToken)
@@ -84,6 +88,8 @@ internal sealed class ReopenPeriodHandler : ICommandHandler<ReopenPeriodCommand,
         _audit.Add(AuditActions.PeriodReopened, "Period", Periods.Key(request.Kind, start),
             oldValues: new { Status = "Closed", close.PackFolder },
             newValues: new { request.Kind, From = start, To = end, close.ReopenReason });
+        var by = _currentUser.UserName ?? string.Empty;
+        _afterCommit.Enqueue(() => _events.PublishAsync(close, closed: false, by));
         return (await _checks.ToDtosAsync(new[] { close }, cancellationToken))[0];
     }
 }

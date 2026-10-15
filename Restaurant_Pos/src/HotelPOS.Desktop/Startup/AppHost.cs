@@ -100,6 +100,7 @@ public static class AppHost
         services.AddSingleton<INotificationService>(sp => sp.GetRequiredService<NotificationService>());
         services.AddSingleton<ThemeService>();
         services.AddSingleton<NoticeCenter>();
+        services.AddSingleton<PeriodStatusNotices>();
         services.AddSingleton<IFilePicker, WpfFilePicker>();
         services.AddSingleton<ISoundPlayer, SystemSoundPlayer>();
         services.AddSingleton<MainViewModel>();

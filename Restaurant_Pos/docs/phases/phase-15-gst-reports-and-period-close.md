@@ -78,7 +78,7 @@ existing roles by the migration (the Phase 13 pattern). Bill customer details ke
 
 ## 7. Real-time events
 
-None. A closed period is read by the next command that needs it.
+`PeriodStatusChanged` (added 2026-10-15, see § 14) when a period is closed or reopened; before that a closed period was only noticed by the next command that needs it.
 
 ## 8. Business rules
 
@@ -194,7 +194,8 @@ None. A closed period is read by the next command that needs it.
   (`iamt` or `camt`+`samt`, plus `csamt` 0), `rchrg` N and `inv_typ` R for every invoice, HSN rows with `uqc` NA and `rt`,
   credit notes without the original invoice number (the v3 `cdnr` has none), empty sections omitted, `doc_issue` types 1
   (invoices) and 5 (credit notes). Not validated in the real offline tool (no portal tool here).
-- The close writes no backup of its own (Day End already took one per day); the pack is the evidence. No hub events.
+- The close writes no backup of its own (Day End already took one per day); the pack is the evidence. Hub events were added on 2026-10-15 (next bullet).
+- **`PeriodStatusChanged` event (2026-10-15).** After a successful close or reopen the server publishes `PeriodStatusChanged` to every terminal (kind, period key, label, from/to, `Closed`, who, reason on reopen), queued on `IAfterCommit` like Day End. The desktop shows a notice in the bell and a toast ("GST period September 2026 closed by Asha - bills dated in it can no longer be changed.", reopen: "can change again") on every terminal (`PeriodStatusNotices`), and the open Period close screen and GST hub (when its month is inside the period) reload.
 - `Tax Returns` (not "GST Returns") is the sidebar title so the command palette keeps ranking Restaurant Settings first
   for "gst" (existing ranking test unchanged).
 - HSN totals are gross of credit notes; HSN splits are computed per code/rate group and may differ from the invoice

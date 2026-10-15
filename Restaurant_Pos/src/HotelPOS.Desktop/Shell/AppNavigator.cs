@@ -32,6 +32,7 @@ public sealed class AppNavigator : IAppNavigator
         IUiDispatcher dispatcher,
         INotificationService notifications,
         NoticeCenter notices,
+        PeriodStatusNotices periodNotices,
         ILogger<AppNavigator> logger)
     {
         _main = main;
@@ -43,6 +44,8 @@ public sealed class AppNavigator : IAppNavigator
         _logger = logger;
 
         // The server refused to renew the session (user disabled, password reset, token revoked...).
+        periodNotices.Start();
+
         _session.Expired += (_, reason) => dispatcher.Post(() => _ = LogoutAsync(reason));
 
         // Sent just before the server closes this terminal's connection; without it an idle screen would only find

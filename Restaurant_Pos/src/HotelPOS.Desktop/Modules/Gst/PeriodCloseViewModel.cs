@@ -3,9 +3,11 @@ using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HotelPOS.Contracts.Gst;
+using HotelPOS.Contracts.Realtime;
 using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Navigation;
+using HotelPOS.Desktop.Services.Realtime;
 using HotelPOS.Desktop.Services.Ui;
 
 namespace HotelPOS.Desktop.Modules.Gst;
@@ -39,12 +41,17 @@ public sealed partial class PeriodCloseViewModel : ViewModelBase, INavigationAwa
     private readonly IGstApi _api;
     private readonly IDialogService _dialogs;
     private readonly INotificationService _notifications;
+    private readonly IRealtimeClient _realtime;
+    private readonly IUiDispatcher _ui;
+    private IDisposable? _periodSubscription;
 
-    public PeriodCloseViewModel(IGstApi api, IDialogService dialogs, INotificationService notifications)
+    public PeriodCloseViewModel(IGstApi api, IDialogService dialogs, INotificationService notifications, IRealtimeClient realtime, IUiDispatcher ui)
     {
         _api = api;
         _dialogs = dialogs;
         _notifications = notifications;
+        _realtime = realtime;
+        _ui = ui;
         var today = DateTime.Today;
         _financialYear = today.Month >= 4 ? today.Year : today.Year - 1;
     }
@@ -74,10 +81,18 @@ public sealed partial class PeriodCloseViewModel : ViewModelBase, INavigationAwa
 
     public bool CanReopen => SelectedPeriod is { Period.Status: PeriodStatus.Closed };
 
-    public Task OnNavigatedToAsync(object? parameter) => RefreshAsync();
+    public Task OnNavigatedToAsync(object? parameter)
+    {
+        // Another terminal closing or reopening a period (or this one, a moment ago) changes what can be closed here.
+        _periodSubscription?.Dispose();
+        _periodSubscription = _realtime.Subscribe<PeriodStatusChangedEvent>(HubEvents.PeriodStatusChanged, evt => _ui.Post(() => _ = RefreshAsync()));
+        return RefreshAsync();
+    }
 
     public void OnNavigatedFrom()
     {
+        _periodSubscription?.Dispose();
+        _periodSubscription = null;
     }
 
     partial void OnFinancialYearChanged(int value) => _ = RefreshAsync();

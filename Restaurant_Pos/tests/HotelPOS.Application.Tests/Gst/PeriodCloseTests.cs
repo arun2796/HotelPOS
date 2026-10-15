@@ -11,6 +11,7 @@ using HotelPOS.Contracts.Cash;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Gst;
+using HotelPOS.Contracts.Realtime;
 using HotelPOS.Contracts.Security;
 using Microsoft.EntityFrameworkCore;
 
@@ -110,6 +111,24 @@ public class PeriodCloseTests : GstTestBase, IDisposable
         reopenDay.Error!.Code.Should().Be(ErrorCodes.PeriodClosed);
         reopenBill.Error!.Code.Should().Be(ErrorCodes.PeriodClosed);
         november.Status.Should().Be(BillStatus.Settled, "November is open");
+    }
+
+    [Fact]
+    public async Task CloseAndReopen_AnnounceThePeriodToEveryTerminal()
+    {
+        var (v, _) = await ClosableOctoberAsync();
+        (await SendAsync(new CloseGstPeriodCommand(PeriodKind.Month, October))).IsSuccess.Should().BeTrue();
+        AsAdmin(v);
+        (await SendAsync(new ReopenPeriodCommand(new ReopenPeriodRequest { Kind = PeriodKind.Month, Period = October, Reason = "Wrong GSTIN" }))).IsSuccess.Should().BeTrue();
+
+        var events = Realtime.Events.Where(e => e.EventName == HubEvents.PeriodStatusChanged).ToList();
+        events.Should().HaveCount(2);
+        events.Should().OnlyContain(e => e.Audience.Everyone);
+        var closed = (PeriodStatusChangedEvent)events[0].Payload;
+        (closed.Closed, closed.Period, closed.Label, closed.ChangedBy).Should().Be((true, October, "October 2026", "admin"));
+        (closed.From, closed.To).Should().Be((new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 31)));
+        var reopened = (PeriodStatusChangedEvent)events[1].Payload;
+        (reopened.Closed, reopened.Reason).Should().Be((false, "Wrong GSTIN"));
     }
 
     [Fact]

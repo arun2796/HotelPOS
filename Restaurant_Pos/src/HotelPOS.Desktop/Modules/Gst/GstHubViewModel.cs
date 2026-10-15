@@ -4,12 +4,14 @@ using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HotelPOS.Contracts.Gst;
+using HotelPOS.Contracts.Realtime;
 using HotelPOS.Contracts.Reports;
 using HotelPOS.Desktop.Modules.Billing;
 using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Modules.Reports;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Navigation;
+using HotelPOS.Desktop.Services.Realtime;
 using HotelPOS.Desktop.Services.Ui;
 
 namespace HotelPOS.Desktop.Modules.Gst;
@@ -28,16 +30,21 @@ public sealed partial class GstHubViewModel : ViewModelBase, INavigationAware
     private readonly IGstApi _api;
     private readonly IFilePicker _files;
     private readonly INotificationService _notifications;
+    private readonly IRealtimeClient _realtime;
+    private readonly IUiDispatcher _ui;
+    private IDisposable? _periodSubscription;
     private Gstr1Dto? _gstr1;
     private Gstr3bDto? _gstr3b;
     private IReadOnlyList<HsnSummaryRowDto> _hsn = Array.Empty<HsnSummaryRowDto>();
     private GstValidationDto? _validation;
 
-    public GstHubViewModel(IGstApi api, IFilePicker files, INotificationService notifications)
+    public GstHubViewModel(IGstApi api, IFilePicker files, INotificationService notifications, IRealtimeClient realtime, IUiDispatcher ui)
     {
         _api = api;
         _files = files;
         _notifications = notifications;
+        _realtime = realtime;
+        _ui = ui;
         var lastMonth = DateTime.Today.AddMonths(-1);
         _year = lastMonth.Year;
         _month = lastMonth.Month;
@@ -97,11 +104,28 @@ public sealed partial class GstHubViewModel : ViewModelBase, INavigationAware
 
     public bool HasNoRows => Table is { Rows.Count: 0 };
 
-    public Task OnNavigatedToAsync(object? parameter) => RunAsync();
+    public Task OnNavigatedToAsync(object? parameter)
+    {
+        // A period closed or reopened elsewhere changes the validation of the month on screen.
+        _periodSubscription?.Dispose();
+        _periodSubscription = _realtime.Subscribe<PeriodStatusChangedEvent>(HubEvents.PeriodStatusChanged, OnPeriodStatusChanged);
+        return RunAsync();
+    }
 
     public void OnNavigatedFrom()
     {
+        _periodSubscription?.Dispose();
+        _periodSubscription = null;
     }
+
+    private void OnPeriodStatusChanged(PeriodStatusChangedEvent evt) => _ui.Post(() =>
+    {
+        var month = new DateOnly(Year, Month, 1);
+        if (evt.From <= month && month <= evt.To)
+        {
+            _ = RunAsync();
+        }
+    });
 
     partial void OnSelectedTabChanged(int value) => Render();
 

@@ -7,8 +7,10 @@ using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Billing;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Gst;
+using HotelPOS.Contracts.Realtime;
 using HotelPOS.Domain.Gst;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.SignalR.Client;
 
 namespace HotelPOS.Api.Tests;
 
@@ -71,6 +73,35 @@ public class GstApiTests : IClassFixture<ApiFactory>
         notClosed.StatusCode.Should().Be(HttpStatusCode.Conflict);
         (await admin.GetAsync("/api/periods?financialYear=2026")).StatusCode.Should().Be(HttpStatusCode.OK);
     }
+
+    [Fact]
+    public async Task ClosingAndReopeningAPeriod_IsPushedToOpenTerminals()
+    {
+        var admin = await _factory.CreateAuthenticatedClientAsync("admin", ApiFactory.AdminPassword);
+        var gstin = "33AAPFU0939F1Z" + Gstin.CheckCharacter("33AAPFU0939F1Z");
+        (await admin.PutAsJsonAsync("/api/admin/settings", new UpdateSettingsRequest { Items = new[] { new SettingValue { Key = SettingKeys.Gstin, Value = gstin } } }, PosJson.Options))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        var waiterLogin = await _factory.LoginAsync("waiter1", ApiFactory.DemoPassword, deviceName: "WAITER-01");
+        await using var waiterHub = _factory.CreateHubConnection(waiterLogin.AccessToken);
+        var closed = new TaskCompletionSource<PeriodStatusChangedEvent>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var reopened = new TaskCompletionSource<PeriodStatusChangedEvent>(TaskCreationOptions.RunContinuationsAsynchronously);
+        waiterHub.On<PeriodStatusChangedEvent>(HubEvents.PeriodStatusChanged, e => (e.Closed ? closed : reopened).TrySetResult(e));
+        await waiterHub.StartAsync();
+        await waiterHub.InvokeAsync<DateTime>(HubMethods.Ping);
+
+        // A finished month with no trade closes without Day End.
+        var month = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1).AddMonths(-3).ToString("yyyy-MM", CultureInfo.InvariantCulture);
+        var close = await admin.PostAsJsonAsync("/api/periods/close", new ClosePeriodRequest { Kind = PeriodKind.Month, Period = month }, PosJson.Options);
+        var closeBody = await close.ReadEnvelopeAsync<PeriodCloseResultDto>();
+        closeBody.Success.Should().BeTrue(closeBody.Message + string.Join(" ", closeBody.Errors.Select(e => e.Message)));
+        var closedEvent = await closed.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        (closedEvent.Period, closedEvent.Kind, closedEvent.ChangedBy).Should().Be((month, PeriodKind.Month, "admin"));
+
+        var reopen = await admin.PostAsJsonAsync("/api/periods/reopen", new ReopenPeriodRequest { Kind = PeriodKind.Month, Period = month, Reason = "Test reopen" }, PosJson.Options);
+        (await reopen.ReadEnvelopeAsync<PeriodDto>()).Success.Should().BeTrue();
+        (await reopened.Task.WaitAsync(TimeSpan.FromSeconds(10))).Reason.Should().Be("Test reopen");
+    }
+
 
     [Fact]
     public void PeriodClosed_IsAConflict() =>

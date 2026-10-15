@@ -1,7 +1,10 @@
+using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Gst;
+using HotelPOS.Contracts.Realtime;
 using HotelPOS.Desktop.Modules.Gst;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Ui;
+using HotelPOS.Desktop.Tests.Support;
 using NSubstitute;
 
 namespace HotelPOS.Desktop.Tests.Gst;
@@ -11,6 +14,7 @@ public sealed class GstViewModelTests
     private readonly IGstApi _api = Substitute.For<IGstApi>();
     private readonly IFilePicker _files = Substitute.For<IFilePicker>();
     private readonly INotificationService _notifications = Substitute.For<INotificationService>();
+    private readonly FakeRealtimeClient _realtime = new();
 
     private GstHubViewModel Hub()
     {
@@ -30,7 +34,7 @@ public sealed class GstViewModelTests
             CanFile = false,
             Issues = new[] { new GstValidationRowDto { Severity = GstIssueSeverity.Error, Code = GstIssueCodes.RestaurantGstinMissing, Message = "Enter the GSTIN." } },
         }));
-        return new GstHubViewModel(_api, _files, _notifications);
+        return new GstHubViewModel(_api, _files, _notifications, _realtime, new ImmediateDispatcher());
     }
 
     [Fact]
@@ -89,7 +93,7 @@ public sealed class GstViewModelTests
         _api.CloseAsync(Arg.Any<ClosePeriodRequest>(), Arg.Any<CancellationToken>())
             .Returns(ApiResult<PeriodCloseResultDto>.Ok(new PeriodCloseResultDto { Period = open with { Status = PeriodStatus.Closed } }));
         _api.ReopenAsync(Arg.Any<ReopenPeriodRequest>(), Arg.Any<CancellationToken>()).Returns(ApiResult<PeriodDto>.Ok(closed with { Status = PeriodStatus.Reopened }));
-        var vm = new PeriodCloseViewModel(_api, dialogs, _notifications);
+        var vm = new PeriodCloseViewModel(_api, dialogs, _notifications, _realtime, new ImmediateDispatcher());
 
         await vm.OnNavigatedToAsync(null);
         vm.SelectedPeriod!.Period.Period.Should().Be("2026-09", "the first month that is not closed is preselected");
@@ -106,5 +110,74 @@ public sealed class GstViewModelTests
         vm.CanClose.Should().BeFalse();
         await vm.ReopenCommand.ExecuteAsync(null);
         await _api.Received().ReopenAsync(Arg.Is<ReopenPeriodRequest>(r => r.Period == "2026-08" && r.Reason == "Wrong GSTIN on INV-1"), Arg.Any<CancellationToken>());
+    }
+
+    private static PeriodStatusChangedEvent SeptemberClosed(bool closed) => new()
+    {
+        Kind = PeriodKind.Month,
+        Period = "2026-09",
+        Label = "September 2026",
+        From = new DateOnly(2026, 9, 1),
+        To = new DateOnly(2026, 9, 30),
+        Closed = closed,
+        ChangedBy = "Asha",
+    };
+
+    [Fact]
+    public async Task ThePeriodScreen_RefreshesWhenAPeriodIsClosedElsewhere_AndStopsListeningWhenLeft()
+    {
+        var open = new PeriodDto { Kind = PeriodKind.Month, Period = "2026-09", Label = "September 2026", Status = PeriodStatus.Open };
+        _api.GetPeriodsAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>()).Returns(ApiResult<List<PeriodDto>>.Ok(new List<PeriodDto> { open }));
+        _api.GetPrecheckAsync(Arg.Any<PeriodKind>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(ApiResult<PeriodPrecheckDto>.Ok(new PeriodPrecheckDto { CanClose = true }));
+        var vm = new PeriodCloseViewModel(_api, Substitute.For<IDialogService>(), _notifications, _realtime, new ImmediateDispatcher());
+        await vm.OnNavigatedToAsync(null);
+        _api.ClearReceivedCalls();
+        _api.GetPeriodsAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(ApiResult<List<PeriodDto>>.Ok(new List<PeriodDto> { open with { Status = PeriodStatus.Closed } }));
+
+        _realtime.Publish(HubEvents.PeriodStatusChanged, SeptemberClosed(true));
+        await Task.Delay(100);
+
+        await _api.Received(1).GetPeriodsAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>());
+        vm.Periods.Single().Period.Status.Should().Be(PeriodStatus.Closed);
+
+        vm.OnNavigatedFrom();
+        _realtime.SubscriberCount(HubEvents.PeriodStatusChanged).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task TheGstHub_ReloadsOnlyWhenTheClosedPeriodContainsItsMonth()
+    {
+        var hub = Hub();
+        hub.Year = 2026;
+        hub.Month = 9;
+        await hub.OnNavigatedToAsync(null);
+        _api.ClearReceivedCalls();
+
+        _realtime.Publish(HubEvents.PeriodStatusChanged, SeptemberClosed(true) with { From = new DateOnly(2026, 8, 1), To = new DateOnly(2026, 8, 31) });
+        await Task.Delay(50);
+        await _api.DidNotReceive().GetValidationAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+
+        _realtime.Publish(HubEvents.PeriodStatusChanged, SeptemberClosed(false));
+        await Task.Delay(100);
+        await _api.Received(1).GetValidationAsync("2026-09", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public void PeriodStatusNotices_TellEveryTerminalThatBillsInTheClosedPeriodCannotChange()
+    {
+        var notices = new NoticeCenter(new ImmediateDispatcher());
+        new PeriodStatusNotices(_realtime, notices, _notifications).Start();
+
+        _realtime.Publish(HubEvents.PeriodStatusChanged, SeptemberClosed(true));
+        _realtime.Publish(HubEvents.PeriodStatusChanged, SeptemberClosed(false));
+
+        notices.Items.Select(n => n.Message).Should().Equal(
+            "GST period September 2026 reopened by Asha — bills dated in it can change again.",
+            "GST period September 2026 closed by Asha — bills dated in it can no longer be changed.");
+        notices.Items[1].Level.Should().Be(NoticeLevel.Warning);
+        _notifications.Received(1).Warning("GST period September 2026 closed by Asha — bills dated in it can no longer be changed.");
+        _notifications.Received(1).Info("GST period September 2026 reopened by Asha — bills dated in it can change again.");
     }
 }

@@ -28,6 +28,7 @@ public static class HubEvents
     public const string ShiftChanged = "ShiftChanged";
     public const string BusinessDayClosed = "BusinessDayClosed";
     public const string BusinessDayReopened = "BusinessDayReopened";
+    public const string PeriodStatusChanged = "PeriodStatusChanged";
 }
 
 public static class HubMethods
