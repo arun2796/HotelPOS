@@ -191,3 +191,26 @@ _(filled per step)_
   runs with `HandleCookies = false` so the rotated cookie cannot leak in from the client's cookie jar.
 - Build note: pass an **absolute** `-p:OutDir` inside the repo; a relative one is applied per project and creates
   `src/*/tests/...` output folders that break the Api build (removed).
+
+### 18.2 Foundation: project, hosting, sign-in, services (2026-10-15)
+
+- New `src/HotelPOS.Web` (Blazor WebAssembly PWA, `StaticWebAssetBasePath=app`, `<base href="/app/">`), referencing only
+  `HotelPOS.Contracts`; packages pinned centrally at 8.0.32 (the template's 8.0.25 `WebAssembly.Server` carries NU1903).
+- API hosting: `HotelPOS.Api.csproj` references the web project and `Microsoft.AspNetCore.Components.WebAssembly.Server`;
+  `Program.cs` adds `UseStaticWebAssets()` (no-op after publish), `UseBlazorFrameworkFiles("/app")`, `UseStaticFiles()`
+  and, last, `MapFallbackToFile("/app/{*path:nonfile}", "app/index.html").AllowAnonymous()` — the explicit
+  `AllowAnonymous` is required because the API's authorization fallback policy demands an authenticated user.
+- Services: `WebAuthState` (AuthenticationStateProvider; access token in memory, cookie refresh with single-flight,
+  `/me` roles and permissions → claims), `WebApiClient` (envelope, bearer, `Idempotency-Key`, one refresh-and-retry on
+  401), `IdempotentSender` (same key across retries of unknown outcomes), `DraftStore` (per-table drafts in localStorage,
+  pending key kept), `DeviceIdentity` (`WEB-WAITER-xxxxxx` / `WEB-KITCHEN-xxxxxx`, generated once per browser profile),
+  `WebRealtimeClient` (existing hub, token via `AccessTokenProvider`, forever retry, station group re-joined on
+  reconnect), `ShellState`, `ToastService`, `IBrowserStorage` (JS interop over localStorage).
+- Shell: `MainLayout` (top bar with title, connection pill, user/sign-out; bottom nav per role), `SignIn` (device type
+  toggle Waiter/Kitchen, server status, reasons for a session that ended), `Home` routes by server-reported permissions
+  (tables for waiters, kitchen for kitchen, otherwise "use the desktop application"). Design tokens mirror Phase 17.
+- Tests: `tests/HotelPOS.Web.Tests` (7: idempotent sender key reuse / final answers / give-up; draft round-trip, corrupt
+  draft dropped, device names, preferred type) and `WebHostingTests` (7: `/app`, `/app/`, deep links serve the shell;
+  `/api/**`, `/hubs/**`, other paths are not caught). The test host uses a stand-in web root (`TestWebRoot`) because a
+  redirected OutDir has no static-web-assets manifest; framework-file serving is covered by the manual demo and publish.
+- Open for 18.3/18.4: real pages behind `/tables`, `/my-orders`, `/kitchen`, `/kitchen/completed`, `/kitchen/station`.

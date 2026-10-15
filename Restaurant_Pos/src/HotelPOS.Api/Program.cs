@@ -22,6 +22,10 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 });
 
 // No-op when started from a console or by the tests; under the Service Control Manager it reports start/stop.
+// Phase 18: serve the referenced browser client's static web assets outside Development too (tests run as "Testing");
+// after publish the assets are physical files under wwwroot/app and this call is a no-op.
+builder.WebHost.UseStaticWebAssets();
+
 builder.Host.UseWindowsService(options => options.ServiceName = "HotelPOS API");
 
 builder.Host.UseSerilog((context, services, logger) =>
@@ -112,6 +116,10 @@ app.UseStaticFiles(new StaticFileOptions
     OnPrepareResponse = context => context.Context.Response.Headers.CacheControl = "no-cache",
 });
 
+// Phase 18: the browser client lives under /app (framework files, index.html, css); API routes are untouched.
+app.UseBlazorFrameworkFiles("/app");
+app.UseStaticFiles();
+
 app.UseMiddleware<LoginRateLimitingMiddleware>();
 app.UseAuthentication();
 app.UseMiddleware<RequestContextLoggingMiddleware>();
@@ -123,6 +131,8 @@ app.UseMiddleware<IdempotencyMiddleware>();
 app.MapControllers();
 app.MapHub<RestaurantHub>(HubRoutes.Restaurant);
 app.MapHealthChecks("/health", ApiServiceRegistration.HealthCheckOptions).AllowAnonymous();
+// Registered last and limited to /app/** so no API, hub, media or update route is ever shadowed.
+app.MapFallbackToFile("/app/{*path:nonfile}", "app/index.html").AllowAnonymous();
 
 try
 {

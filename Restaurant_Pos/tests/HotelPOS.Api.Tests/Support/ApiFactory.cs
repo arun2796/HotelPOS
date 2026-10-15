@@ -34,6 +34,8 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+        // Phase 18: the browser client shell is served from wwwroot/app after publish; tests get a stand-in web root.
+        builder.UseWebRoot(TestWebRoot.Prepare());
         builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["ConnectionStrings:HotelPOS"] = _connectionString,

@@ -1,0 +1,19 @@
+@page "/kitchen"
+@attribute [Authorize]
+@inject WebAuthState Auth
+@inject ShellState Shell
+
+<PageTitle>Kitchen · HotelPOS</PageTitle>
+
+@if (!Auth.Has(Permissions.KitchenOperate))
+{
+    <div class="banner error">You do not have access to the kitchen display.</div>
+}
+else
+{
+    <div class="empty">The kitchen display is built in step 18.4.</div>
+}
+
+@code {
+    protected override void OnInitialized() => Shell.Set("Kitchen Display");
+}

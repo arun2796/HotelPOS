@@ -1,0 +1,31 @@
+@implements IDisposable
+@inject WebRealtimeClient Realtime
+@inject WebAuthState Auth
+
+@if (Auth.IsSignedIn)
+{
+    <span class="conn @Css" title="Real-time connection">@Text</span>
+}
+
+@code {
+    private string Css => Realtime.Status switch
+    {
+        WebConnectionStatus.Connected => "ok",
+        WebConnectionStatus.Reconnecting or WebConnectionStatus.Connecting => "wait",
+        _ => "off",
+    };
+
+    private string Text => Realtime.Status switch
+    {
+        WebConnectionStatus.Connected => "Connected",
+        WebConnectionStatus.Connecting => "Connecting…",
+        WebConnectionStatus.Reconnecting => "Reconnecting…",
+        _ => "Offline",
+    };
+
+    protected override void OnInitialized() => Realtime.StatusChanged += OnChanged;
+
+    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Realtime.StatusChanged -= OnChanged;
+}

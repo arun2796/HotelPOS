@@ -1,0 +1,19 @@
+@page "/tables"
+@attribute [Authorize]
+@inject WebAuthState Auth
+@inject ShellState Shell
+
+<PageTitle>Tables · HotelPOS</PageTitle>
+
+@if (!Auth.Has(Permissions.TablesView))
+{
+    <div class="banner error">You do not have access to the tables.</div>
+}
+else
+{
+    <div class="empty">Tables are built in step 18.3.</div>
+}
+
+@code {
+    protected override void OnInitialized() => Shell.Set("Tables", "Live table map");
+}
