@@ -5,13 +5,8 @@ namespace HotelPOS.Desktop.Services.Auth;
 
 public interface ITokenRefresher
 {
-    /// <summary>The current access token, refreshed first if it expires within a minute. Null when logged out.</summary>
     Task<string?> GetValidAccessTokenAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Refreshes after the server rejected <paramref name="rejectedToken"/>. Concurrent callers share one
-    /// refresh. Returns the new token, or null when the session could not be renewed.
-    /// </summary>
     Task<string?> RefreshAsync(string? rejectedToken, CancellationToken cancellationToken = default);
 }
 

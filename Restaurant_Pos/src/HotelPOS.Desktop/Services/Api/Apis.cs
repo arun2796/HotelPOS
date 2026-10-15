@@ -3,6 +3,8 @@ using System.Text;
 using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Auth;
 using HotelPOS.Contracts.Common;
+using HotelPOS.Contracts.Floor;
+using HotelPOS.Contracts.Security;
 using HotelPOS.Contracts.Users;
 
 namespace HotelPOS.Desktop.Services.Api;
@@ -43,7 +45,6 @@ public sealed class AuthApi : IAuthApi
 
 public interface ISystemApi
 {
-    /// <summary>Anonymous server check. Pass a base URL to test an address before saving it.</summary>
     Task<ApiResult<SystemInfoDto>> GetInfoAsync(string? baseUrlOverride = null, CancellationToken cancellationToken = default);
 
     Task<ApiResult<List<SettingDto>>> GetPublicSettingsAsync(CancellationToken cancellationToken = default);
@@ -84,6 +85,18 @@ public interface IUsersApi
     Task<ApiResult<object>> ResetPasswordAsync(int id, ResetPasswordRequest request, CancellationToken cancellationToken = default);
 
     Task<ApiResult<List<RoleDto>>> GetRolesAsync(CancellationToken cancellationToken = default);
+
+    Task<ApiResult<UserDto>> UnlockAsync(int id, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<List<UserSessionDto>>> GetSessionsAsync(int id, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<object>> LogoutAllAsync(int id, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<List<RolePermissionsDto>>> ListAllRolePermissionsAsync(CancellationToken cancellationToken = default);
+
+    Task<ApiResult<RolePermissionsDto>> GetRolePermissionsAsync(int roleId, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<object>> UpdateRolePermissionsAsync(int roleId, UpdateRolePermissionsRequest request, CancellationToken cancellationToken = default);
 }
 
 public sealed class UsersApi : IUsersApi
@@ -126,6 +139,24 @@ public sealed class UsersApi : IUsersApi
 
     public Task<ApiResult<List<RoleDto>>> GetRolesAsync(CancellationToken cancellationToken = default) =>
         _api.GetAsync<List<RoleDto>>("api/roles", cancellationToken);
+
+    public Task<ApiResult<UserDto>> UnlockAsync(int id, CancellationToken cancellationToken = default) =>
+        _api.PostAsync<UserDto>($"api/users/{id}/unlock", null, cancellationToken);
+
+    public Task<ApiResult<List<UserSessionDto>>> GetSessionsAsync(int id, CancellationToken cancellationToken = default) =>
+        _api.GetAsync<List<UserSessionDto>>($"api/users/{id}/sessions", cancellationToken);
+
+    public Task<ApiResult<object>> LogoutAllAsync(int id, CancellationToken cancellationToken = default) =>
+        _api.PostAsync<object>($"api/users/{id}/logout-all", null, cancellationToken);
+
+    public Task<ApiResult<List<RolePermissionsDto>>> ListAllRolePermissionsAsync(CancellationToken cancellationToken = default) =>
+        _api.GetAsync<List<RolePermissionsDto>>("api/roles/permissions", cancellationToken);
+
+    public Task<ApiResult<RolePermissionsDto>> GetRolePermissionsAsync(int roleId, CancellationToken cancellationToken = default) =>
+        _api.GetAsync<RolePermissionsDto>($"api/roles/{roleId}/permissions", cancellationToken);
+
+    public Task<ApiResult<object>> UpdateRolePermissionsAsync(int roleId, UpdateRolePermissionsRequest request, CancellationToken cancellationToken = default) =>
+        _api.PutAsync<object>($"api/roles/{roleId}/permissions", request, cancellationToken);
 }
 
 public interface IAdminSettingsApi
@@ -149,4 +180,67 @@ public sealed class AdminSettingsApi : IAdminSettingsApi
 
     public Task<ApiResult<List<SettingDto>>> UpdateAsync(UpdateSettingsRequest request, CancellationToken cancellationToken = default) =>
         _api.PutAsync<List<SettingDto>>("api/admin/settings", request, cancellationToken);
+}
+
+public interface IFloorApi
+{
+    Task<ApiResult<TableMapDto>> GetMapAsync(bool includeInactive = false, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<TableDetailDto>> GetTableAsync(int id, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<TableDto>> OccupyAsync(int id, OccupyTableRequest request, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<TableDto>> ReleaseAsync(int id, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<TableDto>> SetOutOfServiceAsync(int id, bool outOfService, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<TableDto>> CreateTableAsync(CreateTableRequest request, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<TableDto>> UpdateTableAsync(int id, UpdateTableRequest request, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<List<SectionDto>>> GetSectionsAsync(bool includeInactive = false, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<SectionDto>> CreateSectionAsync(CreateSectionRequest request, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<SectionDto>> UpdateSectionAsync(int id, UpdateSectionRequest request, CancellationToken cancellationToken = default);
+}
+
+public sealed class FloorApi : IFloorApi
+{
+    private readonly IApiClient _api;
+
+    public FloorApi(IApiClient api)
+    {
+        _api = api;
+    }
+
+    public Task<ApiResult<TableMapDto>> GetMapAsync(bool includeInactive = false, CancellationToken cancellationToken = default) =>
+        _api.GetAsync<TableMapDto>(includeInactive ? "api/tables?includeInactive=true" : "api/tables", cancellationToken);
+
+    public Task<ApiResult<TableDetailDto>> GetTableAsync(int id, CancellationToken cancellationToken = default) =>
+        _api.GetAsync<TableDetailDto>($"api/tables/{id}", cancellationToken);
+
+    public Task<ApiResult<TableDto>> OccupyAsync(int id, OccupyTableRequest request, CancellationToken cancellationToken = default) =>
+        _api.PostAsync<TableDto>($"api/tables/{id}/occupy", request, cancellationToken);
+
+    public Task<ApiResult<TableDto>> ReleaseAsync(int id, CancellationToken cancellationToken = default) =>
+        _api.PostAsync<TableDto>($"api/tables/{id}/release", null, cancellationToken);
+
+    public Task<ApiResult<TableDto>> SetOutOfServiceAsync(int id, bool outOfService, CancellationToken cancellationToken = default) =>
+        _api.PostAsync<TableDto>($"api/tables/{id}/{(outOfService ? "out-of-service" : "in-service")}", null, cancellationToken);
+
+    public Task<ApiResult<TableDto>> CreateTableAsync(CreateTableRequest request, CancellationToken cancellationToken = default) =>
+        _api.PostAsync<TableDto>("api/tables", request, cancellationToken);
+
+    public Task<ApiResult<TableDto>> UpdateTableAsync(int id, UpdateTableRequest request, CancellationToken cancellationToken = default) =>
+        _api.PutAsync<TableDto>($"api/tables/{id}", request, cancellationToken);
+
+    public Task<ApiResult<List<SectionDto>>> GetSectionsAsync(bool includeInactive = false, CancellationToken cancellationToken = default) =>
+        _api.GetAsync<List<SectionDto>>(includeInactive ? "api/sections?includeInactive=true" : "api/sections", cancellationToken);
+
+    public Task<ApiResult<SectionDto>> CreateSectionAsync(CreateSectionRequest request, CancellationToken cancellationToken = default) =>
+        _api.PostAsync<SectionDto>("api/sections", request, cancellationToken);
+
+    public Task<ApiResult<SectionDto>> UpdateSectionAsync(int id, UpdateSectionRequest request, CancellationToken cancellationToken = default) =>
+        _api.PutAsync<SectionDto>($"api/sections/{id}", request, cancellationToken);
 }

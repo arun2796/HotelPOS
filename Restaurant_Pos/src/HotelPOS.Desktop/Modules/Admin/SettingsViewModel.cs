@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Enums;
+using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Navigation;
 using HotelPOS.Desktop.Services.Ui;
@@ -24,7 +25,6 @@ public sealed partial class SettingItemViewModel : ObservableObject
 
     public string Key { get; }
 
-    /// <summary>"KitchenWarnMinutes" -> "Kitchen warn minutes".</summary>
     public string DisplayName => Humanize(Key);
 
     public string? Description { get; }
@@ -78,8 +78,7 @@ public sealed partial class SettingItemViewModel : ObservableObject
     }
 }
 
-/// <summary>Admin: restaurant settings stored on the server (name, invoice details, thresholds...).</summary>
-public sealed partial class SettingsViewModel : ObservableObject, INavigationAware, IRefreshable
+public sealed partial class SettingsViewModel : ViewModelBase, INavigationAware, IRefreshable
 {
     private readonly IAdminSettingsApi _api;
     private readonly INotificationService _notifications;
@@ -92,13 +91,6 @@ public sealed partial class SettingsViewModel : ObservableObject, INavigationAwa
 
     public ObservableCollection<SettingItemViewModel> Items { get; } = new();
 
-    [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
-    private bool _isBusy;
-
-    [ObservableProperty]
-    private string? _errorMessage;
-
     public Task OnNavigatedToAsync(object? parameter) => LoadAsync();
 
     public void OnNavigatedFrom()
@@ -108,31 +100,23 @@ public sealed partial class SettingsViewModel : ObservableObject, INavigationAwa
     public Task RefreshAsync() => Items.Any(i => i.IsDirty) ? Task.CompletedTask : LoadAsync();
 
     [RelayCommand]
-    private async Task LoadAsync()
+    private Task LoadAsync() => ExecuteAsync(async () =>
     {
-        IsBusy = true;
-        ErrorMessage = null;
-        try
+        var settings = await FetchAsync(_api.GetAllAsync());
+        if (settings is null)
         {
-            var result = await _api.GetAllAsync();
-            if (!result.Success || result.Data is null)
-            {
-                ErrorMessage = result.Message;
-                return;
-            }
+            return;
+        }
 
-            Items.Clear();
-            // MenuVersion is maintained by the system; it is not an admin setting.
-            foreach (var dto in result.Data.Where(s => s.Key != SettingKeys.MenuVersion))
-            {
-                Items.Add(new SettingItemViewModel(dto));
-            }
-        }
-        finally
+        Items.Clear();
+        // MenuVersion is maintained by the system; it is not an admin setting.
+        foreach (var dto in settings.Where(s => s.Key != SettingKeys.MenuVersion))
         {
-            IsBusy = false;
+            Items.Add(new SettingItemViewModel(dto));
         }
-    }
+    });
+
+    protected override void OnBusyChanged() => SaveCommand.NotifyCanExecuteChanged();
 
     private bool CanSave() => !IsBusy;
 
@@ -151,8 +135,7 @@ public sealed partial class SettingsViewModel : ObservableObject, INavigationAwa
             item.Error = null;
         }
 
-        IsBusy = true;
-        try
+        await ExecuteAsync(async () =>
         {
             var result = await _api.UpdateAsync(new UpdateSettingsRequest
             {
@@ -186,10 +169,6 @@ public sealed partial class SettingsViewModel : ObservableObject, INavigationAwa
             }
 
             ErrorMessage = result.Message;
-        }
-        finally
-        {
-            IsBusy = false;
-        }
+        });
     }
 }

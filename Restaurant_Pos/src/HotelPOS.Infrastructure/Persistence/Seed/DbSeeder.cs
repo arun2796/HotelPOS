@@ -4,8 +4,13 @@ using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Security;
 using HotelPOS.Domain.Administration;
 using HotelPOS.Domain.Billing;
+using HotelPOS.Domain.Cash;
+using HotelPOS.Domain.Floor;
 using HotelPOS.Domain.Identity;
 using HotelPOS.Domain.Menu;
+using HotelPOS.Domain.Printing;
+using HotelPOS.Application.Features.Templates;
+using HotelPOS.Contracts.Print;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -15,20 +20,13 @@ public sealed class SeedOptions
 {
     public const string SectionName = "Seed";
 
-    /// <summary>Initial password of the "admin" account. The user must change it at first login.</summary>
     public string AdminPassword { get; set; } = string.Empty;
 
-    /// <summary>Creates sample users (waiter1, kitchen1, cashier1, manager1). Development only.</summary>
     public bool DemoData { get; set; }
 
-    /// <summary>Password of the demo users.</summary>
     public string DemoPassword { get; set; } = "Pass@123";
 }
 
-/// <summary>
-/// Inserts reference data that must always exist. Idempotent: only missing rows are added, existing
-/// values (possibly edited by an admin) are never overwritten.
-/// </summary>
 public sealed class DbSeeder
 {
     public const string DefaultAdminUsername = "admin";
@@ -62,6 +60,49 @@ public sealed class DbSeeder
         new Setting(SettingKeys.ReceiptFooter, "Thank you! Visit again.", SettingDataType.String, "Footer text on invoices and receipts.", true),
         new Setting(SettingKeys.MenuVersion, "1", SettingDataType.Int, "Incremented on every menu change (managed by the system).", true),
         new Setting(SettingKeys.TaxSplitDisplay, "CGST_SGST", SettingDataType.String, "How tax is shown on invoices: SINGLE or CGST_SGST.", true),
+        new Setting(SettingKeys.AllowAnyWaiterToEditOrders, "false", SettingDataType.Bool, "Let any waiter change or cancel another waiter's order (managers always can).", true),
+        new Setting(SettingKeys.MaxCashierDiscountPercent, "10", SettingDataType.Decimal, "Largest discount (percent of the bill) a cashier may give without manager approval.", true),
+        new Setting(SettingKeys.AllowBillBeforeReady, "false", SettingDataType.Bool, "Allow requesting the bill before every kitchen ticket is ready (drinks-only tables).", true),
+        new Setting(SettingKeys.PrintInvoiceCopies, "1", SettingDataType.Int, "Copies printed when an invoice is finalized (1-5).", true),
+        new Setting(SettingKeys.KotShowPrices, "false", SettingDataType.Bool, "Print item prices on kitchen tickets.", true),
+        new Setting(SettingKeys.LockoutThreshold, "5", SettingDataType.Int, "Consecutive failed login attempts before account lockout.", true),
+        new Setting(SettingKeys.AuditRetentionDays, "0", SettingDataType.Int, "Delete audit entries older than this many days (0 keeps everything).", false),
+        new Setting(SettingKeys.BackupEnabled, "true", SettingDataType.Bool, "Take the daily database backup automatically.", false),
+        new Setting(SettingKeys.BackupTime, "03:30", SettingDataType.Time, "Local time of the daily backup (HH:mm), before the business day starts.", false),
+        new Setting(SettingKeys.BackupRetentionDays, "14", SettingDataType.Int, "Delete backups older than this many days (at least 1).", false),
+        new Setting(SettingKeys.BackupPath, "", SettingDataType.String, "Folder for backups; empty uses the server default (Backup:DefaultPath in appsettings).", false),
+        new Setting(SettingKeys.LockoutMinutes, "15", SettingDataType.Int, "Duration in minutes an account remains locked out.", true),
+        new Setting(SettingKeys.PasswordMinLength, "8", SettingDataType.Int, "Shortest password allowed for new and reset passwords (8 to 100).", true),
+        new Setting(SettingKeys.PasswordRequireLetter, "true", SettingDataType.Bool, "New passwords must contain a letter.", true),
+        new Setting(SettingKeys.PasswordRequireDigit, "true", SettingDataType.Bool, "New passwords must contain a digit.", true),
+        new Setting(SettingKeys.PasswordRequireUpperAndLower, "false", SettingDataType.Bool, "New passwords must contain both an upper case and a lower case letter.", true),
+        new Setting(SettingKeys.PasswordRequireSymbol, "false", SettingDataType.Bool, "New passwords must contain a symbol such as ! or #.", true),
+        new Setting(SettingKeys.UpiVpa, string.Empty, SettingDataType.String, "UPI ID (VPA) for the payment QR on invoices, e.g. restaurant@okbank. Empty prints no QR.", false),
+        new Setting(SettingKeys.UpiPayeeName, string.Empty, SettingDataType.String, "Payee name in the UPI payment QR; empty uses the restaurant name.", false),
+        new Setting(SettingKeys.LogoFile, string.Empty, SettingDataType.String, "Logo for invoices and PDFs (managed by Print templates).", false),
+        new Setting(SettingKeys.PdfPaper, "A4", SettingDataType.String, "Paper of invoice and receipt PDFs when the template uses a thermal roll: A4, A5 or 80mm.", false),
+        new Setting(SettingKeys.DefaultSacCode, "996331", SettingDataType.String, "SAC code printed for restaurant service when the template shows the HSN/SAC column.", false),
+        new Setting(SettingKeys.GstB2clThreshold, "100000", SettingDataType.Decimal, "GST: an inter-state invoice to an unregistered buyer above this value is reported as B2CL (the portal limit is Rs 1,00,000 from 1 Aug 2024; Rs 2,50,000 before).", false),
+        new Setting(SettingKeys.CashVarianceApprovalLimit, "100", SettingDataType.Decimal, "A shift whose counted cash differs from the expected cash by more than this needs a manager's approval to close.", true),
+        new Setting(SettingKeys.CashPayOutApprovalLimit, "1000", SettingDataType.Decimal, "Pay-outs and till vouchers above this amount need a manager's approval.", true),
+        new Setting(SettingKeys.CashBlindCount, "false", SettingDataType.Bool, "Cashiers count the drawer before they see the expected cash (blind count).", true),
+    };
+
+    // Current Indian notes and coins; an admin can add, relabel or deactivate them in Billing setup.
+    public static IReadOnlyList<Denomination> DefaultDenominations() => new[]
+    {
+        new Denomination(2000m, "₹2000", DenominationKind.Note, 1),
+        new Denomination(500m, "₹500", DenominationKind.Note, 2),
+        new Denomination(200m, "₹200", DenominationKind.Note, 3),
+        new Denomination(100m, "₹100", DenominationKind.Note, 4),
+        new Denomination(50m, "₹50", DenominationKind.Note, 5),
+        new Denomination(20m, "₹20", DenominationKind.Note, 6),
+        new Denomination(10m, "₹10", DenominationKind.Note, 7),
+        new Denomination(20m, "₹20 coin", DenominationKind.Coin, 8),
+        new Denomination(10m, "₹10 coin", DenominationKind.Coin, 9),
+        new Denomination(5m, "₹5 coin", DenominationKind.Coin, 10),
+        new Denomination(2m, "₹2 coin", DenominationKind.Coin, 11),
+        new Denomination(1m, "₹1 coin", DenominationKind.Coin, 12),
     };
 
     public async Task SeedAsync(SeedOptions options, CancellationToken cancellationToken = default)
@@ -71,9 +112,13 @@ public sealed class DbSeeder
         await SeedSettingsAsync(cancellationToken);
         await SeedPaymentMethodsAsync(cancellationToken);
         await SeedStationsAsync(cancellationToken);
+        await SeedTemplatesAsync(cancellationToken);
+        await SeedDenominationsAsync(cancellationToken);
         if (options.DemoData)
         {
             await SeedDemoUsersAsync(options.DemoPassword, cancellationToken);
+            await SeedDemoFloorAsync(cancellationToken);
+            await SeedDemoMenuAsync(cancellationToken);
         }
     }
 
@@ -89,9 +134,23 @@ public sealed class DbSeeder
         };
 
         var existing = await _db.Roles.Select(r => r.Name).ToListAsync(cancellationToken);
-        foreach (var name in Roles.All.Except(existing))
+        var created = Roles.All.Except(existing).Select(name => new Role(name, descriptions[name], isSystem: true)).ToList();
+        if (created.Count == 0)
         {
-            _db.Roles.Add(new Role(name, descriptions[name], isSystem: true));
+            return;
+        }
+
+        _db.Roles.AddRange(created);
+        await _db.SaveChangesAsync(cancellationToken);
+
+        // Defaults only for roles created just now: on later starts an admin's edits (removals included) must stand.
+        // Databases that had roles before Phase 9 got their defaults from the Phase09_Security migration.
+        foreach (var role in created)
+        {
+            foreach (var permission in RolePermissionMap.For(new[] { role.Name }))
+            {
+                _db.RolePermissions.Add(new RolePermission(role.Id, permission));
+            }
         }
 
         await _db.SaveChangesAsync(cancellationToken);
@@ -151,11 +210,36 @@ public sealed class DbSeeder
         await _db.SaveChangesAsync(cancellationToken);
     }
 
+    // Version 1 of every document type reproduces the Phase 7 output; only types without any version get one, so an
+    // owner's versions (and which one is active) are never touched.
+    private async Task SeedTemplatesAsync(CancellationToken cancellationToken)
+    {
+        var existing = await _db.DocumentTemplates.Select(t => t.DocumentType).Distinct().ToListAsync(cancellationToken);
+        foreach (var type in Enum.GetValues<PrintDocumentType>().Where(t => !existing.Contains(t)))
+        {
+            var template = new DocumentTemplate(type, 1, "Standard", TemplateJson.Serialize(TemplateLayout.DefaultFor(type)), DateTime.UtcNow, null);
+            template.Activate(DateTime.UtcNow, null);
+            _db.DocumentTemplates.Add(template);
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
     private async Task SeedStationsAsync(CancellationToken cancellationToken)
     {
         if (!await _db.PreparationStations.AnyAsync(cancellationToken))
         {
             _db.PreparationStations.Add(new PreparationStation("Main Kitchen", "MAIN", 1));
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    // Only into an empty master: once an admin has edited the notes, nothing is re-added.
+    private async Task SeedDenominationsAsync(CancellationToken cancellationToken)
+    {
+        if (!await _db.Denominations.AnyAsync(cancellationToken))
+        {
+            _db.Denominations.AddRange(DefaultDenominations());
             await _db.SaveChangesAsync(cancellationToken);
         }
     }
@@ -181,5 +265,145 @@ public sealed class DbSeeder
         }
 
         await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task SeedDemoFloorAsync(CancellationToken cancellationToken)
+    {
+        // Only on an empty floor: once an admin has edited sections, the demo layout is never re-added.
+        if (await _db.Sections.AnyAsync(cancellationToken))
+        {
+            return;
+        }
+
+        var layout = new (string Section, int SortOrder, string[] Codes, int Capacity)[]
+        {
+            ("Ground Floor", 1, new[] { "T01", "T02", "T03", "T04", "T05", "T06", "T07", "T08" }, 4),
+            ("First Floor", 2, new[] { "T11", "T12", "T13", "T14" }, 6),
+            ("Outdoor", 3, new[] { "O01", "O02", "O03", "O04" }, 2),
+        };
+
+        foreach (var (name, sortOrder, codes, capacity) in layout)
+        {
+            var section = new Section(name, sortOrder);
+            _db.Sections.Add(section);
+            await _db.SaveChangesAsync(cancellationToken);
+            foreach (var code in codes)
+            {
+                _db.Tables.Add(new Table(code, null, section.Id, capacity));
+            }
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+        _logger.LogInformation("Seeded demo floor: {Sections} sections", layout.Length);
+    }
+
+    private async Task SeedDemoMenuAsync(CancellationToken cancellationToken)
+    {
+        // Only on an empty menu, so it never re-adds what an admin removed.
+        if (await _db.Categories.AnyAsync(cancellationToken))
+        {
+            return;
+        }
+
+        var kitchen = await _db.PreparationStations.FirstAsync(s => s.Code == "MAIN", cancellationToken);
+        var bar = await _db.PreparationStations.FirstOrDefaultAsync(s => s.Code == "BAR", cancellationToken);
+        if (bar is null)
+        {
+            bar = new PreparationStation("Bar", "BAR", 2);
+            _db.PreparationStations.Add(bar);
+        }
+
+        var gst5 = new Tax("GST 5%", "GST5", 5m);
+        var gst18 = new Tax("GST 18%", "GST18", 18m);
+        _db.Taxes.AddRange(gst5, gst18);
+
+        var spice = new ModifierGroup("Spice level", minSelections: 1, maxSelections: 1);
+        var addOns = new ModifierGroup("Add-ons", minSelections: 0, maxSelections: 3);
+        var sugar = new ModifierGroup("Sugar", minSelections: 0, maxSelections: 1);
+        _db.ModifierGroups.AddRange(spice, addOns, sugar);
+        await _db.SaveChangesAsync(cancellationToken);
+
+        _db.ModifierOptions.AddRange(
+            new ModifierOption(spice.Id, "Mild", 0m, 1),
+            new ModifierOption(spice.Id, "Medium", 0m, 2),
+            new ModifierOption(spice.Id, "Spicy", 0m, 3),
+            new ModifierOption(addOns.Id, "Extra raita", 30m, 1),
+            new ModifierOption(addOns.Id, "Boiled egg", 20m, 2),
+            new ModifierOption(addOns.Id, "Extra gravy", 40m, 3),
+            new ModifierOption(sugar.Id, "Less sugar", 0m, 1),
+            new ModifierOption(sugar.Id, "No sugar", 0m, 2));
+
+        var menu = new (string Category, (string Name, string Code, decimal Price, bool Spicy, bool AddOns, bool Bar, bool Sugar)[] Items)[]
+        {
+            ("Starters", new[]
+            {
+                ("Chicken 65", "S01", 220m, true, false, false, false),
+                ("Paneer Tikka", "S02", 240m, true, false, false, false),
+                ("Gobi Manchurian", "S03", 180m, true, false, false, false),
+                ("Veg Spring Roll", "S04", 160m, false, false, false, false),
+            }),
+            ("Biryani", new[]
+            {
+                ("Chicken Biryani", "B01", 260m, true, true, false, false),
+                ("Mutton Biryani", "B02", 340m, true, true, false, false),
+                ("Veg Biryani", "B03", 200m, true, true, false, false),
+                ("Egg Biryani", "B04", 210m, true, true, false, false),
+            }),
+            ("Breads", new[]
+            {
+                ("Butter Naan", "N01", 50m, false, false, false, false),
+                ("Garlic Naan", "N02", 60m, false, false, false, false),
+                ("Tandoori Roti", "N03", 30m, false, false, false, false),
+                ("Kerala Parotta", "N04", 40m, false, false, false, false),
+            }),
+            ("Beverages", new[]
+            {
+                ("Masala Chai", "D01", 30m, false, false, true, true),
+                ("Filter Coffee", "D02", 40m, false, false, true, true),
+                ("Fresh Lime Soda", "D03", 60m, false, false, true, true),
+                ("Mango Lassi", "D04", 90m, false, false, true, true),
+            }),
+            ("Desserts", new[]
+            {
+                ("Gulab Jamun", "E01", 80m, false, false, false, false),
+                ("Rasmalai", "E02", 110m, false, false, false, false),
+                ("Kulfi", "E03", 90m, false, false, false, false),
+            }),
+        };
+
+        var categoryOrder = 0;
+        foreach (var (categoryName, items) in menu)
+        {
+            var category = new Category(categoryName, ++categoryOrder);
+            _db.Categories.Add(category);
+            await _db.SaveChangesAsync(cancellationToken);
+
+            var itemOrder = 0;
+            foreach (var (name, code, price, spicy, withAddOns, atBar, withSugar) in items)
+            {
+                var item = new MenuItem(category.Id, name, code, null, price, gst5.Id, atBar ? bar.Id : kitchen.Id, ++itemOrder);
+                var groups = new List<int>();
+                if (spicy)
+                {
+                    groups.Add(spice.Id);
+                }
+
+                if (withAddOns)
+                {
+                    groups.Add(addOns.Id);
+                }
+
+                if (withSugar)
+                {
+                    groups.Add(sugar.Id);
+                }
+
+                item.SetModifierGroups(groups);
+                _db.MenuItems.Add(item);
+            }
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+        _logger.LogInformation("Seeded demo menu: {Categories} categories, {Items} items", menu.Length, menu.Sum(c => c.Items.Length));
     }
 }

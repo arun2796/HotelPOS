@@ -1,6 +1,5 @@
 namespace HotelPOS.Application.Common.Security;
 
-/// <summary>Claim names used in HotelPOS access tokens (inbound claim mapping is disabled).</summary>
 public static class PosClaimTypes
 {
     public const string Subject = "sub";

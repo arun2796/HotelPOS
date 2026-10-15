@@ -12,11 +12,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace HotelPOS.Desktop.Tests.EndToEnd;
 
-/// <summary>
-/// Real desktop services against the real API process: the server goes away in the middle of a session
-/// and comes back. The client must not throw, must report the outage, must reconnect by itself and must
-/// keep working with the same session afterwards.
-/// </summary>
 public class ConnectionResilienceTests
 {
     [E2EFact]
@@ -47,14 +42,12 @@ public class ConnectionResilienceTests
         await realtime.StartAsync();
         await WaitUntilAsync(() => realtime.Status == ConnectionStatus.Connected, TimeSpan.FromSeconds(30));
 
-        // --- The server disappears (Wi-Fi drop / server restart) ---
         api.Kill();
         await WaitUntilAsync(() => realtime.Status != ConnectionStatus.Connected, TimeSpan.FromSeconds(30));
         var duringOutage = await systemApi.GetPublicSettingsAsync();
         duringOutage.Success.Should().BeFalse();
         duringOutage.IsConnectionFailure.Should().BeTrue("a network failure must be reported, never thrown");
 
-        // --- The server comes back ---
         await api.RestartAsync();
         await reconnected.Task.WaitAsync(TimeSpan.FromSeconds(90));
 

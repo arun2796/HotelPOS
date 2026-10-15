@@ -1,0 +1,25 @@
+using HotelPOS.Application.Features.Operations.Commands;
+using HotelPOS.Application.Features.Operations.Queries;
+using HotelPOS.Contracts.Admin;
+using HotelPOS.Contracts.Common;
+using HotelPOS.Contracts.Security;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace HotelPOS.Api.Controllers;
+
+[Route("api/admin")]
+[Authorize(Policy = Permissions.BackupManage)]
+public sealed class AdminBackupsController : ApiControllerBase
+{
+    // Runs while the request waits (seconds for a venue-sized database); the client shows a busy indicator.
+    [HttpPost("backup")]
+    [ProducesResponseType<ApiResponse<BackupDto>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> BackupNow(CancellationToken cancellationToken) =>
+        FromResult(await Sender.Send(new RunBackupCommand(), cancellationToken), message: "Backup completed.");
+
+    [HttpGet("backups")]
+    [ProducesResponseType<ApiResponse<BackupOverviewDto>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> List(CancellationToken cancellationToken) =>
+        FromResult(await Sender.Send(new GetBackupOverviewQuery(), cancellationToken));
+}

@@ -4,7 +4,6 @@ using HotelPOS.Domain.Common;
 
 namespace HotelPOS.Domain.Administration;
 
-/// <summary>Key/value restaurant setting stored in the database (restaurant name, thresholds...).</summary>
 public sealed class Setting : IAuditable
 {
     private Setting()
@@ -25,7 +24,6 @@ public sealed class Setting : IAuditable
     public SettingDataType DataType { get; private set; }
     public string? Description { get; private set; }
 
-    /// <summary>Public settings are readable by every authenticated client.</summary>
     public bool IsPublic { get; private set; }
 
     public DateTime CreatedAt { get; set; }

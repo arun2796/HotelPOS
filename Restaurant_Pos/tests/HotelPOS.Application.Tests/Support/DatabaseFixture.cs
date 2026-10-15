@@ -3,6 +3,7 @@ using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Infrastructure;
 using HotelPOS.Infrastructure.Persistence;
 using HotelPOS.Infrastructure.Persistence.Seed;
+using HotelPOS.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,26 +11,26 @@ using Microsoft.Extensions.Options;
 
 namespace HotelPOS.Application.Tests.Support;
 
-/// <summary>
-/// Creates a throw-away SQL Server database (LocalDB by default) for the test run, applies the real
-/// migrations, and resets the data before every test. Override the server with HOTELPOS_TEST_SQLSERVER.
-/// </summary>
 public sealed class DatabaseFixture : IAsyncLifetime
 {
     public const string AdminPassword = "Admin@123";
 
     public DatabaseFixture()
     {
-        var server = Environment.GetEnvironmentVariable("HOTELPOS_TEST_SQLSERVER") ?? @"(localdb)\MSSQLLocalDB";
-        ConnectionString =
-            $"Server={server};Database=HotelPOS_AppTests_{Guid.NewGuid():N};Trusted_Connection=True;TrustServerCertificate=True";
+        ConnectionString = TestPostgres.NewDatabase("apptests");
     }
 
     public string ConnectionString { get; }
 
+    public string MediaPath { get; } = Path.Combine(Path.GetTempPath(), "hotelpos-apptests-media-" + Guid.NewGuid().ToString("N"));
+
     public TestClock Clock { get; } = new();
 
     public TestCurrentUser CurrentUser { get; } = new();
+
+    public RecordingRealtimeNotifier Realtime { get; } = new();
+
+    public RecordingConnectionTracker Connections { get; } = new();
 
     public ServiceProvider Services { get; private set; } = default!;
 
@@ -46,6 +47,7 @@ public sealed class DatabaseFixture : IAsyncLifetime
                 ["Jwt:RefreshTokenHours"] = "12",
                 ["Seed:AdminPassword"] = AdminPassword,
                 ["Seed:DemoData"] = "false",
+                ["Media:RootPath"] = MediaPath,
             })
             .Build();
 
@@ -54,9 +56,12 @@ public sealed class DatabaseFixture : IAsyncLifetime
         services.AddSingleton<IConfiguration>(configuration);
         services.AddSingleton<IClock>(Clock);
         services.AddSingleton<ICurrentUser>(CurrentUser);
+        services.AddSingleton<IRealtimeNotifier>(Realtime);
+        services.AddSingleton<IOnlineDeviceTracker>(Connections);
         services.Configure<AppOptions>(o => o.ApiVersion = "test");
         services.AddApplication();
         services.AddInfrastructure(configuration);
+        PipelineProbes.Register(services);
         Services = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
 
         await using var scope = Services.CreateAsyncScope();
@@ -65,26 +70,27 @@ public sealed class DatabaseFixture : IAsyncLifetime
         await db.Database.MigrateAsync();
     }
 
-    /// <summary>Deletes all rows and re-seeds the reference data (roles, admin, settings...).</summary>
     public async Task ResetAsync()
     {
         Clock.Reset();
         CurrentUser.Reset();
+        Realtime.Reset();
+        Connections.Reset();
 
         await using var scope = Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        // Every table except the migration history, so tables added by later phases are covered too.
         await db.Database.ExecuteSqlRawAsync(
             """
-            DELETE FROM RefreshTokens;
-            DELETE FROM UserRoles;
-            DELETE FROM AuditLogs;
-            DELETE FROM IdempotencyRecords;
-            DELETE FROM Users;
-            DELETE FROM Devices;
-            DELETE FROM Roles;
-            DELETE FROM Settings;
-            DELETE FROM PaymentMethods;
-            DELETE FROM PreparationStations;
+            DO $$
+            DECLARE statement text;
+            BEGIN
+                SELECT 'TRUNCATE TABLE ' || string_agg(format('%I', tablename), ', ') || ' RESTART IDENTITY CASCADE'
+                INTO statement
+                FROM pg_tables
+                WHERE schemaname = 'public' AND tablename <> '__EFMigrationsHistory';
+                EXECUTE statement;
+            END $$;
             """);
 
         var seeder = scope.ServiceProvider.GetRequiredService<DbSeeder>();
@@ -99,6 +105,10 @@ public sealed class DatabaseFixture : IAsyncLifetime
         }
 
         await Services.DisposeAsync();
+        if (Directory.Exists(MediaPath))
+        {
+            Directory.Delete(MediaPath, recursive: true);
+        }
     }
 }
 

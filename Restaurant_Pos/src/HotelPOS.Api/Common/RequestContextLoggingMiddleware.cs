@@ -4,7 +4,6 @@ using Serilog.Context;
 
 namespace HotelPOS.Api.Common;
 
-/// <summary>Adds "user@device" to the log context of authenticated requests (runs after authentication).</summary>
 public sealed class RequestContextLoggingMiddleware
 {
     public const string ActorProperty = "Actor";

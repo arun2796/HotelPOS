@@ -2,11 +2,13 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using HotelPOS.Api.Tests.Support;
-using HotelPOS.Application.Settings;
+using HotelPOS.Application.Common.Results;
+using HotelPOS.Application.Features.Operations.Queries;
 using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Auth;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Users;
+using MediatR;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
@@ -162,8 +164,8 @@ public class AuthAndPipelineTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task UnhandledException_Returns500EnvelopeWithCorrelationId_AndNoDetails()
     {
-        var throwing = Substitute.For<ISystemInfoService>();
-        throwing.GetAsync(Arg.Any<CancellationToken>()).ThrowsAsync(new InvalidOperationException("secret internal detail"));
+        var throwing = Substitute.For<IRequestHandler<GetSystemInfoQuery, Result<SystemInfoDto>>>();
+        throwing.Handle(Arg.Any<GetSystemInfoQuery>(), Arg.Any<CancellationToken>()).ThrowsAsync(new InvalidOperationException("secret internal detail"));
         using var factory = _factory.WithWebHostBuilder(b =>
             b.ConfigureTestServices(s => s.AddScoped(_ => throwing)));
 
@@ -183,16 +185,16 @@ public class AuthAndPipelineTests : IClassFixture<ApiFactory>
         {
             Username = "pwchange",
             DisplayName = "Pw Change",
-            Password = "first-pass",
+            Password = "FirstPass1",
             Roles = new[] { "Waiter" },
         }, PosJson.Options);
-        var user = await _factory.CreateAuthenticatedClientAsync("pwchange", "first-pass");
+        var user = await _factory.CreateAuthenticatedClientAsync("pwchange", "FirstPass1");
 
         var response = await user.PostAsJsonAsync("/api/auth/change-password",
-            new ChangePasswordRequest { CurrentPassword = "first-pass", NewPassword = "second-pass" }, PosJson.Options);
+            new ChangePasswordRequest { CurrentPassword = "FirstPass1", NewPassword = "SecondPass2" }, PosJson.Options);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var login = await _factory.LoginAsync("pwchange", "second-pass");
+        var login = await _factory.LoginAsync("pwchange", "SecondPass2");
         login.User.MustChangePassword.Should().BeFalse();
     }
 }

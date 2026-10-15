@@ -13,25 +13,30 @@
         MinWidth="1024" MinHeight="680"
         WindowStartupLocation="CenterScreen"
         FontFamily="{StaticResource Font.Body}"
-        FontSize="15"
+        FontSize="{DynamicResource Font.Size.Body}"
         Foreground="{DynamicResource Brush.TextPrimary}"
         Background="{DynamicResource Brush.Background}"
         UseLayoutRounding="True"
         TextOptions.TextFormattingMode="Display">
 
   <Grid>
-    <!-- Current screen: configuration, login, password change or the shell -->
-    <ContentControl Content="{Binding CurrentScreen}" Focusable="False" />
+    <controls:TransitioningContentControl Content="{Binding CurrentScreen}" />
 
-    <!-- Modal dialog layer -->
     <Grid Background="{DynamicResource Brush.Overlay}"
           Visibility="{Binding Dialogs.Current, Converter={StaticResource NullToVisibility}}">
-      <Border Style="{StaticResource Card}" Width="480" VerticalAlignment="Center" HorizontalAlignment="Center" Padding="28"
-              DataContext="{Binding Dialogs.Current}">
+      <Grid Width="480" VerticalAlignment="Center" HorizontalAlignment="Center">
+      <!-- The shadow is drawn by a separate layer so the dialog's text is not rasterised through the effect. -->
+      <Border Style="{StaticResource Dialog.Frame}" DataContext="{Binding Dialogs.Current}">
         <StackPanel>
           <TextBlock Text="{Binding Title}" Style="{StaticResource Text.Title}" />
           <TextBlock Text="{Binding Message}" Style="{StaticResource Text.Body}" Margin="0,12,0,0" />
 
+          <StackPanel Margin="0,18,0,0" Visibility="{Binding NeedsApprover, Converter={StaticResource BoolToVisibility}}">
+            <TextBlock Text="Manager username" Style="{StaticResource Text.Label}" />
+            <TextBox Text="{Binding ApproverUsername, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBlock Text="Password" Style="{StaticResource Text.Label}" Margin="0,10,0,0" />
+            <PasswordBox controls:PasswordBoxAssistant.BoundPassword="{Binding Input, Mode=TwoWay}" />
+          </StackPanel>
           <TextBox Text="{Binding Input, UpdateSourceTrigger=PropertyChanged}" Margin="0,18,0,0"
                    Visibility="{Binding IsTextInput, Converter={StaticResource BoolToVisibility}}" />
           <PasswordBox controls:PasswordBoxAssistant.BoundPassword="{Binding Input, Mode=TwoWay}" Margin="0,18,0,0"
@@ -55,15 +60,17 @@
           </StackPanel>
         </StackPanel>
       </Border>
+      </Grid>
     </Grid>
 
-    <!-- Toast layer -->
     <ItemsControl ItemsSource="{Binding Notifications.Items}"
                   HorizontalAlignment="Right" VerticalAlignment="Bottom"
                   Margin="0,0,24,52" Width="380" Focusable="False">
       <ItemsControl.ItemTemplate>
         <DataTemplate DataType="{x:Type ui:ToastViewModel}">
-          <Border CornerRadius="10" Padding="16,12" Margin="0,8,0,0" BorderThickness="1">
+          <Grid Margin="0,8,0,0">
+          <Border CornerRadius="10" Background="{DynamicResource Brush.Surface}" Effect="{DynamicResource Shadow.Popup}" />
+          <Border CornerRadius="10" Padding="16,12" BorderThickness="1">
             <Border.Style>
               <Style TargetType="Border">
                 <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
@@ -88,14 +95,19 @@
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
               </Grid.ColumnDefinitions>
-              <TextBlock Text="{Binding Message}" Style="{StaticResource Text.Body}" VerticalAlignment="Center" />
-              <Button Grid.Column="1" Style="{StaticResource Button.Ghost}" Command="{Binding CloseCommand}"
+              <TextBlock Text="{Binding Message}" Style="{StaticResource Text.Body}" VerticalAlignment="Center" TextWrapping="Wrap" />
+              <Button Grid.Column="1" Content="{Binding ActionText}" Command="{Binding RunActionCommand}" Style="{StaticResource Button.Primary}"
+                      MinHeight="36" Padding="14,4" Margin="10,0,0,0" VerticalAlignment="Center"
+                      Visibility="{Binding HasAction, Converter={StaticResource BoolToVisibility}}" />
+              <Button Grid.Column="2" Style="{StaticResource Button.Ghost}" Command="{Binding CloseCommand}"
                       MinHeight="32" MinWidth="32" Padding="6" Margin="8,-4,-8,-4" ToolTip="Dismiss">
                 <TextBlock Text="&#xE711;" Style="{StaticResource Text.Icon}" FontSize="12" />
               </Button>
             </Grid>
           </Border>
+          </Grid>
         </DataTemplate>
       </ItemsControl.ItemTemplate>
     </ItemsControl>

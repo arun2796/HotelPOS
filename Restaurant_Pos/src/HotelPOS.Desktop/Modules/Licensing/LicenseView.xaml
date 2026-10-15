@@ -1,0 +1,87 @@
+<UserControl x:Class="HotelPOS.Desktop.Modules.Licensing.LicenseView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:lic="clr-namespace:HotelPOS.Desktop.Modules.Licensing"
+             xmlns:controls="clr-namespace:HotelPOS.Desktop.Controls"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance lic:LicenseViewModel}"
+             d:DesignWidth="1100" d:DesignHeight="700">
+
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="24" MaxWidth="860" HorizontalAlignment="Left">
+      <controls:PageHeader Title="Licence"
+                           Description="HotelPOS runs on a licence tied to this server PC. A new server starts with a 7-day trial." />
+
+      <Border Style="{StaticResource Banner.Error}" Margin="0,0,0,12"
+              Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibility}}">
+        <TextBlock Text="{Binding ErrorMessage}" Style="{StaticResource Text.Error}" TextWrapping="Wrap" />
+      </Border>
+
+      <Border Style="{StaticResource Card}" Padding="24" Visibility="{Binding HasStatus, Converter={StaticResource BoolToVisibility}}">
+        <StackPanel>
+          <TextBlock Text="{Binding StateText}">
+            <TextBlock.Style>
+              <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Title}">
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding IsProblem}" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </TextBlock.Style>
+          </TextBlock>
+          <TextBlock Text="{Binding Status.Message}" Style="{StaticResource Text.Caption}" TextWrapping="Wrap" Margin="0,4,0,0"
+                     Visibility="{Binding Status.Message, Converter={StaticResource StringToVisibility}}" />
+
+          <Grid Margin="0,20,0,0">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="180" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <TextBlock Text="Licensed to" Style="{StaticResource Text.Label}" Margin="0,0,0,10" />
+            <TextBlock Grid.Column="1" Text="{Binding CustomerText}" />
+            <TextBlock Grid.Row="1" Text="Edition" Style="{StaticResource Text.Label}" Margin="0,0,0,10" />
+            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding EditionText}" />
+            <TextBlock Grid.Row="2" Text="Terminals" Style="{StaticResource Text.Label}" Margin="0,0,0,10" />
+            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding TerminalsText}" />
+            <TextBlock Grid.Row="3" Text="Valid until" Style="{StaticResource Text.Label}" />
+            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding ExpiryText}" />
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <Border Style="{StaticResource Card}" Padding="24" Margin="0,16,0,0">
+        <StackPanel>
+          <TextBlock Text="Machine id" Style="{StaticResource Text.Subtitle}" />
+          <TextBlock Style="{StaticResource Text.Caption}" TextWrapping="Wrap" Margin="0,2,0,10"
+                     Text="Send this id to your supplier when you order or renew a licence. A key only works on the PC it was issued for." />
+          <StackPanel Orientation="Horizontal">
+            <TextBox Text="{Binding MachineId, Mode=OneWay}" IsReadOnly="True" Width="300" FontFamily="Consolas"
+                     AutomationProperties.Name="Machine id" />
+            <Button Content="Copy" Command="{Binding CopyMachineIdCommand}" Margin="8,0,0,0" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <Border Style="{StaticResource Card}" Padding="24" Margin="0,16,0,0">
+        <StackPanel>
+          <TextBlock Text="Apply a licence key" Style="{StaticResource Text.Subtitle}" />
+          <TextBlock Style="{StaticResource Text.Caption}" TextWrapping="Wrap" Margin="0,2,0,10"
+                     Text="Paste the key exactly as received (it starts with HPOS1-). It takes effect at once; nothing needs restarting." />
+          <TextBox Text="{Binding KeyText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="96"
+                   VerticalScrollBarVisibility="Auto" FontFamily="Consolas" AutomationProperties.Name="Licence key" />
+          <Button Content="APPLY KEY" Command="{Binding ApplyKeyCommand}" Style="{StaticResource Button.Primary}"
+                  HorizontalAlignment="Right" Margin="0,12,0,0" MinHeight="48" />
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

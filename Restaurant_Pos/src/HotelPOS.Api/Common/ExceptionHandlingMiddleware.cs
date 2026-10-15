@@ -5,10 +5,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HotelPOS.Api.Common;
 
-/// <summary>
-/// Last line of defence: converts unhandled exceptions into the standard envelope. Details of
-/// unexpected errors go to the log only; the client gets the correlation id to quote.
-/// </summary>
 public sealed class ExceptionHandlingMiddleware
 {
     private readonly RequestDelegate _next;

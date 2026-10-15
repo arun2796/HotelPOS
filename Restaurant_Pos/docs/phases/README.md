@@ -1,6 +1,6 @@
 # Phase Roadmap
 
-Last updated: 2026-10-07
+Last updated: 2026-10-15
 
 Each phase ends with a working, demonstrable system increment. Later phases only add; they never
 require rewriting earlier ones. Reference documents (`docs/00`–`06`) describe the target design; phase
@@ -12,24 +12,37 @@ documents say what to build, in which order, and how to verify it.
 |---|---|---|---|---|
 | 0 | [Planning](../00-project-overview.md) | — | This documentation set | Done |
 | 1 | [Foundation](phase-01-foundation.md) | 0 | Solution, database, API skeleton, JWT login, users admin, SignalR hub, WPF shell with first-run config and connection indicator | Done (2026-10-07) |
-| 2 | [Tables & Sections](phase-02-tables-and-sections.md) | 1 | Admin manages floor; waiter sees a live table map; occupy/release with concurrency control | Not started |
-| 3 | [Menu & Pricing](phase-03-menu-and-pricing.md) | 1 | Categories, items, modifiers, taxes, stations; compact cached menu for clients | Not started |
-| 4 | [Waiter Ordering](phase-04-waiter-ordering.md) | 2, 3 | Draft -> submit -> append -> cancel with idempotency; order builder UI; local drafts | Not started |
-| 5 | [Kitchen Display](phase-05-kitchen-display.md) | 4 | Tickets per station, kitchen workflow, waiter "order ready" notifications, serve | Not started |
-| 6 | [Billing & Payments](phase-06-billing-and-payments.md) | 5 | Bill request queue, discounts, tax, finalize/invoice, split payments, multi-counter safety, void/refund | Not started |
-| 7 | [Printing](phase-07-printing.md) | 5, 6 | KOT, invoice, receipt via thermal/Windows/network printers behind `IPrintService` | Not started |
-| 8 | [Reports & Dashboard](phase-08-reports-and-dashboard.md) | 6 | Sales, items, payments, cancellations, discounts, taxes, staff and kitchen performance; dashboard | Not started |
-| 9 | [Security & Audit](phase-09-security-and-audit.md) | 1–6 | Editable permissions, lockout, rate limiting, device management, audit viewer, hardening | Not started |
-| 10 | [Production Readiness](phase-10-production-readiness.md) | all | Windows Service hosting, installers, backup/recovery, monitoring, LAN/firewall docs, go-live checklist | Not started |
+| 2 | [Tables & Sections](phase-02-tables-and-sections.md) | 1 | Admin manages floor; waiter sees a live table map; occupy/release with concurrency control | Done (2026-10-07) |
+| 3 | [Menu & Pricing](phase-03-menu-and-pricing.md) | 1 | Categories, items, modifiers, taxes, stations; compact cached menu for clients | Done (2026-10-07) |
+| 4 | [Waiter Ordering](phase-04-waiter-ordering.md) | 2, 3 | Draft -> submit -> append -> cancel with idempotency; order builder UI; local drafts | Done (2026-10-07) |
+| 5 | [Kitchen Display](phase-05-kitchen-display.md) | 4 | Tickets per station, kitchen workflow, waiter "order ready" notifications, serve | Done (2026-10-07) |
+| 6 | [Billing & Payments](phase-06-billing-and-payments.md) | 5 | Bill request queue, discounts, tax, finalize/invoice, split payments, multi-counter safety, void/refund | Done (2026-10-07) |
+| 7 | [Printing](phase-07-printing.md) | 5, 6 | KOT, invoice, receipt via thermal/Windows/network printers behind `IPrintService` | Done (2026-10-07) |
+| 8 | [Reports & Dashboard](phase-08-reports-and-dashboard.md) | 6 | Sales, items, payments, cancellations, discounts, taxes, staff and kitchen performance; dashboard | Done (2026-10-08) |
+| 9 | [Security & Audit](phase-09-security-and-audit.md) | 1–6 | Editable permissions, lockout, rate limiting, device management, audit viewer, hardening | In progress (open items: phase doc § 15) |
+| 10 | [Production Readiness](phase-10-production-readiness.md) | all | Windows Service hosting, installers, backup/recovery, monitoring, LAN/firewall docs, go-live checklist | In progress (open items: phase doc § 15) |
+| 11 | [UI Design System](phase-11-ui-design-system.md) | 10 | BillingHub look and shell: tokens, MaterialDesign base, Mica, dark mode, command palette, hubs, KPI/report controls, charts, touch density | In progress (code complete; manual demo open) |
+| 12 | [CQRS Application Layer](phase-12-cqrs-application-layer.md) | 11 | MediatR commands/queries with logging, permission, validation, transaction and audit behaviours; thin controllers | Done (2026-10-14) |
+| 13 | [Shifts, Cash & Day End](phase-13-shifts-cash-and-day-end.md) | 12 | Cashier shifts, float and denominations, pay-in/out, X/Z reports, Day End with lock | In progress (code complete; manual demo open) |
+| 14 | [Templates, PDF & Excel](phase-14-templates-pdf-excel.md) | 12 | One render model, Template Studio, PDF and Excel exports, print log with DUPLICATE | In progress (code complete; Day End pack export and manual demo open) |
+| 15 | [GST Reports & Period Close](phase-15-gst-reports-and-period-close.md) | 13, 14 | GSTR-1 JSON, GSTR-3B, HSN/SAC summary, B2B GSTIN, month/year lock | In progress (code complete; offline-tool check and manual demo open) |
+| 16 | [Licensing, Updates & Import](phase-16-licensing-updates-import.md) | 10 | Machine-locked licence and trial, LAN auto-update, menu/customer import | In progress (code complete; manual demo open) |
+| 17 | [Enterprise UI Refresh](phase-17-enterprise-ui-refresh.md) | 11, 16 | Light green enterprise look on every screen and dialog; presentation only, behaviour unchanged | In progress (code complete; manual demo open) |
 
 Phases 2 and 3 are independent and can be built in parallel. Phase 7 can start once Phase 5 exists
 (KOT) and finish after Phase 6 (invoice/receipt). Phase 8 needs settled bills (Phase 6).
+
+Phases 11–16 (decided 2026-10-14) bring in the design, pattern and features of BillingHub, the owner's GST
+billing application, while keeping HotelPOS's multi-terminal server architecture: BillingHub runs on one PC with
+a local database, which cannot serve waiter tablets, kitchen screens and billing counters at the same time.
 
 ```
  1 ──┬── 2 ──┐
      │       ├── 4 ── 5 ── 6 ──┬── 7
      └── 3 ──┘                 ├── 8
-                               └── 9 ── 10
+                               └── 9 ── 10 ──┬── 11 ── 12 ──┬── 13 ──┐
+                                             │              └── 14 ──┴── 15
+                                             └── 16
 ```
 
 ## Phase document template

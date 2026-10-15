@@ -1,0 +1,69 @@
+<UserControl x:Class="HotelPOS.Desktop.Modules.Cash.DayEndHistoryView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:HotelPOS.Desktop.Controls"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:cash="clr-namespace:HotelPOS.Desktop.Modules.Cash"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance cash:DayEndHistoryViewModel}"
+             d:DesignWidth="1100" d:DesignHeight="700">
+
+  <UserControl.Resources>
+    <DataTemplate x:Key="Line" DataType="{x:Type cash:ReportLine}">
+      <Grid Margin="0,4">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" MinWidth="150" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <TextBlock Text="{Binding Label}" Style="{StaticResource Text.Caption}" Margin="0,0,12,0" />
+        <TextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap" HorizontalAlignment="Right" TextAlignment="Right" />
+      </Grid>
+    </DataTemplate>
+  </UserControl.Resources>
+
+  <Grid Margin="24">
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="*" />
+      <ColumnDefinition Width="380" />
+    </Grid.ColumnDefinitions>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <Border Grid.ColumnSpan="2" Style="{StaticResource Banner.Error}" Margin="0,0,0,12"
+            Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibility}}">
+      <TextBlock Text="{Binding ErrorMessage}" Style="{StaticResource Text.Error}" />
+    </Border>
+
+    <DataGrid Grid.Row="1" ItemsSource="{Binding Days}" SelectedItem="{Binding SelectedDay}" HorizontalScrollBarVisibility="Disabled">
+      <DataGrid.Columns>
+        <DataGridTextColumn Header="BUSINESS DAY" Binding="{Binding DayText}" Width="1.2*" MinWidth="130" />
+        <DataGridTextColumn Header="STATUS" Binding="{Binding StatusText}" Width="0.7*" MinWidth="90" />
+        <DataGridTextColumn Header="CLOSED" Binding="{Binding ClosedText}" Width="1.4*" MinWidth="150" />
+        <DataGridTextColumn Header="BILLS" Binding="{Binding BillsText}" Width="0.5*" MinWidth="60" HeaderStyle="{StaticResource DataGrid.NumberHeader}" ElementStyle="{StaticResource Text.GridNumber}" />
+        <DataGridTextColumn Header="NET SALES" Binding="{Binding NetSalesText}" Width="0.9*" MinWidth="100" HeaderStyle="{StaticResource DataGrid.NumberHeader}" ElementStyle="{StaticResource Text.GridNumber}" />
+        <DataGridTextColumn Header="VARIANCE" Binding="{Binding VarianceText}" Width="0.8*" MinWidth="90" HeaderStyle="{StaticResource DataGrid.NumberHeader}" ElementStyle="{StaticResource Text.GridNumber}" />
+      </DataGrid.Columns>
+    </DataGrid>
+    <controls:EmptyState Grid.Row="1" Glyph="&#xE81C;" Title="No Day End yet" Message="Each Day End run is listed here with its backup and report pack."
+                         Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}" />
+
+    <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource Card}" Margin="20,0,0,0" Padding="20"
+            Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibility}}">
+      <DockPanel>
+        <Button DockPanel.Dock="Bottom" Content="Reopen day…" Command="{Binding ReopenCommand}" IsEnabled="{Binding CanReopen}"
+                Style="{StaticResource Button.Danger}" MinHeight="52" Margin="0,16,0,0" />
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <TextBlock Text="{Binding SelectedDay.DayText}" Style="{StaticResource Text.Title}" Margin="0,0,0,12" />
+            <ItemsControl ItemsSource="{Binding Details}" ItemTemplate="{StaticResource Line}" Focusable="False" />
+            <TextBlock Text="OVERRIDES" Style="{StaticResource Text.Label}" Margin="0,16,0,4" />
+            <ItemsControl ItemsSource="{Binding Overrides}" ItemTemplate="{StaticResource Line}" Focusable="False" />
+          </StackPanel>
+        </ScrollViewer>
+      </DockPanel>
+    </Border>
+  </Grid>
+</UserControl>

@@ -1,6 +1,5 @@
 namespace HotelPOS.Application.Common;
 
-/// <summary>Audit action names, formatted Entity.Verb. See docs/06-conventions-and-dod.md.</summary>
 public static class AuditActions
 {
     public const string LoginSucceeded = "Auth.LoginSucceeded";
@@ -14,8 +13,131 @@ public static class AuditActions
     public const string UserActivated = "User.Activated";
     public const string UserDeactivated = "User.Deactivated";
     public const string UserPasswordReset = "User.PasswordReset";
+    public const string UserLockedOut = "User.LockedOut";
+    public const string UserUnlocked = "User.Unlocked";
+    public const string UserLoggedOutAll = "User.LoggedOutAll";
+
+    public const string RolePermissionsUpdated = "Role.PermissionsUpdated";
 
     public const string DeviceRegistered = "Device.Registered";
+    public const string DeviceUpdated = "Device.Updated";
+    public const string DeviceActivated = "Device.Activated";
+    public const string DeviceDeactivated = "Device.Deactivated";
+
+    public const string ApprovalTokenIssued = "Approval.TokenIssued";
 
     public const string SettingsUpdated = "Settings.Updated";
+
+    public const string AuditPurged = "Audit.Purged";
+
+    public const string ServerNoticeSent = "Server.NoticeSent";
+    public const string BackupCompleted = "Backup.Completed";
+    public const string BackupFailed = "Backup.Failed";
+
+    public const string SectionCreated = "Section.Created";
+    public const string SectionUpdated = "Section.Updated";
+    public const string SectionActivated = "Section.Activated";
+    public const string SectionDeactivated = "Section.Deactivated";
+
+    public const string TableCreated = "Table.Created";
+    public const string TableUpdated = "Table.Updated";
+    public const string TableActivated = "Table.Activated";
+    public const string TableDeactivated = "Table.Deactivated";
+    public const string TableOutOfService = "Table.OutOfService";
+    public const string TableInService = "Table.InService";
+    public const string TableReleasedByManager = "Table.ReleasedByManager";
+
+    public const string CategoryCreated = "Category.Created";
+    public const string CategoryUpdated = "Category.Updated";
+    public const string CategoryActivated = "Category.Activated";
+    public const string CategoryDeactivated = "Category.Deactivated";
+
+    public const string StationCreated = "Station.Created";
+    public const string StationUpdated = "Station.Updated";
+    public const string StationActivated = "Station.Activated";
+    public const string StationDeactivated = "Station.Deactivated";
+
+    public const string TaxCreated = "Tax.Created";
+    public const string TaxUpdated = "Tax.Updated";
+    public const string TaxActivated = "Tax.Activated";
+    public const string TaxDeactivated = "Tax.Deactivated";
+
+    public const string ModifierGroupCreated = "ModifierGroup.Created";
+    public const string ModifierGroupUpdated = "ModifierGroup.Updated";
+    public const string ModifierGroupDeactivated = "ModifierGroup.Deactivated";
+    public const string ModifierOptionAdded = "ModifierGroup.OptionAdded";
+    public const string ModifierOptionUpdated = "ModifierGroup.OptionUpdated";
+    public const string ModifierOptionDeactivated = "ModifierGroup.OptionDeactivated";
+
+    public const string MenuItemCreated = "MenuItem.Created";
+    public const string MenuItemUpdated = "MenuItem.Updated";
+    public const string MenuItemPriceChanged = "MenuItem.PriceChanged";
+    public const string MenuItemAvailabilityChanged = "MenuItem.AvailabilityChanged";
+    public const string MenuItemImageChanged = "MenuItem.ImageChanged";
+    public const string MenuItemActivated = "MenuItem.Activated";
+    public const string MenuItemDeactivated = "MenuItem.Deactivated";
+
+    public const string OrderSubmitted = "Order.Submitted";
+    public const string OrderItemsAppended = "Order.ItemsAppended";
+    public const string OrderUpdated = "Order.Updated";
+    public const string OrderCancelled = "Order.Cancelled";
+    public const string OrderServed = "Order.Served";
+    public const string OrderItemCancelled = "Order.ItemCancelled";
+
+    public const string KitchenTicketAccepted = "KitchenTicket.Accepted";
+    public const string KitchenTicketStarted = "KitchenTicket.Started";
+    public const string KitchenTicketReady = "KitchenTicket.Ready";
+    public const string KitchenTicketCompleted = "KitchenTicket.Completed";
+    public const string KitchenTicketRecalled = "KitchenTicket.Recalled";
+
+    public const string BillRequested = "Bill.Requested";
+    public const string BillClaimed = "Bill.Claimed";
+    public const string BillReleased = "Bill.Released";
+    public const string BillClaimOverridden = "Bill.ClaimOverridden";
+    public const string BillDiscountApplied = "Bill.DiscountApplied";
+    public const string BillDiscountCleared = "Bill.DiscountCleared";
+    public const string BillCustomerUpdated = "Bill.CustomerUpdated";
+    public const string BillFinalized = "Bill.Finalized";
+    public const string BillSettled = "Bill.Settled";
+    public const string BillClosed = "Bill.Closed";
+    public const string BillReopened = "Bill.Reopened";
+    public const string BillVoided = "Bill.Voided";
+    public const string PaymentReceived = "Payment.Received";
+    public const string PaymentRefunded = "Payment.Refunded";
+    public const string ApprovalRejected = "Approval.Rejected";
+
+    public const string PrintReprint = "Print.Reprint";
+    public const string PrintedCopy = "Print.Copy";
+    public const string PrintCopyCompleted = "Print.CopyCompleted";
+
+    public const string TemplateVersionSaved = "Template.VersionSaved";
+    public const string TemplateActivated = "Template.Activated";
+    public const string TemplateLogoChanged = "Template.LogoChanged";
+
+    public const string DiscountCreated = "Discount.Created";
+    public const string DiscountUpdated = "Discount.Updated";
+    public const string CustomerCreated = "Customer.Created";
+    public const string CustomerUpdated = "Customer.Updated";
+    public const string CustomerDeactivated = "Customer.Deactivated";
+    public const string CustomerActivated = "Customer.Activated";
+    public const string PaymentMethodCreated = "PaymentMethod.Created";
+    public const string PaymentMethodUpdated = "PaymentMethod.Updated";
+
+    public const string DenominationsUpdated = "Denomination.Updated";
+    public const string ShiftOpened = "Shift.Opened";
+    public const string ShiftMovementAdded = "Shift.MovementAdded";
+    public const string ShiftClosed = "Shift.Closed";
+    public const string ShiftHandedOver = "Shift.HandedOver";
+    public const string ShiftForceClosed = "Shift.ForceClosed";
+    public const string ShiftReopened = "Shift.Reopened";
+    public const string DayEndClosed = "DayEnd.Closed";
+    public const string DayEndPackWritten = "DayEnd.PackWritten";
+    public const string PeriodClosed = "Period.Closed";
+    public const string PeriodReopened = "Period.Reopened";
+    public const string PeriodPackWritten = "Period.PackWritten";
+    public const string LicenseApplied = "License.Applied";
+    public const string ImportApplied = "Import.Applied";
+    public const string ImportUndone = "Import.Undone";
+    public const string DayEndReopened = "DayEnd.Reopened";
+    public const string NonTillCollectionRecorded = "DayEnd.NonTillCollectionRecorded";
 }

@@ -1,0 +1,80 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- Dark theme tokens. Same keys as Tokens.Light.xaml. Fills that carry white text (primary, danger, status)
+       stay dark enough for WCAG AA; colours used as text on dark surfaces (link, danger text) are lighter. -->
+
+  <!-- Surfaces and layers -->
+  <SolidColorBrush x:Key="Brush.Background" Color="#0F1623" />
+  <SolidColorBrush x:Key="Brush.Surface" Color="#161F2E" />
+  <SolidColorBrush x:Key="Brush.SurfaceAlt" Color="#1B2537" />
+  <SolidColorBrush x:Key="Brush.SurfaceSubtle" Color="#1F2A3D" />
+  <SolidColorBrush x:Key="Brush.LayerHover" Color="#243049" />
+  <SolidColorBrush x:Key="Brush.LayerPressed" Color="#2B3852" />
+  <SolidColorBrush x:Key="Brush.HoverOverlay" Color="#14FFFFFF" />
+  <SolidColorBrush x:Key="Brush.PressedOverlay" Color="#24FFFFFF" />
+  <SolidColorBrush x:Key="Brush.Overlay" Color="#B3000000" />
+
+  <!-- Borders -->
+  <SolidColorBrush x:Key="Brush.Border" Color="#273246" />
+  <SolidColorBrush x:Key="Brush.BorderSubtle" Color="#1F2A3D" />
+  <SolidColorBrush x:Key="Brush.BorderStrong" Color="#3B4A63" />
+
+  <!-- Text -->
+  <SolidColorBrush x:Key="Brush.TextPrimary" Color="#E6EAF0" />
+  <SolidColorBrush x:Key="Brush.TextSecondary" Color="#A3ACBA" />
+  <SolidColorBrush x:Key="Brush.TextTertiary" Color="#6F7A8C" />
+
+  <!-- Inputs -->
+  <SolidColorBrush x:Key="Brush.InputBackground" Color="#1B2537" />
+  <SolidColorBrush x:Key="Brush.InputBackgroundFocus" Color="#161F2E" />
+  <SolidColorBrush x:Key="Brush.InputBorder" Color="#33405A" />
+  <SolidColorBrush x:Key="Brush.Focus" Color="#22B45F" />
+
+  <!-- Accent and semantic colours -->
+  <SolidColorBrush x:Key="Brush.Primary" Color="#22B45F" />
+  <SolidColorBrush x:Key="Brush.PrimaryHover" Color="#1DA354" />
+  <SolidColorBrush x:Key="Brush.PrimaryText" Color="#FFFFFF" />
+  <SolidColorBrush x:Key="Brush.PrimarySoft" Color="#123A26" />
+  <SolidColorBrush x:Key="Brush.Link" Color="#4ADE80" />
+  <SolidColorBrush x:Key="Brush.Info" Color="#60A5FA" />
+  <SolidColorBrush x:Key="Brush.InfoSoft" Color="#0B1E3F" />
+  <SolidColorBrush x:Key="Brush.Danger" Color="#E11D48" />
+  <SolidColorBrush x:Key="Brush.DangerText" Color="#FB7185" />
+  <SolidColorBrush x:Key="Brush.DangerSoft" Color="#2B0A10" />
+  <SolidColorBrush x:Key="Brush.Success" Color="#22C55E" />
+  <SolidColorBrush x:Key="Brush.SuccessSoft" Color="#123A26" />
+  <SolidColorBrush x:Key="Brush.Warning" Color="#F59E0B" />
+  <SolidColorBrush x:Key="Brush.WarningSoft" Color="#3A2A0A" />
+  <SolidColorBrush x:Key="Brush.Purple" Color="#A78BFA" />
+  <SolidColorBrush x:Key="Brush.Teal" Color="#2DD4BF" />
+
+  <SolidColorBrush x:Key="Brush.Chart.0" Color="#22B45F" />
+  <SolidColorBrush x:Key="Brush.Chart.1" Color="#60A5FA" />
+  <SolidColorBrush x:Key="Brush.Chart.2" Color="#F59E0B" />
+  <SolidColorBrush x:Key="Brush.Chart.3" Color="#A78BFA" />
+  <SolidColorBrush x:Key="Brush.Chart.4" Color="#2DD4BF" />
+  <SolidColorBrush x:Key="Brush.Chart.5" Color="#FB7185" />
+
+  <!-- Sidebar -->
+  <SolidColorBrush x:Key="Brush.Sidebar" Color="#161F2E" />
+  <SolidColorBrush x:Key="Brush.SidebarText" Color="#C3CBD7" />
+  <SolidColorBrush x:Key="Brush.SidebarTextActive" Color="#4ADE80" />
+  <SolidColorBrush x:Key="Brush.SidebarTextMuted" Color="#6F7A8C" />
+  <SolidColorBrush x:Key="Brush.SidebarHover" Color="#1F2A3D" />
+  <SolidColorBrush x:Key="Brush.SidebarSelected" Color="#123A26" />
+  <SolidColorBrush x:Key="Brush.SidebarAccent" Color="#22B45F" />
+  <SolidColorBrush x:Key="Brush.SidebarDivider" Color="#273246" />
+
+  <!-- Table and ticket states: identical to light so a colour means the same thing on every terminal. -->
+  <SolidColorBrush x:Key="Brush.Status.Available" Color="#047857" />
+  <SolidColorBrush x:Key="Brush.Status.Occupied" Color="#2563EB" />
+  <SolidColorBrush x:Key="Brush.Status.Ordering" Color="#7C3AED" />
+  <SolidColorBrush x:Key="Brush.Status.Preparing" Color="#B45309" />
+  <SolidColorBrush x:Key="Brush.Status.Ready" Color="#DC2626" />
+  <SolidColorBrush x:Key="Brush.Status.Billing" Color="#0F766E" />
+  <SolidColorBrush x:Key="Brush.Status.OutOfService" Color="#71717A" />
+
+  <DropShadowEffect x:Key="Shadow.Popup" BlurRadius="20" ShadowDepth="4" Direction="270" Opacity="0.45" Color="#000000" />
+
+</ResourceDictionary>

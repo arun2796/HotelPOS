@@ -1,0 +1,75 @@
+<UserControl x:Class="HotelPOS.Desktop.Modules.Cash.ShiftReportPanelView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:cash="clr-namespace:HotelPOS.Desktop.Modules.Cash"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance cash:ShiftReportPanelViewModel}"
+             d:DesignWidth="560" d:DesignHeight="640">
+
+  <UserControl.Resources>
+    <DataTemplate x:Key="Line" DataType="{x:Type cash:ReportLine}">
+      <Grid Margin="0,3">
+        <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" Margin="0,0,110,0" />
+        <TextBlock Text="{Binding Value}" HorizontalAlignment="Right" Style="{StaticResource Text.Amount}" />
+      </Grid>
+    </DataTemplate>
+  </UserControl.Resources>
+
+  <Border Style="{StaticResource Dialog.Frame}" Width="560" MaxHeight="660">
+    <Grid>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+        <RowDefinition Height="Auto" />
+      </Grid.RowDefinitions>
+      <StackPanel Margin="0,0,0,12">
+        <TextBlock Text="{Binding Title}" Style="{StaticResource Text.Title}" />
+        <TextBlock Text="{Binding Subtitle}" Style="{StaticResource Text.Caption}" Margin="0,2,0,0" />
+      </StackPanel>
+
+      <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" PanningMode="VerticalOnly">
+        <StackPanel>
+          <TextBlock Text="CASH DRAWER" Style="{StaticResource Text.Label}" />
+          <ItemsControl ItemsSource="{Binding Drawer}" Focusable="False">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate DataType="{x:Type cash:ReportLine}">
+                <Grid Margin="0,3">
+                  <TextBlock Text="{Binding Label}" />
+                  <TextBlock Text="{Binding Value}" HorizontalAlignment="Right" Style="{StaticResource Text.Amount}" />
+                  <Grid.Style>
+                    <Style TargetType="Grid">
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsTotal}" Value="True">
+                          <Setter Property="TextElement.FontWeight" Value="SemiBold" />
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </Grid.Style>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <TextBlock Text="{Binding VarianceReason, StringFormat='Reason: {0}'}" Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
+                     Visibility="{Binding VarianceReason, Converter={StaticResource StringToVisibility}}" />
+
+          <TextBlock Text="PAYMENTS ON THIS TERMINAL" Style="{StaticResource Text.Label}" Margin="0,16,0,0" />
+          <ItemsControl ItemsSource="{Binding Payments}" ItemTemplate="{StaticResource Line}" Focusable="False" />
+
+          <StackPanel Visibility="{Binding HasMovements, Converter={StaticResource BoolToVisibility}}">
+            <TextBlock Text="CASH MOVEMENTS" Style="{StaticResource Text.Label}" Margin="0,16,0,0" />
+            <ItemsControl ItemsSource="{Binding Movements}" ItemTemplate="{StaticResource Line}" Focusable="False" />
+          </StackPanel>
+        </StackPanel>
+      </ScrollViewer>
+
+      <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+        <Button Content="Close" Command="{Binding CloseCommand}" MinWidth="110" MinHeight="52" Margin="0,0,12,0" />
+        <Button Content="Preview" Command="{Binding PreviewCommand}" MinWidth="110" MinHeight="52" Margin="0,0,12,0" />
+        <Button Content="PRINT" Command="{Binding PrintCommand}" Style="{StaticResource Button.Primary}" MinWidth="140" MinHeight="52"
+                IsEnabled="{Binding CanPrint}" />
+      </StackPanel>
+    </Grid>
+  </Border>
+</UserControl>

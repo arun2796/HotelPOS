@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HotelPOS.Contracts.Auth;
+using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Auth;
 using HotelPOS.Desktop.Services.Navigation;
@@ -10,16 +11,15 @@ namespace HotelPOS.Desktop.Modules.Auth;
 
 public enum ChangePasswordMode
 {
-    /// <summary>First login or after a reset: the user cannot continue without a new password.</summary>
     Forced,
 
-    /// <summary>Opened by the user from the shell.</summary>
     Voluntary,
 }
 
-public sealed partial class ChangePasswordViewModel : ObservableObject, INavigationAware
+public sealed partial class ChangePasswordViewModel : ViewModelBase, INavigationAware
 {
     private readonly IAuthApi _authApi;
+    private readonly ISystemApi _systemApi;
     private readonly IAuthSession _session;
     private readonly IAppNavigator _navigator;
     private readonly INavigationService _navigation;
@@ -27,12 +27,14 @@ public sealed partial class ChangePasswordViewModel : ObservableObject, INavigat
 
     public ChangePasswordViewModel(
         IAuthApi authApi,
+        ISystemApi systemApi,
         IAuthSession session,
         IAppNavigator navigator,
         INavigationService navigation,
         INotificationService notifications)
     {
         _authApi = authApi;
+        _systemApi = systemApi;
         _session = session;
         _navigator = navigator;
         _navigation = navigation;
@@ -51,45 +53,45 @@ public sealed partial class ChangePasswordViewModel : ObservableObject, INavigat
     [ObservableProperty]
     private string _confirmPassword = string.Empty;
 
-    [ObservableProperty]
-    private string? _errorMessage;
-
-    [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
-    private bool _isBusy;
-
     public bool IsForced => Mode == ChangePasswordMode.Forced;
 
     public string Explanation => IsForced
         ? "For security, choose your own password before you continue."
         : "Choose a new password for your account.";
 
+    // The admin-configured rule, fetched when the screen opens; null until then or when the server cannot be asked
+    // (the server still enforces it and its message is shown).
+    private PasswordRules? _rules;
+
+    [ObservableProperty]
+    private string _passwordHint = string.Empty;
+
     public string CancelText => IsForced ? "Sign out" : "Cancel";
 
     public string UserDisplayName => _session.User?.DisplayName ?? string.Empty;
 
-    public Task OnNavigatedToAsync(object? parameter)
+    public async Task OnNavigatedToAsync(object? parameter)
     {
         Mode = parameter as ChangePasswordMode? ?? ChangePasswordMode.Voluntary;
         CurrentPassword = NewPassword = ConfirmPassword = string.Empty;
         ErrorMessage = null;
         OnPropertyChanged(nameof(UserDisplayName));
-        return Task.CompletedTask;
+        _rules = await _systemApi.GetPasswordRulesAsync();
+        PasswordHint = _rules?.Describe() ?? string.Empty;
     }
 
     public void OnNavigatedFrom() => CurrentPassword = NewPassword = ConfirmPassword = string.Empty;
 
-    /// <summary>Client-side checks that save a round trip; the server validates again.</summary>
-    public static string? Validate(string current, string next, string confirm)
+    public static string? Validate(string current, string next, string confirm, PasswordRules? rules)
     {
         if (string.IsNullOrEmpty(current))
         {
             return "Enter your current password.";
         }
 
-        if (next.Length < PasswordPolicy.MinLength)
+        if (rules is not null && !rules.IsMet(next))
         {
-            return $"The new password must have at least {PasswordPolicy.MinLength} characters.";
+            return rules.Describe();
         }
 
         if (next != confirm)
@@ -107,19 +109,20 @@ public sealed partial class ChangePasswordViewModel : ObservableObject, INavigat
         OnPropertyChanged(nameof(CancelText));
     }
 
+    protected override void OnBusyChanged() => SaveCommand.NotifyCanExecuteChanged();
+
     private bool CanSave() => !IsBusy;
 
     [RelayCommand(CanExecute = nameof(CanSave))]
     private async Task SaveAsync()
     {
-        ErrorMessage = Validate(CurrentPassword, NewPassword, ConfirmPassword);
+        ErrorMessage = Validate(CurrentPassword, NewPassword, ConfirmPassword, _rules);
         if (ErrorMessage is not null)
         {
             return;
         }
 
-        IsBusy = true;
-        try
+        await ExecuteAsync(async () =>
         {
             var result = await _authApi.ChangePasswordAsync(new ChangePasswordRequest
             {
@@ -145,11 +148,7 @@ public sealed partial class ChangePasswordViewModel : ObservableObject, INavigat
             {
                 await _navigation.GoHomeAsync();
             }
-        }
-        finally
-        {
-            IsBusy = false;
-        }
+        });
     }
 
     [RelayCommand]

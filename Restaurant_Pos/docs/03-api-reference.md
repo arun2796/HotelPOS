@@ -1,10 +1,14 @@
 # 03 — API Reference (planned surface)
 
-Last updated: 2026-10-07
+Last updated: 2026-10-14
 
 This is the target REST surface. Each endpoint lists the roles allowed and the phase that delivers it.
 `M` = Manager, `A` = Admin, `W` = Waiter, `K` = Kitchen, `C` = Cashier, `*` = any authenticated user.
 Admin always has access; Manager has access wherever `M` is listed.
+
+Since Phase 9 most endpoints check a permission (`Permissions` constants) rather than a role, and the role
+letters below are the **default** permission sets. The authoritative, test-enforced list of who may call every
+endpoint is `tests/HotelPOS.Api.Tests/authorization-matrix.txt`; `AuthorizationMatrixTests` fails when it changes.
 
 ## 1. General
 
@@ -45,8 +49,16 @@ Admin always has access; Manager has access wherever `M` is listed.
 | 409 | `REQUEST_IN_PROGRESS` | Same key still processing |
 | 409 | `APPROVAL_REQUIRED` / `APPROVAL_INVALID` | Manager approval missing or wrong |
 | 409 | `PAYMENT_EXCEEDS_BALANCE` | Non-cash amount above balance due |
+| 409 | `SHIFT_REQUIRED` | Cash payment or cash refund on a terminal without an open cash shift (Phase 13) |
+| 409 | `SHIFT_ALREADY_OPEN` | The terminal, or the cashier elsewhere, already has an open shift |
+| 409 | `DAY_CLOSED` | The business day of the bill or payment (or of the shift/collection) is closed by Day End |
+| 409 | `PERIOD_CLOSED` | The bill or payment is dated in a GST month or financial year closed by an administrator (Phase 15); record the correction in the open period or reopen the period |
+| 403 | `LICENSE_TERMINAL_LIMIT` / `LICENSE_EXPIRED` | The licence covers fewer terminals than are registered / the licence or trial has expired and the server is read-only (Phase 16) |
+| 400 | `LICENSE_INVALID` | Licence key rejected: not genuine, damaged, issued for another PC, or already expired |
+| 422 | `IMPORT_HAS_ERRORS` | Import file rows are invalid; fix them or send `skipInvalid` |
+| 409 | `VARIANCE_APPROVAL_REQUIRED` | Shift count differs from the expected cash by more than `CashVarianceApprovalLimit`; send `approval` |
 | 422 | `BUSINESS_RULE` | Other domain rule (message explains) |
-| 429 | `RATE_LIMITED` | Too many login attempts |
+| 429 | `RATE_LIMITED` | Too many attempts on `/api/auth/login` or `/api/auth/approval` (per socket IP and per username; `Security:RateLimit` `MaxPerIp` 10, `MaxPerUser` 5, `WindowSeconds` 60); `Retry-After` header |
 | 500 | `SERVER_ERROR` | Unhandled exception (details only in logs) |
 | none | `CONNECTION_UNAVAILABLE` | Client-side only: no response from the server (never sent by the API) |
 
@@ -58,6 +70,7 @@ Admin always has access; Manager has access wherever `M` is listed.
 |---|---|---|---|
 | POST | `/api/auth/login` | anon | `{username, password, deviceName?, deviceType?, machineName?, appVersion?}` -> access + refresh tokens, user, roles, permissions, `deviceId` (the device is registered or updated during login) |
 | POST | `/api/auth/refresh` | anon | Rotates refresh token |
+| POST | `/api/auth/approval` | anon | `{approverUsername, approverPassword, actionType}` -> 2-minute single-use approval token for `discount`, `void`, `refund`, `reopen`. The approver must hold the action's permission (`billing.void` for void and reopen, `billing.refund` for refund; Manager or Admin role for an over-limit discount). Wrong passwords count towards lockout; rate-limited |
 | POST | `/api/auth/logout` | anon | Revokes the given refresh token (possession is the authorization, so it works with an expired access token) |
 | GET | `/api/auth/me` | * | Current user, roles, permissions |
 | POST | `/api/auth/change-password` | * | |
@@ -78,20 +91,21 @@ Admin always has access; Manager has access wherever `M` is listed.
 | POST | `/api/users/{id}/activate` / `deactivate` | A | 1 |
 | POST | `/api/users/{id}/reset-password` | A | 1 |
 | POST | `/api/users/{id}/unlock` | A | 9 |
+| GET | `/api/users/{id}/sessions` ; POST `/api/users/{id}/logout-all` | A | 9 |
 | GET | `/api/roles` | A | 1 |
-| GET/PUT | `/api/roles/{id}/permissions` | A | 9 |
+| GET/PUT | `/api/roles/{id}/permissions` (`{permissions[], forceRelogin}`); GET `/api/roles/permissions` | A | 9 |
 
 ### 3.3 Sections and tables (Phase 2)
 
 | Method | Route | Roles | Notes |
 |---|---|---|---|
-| GET | `/api/sections` | * | Active sections |
+| GET | `/api/sections` | * (`tables.view`) | Active sections |
 | POST / PUT / DELETE | `/api/sections`, `/api/sections/{id}` | A, M | DELETE = deactivate |
-| GET | `/api/tables` | * | Table map: sections with tables, status, current order summary (`?includeInactive` for admin) |
-| GET | `/api/tables/{id}` | * | Table details + active order summary |
+| GET | `/api/tables` | * (`tables.view`, in every default set) | Table map: sections with tables, status, current order summary (`?includeInactive` for admin) |
+| GET | `/api/tables/{id}` | * (`tables.view`) | Table details + active order summary |
 | POST / PUT / DELETE | `/api/tables`, `/api/tables/{id}` | A, M | |
-| POST | `/api/tables/{id}/occupy` | W, C, M | `{guestCount, rowVersion}` Available -> Occupied |
-| POST | `/api/tables/{id}/release` | W, C, M | Occupied (no order) -> Available; with order: Manager only |
+| POST | `/api/tables/{id}/occupy` | A, W, C, M | `{guestCount, rowVersion}` Available -> Occupied |
+| POST | `/api/tables/{id}/release` | A, W, C, M | Occupied (no order) -> Available; with order: Manager only |
 | POST | `/api/tables/{id}/out-of-service` / `in-service` | A, M | |
 
 ### 3.4 Menu (Phase 3)
@@ -99,9 +113,10 @@ Admin always has access; Manager has access wherever `M` is listed.
 | Method | Route | Roles | Notes |
 |---|---|---|---|
 | GET | `/api/menu` | * | Compact active menu for ordering. `?version=N` returns `notModified: true` when unchanged |
-| GET / POST / PUT / DELETE | `/api/categories[/{id}]` | read *, write A/M | |
-| GET / POST / PUT / DELETE | `/api/menu-items[/{id}]` | read *, write A/M | Price change audited |
-| POST | `/api/menu-items/{id}/image` | A, M | multipart upload; served from `/images/menu/...` |
+| GET / POST / PUT / DELETE | `/api/categories[/{id}]` | read *, write A/M | `DELETE ?deactivateItems=true` (or `PUT` with `deactivateItems`) also deactivates the items |
+| GET / POST / PUT / DELETE | `/api/menu-items[/{id}]` | read *, write A/M | Price change audited; `GET ?categoryId=&search=&includeInactive=` (inactive: A/M) |
+| POST | `/api/menu-items/{id}/image` | A, M | multipart field `file`, JPEG/PNG up to 2 MB; stored as JPEG (max 512 px) and served anonymously from `/images/menu/{id}-{random}.jpg` |
+| DELETE | `/api/menu-items/{id}/image` | A, M | Removes the picture |
 | PATCH | `/api/menu-items/{id}/availability` | K, M, A | `{isAvailable}` sold-out toggle |
 | GET / POST / PUT / DELETE | `/api/modifier-groups[/{id}]` | read *, write A/M | Options nested: `/api/modifier-groups/{id}/options[/{optionId}]` |
 | GET / POST / PUT / DELETE | `/api/taxes[/{id}]` | read *, write A | |
@@ -111,24 +126,24 @@ Admin always has access; Manager has access wherever `M` is listed.
 
 | Method | Route | Roles | Notes |
 |---|---|---|---|
-| POST **[I]** | `/api/orders` | W, M | `{tableId, guestCount, notes, items[], submit:boolean}` creates Draft (or Draft+Submit) |
+| POST **[I]** | `/api/orders` | A, W, M | `{tableId, guestCount, notes, items[], submit:boolean}` creates Draft (or Draft+Submit). Table busy -> 409 `TABLE_NOT_AVAILABLE` with the existing order summary in `data` |
 | GET | `/api/orders` | *, filtered | `?status=&tableId=&waiterId=me&from=&to=` paged |
 | GET | `/api/orders/active` | * | All non-terminal orders (for resync) |
 | GET | `/api/orders/{id}` | * | Full order with items, modifiers, tickets, bill summary |
-| PUT | `/api/orders/{id}` | W (own), M | `{guestCount, notes, rowVersion}` |
+| PUT | `/api/orders/{id}` | W (own), M, A | `{guestCount, notes, rowVersion}` |
 | PUT | `/api/orders/{id}/items` | W (own), M | Replace items while Draft |
 | POST | `/api/orders/{id}/submit` | W (own), M | Draft -> Submitted, creates tickets (Phase 5) |
-| POST **[I]** | `/api/orders/{id}/items` | W, M | Append items as a new batch (band B only); new tickets |
+| POST **[I]** | `/api/orders/{id}/items` | W (own), M, A | Append items as a new batch (band B only); new tickets |
 | POST | `/api/orders/{id}/items/{itemId}/cancel` | W, M | Rules by ticket status (Phase 5) |
 | POST | `/api/orders/{id}/cancel` | W (own), M | `{reason}`; role rules by status |
-| POST | `/api/orders/{id}/serve` | W, M | Completes all Ready tickets (Phase 5) |
-| POST **[I]** | `/api/orders/{id}/request-bill` | W, C, M | Creates bill, table -> Billing (Phase 6) |
+| POST | `/api/orders/{id}/serve` | W, M, A | Completes all Ready tickets (any waiter may serve) |
+| POST **[I]** | `/api/orders/{id}/request-bill` | W, C, M, A | Creates the bill (lines snapshotted, totals computed); order -> BillRequested, table -> Billing. Waiters: own orders unless `AllowAnyWaiterToEditOrders` |
 
 ### 3.6 Kitchen (Phase 5)
 
 | Method | Route | Roles | Notes |
 |---|---|---|---|
-| GET | `/api/kitchen/orders` | K, M | `?stationId=&status=` open tickets with items, elapsed time |
+| GET | `/api/kitchen/orders` | K, M, A | `?stationId=&status=` open tickets with items; `serverTimeUtc` for timers |
 | GET | `/api/kitchen/orders/{ticketId}` | K, W, M | |
 | GET | `/api/kitchen/orders/completed` | K, M | `?date=` business day |
 | POST | `/api/kitchen/orders/{ticketId}/accept` | K, M | New -> Accepted |
@@ -144,17 +159,17 @@ Admin always has access; Manager has access wherever `M` is listed.
 | GET | `/api/billing/pending` | C, M | Open/Finalized bills with claim info |
 | GET | `/api/billing/{id}` | C, M, W (own order) | Bill with lines, totals, payments |
 | GET | `/api/billing/closed` | C, M | `?date=&search=` settled/voided |
-| POST | `/api/billing/{id}/claim` | C, M | Soft lock (5 min, refreshable); 409 if held by another device |
+| POST | `/api/billing/{id}/claim` | C, M | Soft lock (5 min, refreshed by every cashier action); 409 `BILL_CLAIMED` naming the holder. `{override:true}` lets a manager take over (audited) |
 | POST | `/api/billing/{id}/release` | C, M | |
-| PUT | `/api/billing/{id}/discount` | C, M | `{discountId? | type,value, reason, approval?}`; recalculates |
-| DELETE | `/api/billing/{id}/discount` | C, M | |
+| PUT | `/api/billing/{id}/discount` | C, M (`billing.discount`) | `{discountId? | type,value, reason, approval?}`; recalculates |
+| DELETE | `/api/billing/{id}/discount?rowVersion=` | C, M (`billing.discount`) | |
 | PUT | `/api/billing/{id}/customer` | C, M | name/phone/GSTIN for invoice |
 | POST | `/api/billing/{id}/finalize` | C, M | Assigns invoice number, locks discount; Order -> Billed |
 | POST **[I]** | `/api/billing/{id}/payments` | C, M | `{paymentMethodId, amount, tendered?, reference?}`; implicit finalize; settles when fully paid |
 | POST | `/api/billing/{id}/close` | C, M | Only when `AutoCloseOnFullPayment=false` |
-| POST | `/api/billing/{id}/reopen` | C, M | Voids bill, Order -> Served, items editable |
-| POST | `/api/billing/{id}/void` | M | Unpaid finalized bill, `{reason, approval}` |
-| POST **[I]** | `/api/billing/{id}/refunds` | M | `{paymentId, amount, reason, approval}` |
+| POST | `/api/billing/{id}/reopen` | C, M | `{reason, approval?, rowVersion}` unpaid bills; voids the bill, Order -> Served, items editable. Approval required once an invoice number exists |
+| POST | `/api/billing/{id}/void` | C, M | Unpaid finalized bill, `{reason, approval, rowVersion}`; a cashier must include a manager approval. Order cancelled, table released |
+| POST **[I]** | `/api/billing/{id}/refunds` | C, M | `{paymentId, amount, reason, approval, rowVersion}` on settled bills; a cashier must include a manager approval |
 | GET / POST / PUT / DELETE | `/api/discounts[/{id}]` | read C/M, write A/M | |
 | GET / POST / PUT / DELETE | `/api/payment-methods[/{id}]` | read *, write A | |
 
@@ -162,17 +177,18 @@ Admin always has access; Manager has access wherever `M` is listed.
 
 | Method | Route | Roles | Notes |
 |---|---|---|---|
-| GET | `/api/print/kot/{ticketId}` | K, W, M | `KitchenTicketDocument` |
-| GET | `/api/print/invoice/{billId}` | C, M, W | `InvoiceDocument` (tax breakup, GSTIN, footer) |
-| GET | `/api/print/receipt/{paymentId}` | C, M | `ReceiptDocument` |
-| POST | `/api/print/reprints` | C, M | `{documentType, entityId, reason}` audit record |
+| GET | `/api/print/kot/{ticketId}` | K, W, M, A | `KitchenTicketDocument` (never prices unless `KotShowPrices`) |
+| GET | `/api/print/invoice/{billId}` | C, M, A, W (own order) | `InvoiceDocument` (header, tax breakup, payments, footer, `isCancelled` for voided bills, `copies` from `PrintInvoiceCopies`) |
+| GET | `/api/print/receipt/{paymentId}` | C, M, A | `ReceiptDocument` (refund rows print as REFUND) |
+| POST | `/api/print/reprints` | C, M, A | `{documentType, entityId, reason}` writes `Print.Reprint` to the audit log; the client then fetches and prints the document |
 
 ### 3.9 Reports (Phase 8)
 
-All `GET`, roles A/M, params `from`, `to` (business days), optional `format=csv`.
+All `GET`, roles A/M, params `from`, `to` (business days, default today, at most 366 days), optional `format=csv`
+(UTF-8 with BOM, `text/csv` attachment, totals row at the end).
 
 ```
-/api/reports/dashboard
+/api/reports/dashboard          /api/reports/my-day   (any signed-in user: own orders, sales and tables today)
 /api/reports/sales/daily        /api/reports/sales/monthly?year=
 /api/reports/sales/items        /api/reports/sales/categories
 /api/reports/payments           /api/reports/cancellations
@@ -184,11 +200,82 @@ All `GET`, roles A/M, params `from`, `to` (business days), optional `format=csv`
 
 | Method | Route | Roles | Phase |
 |---|---|---|---|
-| GET | `/api/admin/audit-logs` (paged, filters) | A, M | 9 |
+| GET | `/api/admin/audit-logs` (paged, filters: user, device, action, entity, dates); GET `.../export` (CSV) | A, M | 9 |
 | GET | `/api/admin/devices` | A | 9 |
 | PUT | `/api/admin/devices/{id}` ; POST `.../deactivate` / `activate` | A | 9 |
-| POST | `/api/admin/backup` ; GET `/api/admin/backups` | A | 10 |
-| GET | `/api/admin/logs?lines=500` | A | 10 |
+| POST | `/api/admin/backup` ; GET `/api/admin/backups` | A (`backup.manage`) | 10 — runs a verified backup now (409/422 `BUSINESS_RULE` if one is running or it fails); the list returns folder, schedule, retention, last unresolved failure and the latest 100 backups |
+| GET | `/api/admin/logs?lines=500&level=WRN` | A (`server.manage`) | 10 — newest entries of the newest `api-*.log` (1–2000; stack traces stay with their entry) |
+| POST | `/api/admin/notice` `{level: Info/Warning/Critical, message}` | A (`server.manage`) | 10 — broadcast `ServerNotice` to every terminal; audited `Server.NoticeSent` |
+
+### 3.11 Shifts, cash register and Day End (Phase 13)
+
+Cash payments and cash refunds (`/api/billing/{id}/payments`, `/refunds`) need the terminal's open shift
+(`SHIFT_REQUIRED`). Request bill, finalize, pay, refund, void and reopen a bill answer `DAY_CLOSED` when today's
+business day, or the day the bill was settled in, is closed. Days in routes are `yyyy-MM-dd`.
+
+| Method | Route | Permission (default roles) | Notes |
+|---|---|---|---|
+| GET | `/api/denominations` | `billing.operate` (A, M, C) | All notes and coins, inactive included |
+| PUT | `/api/denominations` | `settings.manage` (A) | `{items:[{id?, value, label, kind, sortOrder, isActive}]}`; never deletes |
+| POST | `/api/shifts` | `shift.operate` (A, M, C) | `{counts:[{denominationId, quantity}]}` opens on the caller's terminal (201); `SHIFT_ALREADY_OPEN` |
+| GET | `/api/shifts/current` | `shift.operate` | This terminal's open shift or `null`; `expectedCash` null under a blind count |
+| GET | `/api/shifts/cashiers` | `shift.operate` | Users who may hold a shift (handover target), with any open shift's terminal |
+| GET | `/api/shifts?day=` | `shift.manage` (A, M) | Shifts of the business day (default today) plus older open ones |
+| POST | `/api/shifts/{id}/movements` | `shift.operate` | `{type: PayIn/PayOut/TillVoucher, amount, reason, approval?}`; money out above `CashPayOutApprovalLimit` needs approval (`pay-out`); returns the X report |
+| GET | `/api/shifts/{id}/x-report` | `shift.operate` | `ShiftReportDto`: X report while open, Z report (`isFinal`) once closed |
+| POST | `/api/shifts/{id}/close` | `shift.operate` | `{counts, varianceReason?, approval?, rowVersion}`; reason for any variance, approval (`cash-variance`) above `CashVarianceApprovalLimit`; returns the Z report |
+| POST | `/api/shifts/{id}/handover` | `shift.operate` | as close plus `nextCashierUserId`; the next shift opens with the counted notes as float |
+| POST | `/api/shifts/{id}/force-close` | `shift.manage` | `{counts, reason, rowVersion}` |
+| POST | `/api/shifts/{id}/reopen` | `shift.manage` | `{reason, approval?, rowVersion}` (`reopen-shift`); its business day must be open |
+| GET | `/api/day-end/precheck?day=` | `dayend.run` (A, M) | Blocking items (`OPEN_ORDERS`, `UNPAID_BILLS`, `OPEN_SHIFTS`, `OPEN_KITCHEN_TICKETS`), totals, default day |
+| POST | `/api/day-end` | `dayend.run` | `{businessDay?, overrides:[{code, reason}]}`: verified backup first (422 and day left open if it fails), then lock + totals snapshot, then the CSV pack |
+| POST | `/api/day-end/{day}/reopen` | `dayend.run` | `{reason, approval?}` (`reopen-day`) |
+| GET | `/api/day-end/history` | `dayend.run` | Latest 90 Day End records |
+| POST | `/api/day-end/{day}/collections` | `dayend.run` | `{method, amount, reference?, note?}` non-till collection (201) |
+
+New approval action types for `POST /api/auth/approval`: `cash-variance`, `pay-out`, `reopen-shift` (approver holds
+`shift.manage`) and `reopen-day` (`dayend.run`).
+
+### 3.12 GST returns and period close (Phase 15)
+
+`period` is `yyyy-MM` (default: the previous month). `format=xlsx|pdf` downloads the figures on the letterhead.
+
+| Method | Route | Permission | Notes |
+|---|---|---|---|
+| GET | `/api/gst/gstr1?period=` | `gst.view` (A, M) | `Gstr1Dto`: B2B, B2CL, B2CS, credit notes (cdnr/cdnur), HSN, documents issued, totals, issue counts |
+| GET | `/api/gst/gstr1/json?period=` | `gst.view` | Portal offline-tool JSON file `GSTR1_<gstin>_<MMYYYY>.json` (422 without a valid restaurant GSTIN) |
+| GET | `/api/gst/gstr3b?period=` | `gst.view` | Table 3.1(a), 3.1(c), 3.2, net of credit notes |
+| GET | `/api/gst/hsn-summary?period=` | `gst.view` | HSN/SAC by code and rate |
+| GET | `/api/gst/validation?period=` | `gst.view` | Errors and warnings (`canFile`) |
+| GET | `/api/periods?financialYear=` | `gst.view` | 12 months + the year with status |
+| GET | `/api/periods/precheck?kind=&period=` | `period.close` (A) | Checks (period ended, days closed, no open bill, no GST error / months closed) |
+| POST | `/api/periods/close` | `period.close` | `{kind: Month\|Year, period}`: checks, lock, then the pack (GSTR-1 JSON, Excel, PDF) beside the backups |
+| POST | `/api/periods/reopen` | `period.close` | `{kind, period, reason}`; audited |
+
+`PUT /api/billing/{id}/customer` also takes `legalName`, `stateCode`, `placeOfSupply` and validates the GSTIN;
+`BillDetailDto` returns them with `supplyType`. Menu item requests carry an optional `hsnSac`.
+
+### 3.13 Licence, import and updates (Phase 16)
+
+| Method | Route | Permission | Notes |
+|---|---|---|---|
+| GET | `/api/license` | any signed-in user | `LicenseStatusDto`: state (Trial/Licensed/Expired), edition, customer, terminals used/allowed, expiry, `showWarning`, `machineId` (the key is never returned) |
+| POST | `/api/license/apply` | `license.manage` (A) | `{ key }`; 400 `LICENSE_INVALID` when the signature, machine id or expiry is wrong |
+| POST | `/api/import/preview` | `import.run` (A, M) | multipart `file` (.xlsx/.csv, 5 MB, 5,000 rows), `kind` Menu\|Customers, `mapping` (JSON field -> header, optional): headers, suggested mapping, counts, row errors (max 200) |
+| POST | `/api/import/apply` | `import.run` | same form plus `skipInvalid`; one transaction; 422 `IMPORT_HAS_ERRORS` when rows are invalid and not skipped |
+| POST | `/api/import/undo` | `import.run` | reverts the latest import, once |
+| GET | `/api/import/last` | `import.run` | the latest batch and `canUndo` |
+| GET | `/updates/latest.json`, `/updates/<file>` | anonymous | the client installer the server hosts (folder `Updates:Path`, default `updates` beside the exe) |
+| GET | `/api/customers` | `billing.operate` (A, M, C) | `search` (name, legal name, GSTIN or phone digits), `includeInactive`, `page`, `pageSize` (the bill's picker asks for 8): `PagedResult<CustomerDto>` |
+| POST | `/api/customers` | `billing.operate` | `SaveCustomerRequest`; 409 `DUPLICATE` when another customer has the phone (stored as 10 national digits) |
+| PUT | `/api/customers/{id}` | `billing.operate` | same body |
+| POST | `/api/customers/{id}/deactivate`, `/activate` | `billing.operate` | hides the customer from the picker; bills keep their own copy |
+| PUT | `/api/billing/{id}/customer` | `billing.operate` | `UpdateCustomerRequest`; with `customerId` the server copies that active customer (name cut to 100 characters) onto the bill, 404 when it is unknown or deactivated; empty fields clear the bill's customer |
+
+`GET /api/system/info` also returns `clientUpdate` (`version`, `file`, `sha256`, `size`) when an installer is hosted.
+While the licence is Expired every non-GET request except `/api/auth/*`, `/api/license/*` and `/api/admin/backup`
+answers 403 `LICENSE_EXPIRED`. Login answers 403 `LICENSE_TERMINAL_LIMIT` for a terminal over the licensed count and
+403 `LICENSE_EXPIRED` for non-administrators after expiry. Device registration applies the same terminal limit.
 
 ## 4. Idempotency protocol (client side)
 
@@ -200,6 +287,8 @@ All `GET`, roles A/M, params `from`, `to` (business days), optional `format=csv`
 4. If all retries fail, show: "Could not confirm that the order was saved. Check the connection and
    press Retry." The key is kept until a definitive response arrives.
 5. A new key is generated only after a definitive success or when the user discards the action.
+6. A replayed response carries the header `Idempotent-Replayed: true`. Server errors (5xx) are not stored, so the
+   retry is processed again.
 
 ## 5. Manager approval protocol
 
@@ -211,4 +300,15 @@ Actions marked "approval" accept an `approval` object:
 
 The server validates the credentials, checks the approver's role, records `ApprovedBy` on the entity and
 in the audit log. The approver's password is never logged. If the caller already has the Manager role
-the object is optional. Phase 9 may replace this with short-lived approval tokens.
+the object is optional. Since Phase 9 the object may instead carry `approvalToken` from
+`POST /api/auth/approval`; the token is bound to the action type, valid for 2 minutes and used once.
+
+## Print templates, copies and exports (Phase 14)
+
+- `GET /api/templates`, `GET|POST /api/templates/{type}`, `POST /api/templates/{type}/{version}/activate`,
+  `POST /api/templates/preview`, `POST|DELETE /api/templates/logo` (Admin) — versioned layouts per document type.
+- `POST /api/print/invoice/{billId}/copies`, `POST /api/print/receipt/{paymentId}/copies`,
+  `POST /api/print/kot/{ticketId}/copies` reserve a copy number (copy 2+ is marked DUPLICATE) and return the document;
+  `PUT /api/print/copies/{logId}` records the result; `GET /api/print/{type}/{id}/history` lists the copies.
+- `GET /api/print/invoice/{billId}.pdf`, `GET /api/print/receipt/{paymentId}.pdf` — the same document as a PDF.
+- Report endpoints accept `format=csv|xlsx|pdf`; the audit log export accepts `format=xlsx` (CSV by default).

@@ -4,106 +4,266 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:shell="clr-namespace:HotelPOS.Desktop.Shell"
+             xmlns:ui="clr-namespace:HotelPOS.Desktop.Services.Ui"
+             xmlns:controls="clr-namespace:HotelPOS.Desktop.Controls"
+             xmlns:cash="clr-namespace:HotelPOS.Desktop.Modules.Cash"
+             xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance shell:ShellViewModel}"
              d:DesignWidth="1366" d:DesignHeight="800">
 
   <Grid>
     <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="264" />
+      <ColumnDefinition Width="Auto" />
       <ColumnDefinition Width="*" />
     </Grid.ColumnDefinitions>
     <Grid.RowDefinitions>
       <RowDefinition Height="*" />
-      <RowDefinition Height="34" />
+      <RowDefinition Height="28" />
     </Grid.RowDefinitions>
 
-    <!-- ===== Sidebar ===== -->
-    <Grid Background="{DynamicResource Brush.Sidebar}">
-      <Grid.RowDefinitions>
-        <RowDefinition Height="Auto" />
-        <RowDefinition Height="*" />
-        <RowDefinition Height="Auto" />
-      </Grid.RowDefinitions>
+    <!-- ============================ Sidebar ============================ -->
+    <!-- Width follows IsSidebarCollapsed; the code-behind animates the change when the user toggles it. -->
+    <Border x:Name="Sidebar" Background="{DynamicResource Brush.Sidebar}" BorderBrush="{DynamicResource Brush.SidebarDivider}" BorderThickness="0,0,1,0" ClipToBounds="True">
+      <Border.Style>
+        <Style TargetType="Border">
+          <Setter Property="Width" Value="240" />
+          <Style.Triggers>
+            <DataTrigger Binding="{Binding IsSidebarCollapsed}" Value="True">
+              <Setter Property="Width" Value="64" />
+            </DataTrigger>
+          </Style.Triggers>
+        </Style>
+      </Border.Style>
+      <Grid>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="*" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
 
-      <StackPanel Margin="22,22,16,10">
-        <TextBlock Text="HotelPOS" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource Brush.SidebarText}" />
-        <TextBlock Text="{Binding RestaurantName}" FontSize="13" Foreground="{DynamicResource Brush.SidebarTextMuted}"
-                   TextTrimming="CharacterEllipsis" Margin="0,2,0,0" />
-      </StackPanel>
-
-      <ListBox Grid.Row="1"
-               ItemsSource="{Binding NavItems}"
-               SelectedItem="{Binding SelectedNavItem}"
-               Style="{StaticResource NavList}"
-               ItemContainerStyle="{StaticResource NavItem}" />
-
-      <!-- Signed-in user -->
-      <Border Grid.Row="2" BorderBrush="{DynamicResource Brush.SidebarHover}" BorderThickness="0,1,0,0" Padding="16,14">
-        <Grid>
+        <Grid Margin="16,16,12,8" Height="44">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="*" />
           </Grid.ColumnDefinitions>
-          <Border Width="40" Height="40" CornerRadius="20" Background="{DynamicResource Brush.SidebarSelected}">
-            <TextBlock Text="{Binding UserInitials}" Foreground="White" FontWeight="SemiBold"
-                       HorizontalAlignment="Center" VerticalAlignment="Center" />
-          </Border>
-          <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
-            <TextBlock Text="{Binding UserDisplayName}" Foreground="{DynamicResource Brush.SidebarText}" FontWeight="SemiBold"
-                       TextTrimming="CharacterEllipsis" />
-            <TextBlock Text="{Binding RolesText}" Foreground="{DynamicResource Brush.SidebarTextMuted}" FontSize="12"
+          <Button Style="{StaticResource Button.Icon}" Width="40" Height="40" MinWidth="40" MinHeight="40"
+                  Foreground="{DynamicResource Brush.SidebarText}" Command="{Binding ToggleSidebarCommand}"
+                  ToolTip="Collapse or expand the menu">
+            <TextBlock Text="&#xE700;" Style="{StaticResource Text.Icon}" FontSize="16" />
+          </Button>
+          <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center"
+                      Visibility="{Binding IsSidebarCollapsed, Converter={StaticResource InverseBoolToVisibility}}">
+            <TextBlock Text="HotelPOS" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource Brush.SidebarTextActive}" />
+            <TextBlock Text="{Binding RestaurantName}" FontSize="12" Foreground="{DynamicResource Brush.SidebarTextMuted}"
                        TextTrimming="CharacterEllipsis" />
           </StackPanel>
         </Grid>
-      </Border>
-    </Grid>
 
-    <!-- ===== Main area ===== -->
+        <ListBox Grid.Row="1"
+                 ItemsSource="{Binding NavItems}"
+                 SelectedItem="{Binding SelectedNavItem}"
+                 Style="{StaticResource NavList}"
+                 ItemContainerStyle="{StaticResource NavItem}" />
+
+        <Border Grid.Row="2" BorderBrush="{DynamicResource Brush.SidebarDivider}" BorderThickness="0,1,0,0" Padding="16,12">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Border Width="40" Height="40" CornerRadius="20" Background="{DynamicResource Brush.Primary}" ToolTip="{Binding UserDisplayName}">
+              <TextBlock Text="{Binding UserInitials}" Foreground="White" FontWeight="SemiBold"
+                         HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <StackPanel Grid.Column="1" Margin="10,0,4,0" VerticalAlignment="Center"
+                        Visibility="{Binding IsSidebarCollapsed, Converter={StaticResource InverseBoolToVisibility}}">
+              <TextBlock Text="{Binding UserDisplayName}" Foreground="{DynamicResource Brush.SidebarTextActive}" FontWeight="SemiBold"
+                         FontSize="13" TextTrimming="CharacterEllipsis" />
+              <TextBlock Text="{Binding RolesText}" Foreground="{DynamicResource Brush.SidebarTextMuted}" FontSize="12"
+                         TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center"
+                        Visibility="{Binding IsSidebarCollapsed, Converter={StaticResource InverseBoolToVisibility}}">
+              <Button Style="{StaticResource Button.Icon}" Width="36" Height="36" MinWidth="36" MinHeight="36"
+                      Foreground="{DynamicResource Brush.SidebarText}" Command="{Binding ChangePasswordCommand}" ToolTip="Change my password">
+                <TextBlock Text="&#xE8D7;" Style="{StaticResource Text.Icon}" FontSize="15" />
+              </Button>
+              <Button Style="{StaticResource Button.Icon}" Width="36" Height="36" MinWidth="36" MinHeight="36"
+                      Foreground="{DynamicResource Brush.SidebarText}" Command="{Binding LogoutCommand}" ToolTip="Sign out">
+                <TextBlock Text="&#xE7E8;" Style="{StaticResource Text.Icon}" FontSize="15" />
+              </Button>
+            </StackPanel>
+          </Grid>
+        </Border>
+      </Grid>
+    </Border>
+
+    <!-- ============================ Top bar and page ============================ -->
     <Grid Grid.Column="1" Background="{DynamicResource Brush.Background}">
       <Grid.RowDefinitions>
-        <RowDefinition Height="64" />
+        <RowDefinition Height="56" />
+        <RowDefinition Height="Auto" />
         <RowDefinition Height="*" />
       </Grid.RowDefinitions>
 
-      <!-- Top bar -->
+      <!-- Cash shift bar on billing terminals (phase 13) -->
+      <StackPanel Grid.Row="1">
+        <cash:ShiftBarView DataContext="{Binding ShiftBar}"
+                           Visibility="{Binding IsVisible, Converter={StaticResource BoolToVisibility}}" />
+
+        <!-- Licence (trial / expiry near / expired) and update notes (phase 16) -->
+        <Border DataContext="{Binding Banner}" Margin="16,8,16,0" Visibility="{Binding ShowLicense, Converter={StaticResource BoolToVisibility}}">
+          <Border.Style>
+            <Style TargetType="Border" BasedOn="{StaticResource Banner.Warning}">
+              <Style.Triggers>
+                <DataTrigger Binding="{Binding LicenseIsCritical}" Value="True">
+                  <Setter Property="Background" Value="{DynamicResource Brush.DangerSoft}" />
+                </DataTrigger>
+              </Style.Triggers>
+            </Style>
+          </Border.Style>
+          <DockPanel>
+            <Button DockPanel.Dock="Right" Content="Licence" Command="{Binding OpenLicenseCommand}" Margin="12,0,0,0"
+                    Visibility="{Binding CanOpenLicense, Converter={StaticResource BoolToVisibility}}" />
+            <TextBlock Text="{Binding LicenseText}" Style="{StaticResource Text.Body}" TextWrapping="Wrap" VerticalAlignment="Center" />
+          </DockPanel>
+        </Border>
+        <Border DataContext="{Binding Banner}" Margin="16,8,16,0" Style="{StaticResource Banner.Info}"
+                Visibility="{Binding ShowUpdate, Converter={StaticResource BoolToVisibility}}">
+          <DockPanel>
+            <Button DockPanel.Dock="Right" Content="Update now" Command="{Binding UpdateNowCommand}" Style="{StaticResource Button.Primary}"
+                    Margin="12,0,0,0" IsEnabled="{Binding IsUpdating, Converter={StaticResource InverseBool}}" />
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock Text="{Binding UpdateText}" Style="{StaticResource Text.Body}" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding UpdateError}" Style="{StaticResource Text.Error}" TextWrapping="Wrap"
+                         Visibility="{Binding UpdateError, Converter={StaticResource StringToVisibility}}" />
+            </StackPanel>
+          </DockPanel>
+        </Border>
+      </StackPanel>
+
       <Border Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,0,0,1"
               Padding="24,0,12,0">
         <Grid>
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
           </Grid.ColumnDefinitions>
           <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-            <TextBlock Text="{Binding SelectedNavItem.Glyph}" Style="{StaticResource Text.Icon}" Foreground="{DynamicResource Brush.Primary}" />
-            <TextBlock Text="{Binding SelectedNavItem.Title}" Style="{StaticResource Text.Title}" Margin="12,0,0,0" />
+            <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource Brush.PrimarySoft}">
+              <TextBlock Text="{Binding SelectedNavItem.Glyph}" Style="{StaticResource Text.Icon}" FontSize="16"
+                         Foreground="{DynamicResource Brush.Primary}" HorizontalAlignment="Center" />
+            </Border>
+            <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+              <TextBlock Text="{Binding SelectedNavItem.Title}" FontSize="16" FontWeight="SemiBold" />
+              <TextBlock Text="{Binding PageDescription}" Style="{StaticResource Text.Caption}" TextWrapping="NoWrap"
+                         TextTrimming="CharacterEllipsis" MaxWidth="420" />
+            </StackPanel>
           </StackPanel>
-          <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-            <TextBlock Text="{Binding Clock}" Style="{StaticResource Text.Caption}" FontSize="14" VerticalAlignment="Center" Margin="0,0,16,0" />
-            <Button Style="{StaticResource Button.Ghost}" Command="{Binding ToggleThemeCommand}" ToolTip="Switch light / dark theme">
-              <TextBlock Text="&#xE793;" Style="{StaticResource Text.Icon}" />
+
+          <!-- Looks like a search field; opens the command palette. -->
+          <Button Grid.Column="1" Command="{Binding OpenPaletteCommand}" Width="320" Height="36" Margin="16,0" Padding="12,0" VerticalAlignment="Center"
+                  HorizontalContentAlignment="Stretch" Background="{DynamicResource Brush.InputBackground}"
+                  BorderBrush="{DynamicResource Brush.InputBorder}" FontWeight="Normal"
+                  AutomationProperties.Name="Search (Ctrl+K)">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Text="&#xE721;" Style="{StaticResource Text.Icon}" FontSize="14" Foreground="{DynamicResource Brush.TextSecondary}" />
+              <TextBlock Grid.Column="1" Text="Search or jump to…" Margin="10,0,0,0" VerticalAlignment="Center"
+                         Foreground="{DynamicResource Brush.TextTertiary}" />
+              <Border Grid.Column="2" CornerRadius="4" Padding="6,1" Background="{DynamicResource Brush.Surface}"
+                      BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" VerticalAlignment="Center">
+                <TextBlock Text="Ctrl K" FontSize="11" Foreground="{DynamicResource Brush.TextSecondary}" />
+              </Border>
+            </Grid>
+          </Button>
+
+          <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+            <TextBlock Text="{Binding Clock}" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,12,0" />
+            <Button Style="{StaticResource Button.Icon}" Command="{Binding ToggleThemeCommand}" ToolTip="Switch light / dark theme">
+              <TextBlock Text="&#xE793;" Style="{StaticResource Text.Icon}" FontSize="16" />
             </Button>
-            <Button Style="{StaticResource Button.Ghost}" Command="{Binding ChangePasswordCommand}" ToolTip="Change my password" Margin="4,0,0,0">
-              <StackPanel Orientation="Horizontal">
-                <TextBlock Text="&#xE8D7;" Style="{StaticResource Text.Icon}" />
-                <TextBlock Text="Password" Margin="8,0,0,0" VerticalAlignment="Center" />
-              </StackPanel>
+            <Button Style="{StaticResource Button.Icon}" Command="{Binding ToggleNoticesCommand}" ToolTip="Notices from the server">
+              <Grid>
+                <TextBlock Text="&#xEA8F;" Style="{StaticResource Text.Icon}" FontSize="16" />
+                <Border CornerRadius="8" MinWidth="16" Height="16" Padding="4,0" Margin="0,-10,-12,0"
+                        HorizontalAlignment="Right" VerticalAlignment="Top" Background="{DynamicResource Brush.Danger}"
+                        Visibility="{Binding Notices.HasUnread, Converter={StaticResource BoolToVisibility}}">
+                  <TextBlock Text="{Binding Notices.UnreadCount}" FontSize="10" FontWeight="Bold" Foreground="White"
+                             HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+              </Grid>
             </Button>
-            <Button Style="{StaticResource Button.Ghost}" Command="{Binding LogoutCommand}" ToolTip="Sign out" Margin="4,0,0,0">
-              <StackPanel Orientation="Horizontal">
-                <TextBlock Text="&#xE7E8;" Style="{StaticResource Text.Icon}" />
-                <TextBlock Text="Sign out" Margin="8,0,0,0" VerticalAlignment="Center" />
-              </StackPanel>
+            <Button Style="{StaticResource Button.Icon}" Command="{Binding ShowHelpCommand}" ToolTip="Keyboard shortcuts (F1)">
+              <TextBlock Text="&#xE897;" Style="{StaticResource Text.Icon}" FontSize="16" />
             </Button>
           </StackPanel>
         </Grid>
       </Border>
 
-      <!-- Current page (resolved through the DataTemplates in App.xaml) -->
-      <ContentControl Grid.Row="1" Content="{Binding CurrentPage}" Focusable="False" />
+      <controls:TransitioningContentControl Grid.Row="2" Content="{Binding CurrentPage}" />
+
+      <!-- Shift dialogs (open, count, pay in/out, X/Z report) over the bar and the page -->
+      <Grid Grid.Row="1" Grid.RowSpan="2" Background="{DynamicResource Brush.Overlay}" DataContext="{Binding ShiftBar}"
+            Visibility="{Binding IsPanelOpen, Converter={StaticResource BoolToVisibility}}">
+        <ContentControl Content="{Binding Panel}" HorizontalAlignment="Center" VerticalAlignment="Center" Focusable="False" />
+      </Grid>
+
+      <!-- Notices panel under the bell -->
+      <Grid Grid.Row="2" Width="380" Margin="0,8,16,0" HorizontalAlignment="Right" VerticalAlignment="Top"
+            Visibility="{Binding IsNoticesOpen, Converter={StaticResource BoolToVisibility}}">
+        <Border CornerRadius="12" Background="{DynamicResource Brush.Surface}" Effect="{DynamicResource Shadow.Popup}" />
+        <Border Style="{StaticResource Card}" Padding="16" DataContext="{Binding Notices}">
+          <StackPanel>
+            <TextBlock Text="Notices" Style="{StaticResource Text.Subtitle}" />
+            <TextBlock Text="Messages from the server since you signed in." Style="{StaticResource Text.Caption}" Margin="0,2,0,10" />
+            <TextBlock Text="No notices." Style="{StaticResource Text.Caption}" Margin="0,8"
+                       Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}" />
+            <ItemsControl ItemsSource="{Binding Items}" MaxHeight="420">
+              <ItemsControl.Template>
+                <ControlTemplate TargetType="ItemsControl">
+                  <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ItemsPresenter />
+                  </ScrollViewer>
+                </ControlTemplate>
+              </ItemsControl.Template>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="{x:Type ui:NoticeItem}">
+                  <Border Margin="0,0,0,8" Padding="12,10" CornerRadius="8">
+                    <Border.Style>
+                      <Style TargetType="Border">
+                        <Setter Property="Background" Value="{DynamicResource Brush.InfoSoft}" />
+                        <Style.Triggers>
+                          <DataTrigger Binding="{Binding Level}" Value="Warning">
+                            <Setter Property="Background" Value="{DynamicResource Brush.WarningSoft}" />
+                          </DataTrigger>
+                          <DataTrigger Binding="{Binding Level}" Value="Critical">
+                            <Setter Property="Background" Value="{DynamicResource Brush.DangerSoft}" />
+                          </DataTrigger>
+                        </Style.Triggers>
+                      </Style>
+                    </Border.Style>
+                    <StackPanel>
+                      <TextBlock Text="{Binding Message}" Style="{StaticResource Text.Body}" />
+                      <TextBlock Text="{Binding SentByText}" Style="{StaticResource Text.Caption}" Margin="0,4,0,0" />
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+      </Grid>
     </Grid>
 
-    <!-- ===== Status bar ===== -->
+    <!-- ============================ Status bar ============================ -->
     <Border Grid.Row="1" Grid.ColumnSpan="2" Background="{DynamicResource Brush.Surface}"
             BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,1,0,0" Padding="16,0"
             DataContext="{Binding StatusBar}">
@@ -140,8 +300,84 @@
           <Run Text="  ·  Terminal" />
           <Run Text="{Binding DeviceName, Mode=OneWay}" />
         </TextBlock>
-        <TextBlock Grid.Column="2" Text="{Binding Version}" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
+        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+          <Border Background="{DynamicResource Brush.DangerSoft}" CornerRadius="8" Padding="8,2" Margin="0,0,16,0"
+                  Visibility="{Binding HasFailedPrints, Converter={StaticResource BoolToVisibility}}">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="&#xE749;" Style="{StaticResource Text.Icon}" FontSize="12" Foreground="{DynamicResource Brush.Danger}" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding FailedPrintText}" FontSize="12" FontWeight="SemiBold" Margin="6,0,8,0" VerticalAlignment="Center"
+                         Foreground="{DynamicResource Brush.Danger}" />
+              <Button Content="Retry" Command="{Binding RetryPrintsCommand}" Style="{StaticResource Button.Link}" FontSize="12" Padding="4,0" MinHeight="20" />
+              <Button Content="Discard" Command="{Binding DiscardPrintsCommand}" Style="{StaticResource Button.Link}" FontSize="12" Padding="4,0" MinHeight="20" Margin="4,0,0,0" />
+            </StackPanel>
+          </Border>
+          <TextBlock Text="{Binding Version}" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
+        </StackPanel>
       </Grid>
     </Border>
+
+    <!-- ============================ Command palette (Ctrl+K) ============================ -->
+    <Grid Grid.RowSpan="2" Grid.ColumnSpan="2" Background="{DynamicResource Brush.Overlay}"
+          Visibility="{Binding Palette.IsOpen, Converter={StaticResource BoolToVisibility}}"
+          MouseLeftButtonDown="OnPaletteScrimClicked">
+      <Grid Width="640" Margin="0,88,0,0" HorizontalAlignment="Center" VerticalAlignment="Top"
+            DataContext="{Binding Palette}" MouseLeftButtonDown="OnPaletteClicked">
+        <Border CornerRadius="10" Background="{DynamicResource Brush.Surface}" Effect="{DynamicResource Shadow.Popup}" />
+        <Border CornerRadius="10" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1">
+          <StackPanel>
+            <Grid Margin="16,8">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Text="&#xE721;" Style="{StaticResource Text.Icon}" FontSize="16" Foreground="{DynamicResource Brush.TextSecondary}" />
+              <TextBox x:Name="PaletteQuery" Grid.Column="1" Text="{Binding Query, UpdateSourceTrigger=PropertyChanged}"
+                       Background="Transparent" BorderThickness="0" FontSize="16" Margin="4,0,0,0"
+                       AutomationProperties.Name="Search screens, actions, tables, orders and bills"
+                       PreviewKeyDown="OnPaletteKeyDown"
+                       md:HintAssist.Hint="Search screens and actions, or type a table, order or bill number" />
+            </Grid>
+            <Border BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,1,0,0" />
+            <ListBox x:Name="PaletteResults" ItemsSource="{Binding Results}" SelectedItem="{Binding Selected}"
+                     MaxHeight="420" Margin="8" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     PreviewMouseLeftButtonUp="OnPaletteResultClicked">
+              <ListBox.ItemTemplate>
+                <DataTemplate DataType="{x:Type shell:PaletteEntry}">
+                  <Grid>
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="32" />
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{Binding Glyph}" Style="{StaticResource Text.Icon}" FontSize="15"
+                               Foreground="{DynamicResource Brush.TextSecondary}" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                      <TextBlock Text="{Binding Title}" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding Subtitle}" Style="{StaticResource Text.Caption}" TextWrapping="NoWrap"
+                                 TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+                      <Border CornerRadius="4" Padding="6,1" Margin="0,0,6,0" BorderThickness="1"
+                              BorderBrush="{DynamicResource Brush.Border}"
+                              Visibility="{Binding Shortcut, Converter={StaticResource StringToVisibility}}">
+                        <TextBlock Text="{Binding Shortcut}" FontSize="11" Foreground="{DynamicResource Brush.TextSecondary}" />
+                      </Border>
+                      <TextBlock Text="{Binding Group}" FontSize="11" Foreground="{DynamicResource Brush.TextTertiary}" />
+                    </StackPanel>
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+            <TextBlock Text="Nothing matches. Try a screen name, a table code like T05, or an order or bill number."
+                       Style="{StaticResource Text.Caption}" Margin="20,4,20,16"
+                       Visibility="{Binding HasNoResults, Converter={StaticResource BoolToVisibility}}" />
+            <Border Background="{DynamicResource Brush.SurfaceAlt}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,1,0,0"
+                    CornerRadius="0,0,12,12" Padding="16,8">
+              <TextBlock Style="{StaticResource Text.Caption}" Text="↑ ↓ to move  ·  Enter to open  ·  Esc to close" />
+            </Border>
+          </StackPanel>
+        </Border>
+      </Grid>
+    </Grid>
   </Grid>
 </UserControl>

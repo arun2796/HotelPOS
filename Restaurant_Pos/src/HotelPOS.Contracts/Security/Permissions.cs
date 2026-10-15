@@ -1,9 +1,5 @@
 namespace HotelPOS.Contracts.Security;
 
-/// <summary>
-/// Permission names carried in the access token. In v1 they are derived from roles on the server;
-/// Phase 9 makes them editable per role.
-/// </summary>
 public static class Permissions
 {
     public const string UsersManage = "users.manage";
@@ -12,6 +8,7 @@ public static class Permissions
     public const string DevicesManage = "devices.manage";
     public const string AuditView = "audit.view";
     public const string BackupManage = "backup.manage";
+    public const string ServerManage = "server.manage";
 
     public const string TablesView = "tables.view";
     public const string TablesOperate = "tables.operate";
@@ -34,14 +31,45 @@ public static class Permissions
 
     public const string ReportsView = "reports.view";
 
+    public const string ShiftOperate = "shift.operate";
+    public const string ShiftManage = "shift.manage";
+    public const string DayEndRun = "dayend.run";
+
+    public const string GstView = "gst.view";
+    public const string PeriodClose = "period.close";
+
+    public const string LicenseManage = "license.manage";
+    public const string ImportRun = "import.run";
+
     public static IReadOnlyList<string> All { get; } = new[]
     {
-        UsersManage, RolesManage, SettingsManage, DevicesManage, AuditView, BackupManage,
+        UsersManage, RolesManage, SettingsManage, DevicesManage, AuditView, BackupManage, ServerManage,
         TablesView, TablesOperate, TablesManage,
         MenuView, MenuManage, MenuAvailability,
         OrdersCreate, OrdersEditAny, OrdersCancelAny,
         KitchenOperate,
         BillingOperate, BillingDiscount, BillingVoid, BillingRefund,
         ReportsView,
+        ShiftOperate, ShiftManage, DayEndRun,
+        GstView, PeriodClose,
+        LicenseManage, ImportRun,
     };
+}
+
+public sealed record RolePermissionsDto
+{
+    public int RoleId { get; init; }
+    public string RoleName { get; init; } = string.Empty;
+    public string? Description { get; init; }
+    public bool IsSystem { get; init; }
+    public IReadOnlyList<string> Permissions { get; init; } = Array.Empty<string>();
+
+    // Permissions a system role cannot lose (shown locked in the editor); empty for custom roles.
+    public IReadOnlyList<string> CorePermissions { get; init; } = Array.Empty<string>();
+}
+
+public sealed record UpdateRolePermissionsRequest
+{
+    public IReadOnlyList<string> Permissions { get; init; } = Array.Empty<string>();
+    public bool ForceRelogin { get; init; }
 }

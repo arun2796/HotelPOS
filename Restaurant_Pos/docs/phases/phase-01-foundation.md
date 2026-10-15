@@ -4,7 +4,7 @@ Status: **Done** (2026-10-07) · Depends on: Phase 0 (planning)
 
 ## 1. Goal
 
-Produce a runnable skeleton of the whole system: solution and projects, SQL Server database with
+Produce a runnable skeleton of the whole system: solution and projects, PostgreSQL database with
 migrations and seed data, API with JWT authentication, users administration, SignalR hub, global
 error handling and logging, and a WPF shell that can be configured on first run, log in, show
 role-based navigation and display live connection status. No restaurant business features yet.
@@ -12,7 +12,7 @@ role-based navigation and display live connection status. No restaurant business
 ## 2. Prerequisites
 
 - Decisions in `docs/01-architecture.md` § 9 (enums in Contracts, plain services, int keys, UTC).
-- Developer machines: .NET 8 SDK, SQL Server LocalDB or SQL Server Express, Visual Studio 2022 /
+- Developer machines: .NET 8 SDK, PostgreSQL 16+, Visual Studio 2022 /
   Rider / VS Code.
 
 ## 3. Scope
@@ -113,7 +113,7 @@ None published yet. The hub accepts authenticated connections, assigns `role:*`,
 
 ## 11. Manual demo script
 
-1. Fresh SQL Server: run the API; confirm migration + seed ran (log lines) and `/health` returns 200.
+1. Fresh PostgreSQL server: run the API; confirm migration + seed ran (log lines) and `/health` returns 200.
 2. Start the desktop with no `settings.json`: first-run screen appears. Enter a wrong URL -> clear
    error. Enter the right URL -> restaurant name shown. Save.
 3. Log in as `admin`: forced password change, then shell with Admin modules.
@@ -203,3 +203,15 @@ Recorded 2026-10-07. The reference documents were updated where noted.
   without user action and kept its session.
 - Steps 2 and 5 (first-run screen, second terminal) verified with the rendering test and the `--profile`
   option on one PC; a two-PC run over Wi-Fi is still to be done on the target hardware.
+
+**Database switched to PostgreSQL (2026-10-07, before Phase 2)**
+
+- Provider changed from SQL Server to PostgreSQL (`Npgsql.EntityFrameworkCore.PostgreSQL` 8.0.11). Nothing
+  had been deployed, so the SQL Server `Phase01_Initial` migration was regenerated for PostgreSQL instead of
+  adding a conversion migration.
+- `RowVersion` is now PostgreSQL's `xmin` system column (`uint` in the domain, no schema column); DTOs still
+  carry an opaque base64 string, so clients did not change.
+- Timestamps are `timestamp(3) with time zone`; check constraints quote column names; unique violations are
+  recognised by SQLSTATE `23505`; the user search upper-cases both sides because PostgreSQL compares
+  case-sensitively.
+- Tests use throw-away `hotelpos_*` databases on the local server (`HOTELPOS_TEST_POSTGRES` to override).

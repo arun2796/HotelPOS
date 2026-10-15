@@ -1,3 +1,6 @@
+using HotelPOS.Contracts.Admin;
+using HotelPOS.Contracts.Common;
+using HotelPOS.Contracts.Realtime;
 using HotelPOS.Desktop.Modules.Auth;
 using HotelPOS.Desktop.Modules.Config;
 using HotelPOS.Desktop.Services.Api;
@@ -10,7 +13,6 @@ using Microsoft.Extensions.Logging;
 
 namespace HotelPOS.Desktop.Shell;
 
-/// <summary>Switches the window between configuration, login, password change and the main shell.</summary>
 public sealed class AppNavigator : IAppNavigator
 {
     private readonly MainViewModel _main;
@@ -18,6 +20,7 @@ public sealed class AppNavigator : IAppNavigator
     private readonly IAuthSession _session;
     private readonly IRealtimeClient _realtime;
     private readonly IAuthApi _authApi;
+    private readonly NoticeCenter _notices;
     private readonly ILogger<AppNavigator> _logger;
 
     public AppNavigator(
@@ -27,6 +30,9 @@ public sealed class AppNavigator : IAppNavigator
         IRealtimeClient realtime,
         IAuthApi authApi,
         IUiDispatcher dispatcher,
+        INotificationService notifications,
+        NoticeCenter notices,
+        PeriodStatusNotices periodNotices,
         ILogger<AppNavigator> logger)
     {
         _main = main;
@@ -34,10 +40,40 @@ public sealed class AppNavigator : IAppNavigator
         _session = session;
         _realtime = realtime;
         _authApi = authApi;
+        _notices = notices;
         _logger = logger;
 
         // The server refused to renew the session (user disabled, password reset, token revoked...).
+        periodNotices.Start();
+
         _session.Expired += (_, reason) => dispatcher.Post(() => _ = LogoutAsync(reason));
+
+        // Sent just before the server closes this terminal's connection; without it an idle screen would only find
+        // out on its next REST call.
+        _realtime.Subscribe<ServerNoticeEvent>(HubEvents.ServerNotice, notice =>
+        {
+            if (notice.Code == ErrorCodes.DeviceDisabled)
+            {
+                _session.Expire(notice.Message);
+                return;
+            }
+
+            // An administrator's broadcast, e.g. "Server restarting in 2 minutes for maintenance".
+            _notices.Add(new NoticeItem(notice.Message, notice.SentBy, notice.Level, DateTime.Now));
+            var text = string.IsNullOrWhiteSpace(notice.SentBy) ? notice.Message : $"{notice.Message} ({notice.SentBy})";
+            switch (notice.Level)
+            {
+                case NoticeLevel.Critical:
+                    notifications.Error(text);
+                    break;
+                case NoticeLevel.Warning:
+                    notifications.Warning(text);
+                    break;
+                default:
+                    notifications.Info(text);
+                    break;
+            }
+        });
     }
 
     public Task ShowConfigurationAsync(bool isFirstRun) =>
@@ -49,6 +85,9 @@ public sealed class AppNavigator : IAppNavigator
     public Task ShowChangePasswordAsync() =>
         ShowAsync(ActivatorUtilities.CreateInstance<ChangePasswordViewModel>(_services), ChangePasswordMode.Forced);
 
+    public Task ShowUpdateRequiredAsync(SystemInfoDto info) =>
+        ShowAsync(ActivatorUtilities.CreateInstance<UpdateRequiredViewModel>(_services), info);
+
     public Task ShowShellAsync() =>
         ShowAsync(ActivatorUtilities.CreateInstance<ShellViewModel>(_services), null);
 
@@ -59,6 +98,7 @@ public sealed class AppNavigator : IAppNavigator
 
         await _realtime.StopAsync();
         _session.Clear();
+        _notices.Clear();
         await ShowLoginAsync(message);
 
         if (refreshToken is not null)

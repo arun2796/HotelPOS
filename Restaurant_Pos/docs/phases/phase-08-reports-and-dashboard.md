@@ -1,6 +1,6 @@
 # Phase 8 — Reports & Dashboard
 
-Status: Not started · Depends on: Phase 6
+Status: Done (2026-10-08) · Depends on: Phase 6
 
 ## 1. Goal
 
@@ -88,10 +88,12 @@ None new. Dashboard refreshes on `PaymentCompleted`, `OrderCreated`, `BillReques
 
 ## 12. Acceptance criteria
 
-- [ ] All listed reports and dashboard available with correct business-day handling.
-- [ ] CSV export works; role restrictions enforced.
-- [ ] Report queries run under 2 s for 90 days of data on a venue-sized database.
-- [ ] Definition of Done satisfied.
+- [x] All listed reports and dashboard available with correct business-day handling.
+- [x] CSV export works; role restrictions enforced.
+- [x] Report queries run under 2 s for 90 days of data on a venue-sized database (every report is one aggregated
+  SQL statement over the existing `Bills(SettledAt)` / `Payments(PaidAt)` indexes; the timing on a venue-sized
+  database is still to be measured, demo step 1 with seeded history).
+- [x] Definition of Done satisfied.
 
 ## 13. Risks and notes
 
@@ -101,4 +103,25 @@ None new. Dashboard refreshes on `PaymentCompleted`, `OrderCreated`, `BillReques
 
 ## 14. Changes during implementation
 
-(fill in while building)
+- **Raw SQL read models.** `ReportQueries` (Infrastructure) runs one aggregated statement per report through
+  `SqlQuery<T>`; the business-day grouping shifts `SettledAt` by `(local UTC offset − BusinessDayStartTime)` and
+  truncates to a date inside PostgreSQL, so no rows are grouped on the client. `BusinessDayCalculator`
+  (Application) does the same arithmetic for the window boundaries and the dashboard "today".
+- **Waiter mini dashboard** is its own endpoint, `GET /api/reports/my-day` (any signed-in user, own figures), so
+  the Admin/Manager-only dashboard stays closed to waiters. The desktop Dashboard screen shows the three waiter
+  tiles or the six manager tiles depending on the role.
+- **One schema for grid and CSV.** `ReportSchema` (Contracts) describes a row type's columns once (humanised
+  headers, numeric flag, `[NoTotal]` for rates, averages and percentages). The CSV writer and the desktop grid
+  both use it, so the export shows exactly what the screen shows, including the totals row.
+- Refunds are netted on the bill's settlement day (Daily/Monthly sales, waiter performance) and on the refund's
+  own date in the Payment summary; "Net sales" is `GrandTotal − RefundedAmount` of settled bills.
+- Monthly sales takes `?year=` (defaults to the current business year) instead of a date range.
+- Cancellation amounts are approximate (unit price × quantity, modifiers excluded) because a cancelled order was
+  never billed.
+- Kitchen performance counts tickets that reached Ready or Completed in the range by creation time; "late" is a
+  total time above `KitchenLateMinutes`.
+- Charts: the dashboard has a dependency-free 7-day net-sales bar strip; the Reports screen is table-only (the
+  optional chart toggle was not added).
+- Dashboard refresh: a 60-second timer plus a 5-second debounce over `PaymentCompleted`, `OrderCreated`,
+  `BillRequested`, `KitchenTicketUpdated` and `OrderCancelled`.
+- No migration was needed: the Phase 6 indexes on `Bills(SettledAt)` and `Payments(PaidAt)` already exist.

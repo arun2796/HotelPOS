@@ -1,0 +1,28 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+
+  <!-- Comfort density: touch terminals (waiter tablets, kitchen screens). Every control is at least 48 px high
+       (docs/05 § 9). ThemeService swaps this dictionary for Density.Compact.xaml; both define the same keys. -->
+
+  <sys:Double x:Key="Font.Size.Body">15</sys:Double>
+  <sys:Double x:Key="Font.Size.Caption">13</sys:Double>
+  <sys:Double x:Key="Font.Size.Label">13</sys:Double>
+  <sys:Double x:Key="Font.Size.Button">15</sys:Double>
+  <sys:Double x:Key="Font.Size.GridHeader">12</sys:Double>
+
+  <sys:Double x:Key="Size.Control">48</sys:Double>
+  <sys:Double x:Key="Size.CheckBox">22</sys:Double>
+  <sys:Double x:Key="Size.GridRow">48</sys:Double>
+  <sys:Double x:Key="Size.GridHeader">40</sys:Double>
+  <sys:Double x:Key="Size.NavItem">46</sys:Double>
+  <sys:Double x:Key="Size.ListItem">44</sys:Double>
+  <sys:Double x:Key="Size.ScrollBar">10</sys:Double>
+
+  <Thickness x:Key="Padding.Button">18,10</Thickness>
+  <Thickness x:Key="Padding.Input">14,0</Thickness>
+  <Thickness x:Key="Padding.Card">24</Thickness>
+  <Thickness x:Key="Padding.Cell">14,0</Thickness>
+  <Thickness x:Key="Padding.ListItem">12,8</Thickness>
+
+</ResourceDictionary>

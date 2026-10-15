@@ -4,6 +4,8 @@ namespace HotelPOS.Domain.Identity;
 
 public sealed class Role : BaseEntity
 {
+    private readonly List<RolePermission> _permissions = new();
+
     private Role()
     {
     }
@@ -18,6 +20,7 @@ public sealed class Role : BaseEntity
     public string Name { get; private set; } = string.Empty;
     public string? Description { get; private set; }
 
-    /// <summary>System roles (Admin, Manager, Waiter, Kitchen, Cashier) cannot be renamed or removed.</summary>
     public bool IsSystem { get; private set; }
+
+    public IReadOnlyCollection<RolePermission> Permissions => _permissions;
 }

@@ -1,5 +1,7 @@
+using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using HotelPOS.Contracts.Common;
@@ -10,19 +12,14 @@ namespace HotelPOS.Desktop.Services.Api;
 
 public sealed record ApiRequestOptions
 {
-    /// <summary>Do not attach the access token (login, refresh, logout, system info).</summary>
     public bool Anonymous { get; init; }
 
-    /// <summary>Sent as Idempotency-Key so a retried critical request is processed only once (Phase 4).</summary>
     public Guid? IdempotencyKey { get; init; }
 
-    /// <summary>Talk to another server than the configured one ("Test connection" before saving).</summary>
     public string? BaseUrlOverride { get; init; }
 
-    /// <summary>Shorter limit than the client default (15 s), for quick checks.</summary>
     public TimeSpan? Timeout { get; init; }
 
-    /// <summary>GET requests are retried on connection failures unless this is false.</summary>
     public bool RetryReads { get; init; } = true;
 }
 
@@ -33,12 +30,16 @@ public interface IApiClient
     Task<ApiResult<T>> PostAsync<T>(string path, object? body, CancellationToken cancellationToken = default, ApiRequestOptions? options = null);
 
     Task<ApiResult<T>> PutAsync<T>(string path, object? body, CancellationToken cancellationToken = default, ApiRequestOptions? options = null);
+
+    Task<ApiResult<T>> PatchAsync<T>(string path, object? body, CancellationToken cancellationToken = default, ApiRequestOptions? options = null);
+
+    Task<ApiResult<T>> DeleteAsync<T>(string path, CancellationToken cancellationToken = default, ApiRequestOptions? options = null);
+
+    Task<ApiResult<T>> UploadAsync<T>(string path, Stream content, string fileName, string contentType, CancellationToken cancellationToken = default, IReadOnlyDictionary<string, string>? fields = null);
+
+    Task<ApiResult<byte[]>> DownloadAsync(string path, CancellationToken cancellationToken = default);
 }
 
-/// <summary>
-/// The only way the desktop talks to the server. Wraps HttpClient, unwraps the response envelope and
-/// turns network problems into <see cref="ApiResult{T}.IsConnectionFailure"/> results instead of exceptions.
-/// </summary>
 public sealed class ApiClient : IApiClient
 {
     public const string HttpClientName = "HotelPOS.Api";
@@ -81,6 +82,57 @@ public sealed class ApiClient : IApiClient
     public Task<ApiResult<T>> PutAsync<T>(string path, object? body, CancellationToken cancellationToken = default, ApiRequestOptions? options = null) =>
         SendAsync<T>(HttpMethod.Put, path, body, options, cancellationToken);
 
+    public Task<ApiResult<T>> PatchAsync<T>(string path, object? body, CancellationToken cancellationToken = default, ApiRequestOptions? options = null) =>
+        SendAsync<T>(HttpMethod.Patch, path, body, options, cancellationToken);
+
+    public Task<ApiResult<T>> DeleteAsync<T>(string path, CancellationToken cancellationToken = default, ApiRequestOptions? options = null) =>
+        SendAsync<T>(HttpMethod.Delete, path, null, options, cancellationToken);
+
+    public Task<ApiResult<T>> UploadAsync<T>(string path, Stream content, string fileName, string contentType, CancellationToken cancellationToken = default, IReadOnlyDictionary<string, string>? fields = null)
+    {
+        var file = new StreamContent(content);
+        file.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+        var form = new MultipartFormDataContent { { file, "file", fileName } };
+        foreach (var (name, value) in fields ?? new Dictionary<string, string>())
+        {
+            form.Add(new StringContent(value), name);
+        }
+
+        return SendAsync<T>(HttpMethod.Post, path, form, new ApiRequestOptions { Timeout = TimeSpan.FromSeconds(60) }, cancellationToken);
+    }
+
+    // Files (CSV exports) come back as an attachment; errors still arrive as the usual JSON envelope.
+    public async Task<ApiResult<byte[]>> DownloadAsync(string path, CancellationToken cancellationToken = default)
+    {
+        var baseUrl = _settings.Current.ApiBaseUrl;
+        if (string.IsNullOrWhiteSpace(baseUrl) || !Uri.TryCreate(baseUrl.TrimEnd('/') + "/", UriKind.Absolute, out var baseUri))
+        {
+            return ApiResult<byte[]>.ConnectionFailure("The server address is not configured.");
+        }
+
+        try
+        {
+            var client = _httpClientFactory.CreateClient(HttpClientName);
+            using var response = await client.GetAsync(new Uri(baseUri, path.TrimStart('/')), cancellationToken);
+            if (response.IsSuccessStatusCode && response.Content.Headers.ContentType?.MediaType?.Contains("json", StringComparison.OrdinalIgnoreCase) != true)
+            {
+                return ApiResult<byte[]>.Ok(await response.Content.ReadAsByteArrayAsync(cancellationToken));
+            }
+
+            var envelope = await ReadAsync<object?>(response, HttpMethod.Get, path, cancellationToken);
+            return new ApiResult<byte[]> { Success = false, Message = envelope.Message, Errors = envelope.Errors, StatusCode = envelope.StatusCode, CorrelationId = envelope.CorrelationId };
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning("API GET {Path} failed: {Error}", path, ex.Message);
+            return ApiResult<byte[]>.ConnectionFailure(ConnectionUnavailableMessage);
+        }
+        catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            return ApiResult<byte[]>.ConnectionFailure("The server did not respond in time. Check the connection and try again.");
+        }
+    }
+
     private async Task<ApiResult<T>> SendAsync<T>(HttpMethod method, string path, object? body, ApiRequestOptions? options, CancellationToken cancellationToken)
     {
         var baseUrl = options?.BaseUrlOverride ?? _settings.Current.ApiBaseUrl;
@@ -90,7 +142,11 @@ public sealed class ApiClient : IApiClient
         }
 
         using var request = new HttpRequestMessage(method, new Uri(baseUri, path.TrimStart('/')));
-        if (body is not null)
+        if (body is HttpContent content)
+        {
+            request.Content = content;
+        }
+        else if (body is not null)
         {
             request.Content = JsonContent.Create(body, body.GetType(), options: PosJson.Options);
         }

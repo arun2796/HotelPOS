@@ -3,7 +3,6 @@ using HotelPOS.Contracts.Common;
 
 namespace HotelPOS.Api.Common;
 
-/// <summary>Writes the standard envelope from middleware, where MVC result types are not available.</summary>
 public static class ApiResponseWriter
 {
     public static async Task WriteErrorAsync(
@@ -11,7 +10,8 @@ public static class ApiResponseWriter
         int statusCode,
         string code,
         string message,
-        IReadOnlyList<ApiError>? errors = null)
+        IReadOnlyList<ApiError>? errors = null,
+        Action<IHeaderDictionary>? configureHeaders = null)
     {
         if (context.Response.HasStarted)
         {
@@ -21,6 +21,7 @@ public static class ApiResponseWriter
         context.Response.Clear();
         context.Response.StatusCode = statusCode;
         context.Response.ContentType = "application/json; charset=utf-8";
+        configureHeaders?.Invoke(context.Response.Headers);
 
         var body = ApiResponse.Fail(
             message,

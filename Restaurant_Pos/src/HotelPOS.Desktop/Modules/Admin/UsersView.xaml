@@ -21,7 +21,6 @@
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
-    <!-- Toolbar -->
     <Grid Margin="0,0,0,16">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="*" MinWidth="160" MaxWidth="340" />
@@ -56,7 +55,6 @@
       <TextBlock Text="{Binding ErrorMessage}" Style="{StaticResource Text.Error}" />
     </Border>
 
-    <!-- List -->
     <Grid Grid.Row="2">
       <DataGrid ItemsSource="{Binding Users}" SelectedItem="{Binding SelectedUser}" HorizontalScrollBarVisibility="Disabled">
         <DataGrid.InputBindings>
@@ -66,27 +64,50 @@
           <DataGridTextColumn Header="USERNAME" Binding="{Binding Username}" Width="1*" MinWidth="90" />
           <DataGridTextColumn Header="NAME" Binding="{Binding DisplayName}" Width="1.5*" MinWidth="120" />
           <DataGridTextColumn Header="ROLES" Binding="{Binding Roles, Converter={StaticResource ListJoin}}" Width="1.2*" MinWidth="90" />
-          <DataGridTextColumn Header="STATUS" Binding="{Binding IsActive, Converter={StaticResource ActiveText}}" Width="0.7*" MinWidth="70" />
-          <DataGridTextColumn Header="LAST SIGN-IN" Binding="{Binding LastLoginAtUtc, Converter={StaticResource UtcToLocal}}" Width="1.2*" MinWidth="125" />
+          <DataGridTextColumn Header="STATUS" Binding="{Binding IsActive, Converter={StaticResource ActiveText}}" Width="0.7*" MinWidth="80" />
+          <DataGridTemplateColumn Header="LOCKOUT" Width="0.8*" MinWidth="80">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate>
+                <TextBlock VerticalAlignment="Center">
+                  <TextBlock.Style>
+                    <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+                      <Setter Property="Text" Value="Normal" />
+                      <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsLockedOut}" Value="True">
+                          <Setter Property="Text" Value="Locked Out" />
+                          <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
+                          <Setter Property="FontWeight" Value="SemiBold" />
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </TextBlock.Style>
+                </TextBlock>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTextColumn Header="LAST SIGN-IN" Binding="{Binding LastLoginAtUtc, Converter={StaticResource UtcToLocal}}" Width="1.2*" MinWidth="140" />
         </DataGrid.Columns>
       </DataGrid>
       <ProgressBar IsIndeterminate="True" Height="3" VerticalAlignment="Top"
                    Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}" />
     </Grid>
 
-    <!-- Actions + paging -->
+    <!-- Actions wrap onto a second line when the editor panel narrows the page, instead of being cut off. -->
     <Grid Grid.Row="3" Margin="0,12,0,0">
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="Auto" />
         <ColumnDefinition Width="*" />
         <ColumnDefinition Width="Auto" />
       </Grid.ColumnDefinitions>
-      <StackPanel Orientation="Horizontal">
-        <Button Content="Edit" Command="{Binding EditCommand}" MinWidth="90" />
-        <Button Content="Reset password" Command="{Binding ResetPasswordCommand}" Margin="8,0,0,0" />
-        <Button Content="{Binding ToggleActiveText}" Command="{Binding ToggleActiveCommand}" Margin="8,0,0,0" MinWidth="110" />
-      </StackPanel>
-      <StackPanel Grid.Column="2" Orientation="Horizontal">
+      <WrapPanel Margin="0,0,0,-8">
+        <Button Content="Edit" Command="{Binding EditCommand}" MinWidth="90" Margin="0,0,8,8" />
+        <Button Content="Reset password" Command="{Binding ResetPasswordCommand}" Margin="0,0,8,8" />
+        <Button Content="{Binding ToggleActiveText}" Command="{Binding ToggleActiveCommand}" Margin="0,0,8,8" MinWidth="100" />
+        <Button Content="Unlock" Command="{Binding UnlockCommand}" Margin="0,0,8,8" MinWidth="80" />
+        <Button Content="Sessions" Command="{Binding ViewSessionsCommand}" Margin="0,0,8,8" MinWidth="90" />
+        <Button Content="Log out everywhere" Command="{Binding LogoutAllCommand}" Margin="0,0,8,8" MinWidth="140" />
+      </WrapPanel>
+      <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Bottom">
         <Button Command="{Binding PreviousPageCommand}" ToolTip="Previous page">
           <TextBlock Text="&#xE76B;" Style="{StaticResource Text.Icon}" />
         </Button>
@@ -97,7 +118,6 @@
       </StackPanel>
     </Grid>
 
-    <!-- Editor panel -->
     <Border Grid.Column="1" Grid.RowSpan="4" Style="{StaticResource Card}" Width="380" Margin="20,0,0,0"
             DataContext="{Binding Editor}"
             Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibility}}">
@@ -118,7 +138,9 @@
 
             <StackPanel Visibility="{Binding IsNew, Converter={StaticResource BoolToVisibility}}">
               <TextBlock Text="Initial password" Style="{StaticResource Text.Label}" />
-              <PasswordBox controls:PasswordBoxAssistant.BoundPassword="{Binding Password, Mode=TwoWay}" Margin="0,0,0,8" />
+              <PasswordBox controls:PasswordBoxAssistant.BoundPassword="{Binding Password, Mode=TwoWay}" Margin="0,0,0,4" />
+              <TextBlock Text="{Binding PasswordHint}" Style="{StaticResource Text.Caption}"
+                         TextWrapping="Wrap" Margin="0,0,0,8" />
               <CheckBox Content="Must change password at first sign-in" IsChecked="{Binding MustChangePassword}" Margin="0,0,0,14" />
             </StackPanel>
 

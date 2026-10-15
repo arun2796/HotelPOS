@@ -1,7 +1,9 @@
 using System.Collections;
 using System.Globalization;
 using System.Windows;
+using System.IO;
 using System.Windows.Data;
+using System.Windows.Media.Imaging;
 
 namespace HotelPOS.Desktop.Converters;
 
@@ -23,7 +25,6 @@ public sealed class InverseBoolConverter : IValueConverter
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => value is not true;
 }
 
-/// <summary>Visible when the value is not null (or null, when inverted).</summary>
 public sealed class NullToVisibilityConverter : IValueConverter
 {
     public bool Invert { get; set; }
@@ -35,7 +36,6 @@ public sealed class NullToVisibilityConverter : IValueConverter
         throw new NotSupportedException();
 }
 
-/// <summary>Visible when the string has text.</summary>
 public sealed class StringToVisibilityConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
@@ -45,7 +45,6 @@ public sealed class StringToVisibilityConverter : IValueConverter
         throw new NotSupportedException();
 }
 
-/// <summary>["Waiter","Cashier"] -> "Waiter, Cashier".</summary>
 public sealed class ListJoinConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
@@ -57,7 +56,6 @@ public sealed class ListJoinConverter : IValueConverter
         throw new NotSupportedException();
 }
 
-/// <summary>UTC timestamp from the server -> local time text, "—" when empty.</summary>
 public sealed class UtcToLocalConverter : IValueConverter
 {
     public string Format { get; set; } = "dd MMM yy, HH:mm";
@@ -71,11 +69,69 @@ public sealed class UtcToLocalConverter : IValueConverter
         throw new NotSupportedException();
 }
 
-/// <summary>Active flag -> "Active" / "Inactive".</summary>
+// Scales a 0..1 ratio to a pixel height given as the converter parameter.
+public sealed class BarHeightConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var ratio = value is double d ? Math.Clamp(d, 0, 1) : 0;
+        var max = double.TryParse(parameter?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var m) ? m : 100;
+        return Math.Max(2, ratio * max);
+    }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException();
+}
+
 public sealed class ActiveTextConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         value is true ? "Active" : "Inactive";
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
+public sealed class ImageFileConverter : IValueConverter
+{
+    public int DecodeWidth { get; set; } = 256;
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is not string path || !File.Exists(path))
+        {
+            return null;
+        }
+
+        try
+        {
+            var image = new BitmapImage();
+            image.BeginInit();
+            image.CacheOption = BitmapCacheOption.OnLoad;
+            image.DecodePixelWidth = DecodeWidth;
+            image.UriSource = new Uri(path, UriKind.Absolute);
+            image.EndInit();
+            image.Freeze();
+            return image;
+        }
+        catch (Exception ex) when (ex is IOException or NotSupportedException or UriFormatException)
+        {
+            return null;
+        }
+    }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
+// Enum or identifier to words for display: ThisWeek -> "This week", Today -> "Today".
+public sealed class HumanizeConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var text = value?.ToString() ?? string.Empty;
+        var words = System.Text.RegularExpressions.Regex.Replace(text, "(?<=[a-z0-9])([A-Z])", " $1");
+        return words.Length <= 1 ? words : words[..1] + words[1..].ToLower(culture);
+    }
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException();

@@ -1,12 +1,7 @@
 namespace HotelPOS.Desktop.Services.Configuration;
 
-/// <summary>Validation and normalisation of the API server address typed by a technician.</summary>
 public static class ApiUrl
 {
-    /// <summary>
-    /// Accepts "192.168.1.100:5000", "http://192.168.1.100:5000/" or "https://server:5001" and returns
-    /// a normalised absolute URL without a trailing slash.
-    /// </summary>
     public static bool TryNormalize(string? input, out string normalized, out string? error)
     {
         normalized = string.Empty;

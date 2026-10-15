@@ -1,18 +1,20 @@
 # 02 — Domain Model and Database
 
-Last updated: 2026-10-07
+Last updated: 2026-10-14
 
 ## 1. Conventions
 
-- Primary keys: `int` identity (`Devices.Id` and `IdempotencyRecords.Key` are `uniqueidentifier`).
+- Database: PostgreSQL via Npgsql. Table and column names are PascalCase (quote them in raw SQL).
+- Primary keys: `int` identity (`Devices.Id` and `IdempotencyRecords.Key` are `uuid`).
 - Every entity derives from `BaseEntity`: `Id`, `CreatedAt`, `CreatedBy`, `UpdatedAt`, `UpdatedBy`
   (set by an EF `SaveChanges` interceptor from `ICurrentUser` and `IClock`).
-- `RowVersion` (`rowversion`) on: `Tables`, `Orders`, `Bills`, `MenuItems`, `Users`, `KitchenOrders`.
+- `RowVersion` (the `xmin` system column, a `uint` in .NET; no schema column) on: `Tables`, `Orders`, `Bills`, `MenuItems`, `Users`, `KitchenOrders`.
 - Master data (users, tables, menu items, categories, taxes, discounts, payment methods) is never
   deleted; it is deactivated (`IsActive = false`). Transactional data is never deleted.
 - Monetary columns: `decimal(18,2)`. Rates: `decimal(5,2)`. Quantities: `int`.
-- Timestamps: `datetime2(3)` in UTC.
-- Strings: `nvarchar` with explicit max lengths (names 100, codes 20, notes 500, JSON `nvarchar(max)`).
+- Timestamps: `timestamp(3) with time zone`, always written in UTC.
+- Strings: `character varying(n)` with explicit max lengths (names 100, codes 20, notes 500), JSON as `text`.
+  Comparisons are case-sensitive: case-insensitive rules upper-case both sides (or use a normalized column).
 - Snapshot on transactional rows what must not change afterwards (item name, unit price, tax rate,
   modifier prices, station).
 - Enums stored as `int` with a check constraint listing valid values.
@@ -23,12 +25,12 @@ Last updated: 2026-10-07
 
 | Entity | Key columns |
 |---|---|
-| `Users` | `Username` (50), `NormalizedUsername` (upper-case, unique, so logins are case-insensitive), `DisplayName`, `PasswordHash`, `IsActive`, `MustChangePassword`, `FailedLoginCount`, `LockedUntil`, `LastLoginAt`, `RowVersion` |
+| `Users` | `Username` (50), `NormalizedUsername` (upper-case, unique, so logins are case-insensitive), `DisplayName`, `PasswordHash`, `IsActive`, `MustChangePassword`, `FailedLoginCount`, `LockedUntil`, `LastLoginAt`, `PasswordChangedAt`, `RowVersion` |
 | `Roles` | `Name` (unique: Admin, Manager, Waiter, Kitchen, Cashier), `Description`, `IsSystem` |
 | `UserRoles` | `UserId`, `RoleId` (composite PK) |
 | `RolePermissions` (Phase 9) | `RoleId`, `Permission` (string constant) |
 | `RefreshTokens` | `UserId`, `TokenHash`, `DeviceId`, `ExpiresAt`, `RevokedAt`, `ReplacedByTokenHash`, `CreatedByIp` |
-| `Devices` | `Id` (guid), `Name` (unique, e.g. WAITER-01), `Type` (enum), `MachineName`, `AppVersion`, `StationId?`, `LastSeenAt`, `IsActive`, `RegisteredAt` |
+| `Devices` | `Id` (guid), `Name` (unique, e.g. WAITER-01), `Type` (enum), `MachineName`, `AppVersion`, `StationId?`, `LastSeenAt`, `IsActive`, `DeactivatedAt?` (Phase 9), `RegisteredAt` |
 | `Settings` | `Key` (PK, 100), `Value` (max), `DataType` (String/Int/Decimal/Bool/Json), `Description`, `IsPublic` (visible to all clients) |
 | `AuditLogs` | `UserId?`, `UserName`, `DeviceId?`, `DeviceName`, `MachineName`, `IpAddress`, `Action` (e.g. `Order.Cancelled`), `EntityType`, `EntityId`, `OldValues` (JSON), `NewValues` (JSON), `CorrelationId`, `Timestamp` |
 | `IdempotencyRecords` | `Key` (guid PK), `UserId`, `Route`, `RequestHash`, `StatusCode`, `ResponseBody`, `CreatedAt`, `ExpiresAt`, `InProgress` |
@@ -62,7 +64,7 @@ Unique: `MenuItems (CategoryId, Name)`.
 | `OrderItems` | `OrderId`, `BatchNumber` (1..n), `MenuItemId`, `ItemName` (snapshot), `UnitPrice` (snapshot), `Quantity`, `Notes?`, `TaxId?`, `TaxRatePercent` (snapshot), `PreparationStationId` (snapshot), `Status` (Draft/Sent/Cancelled), `KitchenOrderId?`, `CancelledBy?`, `CancelReason?` |
 | `OrderItemModifiers` | `OrderItemId`, `ModifierOptionId`, `Name` (snapshot), `PriceDelta` (snapshot) |
 
-Constraints: at most one **active** order per table — filtered unique index on
+Constraints: at most one **active** order per table — partial unique index (EF `HasFilter`) on
 `Orders(TableId) WHERE Status NOT IN (Paid, Completed, Cancelled)`.
 
 ### 2.5 Kitchen (Phase 5)
@@ -78,9 +80,42 @@ Constraints: at most one **active** order per table — filtered unique index on
 |---|---|
 | `Discounts` | `Name`, `Type` (Percentage/FixedAmount), `Value`, `RequiresApproval`, `IsActive` |
 | `PaymentMethods` | `Name`, `Code` (unique: CASH, CARD, UPI...), `RequiresReference`, `IsActive`, `SortOrder` |
-| `Bills` | `BillNumber` (int, unique, assigned at creation), `InvoiceNumber?` (string, unique, assigned at finalisation), `OrderId` (unique), `TableCode` (snapshot), `WaiterId`, `Status` (Open/Finalized/Settled/Voided), `PaymentStatus` (enum), `Subtotal`, `DiscountId?`, `DiscountType?`, `DiscountValue?`, `DiscountAmount`, `DiscountReason?`, `DiscountApprovedBy?`, `TaxableAmount`, `TaxAmount`, `RoundOff`, `GrandTotal`, `PaidAmount`, `CustomerName?`, `CustomerPhone?`, `CustomerGstin?`, `ClaimedByUserId?`, `ClaimedByDeviceId?`, `ClaimedAt?`, `ClaimExpiresAt?`, `FinalizedAt?`, `SettledAt?`, `SettledBy?`, `VoidedAt?`, `VoidReason?`, `RowVersion` |
+| `Bills` | `BillNumber` (int, unique, assigned at creation), `InvoiceNumber?` (string, unique, assigned at finalisation), `OrderId` (unique among non-voided bills), `TableCode` (snapshot), `WaiterId`, `Status` (Open/Finalized/Settled/Voided), `PaymentStatus` (enum), `Subtotal`, `DiscountId?`, `DiscountType?`, `DiscountValue?`, `DiscountAmount`, `DiscountReason?`, `DiscountApprovedBy?`, `TaxableAmount`, `TaxAmount`, `RoundOff`, `GrandTotal`, `PaidAmount`, `RefundedAmount`, `ServiceChargeAmount?` (reserved), `CustomerName?`, `CustomerPhone?`, `CustomerGstin?`, `ClaimedByUserId?`, `ClaimedByDeviceId?`, `ClaimedAt?`, `ClaimExpiresAt?`, `FinalizedAt?`, `SettledAt?`, `SettledBy?`, `VoidedAt?`, `VoidReason?`, `RowVersion` |
 | `BillItems` | `BillId`, `OrderItemId`, `ItemName`, `Quantity`, `UnitPrice`, `ModifiersAmount`, `LineSubtotal`, `DiscountShare`, `TaxRatePercent`, `TaxAmount`, `LineTotal` |
-| `Payments` | `BillId`, `PaymentMethodId`, `Amount`, `TenderedAmount?`, `ChangeAmount?`, `Reference?`, `Status` (Completed/Refunded/Voided), `ReceivedBy`, `DeviceId`, `PaidAt`, `IdempotencyKey`, `RefundOfPaymentId?`, `RefundReason?` |
+| `Payments` | `BillId`, `PaymentMethodId`, `Amount`, `TenderedAmount?`, `ChangeAmount?`, `Reference?`, `Status` (Completed/Refunded/Voided), `ReceivedBy`, `DeviceId?`, `PaidAt`, `IdempotencyKey`, `RefundOfPaymentId?`, `RefundReason?` (refund rows carry a negative `Amount`) |
+| `InvoiceCounters` | `Period` (PK: `2026`, `202610` or `ALL`), `LastNumber` |
+
+Since Phase 13 `Payments.CashShiftId?` (FK `CashShifts`) is set for every cash payment and cash refund.
+
+### 2.7 Cash register and Day End (Phase 13)
+
+Money columns of these tables are `decimal(12,2)`.
+
+| Entity | Key columns |
+|---|---|
+| `Denominations` | `Value`, `Label`, `Kind` (Note/Coin), `SortOrder`, `IsActive`; unique (`Value`, `Kind`); seeded with ₹2000 … ₹10 notes and ₹20 … ₹1 coins; never deleted |
+| `CashShifts` | `DeviceId` (terminal id from the token, no FK), `BusinessDay` (date), `CashierUserId`, `Status` (Open/HandedOver/Closed/ForceClosed), `OpenedAt`, `OpenedBy`, `FloatAmount`, `ClosedAt?`, `ClosedBy?`, `ExpectedCash?`, `CountedCash?`, `Variance?`, `VarianceReason?`, `VarianceApprovedBy?`, `BlindCount`, `HandedOverToShiftId?`, `ForcedReason?`, `RowVersion`; unique filtered indexes: one Open shift per device and per cashier |
+| `CashShiftCounts` | `ShiftId`, `Phase` (Open/Close), `DenominationId`, `Value` (snapshot), `Quantity`; unique (`ShiftId`, `Phase`, `DenominationId`) |
+| `CashMovements` | `ShiftId`, `Type` (PayIn/PayOut/TillVoucher), `Amount` (> 0), `Reason`, `ApprovedBy?`, `CreatedAt/By` |
+| `NonTillCollections` | `BusinessDay`, `Method`, `Amount`, `Reference?`, `Note?`, `RecordedBy`, `RecordedAt` |
+| `BusinessDayCloses` | `BusinessDay` (PK, date), `Status` (Closed/Reopened), `ClosedAt`, `ClosedBy`, `Overrides` (jsonb), `TotalsSnapshot` (jsonb, `DayEndSummaryDto`), `BackupFile`, `PackFolder?`, `ReopenedAt?`, `ReopenedBy?`, `ReopenReason?`, `RowVersion` |
+
+Expected cash of a shift = float + cash payments − cash refunds + pay-ins − pay-outs − till vouchers (`ExpectedCash`).
+A closed business day (`BusinessDayCloses.Status = Closed`) refuses bill and payment commands with `DAY_CLOSED`
+(`IBusinessDayLock`, PostgreSQL advisory lock per day: shared for bill commands, exclusive for Day End close/reopen).
+
+### 2.8 GST and period close (Phase 15)
+
+| Entity | Notes |
+|---|---|
+| `Bills` (added) | `CustomerLegalName`, `CustomerStateCode` (2), `PlaceOfSupply` (2, defaults to the restaurant GSTIN state), `SupplyType` (B2B/B2CL/B2CS, set at finalize); `CustomerGstin` is validated (format, state, check character: `Gstin` in Contracts) |
+| `MenuItems.HsnSac` | Optional 4-8 digit override of the `DefaultSacCode` setting (996331) |
+| `PeriodCloses` | `Id`, `Kind` (Month/Year), `PeriodStart`, `PeriodEnd`, `Status` (Closed/Reopened), `ClosedAt/By`, `Checks` (jsonb), `PackFolder?`, `ReopenedAt/By?`, `ReopenReason?`, `RowVersion`; unique (`Kind`, `PeriodStart`). Month key `yyyy-MM`; year = financial year (Apr-Mar) keyed by its first year |
+
+Setting `GstB2clThreshold` (default 100000). Returns are computed from settled bills (no stored return tables):
+period = business day of `SettledAt`, credit notes = refunds by refund date. A closed month or year refuses bill and
+payment commands dated in it with `PERIOD_CLOSED` (same `IBusinessDayLock`: shared advisory lock per month,
+exclusive for close/reopen).
 
 ## 3. Enums (defined in `HotelPOS.Contracts.Enums`)
 
@@ -173,14 +208,23 @@ Bill.PaymentStatus: Pending -> PartiallyPaid -> Paid -> Refunded (full refund)
                     Pending/PartiallyPaid -> Cancelled (bill voided)
 ```
 
+### 4.5 Cash shift and business day (Phase 13)
+
+```
+CashShift.Status:  Open -> Closed | HandedOver (next shift opens with the counted cash) | ForceClosed (manager)
+                   Closed/ForceClosed -> Open (reopen, manager + approval; the close count is cleared)
+BusinessDayClose:  (none) -> Closed -> Reopened -> Closed (Day End again)
+PeriodClose:       (none) -> Closed -> Reopened -> Closed (month or year; reopening a month inside a closed year needs the year reopened first)
+```
+
 ## 5. Numbering
 
 | Number | Rule |
 |---|---|
-| `OrderNumber` | `NEXT VALUE FOR dbo.OrderNumbers` (SEQUENCE starting 1001). Gaps allowed. |
+| `OrderNumber` | `nextval('"OrderNumbers"')` (SEQUENCE starting 1001, EF `HasSequence`). Gaps allowed. |
 | `TicketNumber` | `"{OrderNumber}-{BatchNumber}"` plus station suffix when a batch spans stations: `1025-1-BAR`. |
-| `BillNumber` | SEQUENCE `dbo.BillNumbers`. Internal. |
-| `InvoiceNumber` | `"{InvoicePrefix}{yyyy}{MM}-{000000}"` from a `Settings` counter row read with `UPDLOCK` inside the finalisation transaction. Gap-free. Prefix and reset policy (yearly/monthly/never) from settings. |
+| `BillNumber` | SEQUENCE `"BillNumbers"`. Internal. |
+| `InvoiceNumber` | `"{InvoicePrefix}{yyyy}{MM}-{000000}"` from the period's `InvoiceCounters` row, incremented with `INSERT ... ON CONFLICT DO UPDATE ... RETURNING` (row lock until commit) inside the finalisation transaction. Gap-free. Prefix and reset policy (yearly/monthly/never) from settings. |
 
 ## 6. Money and bill calculation (`BillCalculator`, pure domain code)
 
@@ -212,13 +256,13 @@ Prices are tax-exclusive in v1 (`PricesIncludeTax` setting reserved).
   `Orders(WaiterId, CreatedAt)`
 - `OrderItems(OrderId)`; `KitchenOrders(OrderId)`; `KitchenOrders(PreparationStationId, Status)`;
   `KitchenOrders(TicketNumber)` unique
-- `Bills(OrderId)` unique; `Bills(BillNumber)` unique; `Bills(InvoiceNumber)` unique filtered;
+- `Bills(OrderId) WHERE Status <> Voided` unique; `Bills(BillNumber)` unique; `Bills(InvoiceNumber)` unique partial (where not null);
   `Bills(Status, CreatedAt)`
 - `Payments(BillId)`; `Payments(IdempotencyKey)` unique
 - `AuditLogs(Timestamp)`, `AuditLogs(EntityType, EntityId)`, `AuditLogs(UserId)`
 - `IdempotencyRecords(ExpiresAt)`
 - Check constraints: `Price >= 0`, `Quantity > 0`, `RatePercent BETWEEN 0 AND 100`,
-  `Amount > 0` on payments, enum ranges
+  `Amount > 0` on payments (`< 0` on refund rows), enum ranges
 
 ## 8. Seed data (first migration + `DbSeeder`)
 
@@ -229,7 +273,12 @@ Prices are tax-exclusive in v1 (`PricesIncludeTax` setting reserved).
 - Settings: `RestaurantName`, `Address`, `Gstin`, `CurrencySymbol` (₹), `InvoicePrefix` (INV-),
   `InvoiceResetPolicy` (Yearly), `RoundOffTotals` (true), `BusinessDayStartTime` (04:00),
   `KitchenWarnMinutes` (10), `KitchenLateMinutes` (20), `AutoCloseOnFullPayment` (true),
-  `ReceiptFooter`, `MenuVersion` (1), `TaxSplitDisplay` (CGST_SGST)
+  `ReceiptFooter`, `MenuVersion` (1), `TaxSplitDisplay` (CGST_SGST), `AllowAnyWaiterToEditOrders` (false),
+  `MaxCashierDiscountPercent` (10), `AllowBillBeforeReady` (false), `PrintInvoiceCopies` (1), `KotShowPrices` (false),
+  `LockoutThreshold` (5), `LockoutMinutes` (15), `AuditRetentionDays` (0 = keep all) (Phase 9)
+- Role permissions (Phase 9): the defaults of `RolePermissionMap`, written only when a role is created (the
+  `Phase09_Security` migration back-fills roles that already existed). Later restarts never touch them, so an
+  admin's edits, removals included, stand.
 - Development-only seed: sample sections, tables, categories, items, a waiter/kitchen/cashier user
 
 ## 9. Migration strategy

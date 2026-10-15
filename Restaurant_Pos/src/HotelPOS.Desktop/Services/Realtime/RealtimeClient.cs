@@ -18,27 +18,22 @@ public enum ConnectionStatus
     Reconnecting,
 }
 
-/// <summary>
-/// Keeps the SignalR connection alive for as long as a user is logged in: retries the first connection,
-/// reconnects forever after drops, and raises <see cref="Reconnected"/> so screens reload their data
-/// from the API (events missed while offline are never replayed — the API is the source of truth).
-/// </summary>
 public interface IRealtimeClient
 {
     ConnectionStatus Status { get; }
 
-    /// <summary>Raised on the UI thread.</summary>
     event EventHandler<ConnectionStatus>? StatusChanged;
 
-    /// <summary>Raised on the UI thread after the connection is back following an outage.</summary>
     event EventHandler? Reconnected;
 
     Task StartAsync();
 
     Task StopAsync();
 
-    /// <summary>Handles a server event on the UI thread. Dispose the result to unsubscribe.</summary>
     IDisposable Subscribe<T>(string eventName, Action<T> handler);
+
+    // Remembered and joined again after every reconnect; null leaves the station.
+    Task SetStationAsync(int? stationId);
 }
 
 public sealed class RealtimeClient : IRealtimeClient, IAsyncDisposable
@@ -59,6 +54,7 @@ public sealed class RealtimeClient : IRealtimeClient, IAsyncDisposable
     private HubConnection? _connection;
     private CancellationTokenSource? _lifetime;
     private bool _hadOutage;
+    private int? _stationId;
 
     public RealtimeClient(IClientSettingsService settings, ITokenRefresher tokens, IUiDispatcher dispatcher, ILogger<RealtimeClient> logger)
     {
@@ -264,8 +260,42 @@ public sealed class RealtimeClient : IRealtimeClient, IAsyncDisposable
         }
     }
 
+    public async Task SetStationAsync(int? stationId)
+    {
+        var previous = _stationId;
+        _stationId = stationId;
+        if (previous == stationId || _connection is not { State: HubConnectionState.Connected } connection)
+        {
+            return;
+        }
+
+        try
+        {
+            if (previous is { } old)
+            {
+                await connection.InvokeAsync(HubMethods.LeaveStation, old).ConfigureAwait(false);
+            }
+
+            if (stationId is { } station)
+            {
+                await connection.InvokeAsync(HubMethods.JoinStation, station).ConfigureAwait(false);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not change the kitchen station on the hub; it is applied at the next reconnect");
+        }
+    }
+
     private void OnConnected()
     {
+        if (_stationId is { } stationId && _connection is { } connection)
+        {
+            _ = connection.InvokeAsync(HubMethods.JoinStation, stationId).ContinueWith(
+                t => _logger.LogWarning(t.Exception, "Could not join station {StationId}", stationId),
+                TaskContinuationOptions.OnlyOnFaulted);
+        }
+
         SetStatus(ConnectionStatus.Connected);
         if (_hadOutage)
         {

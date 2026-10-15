@@ -1,0 +1,25 @@
+<UserControl x:Class="HotelPOS.Desktop.Modules.Admin.SettingsHubView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:admin="clr-namespace:HotelPOS.Desktop.Modules.Admin"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance admin:SettingsHubViewModel}"
+             d:DesignWidth="1100" d:DesignHeight="700">
+
+  <Grid Margin="0,16,0,0">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <ListBox Style="{StaticResource Hub.Tabs}" ItemsSource="{Binding Tabs}" SelectedIndex="{Binding SelectedTab}"
+             Margin="24,0,24,0" AutomationProperties.Name="Restaurant settings" />
+
+    <admin:SettingsView Grid.Row="1" DataContext="{Binding Settings}"
+                        Visibility="{Binding DataContext.IsSettingsTab, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}" />
+    <admin:TemplateStudioView Grid.Row="1" DataContext="{Binding Templates}"
+                              Visibility="{Binding DataContext.IsTemplatesTab, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}" />
+  </Grid>
+</UserControl>

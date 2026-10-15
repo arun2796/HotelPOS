@@ -1,15 +1,19 @@
 using HotelPOS.Api.Common;
 using HotelPOS.Application.Common.Results;
 using HotelPOS.Contracts.Common;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HotelPOS.Api.Controllers;
 
-/// <summary>Base controller: converts application results into the standard response envelope.</summary>
 [ApiController]
 [Produces("application/json")]
 public abstract class ApiControllerBase : ControllerBase
 {
+    private ISender? _sender;
+
+    protected ISender Sender => _sender ??= HttpContext.RequestServices.GetRequiredService<ISender>();
+
     protected IActionResult Envelope<T>(T data, int statusCode = StatusCodes.Status200OK, string? message = null) =>
         StatusCode(statusCode, ApiResponse.Ok(data, message, HttpContext.TraceIdentifier));
 

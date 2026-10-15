@@ -1,10 +1,15 @@
 using System.IO;
+using HotelPOS.Desktop.Modules.Cash;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Auth;
 using HotelPOS.Desktop.Services.Configuration;
+using HotelPOS.Desktop.Services.Menu;
 using HotelPOS.Desktop.Services.Navigation;
+using HotelPOS.Desktop.Services.Orders;
+using HotelPOS.Desktop.Services.Printing;
 using HotelPOS.Desktop.Services.Realtime;
 using HotelPOS.Desktop.Services.Ui;
+using HotelPOS.Desktop.Services.Updates;
 using HotelPOS.Desktop.Shell;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -13,7 +18,6 @@ using Serilog.Events;
 
 namespace HotelPOS.Desktop.Startup;
 
-/// <summary>Composition root of the desktop application.</summary>
 public static class AppHost
 {
     public static IHost Build(string[] args)
@@ -33,12 +37,10 @@ public static class AppHost
     {
         services.AddSingleton(paths);
 
-        // Configuration and local storage
         services.AddSingleton<IClientSettingsService, ClientSettingsService>();
         services.AddSingleton<IUserPreferences, UserPreferences>();
         services.AddSingleton<ISecureStore, DpapiSecureStore>();
 
-        // Session and API
         services.AddSingleton<IAuthSession, AuthSession>();
         services.AddSingleton<ITokenRefresher, TokenRefresher>();
         services.AddTransient<AuthDelegatingHandler>();
@@ -48,18 +50,60 @@ public static class AppHost
         services.AddSingleton<IAuthApi, AuthApi>();
         services.AddSingleton<ISystemApi, SystemApi>();
         services.AddSingleton<IUsersApi, UsersApi>();
+        services.AddSingleton<IDevicesApi, DevicesApi>();
+        services.AddSingleton<IAuditApi, AuditApi>();
+        services.AddSingleton<IOperationsApi, OperationsApi>();
         services.AddSingleton<IAdminSettingsApi, AdminSettingsApi>();
+        services.AddSingleton<IFloorApi, FloorApi>();
+        services.AddSingleton<IMenuApi, MenuApi>();
+        services.AddSingleton<IOrdersApi, OrdersApi>();
+        services.AddSingleton<ILocalDraftStore, LocalDraftStore>();
+        services.AddSingleton<IOrderSubmitter, OrderSubmitter>();
+        services.AddSingleton<IKitchenApi, KitchenApi>();
+        services.AddSingleton<IBillingApi, BillingApi>();
+        services.AddSingleton<ICustomersApi, CustomersApi>();
+        services.AddSingleton<ICashApi, CashApi>();
+        services.AddSingleton<IGstApi, GstApi>();
+        services.AddSingleton<ILicenseApi, LicenseApi>();
+        services.AddSingleton<IImportApi, ImportApi>();
+        services.AddHttpClient(UpdateService.HttpClientName, client => client.Timeout = TimeSpan.FromMinutes(10));
+        services.AddSingleton<IInstallerLauncher, InstallerLauncher>();
+        services.AddSingleton<IUpdateService, UpdateService>();
+        services.AddSingleton<IAppLifetime, WpfAppLifetime>();
+        services.AddSingleton<StatusBannerViewModel>();
+        services.AddSingleton<ShiftReportPrinting>();
+        services.AddSingleton<ShiftBarViewModel>();
+        services.AddSingleton<ICashDrawer>(sp => sp.GetRequiredService<ShiftBarViewModel>());
+        services.AddSingleton<IReadyNotifier, ReadyNotifier>();
+        services.AddSingleton<IPrintApi, PrintApi>();
+        services.AddSingleton<ITemplatesApi, TemplatesApi>();
+        services.AddSingleton<IPrintCopyReporter, PrintCopyReporter>();
+        services.AddSingleton<IReportsApi, ReportsApi>();
+        services.AddSingleton<EscPosRenderer>();
+        services.AddSingleton<FlowDocumentRenderer>();
+        services.AddSingleton<RawPrinterChannel>();
+        services.AddSingleton<NetworkPrinterChannel>();
+        services.AddSingleton<IWindowsPrinterChannel, WindowsPrinterChannel>();
+        services.AddSingleton<IPrintService, PrintService>();
+        services.AddSingleton<IPrintQueue, PrintQueue>();
+        services.AddSingleton<IPrinterProfiles, PrinterProfiles>();
+        services.AddSingleton<IDocumentPrinter, DocumentPrinter>();
+        services.AddSingleton<IKotAutoPrinter, KotAutoPrinter>();
+        services.AddHttpClient(MenuCache.ImageHttpClientName, client => client.Timeout = TimeSpan.FromSeconds(15));
+        services.AddSingleton<IMenuCache, MenuCache>();
 
-        // Real-time
         services.AddSingleton<IRealtimeClient, RealtimeClient>();
 
-        // UI infrastructure
         services.AddSingleton<IUiDispatcher, WpfUiDispatcher>();
         services.AddSingleton<DialogService>();
         services.AddSingleton<IDialogService>(sp => sp.GetRequiredService<DialogService>());
         services.AddSingleton<NotificationService>();
         services.AddSingleton<INotificationService>(sp => sp.GetRequiredService<NotificationService>());
         services.AddSingleton<ThemeService>();
+        services.AddSingleton<NoticeCenter>();
+        services.AddSingleton<PeriodStatusNotices>();
+        services.AddSingleton<IFilePicker, WpfFilePicker>();
+        services.AddSingleton<ISoundPlayer, SystemSoundPlayer>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<IAppNavigator, AppNavigator>();
         services.AddSingleton<NavigationService>();

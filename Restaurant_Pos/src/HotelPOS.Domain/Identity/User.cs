@@ -26,7 +26,6 @@ public sealed class User : BaseEntity, IHasRowVersion
 
     public string Username { get; private set; } = string.Empty;
 
-    /// <summary>Upper-case invariant form used for case-insensitive uniqueness and lookups.</summary>
     public string NormalizedUsername { get; private set; } = string.Empty;
 
     public string DisplayName { get; private set; } = string.Empty;
@@ -37,7 +36,7 @@ public sealed class User : BaseEntity, IHasRowVersion
     public DateTime? LockedUntil { get; private set; }
     public DateTime? LastLoginAt { get; private set; }
     public DateTime? PasswordChangedAt { get; private set; }
-    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
+    public uint RowVersion { get; set; }
 
     public IReadOnlyCollection<UserRole> UserRoles => _userRoles;
 
@@ -68,7 +67,6 @@ public sealed class User : BaseEntity, IHasRowVersion
         PasswordChangedAt = changedAt;
     }
 
-    /// <summary>Replaces the stored hash after a successful login with an outdated hash format.</summary>
     public void UpgradePasswordHash(string passwordHash) => PasswordHash = passwordHash;
 
     public void Activate() => IsActive = true;
@@ -82,14 +80,37 @@ public sealed class User : BaseEntity, IHasRowVersion
         LockedUntil = null;
     }
 
-    public void RecordFailedLogin() => FailedLoginCount++;
+    // Returns true when this failure locks the account. A lock that has run out starts a fresh count; otherwise the
+    // first typo after an automatic unlock would lock the account again.
+    public bool RecordFailedLogin(DateTime nowUtc, int threshold, TimeSpan lockoutDuration)
+    {
+        if (LockedUntil is not null && LockedUntil <= nowUtc)
+        {
+            LockedUntil = null;
+            FailedLoginCount = 0;
+        }
+
+        FailedLoginCount++;
+        if (threshold <= 0 || FailedLoginCount < threshold)
+        {
+            return false;
+        }
+
+        LockedUntil = nowUtc.Add(lockoutDuration);
+        return true;
+    }
+
+    public void Unlock()
+    {
+        LockedUntil = null;
+        FailedLoginCount = 0;
+    }
 
     public bool IsLockedOut(DateTime nowUtc) => LockedUntil is not null && LockedUntil > nowUtc;
 
     public bool HasRole(string roleName) =>
         RoleNames.Contains(roleName, StringComparer.Ordinal);
 
-    /// <summary>Synchronises role membership with the given roles (adds missing, removes extra).</summary>
     public void SetRoles(IEnumerable<Role> roles)
     {
         var target = roles.ToList();

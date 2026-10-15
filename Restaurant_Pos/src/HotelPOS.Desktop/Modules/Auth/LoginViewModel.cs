@@ -1,6 +1,8 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HotelPOS.Contracts.Auth;
+using HotelPOS.Contracts.Common;
+using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Auth;
 using HotelPOS.Desktop.Services.Configuration;
@@ -16,7 +18,7 @@ public enum ServerState
     Unreachable,
 }
 
-public sealed partial class LoginViewModel : ObservableObject, INavigationAware
+public sealed partial class LoginViewModel : ViewModelBase, INavigationAware
 {
     private readonly IAuthApi _authApi;
     private readonly ISystemApi _systemApi;
@@ -50,13 +52,6 @@ public sealed partial class LoginViewModel : ObservableObject, INavigationAware
     private string _password = string.Empty;
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(LoginCommand))]
-    private bool _isBusy;
-
-    [ObservableProperty]
-    private string? _errorMessage;
-
-    [ObservableProperty]
     private string? _infoMessage;
 
     [ObservableProperty]
@@ -87,12 +82,10 @@ public sealed partial class LoginViewModel : ObservableObject, INavigationAware
     private bool CanLogin() => !IsBusy && !string.IsNullOrWhiteSpace(Username) && !string.IsNullOrEmpty(Password);
 
     [RelayCommand(CanExecute = nameof(CanLogin))]
-    private async Task LoginAsync()
+    private Task LoginAsync()
     {
-        ErrorMessage = null;
         InfoMessage = null;
-        IsBusy = true;
-        try
+        return ExecuteAsync(async () =>
         {
             var settings = _settings.Current;
             var result = await _authApi.LoginAsync(new LoginRequest
@@ -108,9 +101,27 @@ public sealed partial class LoginViewModel : ObservableObject, INavigationAware
             if (!result.Success || result.Data is null)
             {
                 Password = string.Empty;
-                ErrorMessage = result.IsConnectionFailure
-                    ? $"Cannot reach the server at {settings.ApiBaseUrl}. Check the Wi-Fi/LAN connection, or the server address in Server settings."
-                    : result.Message;
+                if (result.IsConnectionFailure)
+                {
+                    ErrorMessage = $"Cannot reach the server at {settings.ApiBaseUrl}. Check the Wi-Fi/LAN connection, or the server address in Server settings.";
+                }
+                else if (result.HasError(ErrorCodes.AccountLocked))
+                {
+                    ErrorMessage = "This account has been locked due to too many failed login attempts. Contact an administrator to unlock it.";
+                }
+                else if (result.HasError("DEVICE_DISABLED"))
+                {
+                    ErrorMessage = "This terminal has been deactivated by an administrator. Contact an administrator to reactivate this device.";
+                }
+                else if (result.HasError(ErrorCodes.RateLimited))
+                {
+                    ErrorMessage = "Too many login attempts. Please wait a minute before trying again.";
+                }
+                else
+                {
+                    ErrorMessage = result.Message;
+                }
+
                 ServerState = result.IsConnectionFailure ? ServerState.Unreachable : ServerState.Reachable;
                 return;
             }
@@ -133,12 +144,10 @@ public sealed partial class LoginViewModel : ObservableObject, INavigationAware
             {
                 await _navigator.ShowShellAsync();
             }
-        }
-        finally
-        {
-            IsBusy = false;
-        }
+        });
     }
+
+    protected override void OnBusyChanged() => LoginCommand.NotifyCanExecuteChanged();
 
     [RelayCommand]
     private async Task CheckServerAsync()
@@ -147,6 +156,13 @@ public sealed partial class LoginViewModel : ObservableObject, INavigationAware
         var result = await _systemApi.GetInfoAsync();
         if (result.Success && result.Data is not null)
         {
+            // The server may have been upgraded while this terminal kept running.
+            if (!VersionGate.IsSupported(AppInfo.Version, result.Data.MinClientVersion))
+            {
+                await _navigator.ShowUpdateRequiredAsync(result.Data);
+                return;
+            }
+
             RestaurantName = result.Data.RestaurantName;
             ServerState = ServerState.Reachable;
         }

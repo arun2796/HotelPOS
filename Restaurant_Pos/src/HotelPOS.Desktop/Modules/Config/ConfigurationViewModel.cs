@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HotelPOS.Contracts.Devices;
 using HotelPOS.Contracts.Enums;
+using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Configuration;
 using HotelPOS.Desktop.Services.Navigation;
@@ -10,30 +11,41 @@ using HotelPOS.Desktop.Services.Ui;
 
 namespace HotelPOS.Desktop.Modules.Config;
 
-/// <param name="IsFirstRun">No configuration exists yet; there is nowhere to go back to.</param>
-/// <param name="InShell">Opened from the main shell by a logged-in manager/admin.</param>
 public sealed record ConfigurationContext(bool IsFirstRun, bool InShell);
 
-/// <summary>
-/// Server address and device identity of this terminal. Used as the first-run screen, from the login
-/// screen ("Server settings") and inside the shell ("This Terminal").
-/// </summary>
-public sealed partial class ConfigurationViewModel : ObservableObject, INavigationAware
+public sealed record DensityOption(string Value, string Label);
+
+public sealed partial class ConfigurationViewModel : ViewModelBase, INavigationAware
 {
+    public const string AutomaticDensity = "";
+
     private readonly IClientSettingsService _settings;
     private readonly ISystemApi _systemApi;
     private readonly IAppNavigator _navigator;
     private readonly IDialogService _dialogs;
+    private readonly ThemeService _theme;
 
-    public ConfigurationViewModel(IClientSettingsService settings, ISystemApi systemApi, IAppNavigator navigator, IDialogService dialogs)
+    public ConfigurationViewModel(IClientSettingsService settings, ISystemApi systemApi, IAppNavigator navigator, IDialogService dialogs,
+        ThemeService theme)
     {
         _settings = settings;
         _systemApi = systemApi;
         _navigator = navigator;
         _dialogs = dialogs;
+        _theme = theme;
     }
 
     public IReadOnlyList<DeviceType> DeviceTypes { get; } = Enum.GetValues<DeviceType>();
+
+    public IReadOnlyList<DensityOption> DensityOptions { get; } = new[]
+    {
+        new DensityOption(AutomaticDensity, "Automatic (from terminal type)"),
+        new DensityOption(ThemeService.Comfort, "Comfort — large touch targets"),
+        new DensityOption(ThemeService.Compact, "Compact — mouse and keyboard"),
+    };
+
+    [ObservableProperty]
+    private string _density = AutomaticDensity;
 
     [ObservableProperty]
     private ConfigurationContext _context = new(IsFirstRun: false, InShell: false);
@@ -56,10 +68,6 @@ public sealed partial class ConfigurationViewModel : ObservableObject, INavigati
     [ObservableProperty]
     private bool _testSucceeded;
 
-    [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(SaveCommand), nameof(TestConnectionCommand))]
-    private bool _isBusy;
-
     public string Title => Context.IsFirstRun ? "Connect this terminal" : "This terminal";
 
     public string Subtitle => Context.IsFirstRun
@@ -77,6 +85,8 @@ public sealed partial class ConfigurationViewModel : ObservableObject, INavigati
         ApiBaseUrl = current.ApiBaseUrl;
         DeviceName = current.DeviceName;
         DeviceType = current.DeviceType;
+        Density = DensityOptions.FirstOrDefault(o => string.Equals(o.Value, current.Density, StringComparison.OrdinalIgnoreCase))?.Value
+            ?? AutomaticDensity;
         if (string.IsNullOrWhiteSpace(DeviceName))
         {
             DeviceName = SuggestDeviceName(DeviceType);
@@ -89,7 +99,6 @@ public sealed partial class ConfigurationViewModel : ObservableObject, INavigati
     {
     }
 
-    /// <summary>Returns an error message, or null when the values are valid.</summary>
     public static string? Validate(string apiBaseUrl, string deviceName, out string normalizedUrl)
     {
         if (!ApiUrl.TryNormalize(apiBaseUrl, out normalizedUrl, out var urlError))
@@ -131,6 +140,12 @@ public sealed partial class ConfigurationViewModel : ObservableObject, INavigati
         DeviceType.Admin => "ADMIN-01",
         _ => "WAITER-01",
     };
+
+    protected override void OnBusyChanged()
+    {
+        SaveCommand.NotifyCanExecuteChanged();
+        TestConnectionCommand.NotifyCanExecuteChanged();
+    }
 
     private bool CanRun() => !IsBusy;
 
@@ -188,6 +203,8 @@ public sealed partial class ConfigurationViewModel : ObservableObject, INavigati
         var updated = current.Clone();
         updated.ApiBaseUrl = url;
         updated.DeviceType = DeviceType;
+        // Density is only appearance: it applies at once and never needs a new sign-in.
+        updated.Density = string.IsNullOrEmpty(Density) ? null : Density;
         if (updated.DeviceName != name)
         {
             // A new name is a new device identity; the server assigns a new id at the next login.
@@ -196,6 +213,7 @@ public sealed partial class ConfigurationViewModel : ObservableObject, INavigati
         }
 
         _settings.Save(updated);
+        _theme.ApplyDensity(ThemeService.ResolveDensity(updated));
         ApiBaseUrl = url;
         DeviceName = name;
 

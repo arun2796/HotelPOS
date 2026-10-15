@@ -2,10 +2,6 @@ using HotelPOS.Domain.Common;
 
 namespace HotelPOS.Domain.Identity;
 
-/// <summary>
-/// Long-lived token used to obtain new access tokens. Only a hash is stored. Tokens are rotated on
-/// every refresh; presenting an already-rotated token revokes the whole chain (theft detection).
-/// </summary>
 public sealed class RefreshToken : BaseEntity
 {
     private RefreshToken()

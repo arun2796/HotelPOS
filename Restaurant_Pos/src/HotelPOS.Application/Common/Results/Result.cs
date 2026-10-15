@@ -2,16 +2,21 @@ using HotelPOS.Contracts.Common;
 
 namespace HotelPOS.Application.Common.Results;
 
-/// <summary>An expected failure of a use case: a code, a human message and optional field errors.</summary>
 public sealed record AppError(string Code, string Message)
 {
     public IReadOnlyList<ApiError> Details { get; init; } = Array.Empty<ApiError>();
 
-    /// <summary>Optional payload returned with the failure, e.g. the current entity on a concurrency conflict.</summary>
     public object? Data { get; init; }
 }
 
-public class Result
+// Lets the pipeline behaviours turn an AppError into the handler's own result type without reflection.
+public interface IFailureResult<TSelf>
+    where TSelf : Result
+{
+    static abstract TSelf Failure(AppError error);
+}
+
+public class Result : IFailureResult<Result>
 {
     protected Result(AppError? error)
     {
@@ -31,7 +36,7 @@ public class Result
     public static implicit operator Result(AppError error) => Failure(error);
 }
 
-public sealed class Result<T> : Result
+public sealed class Result<T> : Result, IFailureResult<Result<T>>
 {
     private readonly T? _value;
 

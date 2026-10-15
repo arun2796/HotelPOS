@@ -1,6 +1,6 @@
 # 05 — Desktop Application (WPF)
 
-Last updated: 2026-10-07
+Last updated: 2026-10-14
 
 ## 1. Project layout (`HotelPOS.Desktop`)
 
@@ -31,7 +31,9 @@ HotelPOS.Desktop/
     Logging/                    Serilog setup
   Controls/                     touch-friendly reusable controls (NumPad, QuantityStepper, StatusChip,
                                 TicketCard, TableTile, ConnectionIndicator)
-  Themes/                       Colors.xaml, Typography.xaml, Buttons.xaml, Light.xaml, Dark.xaml
+  Themes/                       Tokens.Light/Dark.xaml (colours), Density.Comfort/Compact.xaml (sizes),
+                                DesignSystem.xaml (fonts, converters, every style) — Phase 11
+  Resources/Fonts/              Inter (SIL OFL), fallback typeface (Segoe UI Variable is first since Phase 17)
   Converters/, Behaviors/
   Assets/                       icons (Segoe Fluent Icons / Material icon font), sounds
 ```
@@ -46,6 +48,8 @@ HotelPOS.Desktop/
 - Long-running work is `async`; UI thread never blocks. All API calls support `CancellationToken`.
 - Every view-model that shows server data has `LoadAsync()` (initial) and `RefreshAsync()` (resync).
 - View-models are unit-testable (`HotelPOS.Desktop.Tests`) with fake services.
+- Screen view-models derive from `ViewModelBase` (Phase 12): one `IsBusy`, one `ErrorMessage`, `ExecuteAsync` for
+  work (an unexpected fault is logged and shown on that screen) and `FetchAsync` for loads.
 
 ## 3. Startup and configuration
 
@@ -72,13 +76,15 @@ Start the app with `--profile NAME` to run several terminals on one PC (each pro
   "DeviceType": "Waiter",
   "StationId": null,
   "Theme": "Light",
+  "Density": null,
   "Printers": {
-    "Receipt": { "Kind": "EscPosRaw", "PrinterName": "POS-80" },
-    "Kitchen": { "Kind": "Network", "Host": "192.168.1.50", "Port": 9100 }
+    "Kot": { "Kind": "Network", "Host": "192.168.1.50", "Port": 9100, "PaperWidthMm": 80, "Copies": 1, "Model": "Generic", "CurrencyFallback": "Rs." },
+    "Invoice": { "Kind": "EscPosRaw", "PrinterName": "POS-80", "PaperWidthMm": 80 },
+    "Receipt": { "Kind": "Windows", "PrinterName": "Microsoft Print to PDF" }
   },
   "AutoPrintKot": true,
   "AutoPrintInvoice": true,
-  "KitchenSound": true
+  "AutoPrintReceipt": true
 }
 ```
 
@@ -120,8 +126,12 @@ One window (`MainWindow`) hosts the current screen (configuration, login, forced
 shell) plus two overlay layers: modal dialogs (`IDialogService`) and toasts (`INotificationService`).
 View-models are matched to views by DataTemplates in `App.xaml` and created with `ActivatorUtilities`.
 
-- Left sidebar with large module buttons (icon + label), filtered by role. Top bar: restaurant name,
-  user, device name, clock. Bottom status bar: connection indicator, last sync time, app version.
+- Left sidebar with module buttons (icon + label) grouped by area and filtered by permission; collapses to icons
+  (remembered per terminal); user card with change password and sign out. Top bar (Phase 11): page title and
+  description, search (opens the Ctrl+K command palette), clock, theme toggle, notices bell, help (F1). Bottom
+  status bar: connection indicator, server, terminal, failed prints, app version.
+- Command palette (Ctrl+K): jump to any permitted screen, run shell actions, or type a table code, order number
+  or bill/invoice number to open it. Shortcuts: Ctrl+D dashboard, Ctrl+T tables, Ctrl+B billing, Ctrl+R reports.
 - Full-screen (kiosk-like) mode for Kitchen and Waiter tablets (F11 toggle, remembered).
 - Navigation is view-model-first: `INavigationService.NavigateTo<TViewModel>(parameter)`.
 - The shell survives server outages: navigation still works, data reloads when connectivity returns.
@@ -150,21 +160,52 @@ View-models are matched to views by DataTemplates in `App.xaml` and created with
 | Bill Detail | Lines (item, qty, price, line total), subtotal, discount (button), tax breakup, round-off, grand total; customer details; **FINALIZE & PRINT**, **CASH**, **CARD**, **UPI**, **SPLIT** |
 | Payment | Cash: tendered quick buttons (exact, 100, 200, 500, 2000) and change; Card/UPI: reference; Split: lines until balance 0; **CONFIRM** |
 | Closed Bills | Today's settled/voided bills, search, reprint, refund/void (manager approval) |
+| Shift bar (13) | Billing terminals (`DeviceType = Billing`, `shift.operate`), under the top bar: "Shift open since 09:02 · Priya · expected 4,820.00" with **X report**, **Pay in / out**, **Hand over**, **Close shift**; "No shift open" with **Open shift**. Business day closed/reopened notices. Dialogs (counting sheet per note and coin with 48 px steppers, live total, expected and difference unless blind count; Z report with print and preview) open over the page. A cash payment refused with `SHIFT_REQUIRED` offers to open a shift |
 
 ### Manager / Admin
 Users, Roles, Sections/Tables, Categories, Menu Items (list + edit form + image), Modifiers, Taxes,
 Stations, Discounts, Payment Methods, Devices, Settings, Audit Log, Reports, Dashboard, Backup.
 Data grids with search, add/edit side panel, activate/deactivate instead of delete.
 
+| Screen (phase) | Content |
+|---|---|
+| Dashboard (8) | Manager: six KPI tiles, top items, 7-day net-sales strip; waiter: own orders, sales, tables today. 60 s timer plus 5 s debounce on sale/order/ticket events |
+| Reports (8) | Report list, date presets + custom range, grid with totals row, **EXPORT CSV** (same columns as the grid) |
+| Roles & Permissions (9) | Roles × permissions matrix; Admin row read-only; save with optional "force re-login" |
+| Devices (9) | Name, type, station, machine, version, last seen, online badge; rename, assign kitchen station, activate/deactivate |
+| Audit Log (9) | Filters (search, user, terminal, action, today / 7 days / custom local dates / all), paged grid, before/after side by side, export CSV with the same filters |
+| Users (9 additions) | Lockout state with **UNLOCK**, active sessions, **LOG OUT EVERYWHERE**, password hint |
+| Cash Shifts (13, `shift.manage`) | Shifts of a business day (terminal, cashier, float, expected, counted, variance, status); X/Z report, **Force close…** (counting sheet + reason), **Reopen…** (reason + approval) |
+| Day End (13, `dayend.run`) | Wizard: 1 blocking items with **Open** and **Override…** (reason), 2 totals, payments, shifts and variances, non-till collections (add), 3 run (backup → lock → pack), 4 done (backup file, pack folder and files) |
+| Day End History (13, `dayend.run`) | Closed days with totals, overrides, backup and pack; **Reopen day…** (reason + approval) |
+| Discounts & Payments (13) | Hub tabs: Discounts & payments, **Denominations** (notes and coins; admins edit) |
+| Tax Returns (15, `gst.view`) | Month + year pickers; tabs GSTR-1 (section list: B2B, B2CL, B2CS, credit notes, HSN, documents), GSTR-3B, HSN summary, Validation; banner when validation has errors; **Export JSON** (portal file), **Export Excel**, **Save PDF** for the active tab |
+| Period Close (15, `period.close`, admins) | Financial year's months and the year with status; pre-check list of the selected period; **Close period…** (enabled only when every check passes) and **Reopen period…** (reason) |
+| Bill screen, customer panel (15) | GSTIN checked as typed (hint shows the state), legal name, customer state, place of supply; item editor has an optional HSN/SAC |
+
+Since Phase 9:
+- The sidebar follows the user's **permissions** (`ModuleRegistry.ForUser`); with the default sets it matches the
+  role table above.
+- Manager approval: the dialog's credentials are exchanged once for a 2-minute approval token
+  (`POST /api/auth/approval`); only the token travels with the void/refund/reopen/discount request.
+- Login shows distinct messages for a locked account, a disabled device and too many attempts (429). A terminal
+  disabled while in use signs out with the reason, on the hub's `ServerNotice` or on any 403 `DEVICE_DISABLED`.
+
 ## 9. UX guidelines
 
 - Minimum touch target 48 x 48 px; primary action buttons at least 56 px tall.
-- Base font 16 px; kitchen cards 20-24 px; table tiles show code at 28 px.
+- Base font 15 px (Comfort) / 14 px (Compact), Segoe UI Variable (Inter fallback); kitchen cards 20-24 px; table tiles show code at 28 px.
 - Status colours (same on all screens): Available green, Occupied blue, Ordering purple,
   Preparing amber, Ready red-accent (needs attention), Billing teal, OutOfService grey.
 - One primary action per screen, placed bottom-right. Destructive actions need confirmation.
 - No modal dialogs in the ordering flow except manager approval and cancellation reason.
-- Light and dark themes via swapped resource dictionaries; high contrast; no decorative animation.
+- Light and dark themes via swapped resource dictionaries; text contrast at least WCAG AA.
+- Density per terminal (Phase 11): **Comfort** (waiter, kitchen; controls 48 px) or **Compact** (billing, admin;
+  controls 38 px), chosen from the terminal type unless set in This Terminal (`Density` in `settings.json`,
+  `null` = automatic).
+- Motion is limited to a 160 ms fade-and-slide when the page changes, skipped when Windows animation effects are
+  off or the PC renders in software.
+- One culture on every terminal: Indian digit grouping (`1,23,456.00`), `dd-MM-yyyy` dates, 24-hour times.
 - Keyboard shortcuts for cashier (F2 cash, F3 card, F4 UPI, F9 split, Esc back).
 - Every list that may exceed 200 rows is paged or virtualised.
 
@@ -206,3 +247,24 @@ Never log tokens, passwords, or full payment references.
   red banner and refresh automatically on reconnect.
 - Extension point: `IOrderSubmitter` can later be replaced by an outbox implementation that queues
   submits and replays them with the same idempotency keys.
+
+## Template Studio and exports (Phase 14)
+
+Settings has two tabs: Restaurant settings and Print templates (Template Studio): pick a document type, change paper,
+columns, header/footer, tax style, logo and UPI QR; a live preview renders the same layout the thermal printer uses;
+Print test sends it to the configured printer; Save creates a version, Activate/Roll back switches the active one.
+Thermal prints use the active template; every reprint asks the server for a copy number and shows DUPLICATE from
+copy 2. Reports has Export Excel and Save PDF, Audit Log has Export Excel; Closed Bills can save the invoice PDF.
+
+## Licence, import and updates (Phase 16)
+
+- **Licence** (Administration, administrators): status (Trial / Licensed / Expired), edition, terminals registered of
+  licensed, valid-until date, the **machine id** (copy it when ordering a key) and a box to paste a licence key.
+  A banner above every screen shows the trial, the last 14 days of a licence, or the read-only state after expiry.
+- **Import** (Management, managers and administrators): a four-step wizard. Choose Menu or Customers and a `.xlsx` /
+  `.csv` file, match its columns to the fields (guessed from the headers), check the rows (errors listed with row and
+  column; optionally skip them), import, and undo the last import from the wizard.
+- **Updates**: when the server hosts a newer client than the terminal runs, the banner offers **Update now** (the
+  **Update required** screen offers it too). The terminal downloads the installer from the server, checks its
+  SHA-256, closes and lets the installer replace it; HotelPOS starts again by itself (Windows asks for administrator
+  permission).

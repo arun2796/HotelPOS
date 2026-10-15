@@ -1,22 +1,22 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using HotelPOS.Contracts.Auth;
+using HotelPOS.Contracts.Cash;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Infrastructure.Persistence;
+using HotelPOS.Testing;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace HotelPOS.Api.Tests.Support;
 
-/// <summary>
-/// Runs the real API in memory against its own throw-away SQL Server database (LocalDB by default,
-/// override with HOTELPOS_TEST_SQLSERVER). The database is migrated and seeded by the API's startup code.
-/// </summary>
 public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     public const string AdminPassword = "Admin@123";
@@ -24,11 +24,11 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     private readonly string _connectionString;
 
+    public string MediaPath { get; } = Path.Combine(Path.GetTempPath(), "hotelpos-apitests-media-" + Guid.NewGuid().ToString("N"));
+
     public ApiFactory()
     {
-        var server = Environment.GetEnvironmentVariable("HOTELPOS_TEST_SQLSERVER") ?? @"(localdb)\MSSQLLocalDB";
-        _connectionString =
-            $"Server={server};Database=HotelPOS_ApiTests_{Guid.NewGuid():N};Trusted_Connection=True;TrustServerCertificate=True";
+        _connectionString = TestPostgres.NewDatabase("apitests");
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -42,7 +42,23 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             ["Seed:DemoData"] = "true",
             ["Seed:DemoPassword"] = DemoPassword,
             ["Logging:Directory"] = Path.Combine(Path.GetTempPath(), "hotelpos-test-logs"),
+            ["Media:RootPath"] = MediaPath,
+            ["Security:RateLimit:MaxPerIp"] = "100",
+            ["Security:RateLimit:MaxPerUser"] = "100",
+            ["Monitoring:MinFreeDiskMb"] = "0",
+            ["Backup:Scheduler"] = "false",
+            ["Backup:DefaultPath"] = Path.Combine(MediaPath, "backups"),
+            ["Updates:Path"] = Path.Combine(MediaPath, "updates"),
         }));
+
+        // The tests issue their own licence keys for a fixed machine id (see TestLicense).
+        builder.ConfigureTestServices(services =>
+        {
+            services.RemoveAll<HotelPOS.Application.Common.Interfaces.IMachineIdProvider>();
+            services.AddSingleton<HotelPOS.Application.Common.Interfaces.IMachineIdProvider, TestLicense.FixedMachine>();
+            services.RemoveAll<HotelPOS.Application.Common.Interfaces.ILicenseTrust>();
+            services.AddSingleton<HotelPOS.Application.Common.Interfaces.ILicenseTrust, TestLicense.FixedTrust>();
+        });
     }
 
     public Task InitializeAsync() => Task.CompletedTask;
@@ -55,6 +71,10 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         }
 
         await base.DisposeAsync();
+        if (Directory.Exists(MediaPath))
+        {
+            Directory.Delete(MediaPath, recursive: true);
+        }
     }
 
     public async Task<LoginResponse> LoginAsync(string username, string password, string? deviceName = null)
@@ -71,11 +91,48 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         return body.Data!;
     }
 
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> _tokenCache = new();
+
+    public void ResetTokens() => _tokenCache.Clear();
+
+    public void ResetRateLimiter()
+    {
+        try
+        {
+            Services.GetRequiredService<HotelPOS.Api.Common.LoginRateLimiter>().Reset();
+        }
+        catch { }
+    }
+
     public async Task<HttpClient> CreateAuthenticatedClientAsync(string username, string password)
     {
-        var login = await LoginAsync(username, password);
+        var key = $"{username}:{password}";
+        if (!_tokenCache.TryGetValue(key, out var token))
+        {
+            var login = await LoginAsync(username, password);
+            token = login.AccessToken;
+            _tokenCache[key] = token;
+        }
+
+        var client = CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return client;
+    }
+
+    // A billing terminal: the user signed in on a named device with a cash shift open there (cash needs one since
+    // phase 13). An open shift left by an earlier test of the class is reused.
+    public async Task<HttpClient> CreateTerminalClientAsync(string username, string password, string deviceName)
+    {
+        var login = await LoginAsync(username, password, deviceName);
         var client = CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", login.AccessToken);
+        var current = await (await client.GetAsync("/api/shifts/current")).ReadEnvelopeAsync<CashShiftDto?>();
+        if (current.Data is null)
+        {
+            var opened = await (await client.PostAsJsonAsync("/api/shifts", new OpenShiftRequest(), PosJson.Options)).ReadEnvelopeAsync<CashShiftDto>();
+            opened.Success.Should().BeTrue(opened.Message);
+        }
+
         return client;
     }
 

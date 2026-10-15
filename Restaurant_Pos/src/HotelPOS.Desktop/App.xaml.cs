@@ -17,6 +17,7 @@ public partial class App : Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        IndianCulture.Apply();
         _host = AppHost.Build(e.Args);
         RegisterGlobalExceptionHandlers();
 
@@ -24,9 +25,11 @@ public partial class App : Application
         {
             await _host.StartAsync();
             var services = _host.Services;
-            services.GetRequiredService<ThemeService>().ApplySaved();
+            var theme = services.GetRequiredService<ThemeService>();
+            theme.ApplySaved();
 
             var window = new MainWindow { DataContext = services.GetRequiredService<MainViewModel>() };
+            theme.Attach(window);
             MainWindow = window;
             window.Show();
 

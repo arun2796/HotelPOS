@@ -62,14 +62,44 @@ public class UserTests
     public void RecordSuccessfulLogin_ResetsFailedLoginCount()
     {
         var user = new User("u1", "User", "hash", false);
-        user.RecordFailedLogin();
-        user.RecordFailedLogin();
         var now = new DateTime(2026, 10, 7, 9, 0, 0, DateTimeKind.Utc);
+        user.RecordFailedLogin(now, 5, TimeSpan.FromMinutes(15));
+        user.RecordFailedLogin(now, 5, TimeSpan.FromMinutes(15));
 
         user.RecordSuccessfulLogin(now);
 
         user.FailedLoginCount.Should().Be(0);
         user.LastLoginAt.Should().Be(now);
+    }
+
+    [Fact]
+    public void RecordFailedLogin_ReachingThreshold_LocksForDuration()
+    {
+        var user = new User("u1", "User", "hash", false);
+        var now = new DateTime(2026, 10, 7, 9, 0, 0, DateTimeKind.Utc);
+
+        var locked = Enumerable.Range(0, 3).Select(_ => user.RecordFailedLogin(now, 3, TimeSpan.FromMinutes(15))).ToList();
+
+        locked.Should().Equal(false, false, true);
+        user.IsLockedOut(now.AddMinutes(14)).Should().BeTrue();
+        user.IsLockedOut(now.AddMinutes(15)).Should().BeFalse();
+    }
+
+    [Fact]
+    public void RecordFailedLogin_AfterLockExpired_StartsFreshCount()
+    {
+        var user = new User("u1", "User", "hash", false);
+        var now = new DateTime(2026, 10, 7, 9, 0, 0, DateTimeKind.Utc);
+        for (var i = 0; i < 5; i++)
+        {
+            user.RecordFailedLogin(now, 5, TimeSpan.FromMinutes(15));
+        }
+
+        var lockedAgain = user.RecordFailedLogin(now.AddMinutes(16), 5, TimeSpan.FromMinutes(15));
+
+        lockedAgain.Should().BeFalse();
+        user.FailedLoginCount.Should().Be(1);
+        user.IsLockedOut(now.AddMinutes(16)).Should().BeFalse();
     }
 
     [Fact]

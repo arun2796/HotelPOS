@@ -1,6 +1,5 @@
 namespace HotelPOS.Contracts.Common;
 
-/// <summary>One error entry inside an <see cref="ApiResponse{T}"/>.</summary>
 public sealed record ApiError
 {
     public string Code { get; init; } = ErrorCodes.ServerError;
@@ -19,7 +18,6 @@ public sealed record ApiError
     }
 }
 
-/// <summary>Envelope returned by every API endpoint.</summary>
 public sealed record ApiResponse<T>
 {
     public bool Success { get; init; }
@@ -29,7 +27,6 @@ public sealed record ApiResponse<T>
     public string? CorrelationId { get; init; }
 }
 
-/// <summary>Factory helpers for <see cref="ApiResponse{T}"/>.</summary>
 public static class ApiResponse
 {
     public static ApiResponse<T> Ok<T>(T data, string? message = null, string? correlationId = null) => new()

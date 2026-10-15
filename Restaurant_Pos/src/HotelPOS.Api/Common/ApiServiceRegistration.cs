@@ -5,7 +5,9 @@ using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Security;
 using HotelPOS.Contracts.Common;
+using HotelPOS.Contracts.Security;
 using HotelPOS.Infrastructure.Identity;
+using HotelPOS.Infrastructure.Media;
 using HotelPOS.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -37,7 +39,15 @@ public static class ApiServiceRegistration
             .Validate(o => o.AccessTokenMinutes > 0 && o.RefreshTokenHours > 0, "Jwt token lifetimes must be positive.")
             .ValidateOnStart();
 
-        services.AddControllers(options => options.Filters.Add<ValidationFilter>())
+        services.PostConfigure<MediaOptions>(o =>
+        {
+            if (string.IsNullOrWhiteSpace(o.RootPath))
+            {
+                o.RootPath = Path.Combine(environment.ContentRootPath, "media");
+            }
+        });
+
+        services.AddControllers()
             .AddJsonOptions(options => PosJson.Apply(options.JsonSerializerOptions))
             .ConfigureApiBehaviorOptions(options => options.InvalidModelStateResponseFactory = InvalidModelState);
 
@@ -51,9 +61,19 @@ public static class ApiServiceRegistration
             })
             .AddJsonProtocol(options => PosJson.Apply(options.PayloadSerializerOptions));
         services.AddSingleton<ConnectionTracker>();
+        services.AddSingleton<IOnlineDeviceTracker>(sp => sp.GetRequiredService<ConnectionTracker>());
         services.AddSingleton<IRealtimeNotifier, SignalRRealtimeNotifier>();
+        services.Configure<LoginRateLimitOptions>(configuration.GetSection(LoginRateLimitOptions.SectionName));
+        services.AddSingleton<LoginRateLimiter>();
+        services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
 
-        services.AddHealthChecks().AddDbContextCheck<AppDbContext>("database");
+        services.AddOptions<MonitoringOptions>().Bind(configuration.GetSection(MonitoringOptions.SectionName));
+        services.AddSingleton<LogTailReader>();
+        services.AddSingleton<ILogTailSource>(sp => sp.GetRequiredService<LogTailReader>());
+        services.AddSingleton<IExtraMonitoredPath, BackupFolderPath>();
+        services.AddHealthChecks()
+            .AddDbContextCheck<AppDbContext>("database")
+            .AddCheck<DiskSpaceHealthCheck>("disk");
 
         if (environment.IsDevelopment())
         {
@@ -77,6 +97,10 @@ public static class ApiServiceRegistration
             {
                 Status = report.Status.ToString(),
                 Checks = report.Entries.ToDictionary(e => e.Key, e => e.Value.Status.ToString()),
+                Problems = report.Entries
+                    .Where(e => e.Value.Status != HealthStatus.Healthy)
+                    // Descriptions only: /health is anonymous and exception messages can carry connection details.
+                    .ToDictionary(e => e.Key, e => e.Value.Description ?? e.Value.Status.ToString()),
                 ServerTimeUtc = DateTime.UtcNow,
                 ApiVersion,
             },
@@ -147,6 +171,12 @@ public static class ApiServiceRegistration
         {
             // Secure by default: an endpoint without [Authorize]/[AllowAnonymous] still requires a login.
             options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
+
+            foreach (var permission in Permissions.All)
+            {
+                options.AddPolicy(permission, policy =>
+                    policy.AddRequirements(new PermissionRequirement(permission)));
+            }
         });
     }
 

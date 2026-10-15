@@ -9,7 +9,6 @@ public interface IClientSettingsService
 {
     ClientSettings Current { get; }
 
-    /// <summary>Path of the file the settings were loaded from or last saved to.</summary>
     string? FilePath { get; }
 
     event EventHandler? Changed;

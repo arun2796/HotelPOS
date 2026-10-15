@@ -1,6 +1,5 @@
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Domain.Administration;
-using HotelPOS.Domain.Billing;
 using HotelPOS.Domain.Menu;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -62,13 +61,19 @@ internal sealed class PreparationStationConfiguration : IEntityTypeConfiguration
     }
 }
 
-internal sealed class PaymentMethodConfiguration : IEntityTypeConfiguration<PaymentMethod>
+internal sealed class BackupConfiguration : IEntityTypeConfiguration<Backup>
 {
-    public void Configure(EntityTypeBuilder<PaymentMethod> builder)
+    public void Configure(EntityTypeBuilder<Backup> builder)
     {
-        builder.ToTable("PaymentMethods");
-        builder.Property(p => p.Name).HasMaxLength(50).IsRequired();
-        builder.Property(p => p.Code).HasMaxLength(20).IsRequired();
-        builder.HasIndex(p => p.Code).IsUnique();
+        builder.ToTable("Backups", t =>
+        {
+            t.HasCheckConstraint("CK_Backups_Status", ConfigurationHelpers.EnumCheck<BackupStatus>("Status"));
+            t.HasCheckConstraint("CK_Backups_Trigger", ConfigurationHelpers.EnumCheck<BackupTrigger>("Trigger"));
+        });
+        builder.Property(b => b.FileName).HasMaxLength(200).IsRequired();
+        builder.Property(b => b.MediaFileName).HasMaxLength(200);
+        builder.Property(b => b.TriggeredBy).HasMaxLength(50);
+        builder.Property(b => b.Error).HasMaxLength(1000);
+        builder.HasIndex(b => b.StartedAt);
     }
 }

@@ -1,6 +1,6 @@
 # Phase 9 — Security, Permissions & Audit
 
-Status: Not started · Depends on: Phases 1–6
+Status: In progress (started 2026-10-08; review and fixes 2026-10-14) · Depends on: Phases 1–6
 
 ## 1. Goal
 
@@ -106,22 +106,29 @@ device before dropping its connection.
 
 ## 11. Manual security review checklist
 
-- [ ] All endpoints require authentication except login, refresh, health, system info.
-- [ ] Waiter cannot reach admin/settings/users; Kitchen cannot reach billing; Cashier cannot write
-      menu (verified by the matrix test).
-- [ ] Passwords hashed (PBKDF2, ≥ 100k iterations); no plaintext anywhere; tokens not logged.
-- [ ] JWT key ≥ 256 bits, generated per installation, stored only on the server.
-- [ ] SQL Server not reachable from client PCs (firewall test).
-- [ ] Input validation on every request; file uploads type/size checked.
-- [ ] Error responses never leak stack traces outside Development.
-- [ ] Audit log cannot be modified through the API.
+- [x] All endpoints require authentication except login, refresh, approval, health, system info
+      (fallback policy `RequireAuthenticatedUser`; `AuthorizationTests` covers unknown routes).
+- [x] Waiter cannot reach admin/settings/users; Kitchen cannot reach billing; Cashier cannot write
+      menu (`AuthorizationMatrixTests`: every endpoint × every role against `authorization-matrix.txt`).
+- [x] Passwords hashed with ASP.NET Core Identity PBKDF2 (100k iterations); never stored or logged in plain
+      text; approval passwords never logged; refresh tokens stored hashed.
+- [x] JWT key ≥ 256 bits from `Jwt:SigningKey` (installer-generated in Phase 10; dev key only in
+      `appsettings.Development.json`).
+- [ ] PostgreSQL not reachable from client PCs — needs the firewall test on the venue network (Phase 10 install checklist).
+- [x] Input validation on every request (FluentValidation filter); image uploads checked for type and size (Phase 3).
+- [x] Error responses never leak stack traces outside Development (`ExceptionHandlingMiddleware`).
+- [x] Audit log cannot be modified through the API (read and CSV export only; the retention job is server-side).
 
 ## 12. Acceptance criteria
 
-- [ ] Permission matrix editable and enforced; lockout, rate limiting, device control working.
-- [ ] Audit viewer shows a complete trail for the end-to-end scenario.
-- [ ] Security checklist completed and recorded in this document.
-- [ ] Definition of Done satisfied.
+- [x] Permission matrix editable and enforced (every defined permission is checked; `backup.manage` waits for
+      the Phase 10 backup endpoints). Guarded by `AuthorizationMatrixTests` + `authorization-matrix.txt`.
+- [x] Lockout and rate limiting working (fixes of 2026-10-14 in § 14).
+- [x] Device control — REST 403, new hub connects refused, open hub connections closed after `ServerNotice`.
+- [x] Audit viewer shows a complete trail for the end-to-end scenario (`AuditCompleteness_EndToEndScenario_*`:
+      exact trail, each action once).
+- [x] Security checklist completed and recorded in this document (one item deferred to the install checklist).
+- [ ] Definition of Done satisfied (open items in § 15).
 
 ## 13. Risks and notes
 
@@ -132,4 +139,124 @@ device before dropping its connection.
 
 ## 14. Changes during implementation
 
-(fill in while building)
+- **Permissions in the token.** Role permissions are loaded from `RolePermissions` at login and refresh and
+  carried as claims; `PermissionAuthorizationHandler` checks the claim (Admin always passes). Endpoints now
+  use `[Authorize(Policy = Permissions.X)]` for orders, kitchen, menu, floor, billing, discounts, users,
+  roles, settings, reports, devices and audit logs. Endpoints whose audience is not one permission (waiter
+  read of a bill, kitchen runners, print documents, request-bill, payment-method/tax/station writes) keep
+  role attributes. Defaults seeded per role equal the Phase 1 map, so the matrix tests did not change.
+- A class-level role attribute combined with a method-level one must *both* pass in ASP.NET Core; the
+  billing controller had that combination and was silently refusing waiters on `GET /api/billing/{id}`.
+  The class now carries `[Authorize]` only and each desk action its own policy.
+- **Approval tokens** live in server memory (lost on restart, which only cancels tokens younger than two
+  minutes). `ManagerApprovalService` takes an explicit action type (`ApprovalActions`) rather than guessing
+  it from the message; the bill endpoints pass `discount`, `void`, `refund` or `reopen`.
+- **Rate limiter** uses the socket address only; `X-Forwarded-For` is ignored because a client could choose
+  its own bucket with it. Per-username limiting remains the primary control (one venue = one NAT address).
+- **Device enforcement** caches the deactivated flag per device in memory (`IDeviceAccessCache`) and drops
+  it on activate/deactivate, so the per-request check does not query the database every time.
+- **Audit retention**: `AuditRetentionDays` (0 = keep all) drives a six-hourly server job; nothing else
+  deletes audit rows.
+- New settings: `LockoutThreshold` (5), `LockoutMinutes` (15), `AuditRetentionDays` (0).
+
+**Review of 2026-10-14.** The work above was written on 2026-10-08 but never committed; it was brought onto
+branch `phase-09-security-and-audit`, reviewed against this document, and these defects were fixed:
+
+- **Permission edits did not survive a restart.** `DbSeeder` re-added every default permission missing from a
+  role on each start, and `PermissionService` fell back to the default map for a role with no rows. Defaults are
+  now seeded only for roles the seeder creates; the `Phase09_Security` migration back-fills databases whose roles
+  existed before Phase 9; the database is the only source afterwards (an emptied role stays empty).
+- **Lockout re-locked after it expired.** `FailedLoginCount` survived the lock, so the first typo after 15
+  minutes locked the account again. `User.RecordFailedLogin(now, threshold, duration)` now starts a fresh count
+  after an expired lock; attempts against a locked account are audited (`Auth.LoginFailed`, reason `Locked`).
+- **Approval endpoint allowed unlimited password guessing.** `POST /api/auth/approval` is anonymous, was not
+  rate-limited and did not count failures. Wrong passwords now count towards the same lockout as login
+  (`LoginFailures`), and the endpoint is rate-limited by `approverUsername`.
+- **Rate limiter**: a trailing slash or other casing (`/api/auth/login/`) skipped it; its dictionaries never
+  shrank; check and record were not atomic; a bare `catch` hid every error. All fixed.
+- **Approval token** with a null or unknown `actionType` gave a 500 (now 400 from `ApprovalTokenRequestValidator`);
+  a token presented for the wrong action was spent anyway (now rejected without being spent).
+- **Device cache race**: the cache entry was dropped before the commit, so a request in between could cache
+  "active" for good. The new state is now written to the cache after the commit.
+- **Audit CSV formula injection**: cells starting with `= + - @` (e.g. the username of a failed login) are
+  prefixed with `'`.
+- **Privilege escalation**: a non-Admin holding `users.manage` could create an Admin account or reset an
+  admin's password. Admin accounts and the Admin role can now be managed by Admins only.
+
+**Second round, 2026-10-14** (items closed from § 15):
+
+- **Disabled devices lose live connections.** `ConnectionTracker` keeps each connection's context; deactivation
+  sends `ServerNotice`, waits 500 ms and aborts the device's connections. The hub tracks a connection before
+  checking its device, so a deactivation committed during the check still closes it.
+- **Presence**: `DeviceStatusChanged` also fires when a device's first connection opens or its last one closes,
+  with `isActive` read back from the database (a disconnect caused by deactivation is not announced as active).
+- **Permissions are enforced, not just stored.** `ICurrentUser.HasPermission` (Admin always true).
+  `orders.cancel.any` and `orders.edit.any` replace the Manager role checks in `OrderService`; `billing.discount`
+  guards applying/clearing a discount; `tables.view` and `menu.view` guard the floor and menu reads.
+  `ApprovalRules`: a caller holding `billing.void` voids or reopens without approval and only holders may approve
+  it; the same for `billing.refund`. An over-limit discount has no permission of its own, so its approval stays with
+  the Manager and Admin roles.
+- Kitchen's default set gained `tables.view`: the table map has been readable by every role since Phase 2.
+- **Matrix test**: `AuthorizationMatrixTests` derives who may call each of the ~130 controller endpoints from the
+  `[Authorize]` metadata and the default sets, compares it with the reviewed `authorization-matrix.txt`, calls every
+  denied cell over HTTP (must be 403) and checks every allowed cell with the real authorization service.
+- Inline manager credentials count towards lockout like login and approval tokens.
+- Password complexity (letters and digits) on create, reset and change; validators for `UpdateDeviceRequest`
+  and `UpdateRolePermissionsRequest` (unknown permissions are rejected, not silently dropped).
+- Audit retention runs one minute after start, then every six hours, and records `Audit.Purged`.
+
+**Third round, 2026-10-14** (desktop and tests):
+
+- **Approval tokens on the desktop.** `Approvals.WithApprovalAsync` exchanges the manager's credentials once at
+  `POST /api/auth/approval` (bound to the action type) and sends only the token with the void/refund/reopen/discount
+  call, so a retried or logged business request never carries the password. Locked and rate-limited answers get
+  their own message.
+- **Disabled terminal mid-session.** The navigator signs out on `ServerNotice` with `DEVICE_DISABLED`, and
+  `AuthDelegatingHandler` does the same on any 403 `DEVICE_DISABLED` (body buffered so callers still read it).
+- **Devices screen**: assign a kitchen station (`DeviceDto.StationName` shown); renames and presence applied from
+  `DeviceStatusChanged`, last-seen moved only on an online/offline edge. Fixed: success was judged by
+  `Data != null`, but update/activate/deactivate answer without data, so every success showed an error toast.
+  Unknown station ids are a validation error (was a 500 from the foreign key).
+- **Audit Log**: user and terminal filters (server gained `deviceName`), custom date range, local days for every
+  preset (was the UTC date), before/after side by side, and the CSV export sends the same filters as the grid (it
+  dropped user, terminal and entity id). `AuditLogQuery` is validated (page size at most 200).
+- **Users**: the sessions list shows unrevoked, unexpired tokens only (each refresh rotates the token, so revoked
+  rows were mostly rotations) in local time; password hint; complexity checked on reset and change.
+- **Navigation follows permissions** (`ModuleRegistry.ForUser`); with the default sets every role sees the same
+  modules as before (tested per role). `RolePermissionMap` moved to `HotelPOS.Contracts.Security` so the desktop
+  and its tests share the default sets.
+- **Audit completeness**: the end-to-end scenario (order, kitchen, bill, discount, finalize, payment, reprint,
+  refund with an approval token) must leave exactly its expected trail on its order, tickets and bill, each action
+  once. Kitchen ticket actions became `AuditActions` constants.
+- **Static checks** run with `dotnet test` (`StaticSecurityChecksTests`: no `*Raw` SQL APIs, `SqlQuery`/`ExecuteSql`
+  only with an interpolated literal). `dotnet list package --vulnerable` found CVE-2026-70159 (SignalR DoS) in
+  `Microsoft.AspNetCore.SignalR.Common` 8.0.31; ASP.NET Core packages raised to 8.0.32, scan clean.
+
+- **Protected core permissions (2026-10-15).** Each built-in role has a minimum set in `RolePermissionMap.CoreFor` (Contracts, shared by server and desktop): Manager keeps tables, menu view, orders (create, edit any, cancel any), billing (operate, void, refund) and reports; Waiter tables view, menu view, orders create; Kitchen menu view and kitchen operate; Cashier tables view, billing operate, shift operate. `UpdateRolePermissions` rejects a system role update that drops any of them (400 validation, message lists the missing keys); custom roles are free. `RolePermissionsDto.CorePermissions` carries the set; the Roles screen shows them checked and locked with a lock icon and the tooltip "Core permission for this system role". The screen also stopped treating every system role as read-only (only Admin is) and lists the Phase 13 to 16 permissions so a save no longer drops them.
+
+- **Configurable password rule (2026-10-15).** Stored in the existing admin settings store (no migration; `DbSeeder` adds missing keys): `PasswordMinLength` (8 to 100, enforced on save), `PasswordRequireLetter`, `PasswordRequireDigit`, `PasswordRequireUpperAndLower`, `PasswordRequireSymbol`, edited on the Settings screen and audited as `Settings.Updated`. Defaults equal the old rule (8 characters, letters and digits). `PasswordRules` (Contracts) evaluates and describes the rule; create-user, reset and change-password validators read it through `IPasswordPolicySource` and answer with the actual rule ("Password must be at least 12 characters and contain letters, digits and a symbol."). The keys are public settings, so the desktop reads them from `GET /api/settings` (no new endpoint): the user editor, reset prompt and change-password screen show the rule as a hint and check it client-side; if the server cannot be asked the client checks nothing and shows the server message. Login and approval tokens still only cap the length.
+
+**Found during Phase 10 (2026-10-14).** Deactivating a user revoked their refresh tokens, but the access token they
+already held kept working for up to an hour, and their hub connections stayed open. `AccessEnforcementMiddleware`
+(was `DeviceEnforcementMiddleware`) now refuses a deactivated user on every request with 403 `ACCOUNT_DISABLED`
+(cached like devices, set after the admin's commit); the hub refuses their new connections and the deactivation
+closes the open ones; the desktop signs out with the reason, as for a disabled terminal.
+
+## 15. Remaining work (open)
+
+Server
+- [x] A disabled terminal can log in under a different device name (device identity is self-declared).
+      **Accepted v1 risk (decided 2026-10-14):** a valid user account is still required, every action is audited
+      with user and device, and admins can disable the user. Device binding (a per-terminal secret) can come with
+      the Phase 10 installer.
+- [x] Protected core permission set for the non-Admin system roles (spec § 3), see § 14 (2026-10-15).
+- [x] Password complexity configurable, see § 14 (2026-10-15).
+- [x] Secrets in the repository: the PostgreSQL password left `appsettings.Development.json` and
+      `tests/Shared/TestPostgres.cs` (now user-secrets and `HOTELPOS_TEST_POSTGRES`, see `docs/dev-setup.md`);
+      `StaticSecurityChecksTests` fails on any committed connection-string password. Earlier commits still contain
+      the old value, so it should be changed if it is used anywhere else.
+- [ ] Server PCs must run ASP.NET Core runtime 8.0.32 or later (the server's SignalR comes from the shared
+      runtime, not from NuGet); add to the Phase 10 install checklist.
+
+Manual
+- [ ] Demo script (§ 11 of the template) on two machines, including a network pull during lockout/approval.

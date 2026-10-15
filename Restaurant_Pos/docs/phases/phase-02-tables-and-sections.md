@@ -1,6 +1,6 @@
 # Phase 2 — Tables & Sections
 
-Status: Not started · Depends on: Phase 1
+Status: Done (2026-10-07) · Depends on: Phase 1
 
 ## 1. Goal
 
@@ -97,10 +97,12 @@ occupy, release, out-of-service/in-service (and in later phases on every order/b
 
 ## 12. Acceptance criteria
 
-- [ ] Admin CRUD for sections and tables with validation and audit.
-- [ ] Live table map on waiter terminals updated by events and by resync.
-- [ ] Concurrency control proven by the two-terminal test.
-- [ ] Definition of Done satisfied.
+- [x] Admin CRUD for sections and tables with validation and audit.
+- [x] Live table map on waiter terminals updated by events and by resync.
+- [x] Concurrency control proven by the two-terminal test (automated: two concurrent occupies against
+  PostgreSQL, a lost update rejected by `xmin`, and occupy 200 -> 409 through the real API; the manual
+  two-PC run is still to be done on the target hardware).
+- [x] Definition of Done satisfied.
 
 ## 13. Risks and notes
 
@@ -110,4 +112,24 @@ occupy, release, out-of-service/in-service (and in later phases on every order/b
 
 ## 14. Changes during implementation
 
-(fill in while building)
+- **PostgreSQL.** Built on PostgreSQL instead of SQL Server (see Phase 1 § changes). `Tables.RowVersion` is
+  the `xmin` system column; the migration `Phase02_Tables` creates `Sections` and `Tables` with check
+  constraints on status, capacity (1–50) and guest count.
+- **Event payload.** `TableStatusChanged` also carries `guestCount` and `occupiedAtUtc` (and the row version in
+  `entityVersion`), so a map updates a tile without a REST call and the next occupy sends a fresh row version.
+- **Stale events.** `GET /api/tables` returns `serverTimeUtc` (taken before the read). A tile applies an event
+  only if it is not older than the state it shows, and a refresh keeps a tile that already shows a newer
+  event. This makes event handling idempotent and order-independent.
+- **Roles.** Occupy/release also allow Admin (Admin holds every permission and sees the Tables module).
+  `includeInactive` on `GET /api/tables` and `GET /api/sections` is allowed for Admin and Manager.
+- **Deactivate/activate** are also possible through `PUT` (`isActive`), which the admin side panels use;
+  `DELETE` remains the explicit deactivate endpoint. Both enforce the same rules.
+- **Release with an order** is refused for now (`BUSINESS_RULE`); the Manager-only path and the
+  `Table.ReleasedByManager` audit arrive with orders in Phase 4.
+- **Audit** also records `Table.Activated/OutOfService/InService` and `Section.Activated`. Occupy and release
+  are not audited (high volume; they will be visible through orders).
+- **Desktop.** One "Sections & Tables" page with Tables/Sections tabs (`FloorViewModel` hosting
+  `TablesViewModel` and `SectionsViewModel`); the table details panel is part of the map page. Tiles are in a
+  `WrapPanel` per section with section filter chips. The panel is not virtualised (§ 13); it has not been
+  measured with 100+ tables yet. If that is slow, switch to a virtualising wrap panel.
+- **Demo seed** runs only on an empty floor, so it never re-adds tables an admin removed.

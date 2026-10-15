@@ -1,21 +1,25 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using HotelPOS.Desktop.Services.Configuration;
+using HotelPOS.Desktop.Services.Printing;
 using HotelPOS.Desktop.Services.Realtime;
 
 namespace HotelPOS.Desktop.Shell;
 
-/// <summary>Bottom bar: live connection indicator (green / amber / red), server, terminal and version.</summary>
 public sealed partial class StatusBarViewModel : ObservableObject, IDisposable
 {
     private readonly IRealtimeClient _realtime;
     private readonly IClientSettingsService _settings;
+    private readonly IPrintQueue _printQueue;
 
-    public StatusBarViewModel(IRealtimeClient realtime, IClientSettingsService settings)
+    public StatusBarViewModel(IRealtimeClient realtime, IClientSettingsService settings, IPrintQueue printQueue)
     {
         _realtime = realtime;
         _settings = settings;
+        _printQueue = printQueue;
         _status = realtime.Status;
         _realtime.StatusChanged += OnStatusChanged;
+        _printQueue.Changed += OnPrintQueueChanged;
     }
 
     [ObservableProperty]
@@ -41,7 +45,23 @@ public sealed partial class StatusBarViewModel : ObservableObject, IDisposable
 
     public string Version => "v" + AppInfo.Version;
 
-    public void Dispose() => _realtime.StatusChanged -= OnStatusChanged;
+    public int FailedPrintCount => _printQueue.FailedCount;
+
+    public bool HasFailedPrints => FailedPrintCount > 0;
+
+    public string FailedPrintText => FailedPrintCount == 1 ? "1 print failed" : $"{FailedPrintCount} prints failed";
+
+    public void Dispose()
+    {
+        _realtime.StatusChanged -= OnStatusChanged;
+        _printQueue.Changed -= OnPrintQueueChanged;
+    }
+
+    [RelayCommand]
+    private void RetryPrints() => _printQueue.RetryAll();
+
+    [RelayCommand]
+    private void DiscardPrints() => _printQueue.DiscardAll();
 
     private void OnStatusChanged(object? sender, ConnectionStatus status)
     {
@@ -50,5 +70,12 @@ public sealed partial class StatusBarViewModel : ObservableObject, IDisposable
         {
             LastConnectedAt = DateTime.Now;
         }
+    }
+
+    private void OnPrintQueueChanged(object? sender, EventArgs e)
+    {
+        OnPropertyChanged(nameof(FailedPrintCount));
+        OnPropertyChanged(nameof(HasFailedPrints));
+        OnPropertyChanged(nameof(FailedPrintText));
     }
 }

@@ -1,6 +1,5 @@
 namespace HotelPOS.Domain.Common;
 
-/// <summary>Creation/modification stamps, filled in automatically when changes are saved.</summary>
 public interface IAuditable
 {
     DateTime CreatedAt { get; set; }
@@ -9,13 +8,11 @@ public interface IAuditable
     int? UpdatedBy { get; set; }
 }
 
-/// <summary>Entity protected by an optimistic-concurrency token (SQL Server rowversion).</summary>
 public interface IHasRowVersion
 {
-    byte[] RowVersion { get; set; }
+    uint RowVersion { get; set; }
 }
 
-/// <summary>Base class for entities with an int identity key.</summary>
 public abstract class BaseEntity : IAuditable
 {
     public int Id { get; set; }

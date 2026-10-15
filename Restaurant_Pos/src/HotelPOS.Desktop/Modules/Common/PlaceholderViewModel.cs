@@ -3,7 +3,6 @@ using HotelPOS.Desktop.Services.Navigation;
 
 namespace HotelPOS.Desktop.Modules.Common;
 
-/// <summary>Shown for modules that are planned but not built yet.</summary>
 public sealed class PlaceholderViewModel : ObservableObject
 {
     public PlaceholderViewModel(ModuleDefinition module)

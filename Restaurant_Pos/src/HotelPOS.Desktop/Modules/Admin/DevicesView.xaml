@@ -1,0 +1,118 @@
+<UserControl x:Class="HotelPOS.Desktop.Modules.Admin.DevicesView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:admin="clr-namespace:HotelPOS.Desktop.Modules.Admin"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance admin:DevicesViewModel}"
+             d:DesignWidth="1100" d:DesignHeight="700">
+
+  <Grid Margin="24">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <Grid Margin="0,0,0,16">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+      <StackPanel>
+        <TextBlock Text="Terminal &amp; Device Management" Style="{StaticResource Text.Title}" FontSize="20" />
+        <TextBlock Text="View connected terminals, track online status, rename, and manage terminal authorizations."
+                   Style="{StaticResource Text.Caption}" FontSize="13" Margin="0,4,0,0" />
+      </StackPanel>
+      <Button Grid.Column="1" Command="{Binding RefreshCommand}" ToolTip="Reload from server">
+        <TextBlock Text="&#xE72C;" Style="{StaticResource Text.Icon}" />
+      </Button>
+    </Grid>
+
+    <Border Grid.Row="1" Style="{StaticResource Banner.Error}" Margin="0,0,0,12"
+            Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibility}}">
+      <TextBlock Text="{Binding ErrorMessage}" Style="{StaticResource Text.Error}" />
+    </Border>
+
+    <Grid Grid.Row="2">
+      <DataGrid ItemsSource="{Binding Devices}" SelectedItem="{Binding SelectedDevice}" HorizontalScrollBarVisibility="Disabled">
+        <DataGrid.Columns>
+          <!-- Online status -->
+          <DataGridTemplateColumn Header="LIVE" Width="80">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate>
+                <Border CornerRadius="4" Padding="6,2" HorizontalAlignment="Left" VerticalAlignment="Center">
+                  <Border.Style>
+                    <Style TargetType="Border">
+                      <Setter Property="Background" Value="{DynamicResource Brush.SurfaceSubtle}" />
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsOnline}" Value="True">
+                          <Setter Property="Background" Value="{DynamicResource Brush.SuccessSoft}" />
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </Border.Style>
+                  <StackPanel Orientation="Horizontal">
+                    <Ellipse Width="7" Height="7" VerticalAlignment="Center">
+                      <Ellipse.Style>
+                        <Style TargetType="Ellipse">
+                          <Setter Property="Fill" Value="{DynamicResource Brush.TextSecondary}" />
+                          <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsOnline}" Value="True">
+                              <Setter Property="Fill" Value="{DynamicResource Brush.Success}" />
+                            </DataTrigger>
+                          </Style.Triggers>
+                        </Style>
+                      </Ellipse.Style>
+                    </Ellipse>
+                    <TextBlock FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center">
+                      <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                          <Setter Property="Text" Value="Offline" />
+                          <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+                          <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsOnline}" Value="True">
+                              <Setter Property="Text" Value="Online" />
+                              <Setter Property="Foreground" Value="{DynamicResource Brush.Success}" />
+                              <Setter Property="FontWeight" Value="SemiBold" />
+                            </DataTrigger>
+                          </Style.Triggers>
+                        </Style>
+                      </TextBlock.Style>
+                    </TextBlock>
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+
+          <DataGridTextColumn Header="NAME" Binding="{Binding Name}" Width="1.5*" MinWidth="130" />
+          <DataGridTextColumn Header="TYPE" Binding="{Binding Type}" Width="1*" MinWidth="90" />
+          <DataGridTextColumn Header="STATION" Binding="{Binding StationName, TargetNullValue='—'}" Width="1.2*" MinWidth="100" />
+          <DataGridTextColumn Header="MACHINE" Binding="{Binding MachineName}" Width="1.2*" MinWidth="100" />
+          <DataGridTextColumn Header="VERSION" Binding="{Binding AppVersion}" Width="0.8*" MinWidth="70" />
+          <DataGridTextColumn Header="STATUS" Binding="{Binding IsActive, Converter={StaticResource ActiveText}}" Width="0.8*" MinWidth="75" />
+          <DataGridTextColumn Header="LAST SEEN" Binding="{Binding LastSeenAtUtc, Converter={StaticResource UtcToLocal}}" Width="1.3*" MinWidth="130" />
+        </DataGrid.Columns>
+      </DataGrid>
+
+      <ProgressBar IsIndeterminate="True" Height="3" VerticalAlignment="Top"
+                   Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}" />
+    </Grid>
+
+    <!-- Bottom Actions -->
+    <Grid Grid.Row="3" Margin="0,14,0,0">
+      <StackPanel Orientation="Horizontal">
+        <Button Content="Rename terminal" Command="{Binding RenameCommand}" MinWidth="130" />
+        <Button Content="{Binding ToggleActiveText}" Command="{Binding ToggleActiveCommand}" Margin="8,0,0,0" MinWidth="120" />
+        <TextBlock Text="Kitchen station" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="24,0,8,0" />
+        <ComboBox ItemsSource="{Binding Stations}" SelectedItem="{Binding SelectedStation}" DisplayMemberPath="Name"
+                  MinWidth="220" IsEnabled="{Binding HasSelection}" />
+        <Button Content="Assign station" Command="{Binding AssignStationCommand}" Margin="8,0,0,0" MinWidth="130" />
+      </StackPanel>
+    </Grid>
+  </Grid>
+</UserControl>
+

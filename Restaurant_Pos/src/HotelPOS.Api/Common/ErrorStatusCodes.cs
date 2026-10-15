@@ -2,7 +2,6 @@ using HotelPOS.Contracts.Common;
 
 namespace HotelPOS.Api.Common;
 
-/// <summary>Maps application error codes to HTTP status codes (docs/03-api-reference.md § 2).</summary>
 public static class ErrorStatusCodes
 {
     private static readonly IReadOnlyDictionary<string, int> Map = new Dictionary<string, int>(StringComparer.Ordinal)
@@ -27,6 +26,14 @@ public static class ErrorStatusCodes
         [ErrorCodes.ApprovalRequired] = StatusCodes.Status409Conflict,
         [ErrorCodes.ApprovalInvalid] = StatusCodes.Status409Conflict,
         [ErrorCodes.PaymentExceedsBalance] = StatusCodes.Status409Conflict,
+        [ErrorCodes.ShiftRequired] = StatusCodes.Status409Conflict,
+        [ErrorCodes.ShiftAlreadyOpen] = StatusCodes.Status409Conflict,
+        [ErrorCodes.DayClosed] = StatusCodes.Status409Conflict,
+        [ErrorCodes.PeriodClosed] = StatusCodes.Status409Conflict,
+        [ErrorCodes.LicenseTerminalLimit] = StatusCodes.Status403Forbidden,
+        [ErrorCodes.LicenseExpired] = StatusCodes.Status403Forbidden,
+        [ErrorCodes.ImportHasErrors] = StatusCodes.Status422UnprocessableEntity,
+        [ErrorCodes.VarianceApprovalRequired] = StatusCodes.Status409Conflict,
         [ErrorCodes.BusinessRule] = StatusCodes.Status422UnprocessableEntity,
         [ErrorCodes.RateLimited] = StatusCodes.Status429TooManyRequests,
         [ErrorCodes.ServerError] = StatusCodes.Status500InternalServerError,

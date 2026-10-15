@@ -1,3 +1,4 @@
+using HotelPOS.Desktop.Modules.Auth;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Auth;
 using HotelPOS.Desktop.Services.Configuration;
@@ -6,20 +7,27 @@ using Microsoft.Extensions.Logging;
 
 namespace HotelPOS.Desktop.Shell;
 
-/// <summary>Decides the first screen: configuration (first run), the resumed session, or login.</summary>
 public sealed class StartupFlow
 {
     private readonly IClientSettingsService _settings;
     private readonly IAuthSession _session;
     private readonly IAuthApi _authApi;
+    private readonly ISystemApi _systemApi;
     private readonly IAppNavigator _navigator;
     private readonly ILogger<StartupFlow> _logger;
 
-    public StartupFlow(IClientSettingsService settings, IAuthSession session, IAuthApi authApi, IAppNavigator navigator, ILogger<StartupFlow> logger)
+    public StartupFlow(
+        IClientSettingsService settings,
+        IAuthSession session,
+        IAuthApi authApi,
+        ISystemApi systemApi,
+        IAppNavigator navigator,
+        ILogger<StartupFlow> logger)
     {
         _settings = settings;
         _session = session;
         _authApi = authApi;
+        _systemApi = systemApi;
         _navigator = navigator;
         _logger = logger;
     }
@@ -30,6 +38,15 @@ public sealed class StartupFlow
         {
             _logger.LogInformation("No server configured on this terminal; showing first-run configuration");
             await _navigator.ShowConfigurationAsync(isFirstRun: true);
+            return;
+        }
+
+        // An unreachable server does not block here: the login screen and the connection indicator handle that.
+        var info = await _systemApi.GetInfoAsync();
+        if (info.Success && info.Data is not null && !VersionGate.IsSupported(AppInfo.Version, info.Data.MinClientVersion))
+        {
+            _logger.LogWarning("Client {Version} is older than the server's minimum {Minimum}", AppInfo.Version, info.Data.MinClientVersion);
+            await _navigator.ShowUpdateRequiredAsync(info.Data);
             return;
         }
 

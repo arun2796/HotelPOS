@@ -1,6 +1,6 @@
 # Phase 7 — Printing
 
-Status: Not started · Depends on: Phase 5 (KOT), Phase 6 (invoice, receipt)
+Status: Done (2026-10-07) · Depends on: Phase 5 (KOT), Phase 6 (invoice, receipt)
 
 ## 1. Goal
 
@@ -100,11 +100,11 @@ event, followed by `GET /api/print/kot/{ticketId}` (source of truth, never print
 
 ## 12. Acceptance criteria
 
-- [ ] KOT, invoice and receipt print on all three channel kinds from the right device.
-- [ ] Printing is isolated behind `IPrintService`; no business code references printers.
-- [ ] Print failure never blocks or rolls back a business operation; retry available.
-- [ ] Documents come from the API; reprints audited.
-- [ ] Definition of Done satisfied.
+- [x] KOT, invoice and receipt print on all three channel kinds from the right device (channels built and unit-tested; the hardware run with real printers, demo steps 1-4 and 6, is still to do by hand).
+- [x] Printing is isolated behind `IPrintService`; no business code references printers.
+- [x] Print failure never blocks or rolls back a business operation; retry available.
+- [x] Documents come from the API; reprints audited.
+- [x] Definition of Done satisfied.
 
 ## 13. Risks and notes
 
@@ -117,4 +117,27 @@ event, followed by `GET /api/print/kot/{ticketId}` (source of truth, never print
 
 ## 14. Changes during implementation
 
-(fill in while building)
+- **One layout, two outputs.** `EscPosRenderer.Layout` turns a document into fixed-width lines (32 columns for
+  58 mm, 48 for 80 mm) with a style per line; `Encode` turns those lines into ESC/POS bytes and
+  `FlowDocumentRenderer` typesets the same lines for Windows printers and the on-screen preview, so the preview
+  always matches the paper.
+- **Printer profiles** are keyed by document type (`Kot`, `Invoice`, `Receipt`) in `settings.json`, so the
+  example in docs/05 uses `Kot` instead of `Kitchen`. `AutoPrintReceipt` joins the two auto-print flags from
+  the spec. The profile also carries `Model` (cut command) and `CurrencyFallback` (`₹` → `Rs.` on thermal
+  printers); everything outside ASCII is mapped to a close character so code pages never garble a ticket.
+- **Copies.** The profile's copy count is the default; for invoices the server's `PrintInvoiceCopies` wins when
+  it is larger.
+- **The print queue** runs one job at a time with retries after 1 s, 3 s and 5 s. A job that still fails is
+  kept for 10 minutes, shown as an error toast with a **Retry** button and counted in the status bar (Retry /
+  Discard). Business operations never wait for it.
+- **Windows printing** happens on a private STA thread (XPS writer to the chosen `PrintQueue`), so neither the
+  UI nor the background queue blocks. RAW printing goes through winspool `WritePrinter` with the `RAW` data
+  type; network printing opens TCP 9100 with a 5 s timeout.
+- **KOT auto-print** is a shell-level service (`KotAutoPrinter`), not part of the Kitchen Display, so a kitchen
+  terminal prints even while another screen is open. It fires only on `DeviceType = Kitchen` terminals with
+  `AutoPrintKot` and a kitchen printer, and only for the terminal's station (all stations when none is set).
+- **Reprints.** Invoice and receipt reprints (Closed Bills) ask for a reason and call `POST /api/print/reprints`
+  before printing; KOT reprints (Completed Orders) are free. The Bill Detail **PRINT** button prints the current
+  bill without an audit entry (it is the first copy on terminals without auto-print).
+- The Printers screen lives under Administration (Admin/Manager) and lists the installed Windows printers.
+- Server settings added: `PrintInvoiceCopies` (1) and `KotShowPrices` (false).

@@ -4,35 +4,40 @@ using CommunityToolkit.Mvvm.Input;
 using HotelPOS.Contracts.Auth;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Users;
+using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Navigation;
 using HotelPOS.Desktop.Services.Ui;
 
 namespace HotelPOS.Desktop.Modules.Admin;
 
-/// <summary>Admin: staff accounts — list, search, create, edit roles, reset password, (de)activate.</summary>
-public sealed partial class UsersViewModel : ObservableObject, INavigationAware, IRefreshable
+public sealed partial class UsersViewModel : ViewModelBase, INavigationAware, IRefreshable
 {
     private const int PageSize = 50;
 
     private readonly IUsersApi _usersApi;
     private readonly IDialogService _dialogs;
     private readonly INotificationService _notifications;
+    private readonly ISystemApi _systemApi;
 
-    public UsersViewModel(IUsersApi usersApi, IDialogService dialogs, INotificationService notifications)
+    public UsersViewModel(IUsersApi usersApi, IDialogService dialogs, INotificationService notifications, ISystemApi systemApi)
     {
         _usersApi = usersApi;
         _dialogs = dialogs;
         _notifications = notifications;
+        _systemApi = systemApi;
     }
 
     public ObservableCollection<UserDto> Users { get; } = new();
 
     public UserEditorViewModel Editor { get; } = new();
 
+    // The configured password rule, loaded with the screen; null means the server decides.
+    private PasswordRules? _rules;
+
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasSelection), nameof(ToggleActiveText))]
-    [NotifyCanExecuteChangedFor(nameof(ResetPasswordCommand), nameof(ToggleActiveCommand), nameof(EditCommand))]
+    [NotifyPropertyChangedFor(nameof(HasSelection), nameof(ToggleActiveText), nameof(CanUnlock))]
+    [NotifyCanExecuteChangedFor(nameof(ResetPasswordCommand), nameof(ToggleActiveCommand), nameof(EditCommand), nameof(UnlockCommand), nameof(LogoutAllCommand), nameof(ViewSessionsCommand))]
     private UserDto? _selectedUser;
 
     [ObservableProperty]
@@ -55,13 +60,9 @@ public sealed partial class UsersViewModel : ObservableObject, INavigationAware,
     [NotifyPropertyChangedFor(nameof(PageText))]
     private int _totalCount;
 
-    [ObservableProperty]
-    private bool _isBusy;
-
-    [ObservableProperty]
-    private string? _errorMessage;
-
     public bool HasSelection => SelectedUser is not null;
+
+    public bool CanUnlock => SelectedUser?.IsLockedOut == true;
 
     public string ToggleActiveText => SelectedUser?.IsActive == false ? "Activate" : "Deactivate";
 
@@ -70,6 +71,8 @@ public sealed partial class UsersViewModel : ObservableObject, INavigationAware,
     public async Task OnNavigatedToAsync(object? parameter)
     {
         await LoadRolesAsync();
+        _rules = await _systemApi.GetPasswordRulesAsync();
+        Editor.SetPasswordRules(_rules);
         await LoadAsync();
     }
 
@@ -94,42 +97,31 @@ public sealed partial class UsersViewModel : ObservableObject, INavigationAware,
         }
     }
 
-    private async Task LoadAsync(int? selectId = null)
+    private Task LoadAsync(int? selectId = null) => ExecuteAsync(async () =>
     {
-        IsBusy = true;
-        ErrorMessage = null;
-        try
+        var page = await FetchAsync(_usersApi.ListAsync(new UserQuery
         {
-            var result = await _usersApi.ListAsync(new UserQuery
-            {
-                Page = Page,
-                PageSize = PageSize,
-                Search = string.IsNullOrWhiteSpace(Search) ? null : Search.Trim(),
-                IsActive = ShowInactive ? null : true,
-            });
-
-            if (!result.Success || result.Data is null)
-            {
-                ErrorMessage = result.Message;
-                return;
-            }
-
-            var keep = selectId ?? SelectedUser?.Id;
-            Users.Clear();
-            foreach (var user in result.Data.Items)
-            {
-                Users.Add(user);
-            }
-
-            TotalCount = result.Data.TotalCount;
-            TotalPages = Math.Max(1, result.Data.TotalPages);
-            SelectedUser = Users.FirstOrDefault(u => u.Id == keep);
-        }
-        finally
+            Page = Page,
+            PageSize = PageSize,
+            Search = string.IsNullOrWhiteSpace(Search) ? null : Search.Trim(),
+            IsActive = ShowInactive ? null : true,
+        }));
+        if (page is null)
         {
-            IsBusy = false;
+            return;
         }
-    }
+
+        var keep = selectId ?? SelectedUser?.Id;
+        Users.Clear();
+        foreach (var user in page.Items)
+        {
+            Users.Add(user);
+        }
+
+        TotalCount = page.TotalCount;
+        TotalPages = Math.Max(1, page.TotalPages);
+        SelectedUser = Users.FirstOrDefault(u => u.Id == keep);
+    });
 
     [RelayCommand]
     private Task RefreshListAsync() => LoadAsync();
@@ -183,8 +175,7 @@ public sealed partial class UsersViewModel : ObservableObject, INavigationAware,
             return;
         }
 
-        IsBusy = true;
-        try
+        await ExecuteAsync(async () =>
         {
             var result = Editor.IsNew
                 ? await _usersApi.CreateAsync(Editor.ToCreateRequest())
@@ -208,11 +199,7 @@ public sealed partial class UsersViewModel : ObservableObject, INavigationAware,
             }
 
             Editor.ErrorMessage = DescribeFailure(result);
-        }
-        finally
-        {
-            IsBusy = false;
-        }
+        });
     }
 
     [RelayCommand(CanExecute = nameof(HasSelection))]
@@ -234,9 +221,9 @@ public sealed partial class UsersViewModel : ObservableObject, INavigationAware,
             return;
         }
 
-        if (password.Length < PasswordPolicy.MinLength)
+        if (_rules is not null && !_rules.IsMet(password))
         {
-            _notifications.Warning($"The password must have at least {PasswordPolicy.MinLength} characters.");
+            _notifications.Warning(_rules.Describe());
             return;
         }
 
@@ -275,6 +262,78 @@ public sealed partial class UsersViewModel : ObservableObject, INavigationAware,
         {
             _notifications.Success(activate ? $"{user.Username} activated." : $"{user.Username} deactivated.");
             await LoadAsync(user.Id);
+        }
+        else
+        {
+            _notifications.Error(DescribeFailure(result), result.CorrelationId);
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanUnlock))]
+    private async Task UnlockAsync()
+    {
+        var user = SelectedUser;
+        if (user is null) return;
+
+        var result = await _usersApi.UnlockAsync(user.Id);
+        if (result.Success)
+        {
+            _notifications.Success($"User {user.Username} has been unlocked.");
+            await LoadAsync(user.Id);
+        }
+        else
+        {
+            _notifications.Error(DescribeFailure(result), result.CorrelationId);
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(HasSelection))]
+    private async Task LogoutAllAsync()
+    {
+        var user = SelectedUser;
+        if (user is null) return;
+
+        if (!await _dialogs.ConfirmAsync(
+            "Log out everywhere",
+            $"This will terminate all active sessions for {user.DisplayName} on all devices. Continue?",
+            "Log out everywhere",
+            destructive: true))
+        {
+            return;
+        }
+
+        var result = await _usersApi.LogoutAllAsync(user.Id);
+        if (result.Success)
+        {
+            _notifications.Success($"All active sessions for {user.Username} have been revoked.");
+        }
+        else
+        {
+            _notifications.Error(DescribeFailure(result), result.CorrelationId);
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(HasSelection))]
+    private async Task ViewSessionsAsync()
+    {
+        var user = SelectedUser;
+        if (user is null) return;
+
+        var result = await _usersApi.GetSessionsAsync(user.Id);
+        if (result.Success && result.Data is not null)
+        {
+            if (result.Data.Count == 0)
+            {
+                await _dialogs.AlertAsync("Active sessions", $"No active sessions found for {user.DisplayName}.");
+                return;
+            }
+
+            var text = string.Join("\n\n", result.Data.Select(s =>
+                $"• Terminal: {s.DeviceName ?? "(no terminal)"} (IP: {s.IpAddress ?? "unknown"})\n"
+                + $"  Signed in or renewed: {s.CreatedAtUtc.ToLocalTime():dd MMM HH:mm}\n"
+                + $"  Expires: {s.ExpiresAtUtc.ToLocalTime():dd MMM HH:mm}"));
+            text += "\n\nLOG OUT EVERYWHERE ends all of them.";
+            await _dialogs.AlertAsync($"Active sessions for {user.DisplayName}", text);
         }
         else
         {

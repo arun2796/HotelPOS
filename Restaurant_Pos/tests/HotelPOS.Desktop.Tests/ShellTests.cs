@@ -2,7 +2,9 @@ using HotelPOS.Contracts.Security;
 using HotelPOS.Desktop.Services.Navigation;
 using HotelPOS.Desktop.Services.Realtime;
 using HotelPOS.Desktop.Shell;
+using HotelPOS.Desktop.Services.Printing;
 using HotelPOS.Desktop.Tests.Support;
+using NSubstitute;
 
 namespace HotelPOS.Desktop.Tests;
 
@@ -12,7 +14,7 @@ public class StatusBarViewModelTests
     public void Indicator_FollowsTheConnection_ThroughAnOutage()
     {
         var realtime = new FakeRealtimeClient();
-        using var vm = new StatusBarViewModel(realtime, InMemorySettings.Configured());
+        using var vm = new StatusBarViewModel(realtime, InMemorySettings.Configured(), Substitute.For<IPrintQueue>());
         var changes = new List<string>();
         vm.PropertyChanged += (_, e) =>
         {
@@ -39,7 +41,7 @@ public class StatusBarViewModelTests
     public void Dispose_StopsListening()
     {
         var realtime = new FakeRealtimeClient();
-        var vm = new StatusBarViewModel(realtime, InMemorySettings.Configured());
+        var vm = new StatusBarViewModel(realtime, InMemorySettings.Configured(), Substitute.For<IPrintQueue>());
 
         vm.Dispose();
         realtime.Raise(ConnectionStatus.Connected);
@@ -91,5 +93,33 @@ public class ModuleRegistryTests
     public void ModuleKeys_AreUnique()
     {
         ModuleRegistry.All.Select(m => m.Key).Should().OnlyHaveUniqueItems();
+    }
+}
+
+public class PermissionNavigationTests
+{
+    [Fact]
+    public void Sidebar_FollowsPermissions_NotJustRoles()
+    {
+        // A waiter whose role was granted billing.operate, and a manager whose role lost reports.view.
+        var waiter = ModuleRegistry.ForUser(new[] { Roles.Waiter }, RolePermissionMap.For(new[] { Roles.Waiter }).Append(Permissions.BillingOperate).ToList());
+        var manager = ModuleRegistry.ForUser(new[] { Roles.Manager }, RolePermissionMap.For(new[] { Roles.Manager }).Where(p => p != Permissions.ReportsView).ToList());
+
+        waiter.Select(m => m.Key).Should().Contain(ModuleRegistry.Billing);
+        manager.Select(m => m.Key).Should().NotContain(ModuleRegistry.Reports).And.Contain(ModuleRegistry.Dashboard);
+    }
+
+    [Theory]
+    [InlineData(Roles.Admin)]
+    [InlineData(Roles.Manager)]
+    [InlineData(Roles.Waiter)]
+    [InlineData(Roles.Kitchen)]
+    [InlineData(Roles.Cashier)]
+    public void DefaultPermissions_ShowTheSameModulesAsTheRoleLists(string role)
+    {
+        var byPermission = ModuleRegistry.ForUser(new[] { role }, RolePermissionMap.For(new[] { role })).Select(m => m.Key);
+        var byRole = ModuleRegistry.ForRoles(new[] { role }).Select(m => m.Key);
+
+        byPermission.Should().BeEquivalentTo(byRole);
     }
 }

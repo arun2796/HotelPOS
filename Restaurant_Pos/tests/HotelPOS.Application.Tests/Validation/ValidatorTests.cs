@@ -1,6 +1,9 @@
-using HotelPOS.Application.Common.Security;
-using HotelPOS.Application.Validation;
+using HotelPOS.Application.Features.Auth.Commands;
+using HotelPOS.Application.Features.Security.Commands;
+using HotelPOS.Application.Features.Users.Commands;
+using HotelPOS.Application.Features.Devices.Commands;
 using HotelPOS.Contracts.Auth;
+using HotelPOS.Contracts.Devices;
 using HotelPOS.Contracts.Security;
 using HotelPOS.Contracts.Users;
 
@@ -13,7 +16,9 @@ public class ValidatorTests
     [InlineData("bad name", "Name", "secret1", "Waiter", "Username")]
     [InlineData("waiter1", "", "secret1", "Waiter", "DisplayName")]
     [InlineData("waiter1", "Name", "123", "Waiter", "Password")]
-    [InlineData("waiter1", "Name", "secret1", "Chef", "Roles")]
+    [InlineData("waiter1", "Name", "onlyletters", "Waiter", "Password")]
+    [InlineData("waiter1", "Name", "12345678", "Waiter", "Password")]
+    [InlineData("waiter1", "Name", "secret123", "Chef", "Roles")]
     public void CreateUserRequest_InvalidField_IsReported(string username, string displayName, string password, string role, string field)
     {
         var result = new CreateUserRequestValidator().Validate(new CreateUserRequest
@@ -34,7 +39,7 @@ public class ValidatorTests
         {
             Username = "waiter.one",
             DisplayName = "Waiter One",
-            Password = "secret1",
+            Password = "secret123",
             Roles = new[] { Roles.Waiter },
         });
 
@@ -77,5 +82,35 @@ public class ValidatorTests
 
         RolePermissionMap.For(new[] { Roles.Kitchen }).Should().NotContain(Permissions.BillingOperate);
         RolePermissionMap.For(new[] { Roles.Cashier }).Should().NotContain(Permissions.MenuManage);
+    }
+
+    [Fact]
+    public void ResetPasswordRequest_WithoutDigits_IsRejected()
+    {
+        var result = new ResetPasswordRequestValidator().Validate(new ResetPasswordRequest { NewPassword = "longbutweak" });
+
+        result.Errors.Select(e => e.PropertyName).Should().Contain(nameof(ResetPasswordRequest.NewPassword));
+    }
+
+    [Theory]
+    [InlineData("", null, "Name")]
+    [InlineData("BAD NAME", null, "Name")]
+    [InlineData("WAITER-02", 0, "StationId")]
+    public void UpdateDeviceRequest_InvalidField_IsReported(string name, int? stationId, string field)
+    {
+        var result = new UpdateDeviceRequestValidator().Validate(new UpdateDeviceRequest { Name = name, StationId = stationId });
+
+        result.Errors.Select(e => e.PropertyName).Should().Contain(field);
+    }
+
+    [Fact]
+    public void UpdateRolePermissionsRequest_UnknownPermission_IsRejected()
+    {
+        var validator = new UpdateRolePermissionsRequestValidator();
+
+        validator.Validate(new UpdateRolePermissionsRequest { Permissions = new[] { Permissions.OrdersCreate, "orders.delete.all" } })
+            .IsValid.Should().BeFalse();
+        validator.Validate(new UpdateRolePermissionsRequest { Permissions = new[] { Permissions.OrdersCreate } })
+            .IsValid.Should().BeTrue();
     }
 }

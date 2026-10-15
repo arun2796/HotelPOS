@@ -23,7 +23,7 @@ Send to kitchen        Ready                                       Invoice / rec
                                                                    Close order
 ```
 
-Every arrow above is an API call that persists state in SQL Server and then publishes a SignalR event
+Every arrow above is an API call that persists state in PostgreSQL and then publishes a SignalR event
 so the other terminals refresh.
 
 ## 3. Users, roles and modules
@@ -70,9 +70,9 @@ its local configuration, independent of who logs in.
 | Layer     | Choice |
 |-----------|--------|
 | Desktop   | C#, .NET 8, WPF, MVVM with `CommunityToolkit.Mvvm`, `Microsoft.Extensions.Hosting` for DI, Serilog, `Microsoft.AspNetCore.SignalR.Client` |
-| Backend   | ASP.NET Core 8 Web API, EF Core 8 + SQL Server, SignalR, JWT bearer auth, FluentValidation, Serilog |
-| Database  | SQL Server 2019+ (Express is sufficient for a single venue) |
-| Tests     | xUnit, FluentAssertions, NSubstitute, `WebApplicationFactory`, SQL Server LocalDB / Testcontainers |
+| Backend   | ASP.NET Core 8 Web API, EF Core 8 + PostgreSQL (Npgsql), SignalR, JWT bearer auth, FluentValidation, Serilog |
+| Database  | PostgreSQL 16+ (free; one server per venue, on the API machine) |
+| Tests     | xUnit, FluentAssertions, NSubstitute, `WebApplicationFactory`, local PostgreSQL / Testcontainers |
 | Packaging | `dotnet publish` self-contained, Inno Setup installers, API hosted as a Windows Service |
 
 Solution layout (`HotelPOS.sln`):
@@ -94,7 +94,7 @@ tests/
 
 ## 6. Non-negotiable rules
 
-1. Do not connect WPF directly to SQL Server. Database credentials never leave the server.
+1. Do not connect WPF directly to the database. Database credentials never leave the server.
 2. All clients communicate with the ASP.NET Core API only.
 3. SignalR is used for real-time notification; the API/database remains the source of truth. A client
    that receives an event fetches the authoritative state from the API when it needs details.
@@ -123,7 +123,7 @@ tests/
 18. Use DTOs on the API boundary; never expose EF entities.
 19. Use database transactions, indexes, foreign keys and constraints; avoid duplicate data (snapshot
     only what must be immutable, such as prices on order lines).
-20. Document setup (SQL Server, migrations, firewall, static IP, client configuration, backup, recovery).
+20. Document setup (PostgreSQL, migrations, firewall, static IP, client configuration, backup, recovery).
 
 ## 7. Glossary
 

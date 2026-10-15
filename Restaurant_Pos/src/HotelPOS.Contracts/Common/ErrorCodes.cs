@@ -1,6 +1,5 @@
 namespace HotelPOS.Contracts.Common;
 
-/// <summary>Machine-readable error codes. Clients branch on these, never on message text.</summary>
 public static class ErrorCodes
 {
     public const string ValidationError = "VALIDATION_ERROR";
@@ -23,10 +22,18 @@ public static class ErrorCodes
     public const string ApprovalRequired = "APPROVAL_REQUIRED";
     public const string ApprovalInvalid = "APPROVAL_INVALID";
     public const string PaymentExceedsBalance = "PAYMENT_EXCEEDS_BALANCE";
+    public const string ShiftRequired = "SHIFT_REQUIRED";
+    public const string ShiftAlreadyOpen = "SHIFT_ALREADY_OPEN";
+    public const string DayClosed = "DAY_CLOSED";
+    public const string PeriodClosed = "PERIOD_CLOSED";
+    public const string LicenseTerminalLimit = "LICENSE_TERMINAL_LIMIT";
+    public const string LicenseExpired = "LICENSE_EXPIRED";
+    public const string LicenseInvalid = "LICENSE_INVALID";
+    public const string ImportHasErrors = "IMPORT_HAS_ERRORS";
+    public const string VarianceApprovalRequired = "VARIANCE_APPROVAL_REQUIRED";
     public const string BusinessRule = "BUSINESS_RULE";
     public const string RateLimited = "RATE_LIMITED";
     public const string ServerError = "SERVER_ERROR";
 
-    /// <summary>Client-side only: the request never reached the server or no response arrived.</summary>
     public const string ConnectionUnavailable = "CONNECTION_UNAVAILABLE";
 }

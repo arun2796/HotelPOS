@@ -42,7 +42,7 @@ public class ConfigurationViewModelTests
     private readonly IAppNavigator _navigator = Substitute.For<IAppNavigator>();
     private readonly IDialogService _dialogs = Substitute.For<IDialogService>();
 
-    private ConfigurationViewModel Create() => new(_settings, _systemApi, _navigator, _dialogs);
+    private ConfigurationViewModel Create() => new(_settings, _systemApi, _navigator, _dialogs, new ThemeService(_settings));
 
     [Theory]
     [InlineData("192.168.1.100:5000", "WAITER-01", true)]

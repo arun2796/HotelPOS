@@ -22,9 +22,19 @@ public sealed partial class RoleOptionViewModel : ObservableObject
     private bool _isSelected;
 }
 
-/// <summary>Side panel used to create a user or edit the selected one.</summary>
 public sealed partial class UserEditorViewModel : ObservableObject
 {
+    // The admin-configured password rule; null when the server could not be asked (the server then decides and explains).
+    private PasswordRules? _rules;
+
+    public string PasswordHint => _rules?.Describe() ?? "Passwords must meet the password policy set in Settings.";
+
+    public void SetPasswordRules(PasswordRules? rules)
+    {
+        _rules = rules;
+        OnPropertyChanged(nameof(PasswordHint));
+    }
+
     [ObservableProperty]
     private bool _isOpen;
 
@@ -109,7 +119,6 @@ public sealed partial class UserEditorViewModel : ObservableObject
         ErrorMessage = null;
     }
 
-    /// <summary>Quick client-side checks; the server validates everything again.</summary>
     public string? Validate()
     {
         if (IsNew && (Username.Trim().Length < 3 || Username.Any(char.IsWhiteSpace)))
@@ -122,9 +131,9 @@ public sealed partial class UserEditorViewModel : ObservableObject
             return "Enter the name shown on screens and tickets.";
         }
 
-        if (IsNew && Password.Length < PasswordPolicy.MinLength)
+        if (IsNew && _rules is not null && !_rules.IsMet(Password))
         {
-            return $"The password must have at least {PasswordPolicy.MinLength} characters.";
+            return _rules.Describe();
         }
 
         return SelectedRoles.Count == 0 ? "Select at least one role." : null;

@@ -1,0 +1,38 @@
+<UserControl x:Class="HotelPOS.Desktop.Modules.Cash.DenominationsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:cash="clr-namespace:HotelPOS.Desktop.Modules.Cash"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance cash:DenominationsViewModel}"
+             d:DesignWidth="1100" d:DesignHeight="600">
+
+  <DockPanel>
+    <Grid DockPanel.Dock="Top" Margin="0,0,0,10">
+      <StackPanel Margin="0,0,260,0">
+        <TextBlock Text="Notes and coins" Style="{StaticResource Text.Subtitle}" />
+        <TextBlock Text="Counted when a shift opens and closes. Deactivate a note that left circulation; past counts keep it."
+                   Style="{StaticResource Text.Caption}" TextWrapping="Wrap" />
+      </StackPanel>
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center"
+                  Visibility="{Binding CanEdit, Converter={StaticResource BoolToVisibility}}">
+        <Button Content="Add" Command="{Binding AddCommand}" MinWidth="90" Margin="0,0,8,0" />
+        <Button Content="Save" Command="{Binding SaveCommand}" Style="{StaticResource Button.Primary}" MinWidth="110" />
+      </StackPanel>
+    </Grid>
+    <Border DockPanel.Dock="Top" Style="{StaticResource Banner.Error}" Margin="0,0,0,12"
+            Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibility}}">
+      <TextBlock Text="{Binding ErrorMessage}" Style="{StaticResource Text.Error}" />
+    </Border>
+    <DataGrid ItemsSource="{Binding Rows}" IsReadOnly="{Binding IsReadOnly}" CanUserAddRows="False" HorizontalScrollBarVisibility="Disabled">
+      <DataGrid.Columns>
+        <DataGridTextColumn Header="LABEL" Binding="{Binding Label, UpdateSourceTrigger=PropertyChanged}" Width="1.5*" MinWidth="120" />
+        <DataGridTextColumn Header="VALUE" Binding="{Binding ValueText, UpdateSourceTrigger=PropertyChanged}" Width="1*" MinWidth="90" />
+        <DataGridCheckBoxColumn Header="COIN" Binding="{Binding IsCoin, UpdateSourceTrigger=PropertyChanged}" Width="0.6*" MinWidth="70" />
+        <DataGridTextColumn Header="ORDER" Binding="{Binding SortOrder, UpdateSourceTrigger=PropertyChanged}" Width="0.6*" MinWidth="70" />
+        <DataGridCheckBoxColumn Header="ACTIVE" Binding="{Binding IsActive, UpdateSourceTrigger=PropertyChanged}" Width="0.6*" MinWidth="70" />
+      </DataGrid.Columns>
+    </DataGrid>
+  </DockPanel>
+</UserControl>
