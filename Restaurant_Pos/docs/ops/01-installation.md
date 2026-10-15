@@ -71,6 +71,20 @@ On first start the app asks for the server address (pre-filled with `/API=`) and
 `WAITER-01`, `KITCHEN-01`, `BILLING-01`, and its type. Kitchen screens can be bound to a preparation station later
 in **Administration → Devices**.
 
+## 5a. Phones and tablets (browser client, Phase 18)
+
+Waiters on phones and the kitchen on tablets use the browser client instead of an installer. Per device:
+
+1. Install the root CA certificate created in [02 § 5](02-lan-and-firewall.md) (HTTPS is required).
+2. Open `https://<server>:5001/app` and add it to the home screen (Chrome: *Add to Home screen*; Safari: Share →
+   *Add to Home Screen*). The icon opens full-screen like an app.
+3. On the sign-in screen choose **Waiter** or **Kitchen** for the device; it registers itself as `WEB-WAITER-xxxxxx` /
+   `WEB-KITCHEN-xxxxxx` and appears under Administration → Devices, where it can be renamed or deactivated.
+4. Kitchen tablets: pick the preparation station on the *Station* tab once; only that station's tickets are shown.
+5. Printing stays on the Windows PCs: the kitchen PC prints the KOTs, the billing PC the invoices.
+
+Cashiers, managers and administrators keep the Windows client (installer above).
+
 ## 6. First sign-in and setup
 
 1. On the admin terminal sign in as `admin` with the installer's password and set a new one.

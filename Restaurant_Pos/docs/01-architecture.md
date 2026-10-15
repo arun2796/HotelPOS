@@ -42,6 +42,15 @@ Responsibilities:
 The desktop app contains **no business rules** beyond UI conveniences (e.g. computing a provisional cart
 total for display). The server recalculates everything.
 
+### Browser client (Phase 18)
+
+`src/HotelPOS.Web` is a Blazor WebAssembly progressive web app for waiters (phones) and kitchen staff (tablets). The
+API serves it from `/app` (same origin: no CORS), so it calls the same REST routes, the same policies and the same
+`RestaurantHub` as the desktop; it shares `HotelPOS.Contracts` for DTOs, event names and permissions. Its only
+backend additions are `POST /api/auth/web/login|refresh|logout` (refresh token in an HttpOnly cookie) and the
+static hosting lines in `Program.cs`. Billing, management and printing stay on the WPF client. See
+`docs/phases/phase-18-web-clients-waiter-kitchen.md`.
+
 ## 2. Network layout and addressing
 
 - The server PC gets a **static LAN IP** (DHCP reservation on the router or manual IP).

@@ -1,0 +1,15 @@
+@* − value + control with 44 px touch targets. *@
+<div class="stepper" role="group" aria-label="@Label">
+    <button type="button" class="btn icon" @onclick="() => ValueChanged.InvokeAsync(Math.Max(Min, Value - 1))" disabled="@(Value <= Min)" aria-label="@($"{Label}: one less")">−</button>
+    <span class="stepper-value">@Value@(string.IsNullOrEmpty(Suffix) ? null : " " + Suffix)</span>
+    <button type="button" class="btn icon" @onclick="() => ValueChanged.InvokeAsync(Math.Min(Max, Value + 1))" disabled="@(Value >= Max)" aria-label="@($"{Label}: one more")">+</button>
+</div>
+
+@code {
+    [Parameter] public int Value { get; set; }
+    [Parameter] public EventCallback<int> ValueChanged { get; set; }
+    [Parameter] public int Min { get; set; } = 1;
+    [Parameter] public int Max { get; set; } = 99;
+    [Parameter] public string Label { get; set; } = "Quantity";
+    [Parameter] public string? Suffix { get; set; }
+}

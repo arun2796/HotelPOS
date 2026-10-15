@@ -10,10 +10,13 @@
     <ProjectReference Include="..\HotelPOS.Application\HotelPOS.Application.csproj" />
     <ProjectReference Include="..\HotelPOS.Infrastructure\HotelPOS.Infrastructure.csproj" />
     <ProjectReference Include="..\HotelPOS.Contracts\HotelPOS.Contracts.csproj" />
+    <!-- Phase 18: the browser client is published into wwwroot/app and served by this API (same origin). -->
+    <ProjectReference Include="..\HotelPOS.Web\HotelPOS.Web.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
     <PackageReference Include="Serilog.AspNetCore" />
     <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" />

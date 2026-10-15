@@ -1,0 +1,306 @@
+@page "/tables/{Id:int}"
+@attribute [Authorize]
+@implements IDisposable
+@using HotelPOS.Contracts.Floor
+@using HotelPOS.Contracts.Orders
+@using HotelPOS.Contracts.Realtime
+@inject WebAuthState Auth
+@inject WaiterApi Api
+@inject WebRealtimeClient Realtime
+@inject DraftStore Drafts
+@inject IdempotentSender Sender
+@inject ShellState Shell
+@inject ToastService Toasts
+@inject NavigationManager Navigation
+
+<PageTitle>Table · HotelPOS</PageTitle>
+
+@if (_error is not null)
+{
+    <div class="banner error">@_error</div>
+    <button class="btn block" @onclick="LoadAsync">Retry</button>
+}
+else if (_detail is null)
+{
+    <div class="empty">Loading…</div>
+}
+else
+{
+    var table = _detail.Table;
+    <div class="card">
+        <div class="row between">
+            <div>
+                <h1>@table.Code <span class="muted" style="font-weight:400;font-size:15px">@table.Name</span></h1>
+                <div class="muted small">@table.SectionName · @table.Capacity seats</div>
+            </div>
+            <span class="chip st-chip-@table.Status.ToString().ToLowerInvariant()">@table.Status</span>
+        </div>
+        @if (table.GuestCount is { } guests)
+        {
+            <div class="muted" style="margin-top:6px">@guests guests@(table.OccupiedAtUtc is { } since ? $" · since {since.ToLocalTime():HH:mm}" : null)</div>
+        }
+    </div>
+
+    @if (table.Status == TableStatus.Available && CanOperateTables)
+    {
+        <div class="card" style="margin-top:10px">
+            <h2>Seat guests</h2>
+            <div class="row between" style="margin-top:8px">
+                <Stepper @bind-Value="_guests" Min="FloorLimits.MinGuests" Max="FloorLimits.MaxGuests" Label="Guests" Suffix="guests" />
+                <button class="btn primary lg" @onclick="OccupyAsync" disabled="@_busy">OCCUPY</button>
+            </div>
+        </div>
+    }
+
+    @if (_order is { } order)
+    {
+        <div class="card" style="margin-top:10px">
+            <div class="row between">
+                <h2>Order #@order.OrderNumber</h2>
+                <span class="chip info">@order.Status</span>
+            </div>
+            <div class="muted small">@order.WaiterName · @order.GuestCount guests · approx. @order.ApproxSubtotal.ToString("N2")</div>
+            <div class="stack" style="margin-top:10px">
+                @foreach (var item in order.Items)
+                {
+                    <div class="row between @(item.Status == OrderItemStatus.Cancelled ? "cancelled" : null)">
+                        <div class="grow">
+                            <div>@item.Quantity × @item.ItemName</div>
+                            @if (item.Modifiers.Count > 0 || !string.IsNullOrEmpty(item.Notes))
+                            {
+                                <div class="muted small">@string.Join(", ", item.Modifiers.Select(m => m.Name))@(string.IsNullOrEmpty(item.Notes) ? null : $" · “{item.Notes}”")</div>
+                            }
+                        </div>
+                        <span class="chip @TicketChip(item.TicketStatus)">@(item.TicketStatus?.ToString() ?? item.Status.ToString())</span>
+                        <span class="num" style="min-width:72px">@item.LineTotal.ToString("N2")</span>
+                    </div>
+                }
+            </div>
+            @if (order.Bill is not null)
+            {
+                <div class="banner info" style="margin:10px 0 0">Bill requested — the counter has it.</div>
+            }
+        </div>
+    }
+
+    <div class="stack" style="margin-top:12px">
+        @if (ShowNewOrder)
+        {
+            <button class="btn primary block lg" @onclick="NewOrder">@(_hasDraft ? "RESUME ORDER" : "NEW ORDER")</button>
+        }
+        @if (ShowAddItems)
+        {
+            <button class="btn primary block lg" @onclick="AddItems">ADD ITEMS</button>
+        }
+        @if (ShowServe)
+        {
+            <button class="btn block lg" @onclick="ServeAsync" disabled="@_busy">SERVED</button>
+        }
+        @if (ShowRequestBill)
+        {
+            <button class="btn block lg" @onclick="RequestBillAsync" disabled="@_busy">REQUEST BILL</button>
+        }
+        @if (ShowRelease)
+        {
+            <button class="btn block" @onclick="() => _confirmRelease = true" disabled="@_busy">RELEASE TABLE</button>
+        }
+        @if (ShowCancelOrder)
+        {
+            <button class="btn block danger" @onclick="() => _cancelOpen = true" disabled="@_busy">CANCEL ORDER</button>
+        }
+        <a class="btn block ghost" href="tables">Back to the tables</a>
+    </div>
+}
+
+@if (_confirmRelease)
+{
+    <div class="overlay" @onclick="() => _confirmRelease = false">
+        <div class="sheet" @onclick:stopPropagation="true">
+            <h2>Release @_detail?.Table.Code?</h2>
+            <p class="muted">The table becomes available again.</p>
+            <div class="actions">
+                <button class="btn" @onclick="() => _confirmRelease = false">Cancel</button>
+                <button class="btn primary" @onclick="ReleaseAsync" disabled="@_busy">Release</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_cancelOpen)
+{
+    <div class="overlay" @onclick="() => _cancelOpen = false">
+        <div class="sheet" @onclick:stopPropagation="true">
+            <h2>Cancel order #@_order?.OrderNumber</h2>
+            <label class="field"><span>Reason (required once the kitchen has started)</span>
+                <textarea class="input" @bind="_cancelReason" maxlength="@OrderLimits.ReasonMaxLength"></textarea></label>
+            <div class="actions">
+                <button class="btn" @onclick="() => _cancelOpen = false">Keep order</button>
+                <button class="btn danger" @onclick="CancelOrderAsync" disabled="@_busy">Cancel order</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private TableDetailDto? _detail;
+    private OrderDetailDto? _order;
+    private string? _error;
+    private bool _busy;
+    private bool _hasDraft;
+    private bool _confirmRelease;
+    private bool _cancelOpen;
+    private string _cancelReason = string.Empty;
+    private int _guests = 2;
+    private readonly List<IDisposable> _subscriptions = new();
+
+    private bool CanTakeOrders => Auth.Has(Permissions.OrdersCreate);
+    private bool CanOperateTables => Auth.Has(Permissions.TablesOperate);
+
+    // The same visibility rules as the desktop TableDetailsViewModel.
+    private bool ShowNewOrder => CanTakeOrders && _detail is { Table: { CurrentOrderId: null } t } && t.Status is TableStatus.Available or TableStatus.Occupied;
+    private bool ShowAddItems => CanTakeOrders && _order is { CanModify: true, Status: not OrderStatus.Draft };
+    private bool ShowServe => CanTakeOrders && _order is { } o && o.Tickets.Any(t => t.Status == KitchenOrderStatus.Ready);
+    private bool ShowRequestBill => _order is { Bill: null, Status: OrderStatus.Served or OrderStatus.Ready };
+    private bool ShowRelease => CanOperateTables && _detail is { Table: { Status: TableStatus.Occupied, CurrentOrderId: null } };
+    private bool ShowCancelOrder => CanTakeOrders && _order is { CanModify: true };
+
+    protected override async Task OnInitializedAsync()
+    {
+        Shell.Set("Table", null);
+        await Realtime.StartAsync();
+        foreach (var name in new[] { HubEvents.TableStatusChanged, HubEvents.OrderUpdated, HubEvents.OrderCancelled, HubEvents.KitchenTicketUpdated,
+                                     HubEvents.OrderReady, HubEvents.OrderAccepted, HubEvents.OrderPreparing, HubEvents.OrderServed, HubEvents.BillUpdated, HubEvents.PaymentCompleted })
+        {
+            _subscriptions.Add(Realtime.Subscribe<System.Text.Json.JsonElement>(name, payload => _ = InvokeAsync(LoadAsync)));
+        }
+
+        Realtime.Reconnected += LoadAsync;
+    }
+
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var result = await Api.GetTableAsync(Id);
+        if (!result.Success || result.Data is null)
+        {
+            _error = result.Message;
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        _detail = result.Data;
+        _error = null;
+        Shell.Set(_detail.Table.Code, _detail.Table.SectionName);
+        _hasDraft = await Drafts.LoadAsync(Id) is not null;
+        if (_detail.Table.CurrentOrderId is { } orderId)
+        {
+            var order = await Api.GetOrderAsync(orderId);
+            _order = order.Success ? order.Data : null;
+        }
+        else
+        {
+            _order = null;
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OccupyAsync()
+    {
+        await RunAsync(async () =>
+        {
+            var result = await Api.OccupyAsync(Id, _guests, _detail!.Table.RowVersion);
+            return (result.Success, result.Message, result.Success ? $"{_detail.Table.Code} occupied." : null);
+        });
+    }
+
+    private async Task ReleaseAsync()
+    {
+        _confirmRelease = false;
+        await RunAsync(async () =>
+        {
+            var result = await Api.ReleaseAsync(Id);
+            return (result.Success, result.Message, result.Success ? $"{_detail!.Table.Code} released." : null);
+        });
+    }
+
+    private async Task ServeAsync()
+    {
+        await RunAsync(async () =>
+        {
+            var result = await Api.ServeAsync(_order!.Id);
+            return (result.Success, result.Message, result.Success ? "Marked as served." : null);
+        });
+    }
+
+    private async Task RequestBillAsync()
+    {
+        var key = IdempotentSender.NewKey();
+        await RunAsync(async () =>
+        {
+            var result = await Sender.SendAsync(key, (k, ct) => Api.RequestBillAsync(_order!.Id, k, ct));
+            return (result.Success, result.Message, result.Success ? "Bill requested — the counter has been told." : null);
+        });
+    }
+
+    private async Task CancelOrderAsync()
+    {
+        _cancelOpen = false;
+        await RunAsync(async () =>
+        {
+            var result = await Api.CancelOrderAsync(_order!.Id, OrderComposer.TrimNotes(_cancelReason));
+            return (result.Success, result.Message, result.Success ? "Order cancelled." : null);
+        });
+    }
+
+    private void NewOrder() => Navigation.NavigateTo($"tables/{Id}/order");
+
+    private void AddItems() => Navigation.NavigateTo($"tables/{Id}/order/{_order!.Id}/add");
+
+    private async Task RunAsync(Func<Task<(bool Ok, string Message, string? Success)>> action)
+    {
+        _busy = true;
+        try
+        {
+            var (ok, message, success) = await action();
+            if (ok)
+            {
+                if (success is not null)
+                {
+                    Toasts.Success(success);
+                }
+            }
+            else
+            {
+                Toasts.Error(message);
+            }
+
+            await LoadAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static string TicketChip(KitchenOrderStatus? status) => status switch
+    {
+        KitchenOrderStatus.Ready => "danger",
+        KitchenOrderStatus.Preparing => "warning",
+        KitchenOrderStatus.Completed => "success",
+        null => string.Empty,
+        _ => "info",
+    };
+
+    public void Dispose()
+    {
+        Realtime.Reconnected -= LoadAsync;
+        foreach (var subscription in _subscriptions)
+        {
+            subscription.Dispose();
+        }
+    }
+}

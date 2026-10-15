@@ -1,0 +1,21 @@
+<CascadingAuthenticationState>
+    <Router AppAssembly="@typeof(App).Assembly">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+                <NotAuthorized>
+                    <RedirectToSignIn />
+                </NotAuthorized>
+                <Authorizing>
+                    <div class="splash"><div class="splash-text">Checking sign-in…</div></div>
+                </Authorizing>
+            </AuthorizeRouteView>
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            <PageTitle>Not found</PageTitle>
+            <LayoutView Layout="@typeof(MainLayout)">
+                <div class="empty">This page does not exist. <a href="">Go to the start</a>.</div>
+            </LayoutView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>

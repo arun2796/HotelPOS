@@ -1,0 +1,103 @@
+@page "/my-orders"
+@attribute [Authorize]
+@implements IDisposable
+@using HotelPOS.Contracts.Orders
+@using HotelPOS.Contracts.Realtime
+@inject WebAuthState Auth
+@inject WaiterApi Api
+@inject WebRealtimeClient Realtime
+@inject ShellState Shell
+@inject NavigationManager Navigation
+
+<PageTitle>My orders · HotelPOS</PageTitle>
+
+@if (_error is not null)
+{
+    <div class="banner error">@_error <button class="btn ghost" @onclick="RefreshAsync">Retry</button></div>
+}
+else if (_orders is null)
+{
+    <div class="empty">Loading…</div>
+}
+else if (_orders.Count == 0)
+{
+    <div class="empty">No active orders.</div>
+}
+else
+{
+    <div class="muted small" style="margin-bottom:8px">@_orders.Count active orders</div>
+    <div class="stack">
+        @foreach (var order in _orders)
+        {
+            <button class="card order-card @(order.Status == OrderStatus.Ready ? "ready" : null)" @onclick="() => Open(order)">
+                <div class="row between">
+                    <b>#@order.OrderNumber · @order.TableCode</b>
+                    <span class="muted small">@Elapsed(order)</span>
+                </div>
+                <div style="margin:6px 0"><span class="chip @(order.Status == OrderStatus.Ready ? "danger" : "primary")">@StatusText(order.Status)</span></div>
+                <div class="muted small">@order.ItemCount items · @order.GuestCount guests · @order.WaiterName</div>
+                <div><b>approx. @order.ApproxTotal.ToString("N2")</b></div>
+            </button>
+        }
+    </div>
+}
+
+@code {
+    private List<OrderSummaryDto>? _orders;
+    private string? _error;
+    private readonly List<IDisposable> _subscriptions = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Shell.Set("My orders", "Your active orders; ready ones highlighted");
+        await Realtime.StartAsync();
+        foreach (var name in new[] { HubEvents.OrderCreated, HubEvents.OrderUpdated, HubEvents.OrderCancelled, HubEvents.TableStatusChanged,
+                                     HubEvents.OrderReady, HubEvents.OrderAccepted, HubEvents.OrderPreparing, HubEvents.OrderServed })
+        {
+            _subscriptions.Add(Realtime.Subscribe<System.Text.Json.JsonElement>(name, payload => _ = InvokeAsync(RefreshAsync)));
+        }
+
+        Realtime.Reconnected += RefreshAsync;
+        await RefreshAsync();
+    }
+
+    private async Task RefreshAsync()
+    {
+        var result = await Api.GetActiveOrdersAsync();
+        if (result.Success && result.Data is { } orders)
+        {
+            var me = Auth.User?.Id;
+            _orders = orders.Where(o => o.WaiterId == me).OrderByDescending(o => o.Status == OrderStatus.Ready).ThenBy(o => o.CreatedAtUtc).ToList();
+            _error = null;
+        }
+        else if (_orders is null)
+        {
+            _error = result.Message;
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void Open(OrderSummaryDto order) => Navigation.NavigateTo($"tables/{order.TableId}");
+
+    private static string Elapsed(OrderSummaryDto order)
+    {
+        var span = DateTime.UtcNow - (order.SubmittedAtUtc ?? order.CreatedAtUtc);
+        return span.TotalHours >= 1 ? $"{(int)span.TotalHours} h {span.Minutes} min" : $"{Math.Max(0, (int)span.TotalMinutes)} min";
+    }
+
+    private static string StatusText(OrderStatus status) => status switch
+    {
+        OrderStatus.BillRequested => "Bill requested",
+        var s => s.ToString(),
+    };
+
+    public void Dispose()
+    {
+        Realtime.Reconnected -= RefreshAsync;
+        foreach (var subscription in _subscriptions)
+        {
+            subscription.Dispose();
+        }
+    }
+}

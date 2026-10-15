@@ -1,0 +1,42 @@
+@page "/"
+@attribute [Authorize]
+@inject WebAuthState Auth
+@inject WebRealtimeClient Realtime
+@inject NavigationManager Navigation
+@inject ShellState Shell
+
+<PageTitle>HotelPOS</PageTitle>
+
+@if (_noRole)
+{
+    <div class="card">
+        <h2>Use the desktop application</h2>
+        <p class="muted">Billing, management and administration screens are on the Windows terminals. This browser client is
+            for waiters (tables and orders) and the kitchen.</p>
+        <p class="muted small">Signed in as <b>@Auth.User?.DisplayName</b> (@string.Join(", ", Auth.User?.Roles ?? Array.Empty<string>())).</p>
+    </div>
+}
+
+@code {
+    private bool _noRole;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Shell.Set("HotelPOS");
+        await Realtime.StartAsync();
+
+        // Routing follows what the server says the user may do, never the device type.
+        if (Auth.Has(Permissions.TablesView) && !Auth.IsInRole(Roles.Kitchen))
+        {
+            Navigation.NavigateTo("tables", replace: true);
+        }
+        else if (Auth.Has(Permissions.KitchenOperate))
+        {
+            Navigation.NavigateTo("kitchen", replace: true);
+        }
+        else
+        {
+            _noRole = true;
+        }
+    }
+}

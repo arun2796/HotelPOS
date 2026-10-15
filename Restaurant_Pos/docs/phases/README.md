@@ -28,6 +28,7 @@ documents say what to build, in which order, and how to verify it.
 | 15 | [GST Reports & Period Close](phase-15-gst-reports-and-period-close.md) | 13, 14 | GSTR-1 JSON, GSTR-3B, HSN/SAC summary, B2B GSTIN, month/year lock | In progress (code complete; offline-tool check and manual demo open) |
 | 16 | [Licensing, Updates & Import](phase-16-licensing-updates-import.md) | 10 | Machine-locked licence and trial, LAN auto-update, menu/customer import | In progress (code complete; manual demo open) |
 | 17 | [Enterprise UI Refresh](phase-17-enterprise-ui-refresh.md) | 11, 16 | Light green enterprise look on every screen and dialog; presentation only, behaviour unchanged | In progress (code complete; manual demo open) |
+| 18 | [Web Clients for Waiter and Kitchen](phase-18-web-clients-waiter-kitchen.md) | 9, 12, 16, 17 | Blazor PWA served by the API under /app: waiter on phones, kitchen on tablets; same backend, no new business logic | In progress (code complete; device demo open) |
 
 Phases 2 and 3 are independent and can be built in parallel. Phase 7 can start once Phase 5 exists
 (KOT) and finish after Phase 6 (invoice/receipt). Phase 8 needs settled bills (Phase 6).
