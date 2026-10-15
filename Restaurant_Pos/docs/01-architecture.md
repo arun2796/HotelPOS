@@ -51,6 +51,11 @@ backend additions are `POST /api/auth/web/login|refresh|logout` (refresh token i
 static hosting lines in `Program.cs`. Billing, management and printing stay on the WPF client. See
 `docs/phases/phase-18-web-clients-waiter-kitchen.md`.
 
+Since Phase 19 the pages live in `src/HotelPOS.Client.Shared` (a Razor class library) with two hosts: the browser
+(`HotelPOS.Web`, served at `/app`) and the Android app **HotelPOS Staff** (`src/HotelPOS.Android`, .NET MAUI Blazor
+Hybrid, package `com.hotelpos.staff`). The app keeps its refresh token in Android SecureStorage and uses the existing
+`/api/auth/login|refresh|logout`; the browser keeps the cookie flow. See `docs/phases/phase-19-android-app.md`.
+
 ## 2. Network layout and addressing
 
 - The server PC gets a **static LAN IP** (DHCP reservation on the router or manual IP).

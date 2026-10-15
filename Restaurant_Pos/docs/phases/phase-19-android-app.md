@@ -1,6 +1,6 @@
 # Phase 19 — Android App for Waiter and Kitchen (.NET MAUI Blazor Hybrid)
 
-Status: Not started (specified 2026-10-15) · Depends on: Phase 18 (web pages, services, web auth) · Android only
+Status: In progress (code complete 2026-10-15; device demo open) · Depends on: Phase 18 (web pages, services, web auth) · Android only
 (decided 2026-10-15; iPhone/iPad keep the browser client; an iOS build can be added later from the same project)
 
 ## 1. Goal
@@ -98,12 +98,12 @@ rules; nothing in the API changes.
 
 ## 12. Acceptance criteria
 
-- [ ] One set of Razor pages serves browser and Android (no duplicated screens).
-- [ ] Browser client behaves exactly as Phase 18 (tests and `/app` hosting unchanged).
+- [x] One set of Razor pages serves browser and Android (no duplicated screens): `HotelPOS.Client.Shared`.
+- [x] Browser client behaves exactly as Phase 18 (client tests 27, Api hosting/flow/auth tests 14 green).
 - [ ] Signed APK installs on Android 8+; first run asks for the server; sign-in works over HTTP on the LAN.
 - [ ] Live updates (SignalR) and idempotent sends work in the app; drafts survive an app restart.
 - [ ] Refresh token never written outside SecureStorage; deactivation and forced re-login behave as on WPF.
-- [ ] No API, DTO, schema or business-rule change; all suites green.
+- [x] No API, DTO, schema or business-rule change; all suites green.
 - [ ] Definition of Done; § 11 run on a real phone and tablet.
 
 ## 13. Risks, notes and owner decisions (►)
@@ -153,3 +153,16 @@ _(filled per step)_
   only (Android toolchain informational warnings).
 - Package versions: `Microsoft.Maui.Controls` and `Microsoft.AspNetCore.Components.WebView.Maui` follow
   `$(MauiVersion)` from the installed workload (central package management).
+
+### 19.3 Toolchain, first build, packaging (2026-10-15)
+
+- Build PC set up with `build/install-android-tools.ps1` (`maui-android` 8.0.100, OpenJDK 17.0.20, Android SDK
+  platform 34 / build-tools 34.0.0 / platform-tools at `C:\Android\android-sdk`; `ANDROID_HOME` and `JAVA_HOME` set).
+  The workload installer also moved `wasm-tools` to 8.0.32; the browser host and its tests are unaffected.
+- `dotnet build src/HotelPOS.Android -f net8.0-android -c Release` succeeds: `com.hotelpos.staff-Signed.apk`, 30.2 MB
+  (profiled AOT, arm64/arm/x64). Copied to `artifacts/android/0.1.0/HotelPOS-Staff-0.1.0-test.apk` (debug-key signed)
+  for the owner's phone test; the release keystore and signed APK come from `build/publish-android.ps1`, which asks
+  the owner for the keystore password the first time.
+- `docs/ops/09-android-app.md` (install, update, build, troubleshooting); `ops/01 § 5a`, `01` and the README doc
+  table mention the app. Status: In progress (code complete; device demo open).
+- Open: § 11 on a real phone and tablet; the release keystore (owner's password); an in-app "new version" notice.

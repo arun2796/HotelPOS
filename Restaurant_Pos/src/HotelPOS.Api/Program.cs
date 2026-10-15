@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.StaticFiles;
 using HotelPOS.Api.Common;
 using HotelPOS.Api.Hubs;
 using HotelPOS.Application;
@@ -112,6 +113,8 @@ Directory.CreateDirectory(updatesFolder);
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(updatesFolder),
+    // Phase 19: the Android staff app is downloaded from here; .apk is not in the default content-type map.
+    ContentTypeProvider = new FileExtensionContentTypeProvider { Mappings = { [".apk"] = "application/vnd.android.package-archive" } },
     RequestPath = "/updates",
     OnPrepareResponse = context => context.Context.Response.Headers.CacheControl = "no-cache",
 });
