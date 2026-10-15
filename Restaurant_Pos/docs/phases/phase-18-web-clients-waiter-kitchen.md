@@ -1,6 +1,6 @@
 # Phase 18 — Web Clients for Waiter and Kitchen (PWA)
 
-Status: Not started (specified 2026-10-15) · Depends on: Phases 9 (permissions, devices), 12 (CQRS), 16 (hosting), 17 (design tokens) ·
+Status: In progress (code complete 2026-10-15; demo on real phones and tablets open) · Depends on: Phases 9 (permissions, devices), 12 (CQRS), 16 (hosting), 17 (design tokens) ·
 References: `docs/08-multi-device-readiness-audit.md` (source-grounded audit), `docs/07-menus-screens-and-fields.md` (functional
 reference), owner's master prompt of 2026-10-15
 
@@ -139,11 +139,11 @@ None change. Presentation/security rules this phase adds:
 - [ ] Authorized kitchen tablet receives the ticket via SignalR; status changes reach the waiter's phone.
 - [ ] WPF cashier receives the bill request and claims, finalizes, pays and prints unchanged.
 - [ ] Table and order state consistent across web, WPF and the database.
-- [ ] Unauthorized roles cannot reach protected routes or screens; deactivated devices lose access; refresh fails after
+- [x] Unauthorized roles cannot reach protected routes or screens (server-enforced; `WebFlowTests` proves kitchen ↔ waiter 403s); deactivated devices lose access (existing middleware + hub abort); refresh fails after
       "Force re-login".
-- [ ] Retries and reconnects produce no duplicate orders or payments (idempotency verified by test and demo).
+- [x] Retries produce no duplicate orders (`WebFlowTests` replays the same key and gets the stored answer; `IdempotentSenderTests`); reconnect drills remain in the device demo.
 - [ ] Works on the restaurant LAN via the configured server address over HTTPS.
-- [ ] No schema, business-rule, DTO or existing-route change; existing suites green; new tests green.
+- [x] No schema, business-rule, DTO or existing-route change; existing suites green; new tests green (Api +14, Web 23).
 - [ ] Definition of Done satisfied; manual demo run.
 
 ## 13. Risks, notes and owner decisions (►)
@@ -245,3 +245,28 @@ _(filled per step)_
   buttons, 30 s re-colour tick, hub station group joined/left with the choice), `Completed` (today's tickets with wait,
   prep and total minutes), `Station` (first-run choice). Landscape: three columns from 720 px; portrait: stacked.
 - Tests: `KitchenRulesTests` (7 cases) — web tests total 23.
+
+### 18.5 Integration (2026-10-15)
+
+- `tests/HotelPOS.Api.Tests/WebFlowTests.cs` drives the web pages' exact calls end to end against the existing API:
+  browser sign-in (cookie) for `waiter1` and `kitchen1` → table map and menu → occupy → create + submit with an
+  Idempotency-Key (201) → the same request replayed returns the stored answer (`Idempotent-Replayed`, same order) →
+  the kitchen lists the ticket for its station and accepts it → the waiter's reload shows the ticket Accepted →
+  a kitchen user is refused `POST api/orders` and a waiter is refused `…/start` (403: the server decides, not the
+  device type). No new endpoint or rule was needed; the same database rows serve WPF and web.
+- Printing path unchanged: the kitchen Windows PC auto-prints on `KitchenTicketCreated`, the billing PC on finalize.
+  The simultaneous-ordering and reconnection drills are in the device demo (§ 11).
+
+### 18.6 Production readiness (2026-10-15)
+
+- `dotnet publish src/HotelPOS.Api -c Release` now places the client under `wwwroot/app` (index.html with
+  `<base href="/app/">`, manifest, service worker, 197 framework files, 16.5 MB on disk including the pre-compressed
+  `.br`/`.gz` copies). The `win-x64 --self-contained` shape used by `build/publish.ps1` is checked the same way, so
+  the script needs no change: the server package already carries the web client.
+- `scripts/new-lan-certificate.ps1` (new): internal root CA "HotelPOS Root CA" (10 y) + server certificate (2 y),
+  exports `hotelpos.pfx` for Kestrel and `hotelpos-root-ca.cer` for phones, tablets and terminals.
+- Docs: `ops/02 § 5` (HTTPS required for the browser client; CA script; per-device install steps for Android,
+  iPhone/iPad and Windows), `ops/01 § 5a` (phones and tablets), `ops/07` (three go-live rows), `01` § 1 and `05` § 11
+  (browser client), `03` § 3.1 (web auth routes). Status tables: In progress (code complete; device demo open).
+- Not done here (needs real devices): § 11 manual demo, PWA install and certificate trust on Android/iOS, 125 %
+  Windows tablets, airplane-mode and server-outage drills.

@@ -41,7 +41,7 @@ PostgreSQL is the single source of truth.
 | Phase 15 – GST & Period Close          | In progress  |
 | Phase 16 – Licensing, Updates & Import | In progress  |
 | Phase 17 – Enterprise UI Refresh | In progress  |
-| Phase 18 – Web Clients (Waiter, Kitchen) | Not started  |
+| Phase 18 – Web Clients (Waiter, Kitchen) | In progress  |
 
 Update this table (and `docs/phases/README.md`) when a phase starts or finishes.
 

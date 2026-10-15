@@ -10,6 +10,8 @@
     <ProjectReference Include="..\HotelPOS.Application\HotelPOS.Application.csproj" />
     <ProjectReference Include="..\HotelPOS.Infrastructure\HotelPOS.Infrastructure.csproj" />
     <ProjectReference Include="..\HotelPOS.Contracts\HotelPOS.Contracts.csproj" />
+    <!-- Phase 18: the browser client is published into wwwroot/app and served by this API (same origin). -->
+    <ProjectReference Include="..\HotelPOS.Web\HotelPOS.Web.csproj" />
   </ItemGroup>
 
   <ItemGroup>

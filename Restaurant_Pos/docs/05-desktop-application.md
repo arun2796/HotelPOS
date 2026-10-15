@@ -268,3 +268,13 @@ copy 2. Reports has Export Excel and Save PDF, Audit Log has Export Excel; Close
   **Update required** screen offers it too). The terminal downloads the installer from the server, checks its
   SHA-256, closes and lets the installer replace it; HotelPOS starts again by itself (Windows asks for administrator
   permission).
+
+## 11. Browser client (Phase 18)
+
+`src/HotelPOS.Web` is the companion to this desktop application for devices that cannot run WPF: waiters on phones
+(Tables, Table details, Order Builder, My orders) and kitchen staff on tablets (Station, Kitchen Display, Completed).
+It is served by the API under `/app`, reuses the same contracts, routes, events and permissions, and keeps the
+desktop's rules (option-group Min/Max, quantities and guests 1–99, notes ≤ 500, idempotency keys reused on retries,
+drafts per table on the device, same status colours). Browser sessions keep the access token in memory and the refresh
+token in an HttpOnly cookie (`/api/auth/web/*`); the device registers itself as `WEB-WAITER-xxxxxx` or
+`WEB-KITCHEN-xxxxxx`. Billing, cash, reports, administration and all printing remain here, on Windows.

@@ -38,6 +38,10 @@ Venue: ____________________  Date: __________  Technician: ____________________ 
 
 ## Terminals and printing
 
+- [ ] Phones/tablets (if used): root CA installed on each device, `https://<server>:5001/app` opens, added to the home screen, device visible under Administration → Devices with a clear name ([01 § 5a](01-installation.md)).
+- [ ] Kitchen tablet has its station chosen; a test order from a phone reaches the tablet and prints the KOT on the kitchen Windows PC.
+- [ ] Airplane-mode test on a phone: an order sent after reconnecting appears exactly once.
+
 - [ ] Every terminal: correct server address, signs in, shows 🟢.
 - [ ] Kitchen screens bound to their station; a test order reaches the right screen.
 - [ ] KOT, invoice and receipt print on the right printers; paper width right.

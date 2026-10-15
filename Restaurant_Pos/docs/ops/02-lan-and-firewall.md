@@ -55,13 +55,23 @@ Test-NetConnection 192.168.1.100 -Port 5432   # TcpTestSucceeded : False  (must 
 - Kitchen screens far from the router: add an access point rather than relying on a weak signal. The app survives
   drop-outs (orders are kept and re-sent), but staff notice the delay.
 
-## 5. HTTPS (optional)
+## 5. HTTPS (required for phones and tablets, optional for Windows-only sites)
 
-Plain HTTP is acceptable on an isolated staff network. Use HTTPS when anyone else can join the network:
+Plain HTTP is acceptable on an isolated staff network with Windows terminals only. Use HTTPS when anyone else can
+join the network — and **always when phones or tablets use the browser client** (`https://<server>:5001/app`,
+Phase 18): the home-screen install and offline cache of a web app only work over HTTPS.
 
-1. Create a certificate for the server's address (an internal CA, or a self-signed one with
-   `New-SelfSignedCertificate -DnsName hotelpos-server, 192.168.1.100 -CertStoreLocation Cert:\LocalMachine\My`),
-   export it with its private key to a `.pfx` and the public part to a `.cer`.
+1. Create the certificates with the internal-CA script (run as Administrator on the server):
+
+   ```powershell
+   & 'C:\Program Files\HotelPOS\Server\scripts\new-lan-certificate.ps1' -DnsNames hotelpos-server,192.168.1.100 `
+       -PfxPassword (Read-Host -AsSecureString 'PFX password')
+   ```
+
+   It creates a root CA **HotelPOS Root CA** (10 years) and a server certificate signed by it (2 years), writes
+   `C:\ProgramData\HotelPOS\Api\hotelpos.pfx` (private key, for Kestrel) and `hotelpos-root-ca.cer` (public part, for
+   the devices). Re-run it to renew the server certificate; the CA is reused. (A certificate from another internal
+   CA, or a self-signed `New-SelfSignedCertificate -DnsName …`, works the same way.)
 2. Add to `C:\Program Files\HotelPOS\Server\appsettings.Production.json`:
 
    ```json
@@ -74,5 +84,12 @@ Plain HTTP is acceptable on an isolated staff network. Use HTTPS when anyone els
    ```
 
 3. Run the firewall script with `-Https`, restart the **HotelPOS API** service.
-4. Install the `.cer` on each terminal (`HotelPOS-Client-Setup.exe /CERT=\\server\share\hotelpos.cer`) and change
-   the terminal's server address to `https://<server>:5001` (Administration → This Terminal).
+4. Install the root CA `.cer` on each device and point it at HTTPS:
+   - Windows terminals: `HotelPOS-Client-Setup.exe /CERT=\\server\share\hotelpos-root-ca.cer` (or
+     `certutil -addstore Root hotelpos-root-ca.cer`), then Administration → This Terminal → `https://<server>:5001`.
+   - Android phones/tablets: copy the `.cer` to the device → Settings → Security → *Install a certificate* →
+     *CA certificate*. Then open `https://<server>:5001/app` in Chrome and *Add to Home screen*.
+   - iPhone/iPad: open the `.cer` (AirDrop, mail or a web link) → Settings → *Profile Downloaded* → Install → then
+     Settings → General → About → *Certificate Trust Settings* → enable full trust. Open `https://<server>:5001/app`
+     in Safari → Share → *Add to Home Screen*.
+   The browser client is served by the API itself (same address, path `/app`); no extra port or server is needed.
