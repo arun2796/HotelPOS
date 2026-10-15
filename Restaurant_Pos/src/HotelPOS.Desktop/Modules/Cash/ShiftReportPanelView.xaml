@@ -17,7 +17,7 @@
     </DataTemplate>
   </UserControl.Resources>
 
-  <Border Style="{StaticResource Card}" Width="560" MaxHeight="660" Padding="24">
+  <Border Style="{StaticResource Dialog.Frame}" Width="560" MaxHeight="660">
     <Grid>
       <Grid.RowDefinitions>
         <RowDefinition Height="Auto" />

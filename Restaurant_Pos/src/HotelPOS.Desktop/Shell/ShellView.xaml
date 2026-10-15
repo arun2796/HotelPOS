@@ -322,8 +322,8 @@
           MouseLeftButtonDown="OnPaletteScrimClicked">
       <Grid Width="640" Margin="0,88,0,0" HorizontalAlignment="Center" VerticalAlignment="Top"
             DataContext="{Binding Palette}" MouseLeftButtonDown="OnPaletteClicked">
-        <Border CornerRadius="12" Background="{DynamicResource Brush.Surface}" Effect="{DynamicResource Shadow.Popup}" />
-        <Border CornerRadius="12" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1">
+        <Border CornerRadius="10" Background="{DynamicResource Brush.Surface}" Effect="{DynamicResource Shadow.Popup}" />
+        <Border CornerRadius="10" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1">
           <StackPanel>
             <Grid Margin="16,8">
               <Grid.ColumnDefinitions>

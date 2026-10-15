@@ -213,3 +213,14 @@ Two machines (billing PC + waiter tablet), light then dark theme:
 - Tables, table details, My Orders needed no markup change (status tiles and chips already on tokens). Cart column
   was already 380 px. Known nit: the picture's top corners are square inside the rounded card (WPF clip); cosmetic.
 - Tests: Orders + rendering + token contract green (13); 73 screens.
+
+### 17.4 Kitchen and 17.5 Billing dialogs (2026-10-15)
+
+- Kitchen Display, Completed Orders, Billing queue and Bill screen already met § 8.2 on the new tokens (three
+  ticket columns, amber/red timing, +ADD tag, struck cancelled lines, right-aligned totals): no markup change.
+- Dialog frame applied: generic dialog host (`MainWindow`, its separate shadow layer removed — the frame carries
+  the shadow), bill pop-up panel (discount / customer / payment / approval host), kitchen sold-out panel, Order
+  Builder options and note pop-ups, cash movement, shift count and shift report panels. Command palette radius 12 → 10.
+- Inline side editors (users, tables, sections, menu pages, customers, billing setup) stay on `Card`: they are
+  panes, not pop-ups. Sign-in / first-run / change-password cards are handled in 17.10.
+- Tests: rendering + token + cash + billing green (23); 73 screens. Reviewed: cash payment, shift count, confirm dialog.

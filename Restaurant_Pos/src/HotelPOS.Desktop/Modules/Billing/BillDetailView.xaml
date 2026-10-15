@@ -209,7 +209,7 @@
 
     <Grid Grid.RowSpan="3" Grid.ColumnSpan="2" Margin="-24" Background="{DynamicResource Brush.Overlay}"
           Visibility="{Binding IsPanelOpen, Converter={StaticResource BoolToVisibility}}">
-      <Border Style="{StaticResource Card}" Width="620" MaxHeight="660" VerticalAlignment="Center" HorizontalAlignment="Center" Padding="24">
+      <Border Style="{StaticResource Dialog.Frame}" Width="620" MaxHeight="660" VerticalAlignment="Center" HorizontalAlignment="Center" Padding="24">
         <Grid>
           <Grid.RowDefinitions>
             <RowDefinition Height="*" />

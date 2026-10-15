@@ -174,7 +174,7 @@
 
     <Grid Grid.RowSpan="3" Grid.ColumnSpan="5" Background="{DynamicResource Brush.Overlay}" Margin="-16"
           Visibility="{Binding IsSoldOutOpen, Converter={StaticResource BoolToVisibility}}">
-      <Border Style="{StaticResource Card}" Width="560" MaxHeight="640" HorizontalAlignment="Center" VerticalAlignment="Center">
+      <Border Style="{StaticResource Dialog.Frame}" Width="560" MaxHeight="640" HorizontalAlignment="Center" VerticalAlignment="Center">
         <Grid>
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />

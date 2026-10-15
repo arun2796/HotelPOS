@@ -199,7 +199,7 @@
 
     <Grid Grid.RowSpan="3" Grid.ColumnSpan="3" Background="{DynamicResource Brush.Overlay}" Margin="-16"
           Visibility="{Binding Picker, Converter={StaticResource NullToVisibility}}">
-      <Border Style="{StaticResource Card}" Width="560" MaxHeight="620" HorizontalAlignment="Center" VerticalAlignment="Center"
+      <Border Style="{StaticResource Dialog.Frame}" Width="560" MaxHeight="620" HorizontalAlignment="Center" VerticalAlignment="Center"
               DataContext="{Binding Picker}">
         <Grid>
           <Grid.RowDefinitions>
@@ -269,7 +269,7 @@
 
     <Grid Grid.RowSpan="3" Grid.ColumnSpan="3" Background="{DynamicResource Brush.Overlay}" Margin="-16"
           Visibility="{Binding NoteTarget, Converter={StaticResource NullToVisibility}}">
-      <Border Style="{StaticResource Card}" Width="520" HorizontalAlignment="Center" VerticalAlignment="Center">
+      <Border Style="{StaticResource Dialog.Frame}" Width="520" HorizontalAlignment="Center" VerticalAlignment="Center">
         <StackPanel>
           <TextBlock Text="{Binding NoteTarget.Name, StringFormat=Note for {0}}" Style="{StaticResource Text.Title}" Margin="0,0,0,12" />
           <ItemsControl ItemsSource="{Binding Notes}" Focusable="False">

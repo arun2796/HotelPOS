@@ -8,7 +8,7 @@
              d:DataContext="{d:DesignInstance cash:CashMovementPanelViewModel}"
              d:DesignWidth="520" d:DesignHeight="480">
 
-  <Border Style="{StaticResource Card}" Width="520" Padding="24">
+  <Border Style="{StaticResource Dialog.Frame}" Width="520">
     <StackPanel>
       <TextBlock Text="Pay in / pay out" Style="{StaticResource Text.Title}" />
       <TextBlock Text="Cash moved in or out of the drawer outside a bill. Every movement needs a reason." Style="{StaticResource Text.Caption}"
