@@ -40,7 +40,7 @@ PostgreSQL is the single source of truth.
 | Phase 14 – Templates, PDF & Excel      | In progress  |
 | Phase 15 – GST & Period Close          | In progress  |
 | Phase 16 – Licensing, Updates & Import | In progress  |
-| Phase 17 – Enterprise UI Refresh | Not started  |
+| Phase 17 – Enterprise UI Refresh | In progress  |
 
 Update this table (and `docs/phases/README.md`) when a phase starts or finishes.
 

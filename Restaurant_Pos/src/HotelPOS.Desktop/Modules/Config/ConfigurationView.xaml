@@ -9,7 +9,7 @@
              d:DesignWidth="1200" d:DesignHeight="760">
 
   <ScrollViewer VerticalScrollBarVisibility="Auto" Background="{DynamicResource Brush.Background}">
-    <Border Style="{StaticResource Card}" Width="560" Margin="24" Padding="36"
+    <Border Style="{StaticResource Dialog.Frame}" Width="560" Margin="24" Padding="36"
             HorizontalAlignment="Center" VerticalAlignment="Center">
       <StackPanel>
         <StackPanel Orientation="Horizontal">

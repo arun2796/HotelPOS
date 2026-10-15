@@ -84,8 +84,12 @@
       </controls:BusyOverlay>
 
       <Grid Grid.Row="4" Margin="0,12,0,0">
-        <TextBlock Text="{Binding SummaryText}" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
-        <ItemsControl ItemsSource="{Binding Totals}" HorizontalAlignment="Right" Focusable="False">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <TextBlock Text="{Binding SummaryText}" Style="{StaticResource Text.Caption}" VerticalAlignment="Top" Margin="0,6,16,0" TextWrapping="Wrap" />
+        <ItemsControl Grid.Column="1" ItemsSource="{Binding Totals}" HorizontalAlignment="Right" Focusable="False">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate>
               <WrapPanel />

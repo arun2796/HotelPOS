@@ -1,6 +1,6 @@
 # Phase 17 — Enterprise UI Refresh
 
-Status: Not started (specified 2026-10-15) · Depends on: Phase 11 (design system), Phase 16 (all screens exist) ·
+Status: In progress (code complete 2026-10-15; manual demo and display-scaling pass open) · Depends on: Phase 11 (design system), Phase 16 (all screens exist) ·
 References: `docs/07-menus-screens-and-fields.md` (functional source of truth), owner's master prompt of 2026-10-15,
 reference dashboard image (visual inspiration only, not a screen specification)
 
@@ -152,12 +152,12 @@ Two machines (billing PC + waiter tablet), light then dark theme:
 
 ## 12. Acceptance criteria
 
-- [ ] All 28 screens and every dialog in `docs/07` present, same roles, same fields, columns, buttons and messages.
-- [ ] Desktop test count unchanged or higher; rendering test 73 screens, zero binding errors, both themes.
-- [ ] No change outside `src/HotelPOS.Desktop` presentation files except documented § 14 exceptions.
-- [ ] Token contract test green; no stray hard-coded colours.
+- [x] All 28 screens and every dialog in `docs/07` present, same roles, same fields, columns, buttons and messages (no view-model, contract or API change; rendering test covers 73 screens).
+- [x] Desktop test count unchanged or higher (245 → 248 + 1 skipped); rendering test 73 screens, zero binding errors, both themes.
+- [x] No change outside `src/HotelPOS.Desktop` presentation files except documented § 14 exceptions (`MenuTileViewModel.ImageFile`).
+- [x] Token contract test green; no stray hard-coded colours.
 - [ ] 1920×1080, 1600×900, 1366×768 at 100 % and 125 %: no clipped or overlapping controls on the step-11 screens.
-- [ ] Status colours for tables and tickets unchanged in meaning.
+- [x] Status colours for tables and tickets unchanged in meaning (asserted by `ThemeTokenContractTests`).
 - [ ] Definition of Done satisfied; manual demo run.
 
 ## 13. Risks and notes (owner decisions marked ►)
@@ -224,3 +224,17 @@ Two machines (billing PC + waiter tablet), light then dark theme:
 - Inline side editors (users, tables, sections, menu pages, customers, billing setup) stay on `Card`: they are
   panes, not pop-ups. Sign-in / first-run / change-password cards are handled in 17.10.
 - Tests: rendering + token + cash + billing green (23); 73 screens. Reviewed: cash payment, shift count, confirm dialog.
+
+### 17.6–17.10 Cash, Dashboard, Management, Administration, Auth (2026-10-15)
+
+- Reviewed on the new tokens: Day End checks, Cash Shifts panels, Dashboard, Reports, GST returns, Import wizard,
+  Menu items + editor, Roles & Permissions, Restaurant Settings, Printers, Sign-in (light and dark). All already
+  follow § 8.2 (page header → filter bar → grid → footer; right-aligned numbers; chips) — no markup change needed.
+- Fixed one real defect found in review: the Reports footer drew the summary caption underneath the totals chips
+  when they wrapped; the footer is now two columns (summary left, chips right, wrapping within their column).
+- Sign-in, Change password and First-run cards now use `Dialog.Frame` (shadowed, 10 px radius; their 36 px
+  padding kept).
+- Not verifiable in the rendering harness: Windows 125 % display scaling and 1600×900 / 1920×1080 layouts (the
+  harness renders 1366 wide). Moved to the manual demo (§ 11 step 7).
+- Tests at the end of the phase: desktop rendering 73 screens both themes, zero binding errors; full solution suite
+  run once (totals recorded in the status commit).
