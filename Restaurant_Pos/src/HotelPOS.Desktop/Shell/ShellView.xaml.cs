@@ -71,7 +71,7 @@ public partial class ShellView : UserControl
         }
 
         var from = Sidebar.ActualWidth;
-        var to = ViewModel?.IsSidebarCollapsed == true ? 72 : 264;
+        var to = ViewModel?.IsSidebarCollapsed == true ? 64 : 240;
         Sidebar.BeginAnimation(WidthProperty, new DoubleAnimation(from, to, TimeSpan.FromMilliseconds(160))
         {
             EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },

@@ -192,3 +192,12 @@ Two machines (billing PC + waiter tablet), light then dark theme:
 - `ScreenRenderingTests`: the body-font assertion now accepts Segoe UI Variable / Segoe UI / Inter files (it
   asserted Inter before). Still 73 screens, zero binding errors, both themes.
 - Reviewed: Dashboard (light), Order Builder (light), Bill (dark). Order Builder cards get pictures in 17.3.
+
+### 17.2 Shell (2026-10-15)
+
+- Sidebar 264/72 → 240/64 px (XAML triggers and the toggle animation in code-behind); 1 px right edge in
+  `Brush.SidebarDivider` so the light sidebar separates from the page; "Soon" badge uses `Brush.SidebarHover`
+  instead of a white overlay that vanished on a light surface.
+- Header 64 → 56 px: 32 px page-icon box, 16 px title, search box 320 × 36. Status bar 34 → 28 px.
+- Nav item, user block, banners, palette, notices and cash-shift bar needed no markup change — they already follow
+  the tokens. Reviewed: Tables (light, expanded) and Users (collapsed rail). Rendering 73 screens green.

@@ -1191,7 +1191,7 @@
     <Setter Property="ScrollViewer.PanningMode" Value="VerticalOnly" />
   </Style>
 
-  <!-- Selected item: lifted background, white text and an accent bar, as in BillingHub. -->
+  <!-- Selected item: soft green fill, green text and a 3 px accent bar (Phase 17 light sidebar). -->
   <Style x:Key="NavItem" TargetType="ListBoxItem">
     <Setter Property="FocusVisualStyle" Value="{StaticResource Focus.Visual}" />
     <Setter Property="AutomationProperties.Name" Value="{Binding Title}" />
@@ -1220,7 +1220,7 @@
                   <TextBlock x:Name="Title" Grid.Column="1" Text="{Binding Title}" Margin="8,0,0,0"
                              FontSize="{DynamicResource Font.Size.Body}" FontWeight="Medium"
                              Foreground="{DynamicResource Brush.SidebarText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                  <Border x:Name="Soon" Grid.Column="2" CornerRadius="4" Padding="6,1" Background="#22FFFFFF" VerticalAlignment="Center"
+                  <Border x:Name="Soon" Grid.Column="2" CornerRadius="4" Padding="6,1" Background="{DynamicResource Brush.SidebarHover}" VerticalAlignment="Center"
                           Visibility="{Binding IsAvailable, Converter={StaticResource InverseBoolToVisibility}}">
                     <TextBlock Text="Soon" FontSize="10" Foreground="{DynamicResource Brush.SidebarTextMuted}" />
                   </Border>
