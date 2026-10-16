@@ -40,6 +40,7 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
     private readonly ILogger<ShellViewModel> _logger;
     private readonly CancellationTokenSource _lifetime = new();
     private bool _suppressNavigation;
+    private ReconnectCoordinator? _reconnect;
 
     public ShellViewModel(
         IServiceProvider services,
@@ -121,7 +122,7 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
     public async Task OnNavigatedToAsync(object? parameter)
     {
         _navigation.Attach(this);
-        _realtime.Reconnected += OnReconnected;
+        _reconnect = new ReconnectCoordinator(_realtime, Notices, _services.GetRequiredService<IUiDispatcher>(), () => CurrentPage, LoadRestaurantNameAsync);
 
         BuildNavigation();
         UpdateClock();
@@ -151,7 +152,7 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
     {
         _lifetime.Cancel();
         _lifetime.Dispose();
-        _realtime.Reconnected -= OnReconnected;
+        _reconnect?.Dispose();
         _menuCache.Stop();
         _notificationRouter.Stop();
         _kotPrinter.Stop();
@@ -427,16 +428,6 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
         if (!string.IsNullOrWhiteSpace(name))
         {
             RestaurantName = name;
-        }
-    }
-
-    private void OnReconnected(object? sender, EventArgs e)
-    {
-        _logger.LogInformation("Reconnected: refreshing {Page} from the server", CurrentPage?.GetType().Name);
-        _ = LoadRestaurantNameAsync();
-        if (CurrentPage is IRefreshable refreshable)
-        {
-            _ = refreshable.RefreshAsync();
         }
     }
 

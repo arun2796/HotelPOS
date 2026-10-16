@@ -25,6 +25,9 @@ public sealed record ApiResult<T>
     public bool IsTransient =>
         !Success && (StatusCode is null || (int)StatusCode >= 500 || ErrorCode == ErrorCodes.ConnectionUnavailable || ErrorCode == ErrorCodes.RequestInProgress);
 
+    /// <summary>Typed outcome for HTTP 409 CONCURRENCY_CONFLICT: another device changed the record; reload and let the user retry.</summary>
+    public bool IsConflict => !Success && ErrorCode == ErrorCodes.ConcurrencyConflict;
+
     public static ApiResult<T> Ok(T? data, HttpStatusCode status, bool replayed = false) =>
         new() { Success = true, Data = data, StatusCode = status, Replayed = replayed };
 

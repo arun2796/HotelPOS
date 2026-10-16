@@ -141,6 +141,8 @@ Status indicator rules:
 Events received while a resync is running are queued and applied afterwards (or simply trigger another
 fetch). Handlers are idempotent: applying the same event twice has no effect.
 
+Desktop (Phase 20.4): `ReconnectCoordinator` refreshes the page on screen (the billing queue when it is open), reloads the restaurant name and adds one Info bell entry "Reconnected — refreshed at HH:mm" (a repeat replaces it). `MenuCache` and the shift bar resync on their own. Server notices are push-only and cannot be replayed after an outage. Web: a write refused with 409 `CONCURRENCY_CONFLICT` shows "Changed on another device — reloaded", re-fetches the table or order, and keeps the draft and its pending idempotency key.
+
 ## 6. Presence
 
 `ConnectionTracker` (in-memory, singleton) maps connection id -> (userId, deviceId, roles, stationId).

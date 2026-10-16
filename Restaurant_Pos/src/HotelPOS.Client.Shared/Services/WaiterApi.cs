@@ -16,6 +16,9 @@ public sealed class WaiterApi
         _api = api;
     }
 
+    /// <summary>Shown when the server answers 409 CONCURRENCY_CONFLICT (<see cref="ApiResult{T}.IsConflict"/>).</summary>
+    public const string ConflictMessage = "Changed on another device — reloaded";
+
     public MenuDto? CachedMenu => _menu;
 
     public Task<ApiResult<TableMapDto>> GetTableMapAsync(CancellationToken ct = default) =>
