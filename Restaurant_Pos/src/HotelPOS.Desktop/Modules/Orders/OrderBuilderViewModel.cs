@@ -10,6 +10,7 @@ using HotelPOS.Contracts.Menu;
 using HotelPOS.Contracts.Orders;
 using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
+using HotelPOS.Desktop.Services.Configuration;
 using HotelPOS.Desktop.Services.Menu;
 using HotelPOS.Desktop.Services.Navigation;
 using HotelPOS.Desktop.Services.Orders;
@@ -46,11 +47,25 @@ public sealed partial class MenuTileViewModel : ObservableObject
     // Presentation only (Phase 17): the cached picture file for the tile, loaded after the tile is shown.
     [ObservableProperty]
     private string? _imageFile;
+
+    // Favourites (Phase 20.7): pinned on this terminal; the tile's star shows it.
+    [ObservableProperty]
+    private bool _isPinned;
 }
 
 public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAware
 {
-    public static readonly IReadOnlyList<string> QuickNotes = new[]
+    // Pseudo-category id of the "Favourites" chip (never a real category id).
+    public const int FavouritesCategoryId = -1;
+
+    public const string FavouritesName = "★ Favourites";
+
+    // How many most-ordered items the Favourites chip adds after the pinned ones, and how many counters we keep.
+    public const int MostOrderedCount = 8;
+
+    public const int MaxTrackedItems = 200;
+
+        public static readonly IReadOnlyList<string> QuickNotes = new[]
     {
         "Less spicy", "Extra spicy", "No onion", "No garlic", "Less oil", "Jain", "Parcel",
     };
@@ -63,6 +78,7 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
     private readonly INavigationService _navigation;
     private readonly IDialogService _dialogs;
     private readonly INotificationService _notifications;
+    private readonly IUserPreferences _preferences;
     private OrderBuilderContext _context = new(0, string.Empty, OrderBuilderMode.NewOrder, 1);
     private string _orderRowVersion = string.Empty;
     private Guid? _pendingKey;
@@ -78,7 +94,8 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
         IOrderSubmitter submitter,
         INavigationService navigation,
         IDialogService dialogs,
-        INotificationService notifications)
+        INotificationService notifications,
+        IUserPreferences preferences)
     {
         _menuCache = menuCache;
         _ordersApi = ordersApi;
@@ -88,6 +105,7 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
         _navigation = navigation;
         _dialogs = dialogs;
         _notifications = notifications;
+        _preferences = preferences;
         Cart.CollectionChanged += (_, _) => OnCartChanged();
     }
 
@@ -101,6 +119,10 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
 
     [ObservableProperty]
     private MenuCategoryDto? _selectedCategory;
+
+    // Search-as-you-type over item name and code, across the whole menu (Phase 20.7).
+    [ObservableProperty]
+    private string _searchText = string.Empty;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(GuestText))]
@@ -177,6 +199,8 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
     public void OnNavigatedFrom() => _menuCache.Changed -= OnMenuChanged;
 
     partial void OnSelectedCategoryChanged(MenuCategoryDto? value) => ShowItems();
+
+    partial void OnSearchTextChanged(string value) => ShowItems();
 
     partial void OnGuestCountChanged(int value) => SaveLocalDraft();
 
@@ -408,6 +432,11 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
         {
             case SendStatus.Succeeded:
                 _pendingKey = null;
+                if (submit)
+                {
+                    RecordOrdered();
+                }
+
                 _drafts.Delete(_context.TableId);
                 var order = outcome.Data!;
                 _notifications.Success(submit
@@ -582,6 +611,55 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
         });
     }
 
+    [RelayCommand]
+    private void TogglePin(MenuTileViewModel? tile)
+    {
+        if (tile is null)
+        {
+            return;
+        }
+
+        var pins = _preferences.PinnedItemIds.ToList();
+        if (!pins.Remove(tile.Item.Id))
+        {
+            pins.Add(tile.Item.Id);
+        }
+
+        _preferences.PinnedItemIds = pins;
+        BuildMenu();
+    }
+
+    // Counts one more send of every distinct item in the cart; the store keeps only the most-ordered MaxTrackedItems.
+    private void RecordOrdered()
+    {
+        var counts = _preferences.ItemOrderCounts.ToDictionary(p => p.Key, p => p.Value);
+        foreach (var id in Cart.Select(c => c.MenuItemId).Distinct())
+        {
+            counts[id] = counts.GetValueOrDefault(id) + 1;
+        }
+
+        if (counts.Count > MaxTrackedItems)
+        {
+            counts = counts.OrderByDescending(p => p.Value).ThenBy(p => p.Key).Take(MaxTrackedItems).ToDictionary(p => p.Key, p => p.Value);
+        }
+
+        _preferences.ItemOrderCounts = counts;
+    }
+
+    // Pinned items first (in pin order), then the most-ordered ones on this terminal; only items still on the menu.
+    private List<MenuEntryDto> FavouriteItems(MenuDto menu)
+    {
+        var byId = menu.Items.ToDictionary(i => i.Id);
+        var pinned = _preferences.PinnedItemIds.Where(byId.ContainsKey).Distinct().ToList();
+        var frequent = _preferences.ItemOrderCounts
+            .Where(p => p.Value > 0 && byId.ContainsKey(p.Key) && !pinned.Contains(p.Key))
+            .OrderByDescending(p => p.Value)
+            .ThenBy(p => byId[p.Key].Name, StringComparer.OrdinalIgnoreCase)
+            .Take(MostOrderedCount)
+            .Select(p => p.Key);
+        return pinned.Concat(frequent).Select(id => byId[id]).ToList();
+    }
+
     private void OnMenuChanged(object? sender, EventArgs e) => BuildMenu();
 
     private void BuildMenu()
@@ -589,6 +667,11 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
         var menu = _menuCache.Menu;
         var selectedId = SelectedCategory?.Id;
         Categories.Clear();
+        if (menu is not null && FavouriteItems(menu).Count > 0)
+        {
+            Categories.Add(new MenuCategoryDto(FavouritesCategoryId, FavouritesName, -1));
+        }
+
         foreach (var category in menu?.Categories ?? Array.Empty<MenuCategoryDto>())
         {
             Categories.Add(category);
@@ -601,14 +684,40 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
     private void ShowItems()
     {
         Items.Clear();
-        if (_menuCache.Menu is not { } menu || SelectedCategory is null)
+        if (_menuCache.Menu is not { } menu)
         {
             return;
         }
 
-        foreach (var item in menu.Items.Where(i => i.CategoryId == SelectedCategory.Id))
+        IEnumerable<MenuEntryDto> source;
+        var query = SearchText.Trim();
+        if (query.Length > 0)
         {
-            var tile = new MenuTileViewModel(item, $"{_currency}{item.Price.ToString("N2", CultureInfo.CurrentCulture)}");
+            source = menu.Items
+                .Where(i => i.Name.Contains(query, StringComparison.OrdinalIgnoreCase)
+                    || (i.Code?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false))
+                .OrderBy(i => i.SortOrder);
+        }
+        else if (SelectedCategory is null)
+        {
+            return;
+        }
+        else if (SelectedCategory.Id == FavouritesCategoryId)
+        {
+            source = FavouriteItems(menu);
+        }
+        else
+        {
+            source = menu.Items.Where(i => i.CategoryId == SelectedCategory.Id);
+        }
+
+        var pins = _preferences.PinnedItemIds;
+        foreach (var item in source)
+        {
+            var tile = new MenuTileViewModel(item, $"{_currency}{item.Price.ToString("N2", CultureInfo.CurrentCulture)}")
+            {
+                IsPinned = pins.Contains(item.Id),
+            };
             Items.Add(tile);
             _ = LoadImageAsync(tile);
         }

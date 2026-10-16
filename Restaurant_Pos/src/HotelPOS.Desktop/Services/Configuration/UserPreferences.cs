@@ -14,6 +14,12 @@ public interface IUserPreferences
     NotificationPreference? GetNotification(NotificationKind kind);
 
     void SetNotification(NotificationKind kind, NotificationPreference preference);
+
+    // Order Builder favourites (Phase 20.7), per terminal: pinned menu item ids in pin order, and how often each
+    // item was sent from this terminal.
+    IReadOnlyList<int> PinnedItemIds { get; set; }
+
+    IReadOnlyDictionary<int, int> ItemOrderCounts { get; set; }
 }
 
 public sealed class UserPreferences : IUserPreferences
@@ -35,6 +41,26 @@ public sealed class UserPreferences : IUserPreferences
         set
         {
             _model = _model with { LastUsername = value };
+            Persist();
+        }
+    }
+
+    public IReadOnlyList<int> PinnedItemIds
+    {
+        get => _model.PinnedItemIds ?? new List<int>();
+        set
+        {
+            _model = _model with { PinnedItemIds = value.ToList() };
+            Persist();
+        }
+    }
+
+    public IReadOnlyDictionary<int, int> ItemOrderCounts
+    {
+        get => _model.ItemOrderCounts ?? new Dictionary<int, int>();
+        set
+        {
+            _model = _model with { ItemOrderCounts = new Dictionary<int, int>(value) };
             Persist();
         }
     }
@@ -85,5 +111,9 @@ public sealed class UserPreferences : IUserPreferences
         public string? LastUsername { get; init; }
 
         public Dictionary<string, NotificationPreference>? Notifications { get; init; }
+
+        public List<int>? PinnedItemIds { get; init; }
+
+        public Dictionary<int, int>? ItemOrderCounts { get; init; }
     }
 }

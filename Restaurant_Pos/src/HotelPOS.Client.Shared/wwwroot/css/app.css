@@ -153,6 +153,9 @@ textarea.input { padding: 10px 12px; min-height: 72px; resize: vertical; }
 .item-card { display: block; text-align: left; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface);
   color: var(--text); overflow: hidden; cursor: pointer; }
 .item-card:disabled { opacity: 0.55; }
+.item-wrap { position: relative; }
+.item-wrap .item-card { width: 100%; }
+.item-star { position: absolute; top: 2px; right: 2px; width: var(--touch); height: var(--touch); border: 0; background: transparent; color: var(--primary); font-size: 22px; cursor: pointer; }
 .item-img { position: relative; aspect-ratio: 4 / 3; background: var(--surface-subtle); display: flex; align-items: center; justify-content: center; }
 .item-img img { width: 100%; height: 100%; object-fit: cover; }
 .item-img .ph { font-size: 30px; opacity: 0.5; }

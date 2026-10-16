@@ -10,6 +10,7 @@
 @inject WaiterApi Api
 @inject WebRealtimeClient Realtime
 @inject DraftStore Drafts
+@inject FavouritesStore Favourites
 @inject IdempotentSender Sender
 @inject ShellState Shell
 @inject ToastService Toasts
@@ -45,15 +46,23 @@ else
     }
 
     <div class="row" style="gap:8px;overflow-x:auto;padding-bottom:6px">
+        @if (Favourites.Items(_menu).Count > 0)
+        {
+            <button id="chip-favourites" class="chip-btn @(_categoryId == FavouritesStore.CategoryId ? "on" : null)" @onclick="() => _categoryId = FavouritesStore.CategoryId">@FavouritesStore.CategoryName</button>
+        }
         @foreach (var category in _menu.Categories.OrderBy(c => c.SortOrder))
         {
             <button class="chip-btn @(_categoryId == category.Id ? "on" : null)" @onclick="() => _categoryId = category.Id">@category.Name</button>
         }
     </div>
 
+    <input id="menu-search" class="input" type="search" placeholder="Search name or code" aria-label="Search items" autocomplete="off"
+           style="margin:6px 0" @bind="SearchText" @bind:event="oninput" />
+
     <div class="items">
-        @foreach (var item in _menu.Items.Where(i => i.CategoryId == _categoryId).OrderBy(i => i.SortOrder))
+        @foreach (var item in VisibleItems())
         {
+            <div class="item-wrap">
             <button class="item-card" disabled="@(!item.IsAvailable)" @onclick="() => Pick(item)">
                 <div class="item-img">
                     @if (!string.IsNullOrEmpty(item.ImageUrl))
@@ -74,6 +83,9 @@ else
                     <div class="row between"><span class="price">@item.Price.ToString("N2")</span>@if (item.ModifierGroupIds.Count > 0) { <span class="muted small">+ options</span> }</div>
                 </div>
             </button>
+            <button type="button" class="item-star" aria-label="@PinLabel(item)" aria-pressed="@(Favourites.IsPinned(item.Id) ? "true" : "false")"
+                    @onclick="() => TogglePinAsync(item)">@(Favourites.IsPinned(item.Id) ? "★" : "☆")</button>
+            </div>
         }
     </div>
 
@@ -188,7 +200,28 @@ else
     private string _noteText = string.Empty;
     private IDisposable? _menuSubscription;
 
+    private string SearchText { get; set; } = string.Empty;
+
     private bool IsAppend => OrderId is not null;
+
+    // Search-as-you-type spans the whole menu; otherwise the selected chip (a real category or Favourites).
+    private IEnumerable<MenuEntryDto> VisibleItems() =>
+        SearchText.Trim().Length > 0
+            ? FavouritesStore.Search(_menu!, SearchText)
+            : _categoryId == FavouritesStore.CategoryId
+                ? Favourites.Items(_menu!)
+                : _menu!.Items.Where(i => i.CategoryId == _categoryId).OrderBy(i => i.SortOrder);
+
+    private string PinLabel(MenuEntryDto item) => (Favourites.IsPinned(item.Id) ? "Unpin " : "Pin ") + item.Name;
+
+    private async Task TogglePinAsync(MenuEntryDto item)
+    {
+        await Favourites.TogglePinAsync(item.Id);
+        if (_categoryId == FavouritesStore.CategoryId && Favourites.Items(_menu!).Count == 0)
+        {
+            _categoryId = _menu!.Categories.OrderBy(c => c.SortOrder).FirstOrDefault()?.Id ?? 0;
+        }
+    }
 
     private int Guests
     {
@@ -202,6 +235,7 @@ else
         await Realtime.StartAsync();
         _menuSubscription = Realtime.Subscribe<MenuChangedEvent>(HubEvents.MenuChanged, changed => { Api.InvalidateMenu(); _ = InvokeAsync(LoadAsync); });
 
+        await Favourites.LoadAsync();
         var draft = await Drafts.LoadAsync(TableId);
         if (draft is not null && draft.OrderId == OrderId)
         {
@@ -228,9 +262,13 @@ else
         {
             _menu = menu;
             _error = null;
-            if (_categoryId == 0 || menu.Categories.All(c => c.Id != _categoryId))
+            var hasFavourites = Favourites.Items(menu).Count > 0;
+            var known = menu.Categories.Any(c => c.Id == _categoryId) || (_categoryId == FavouritesStore.CategoryId && hasFavourites);
+            if (_categoryId == 0 || !known)
             {
-                _categoryId = menu.Categories.OrderBy(c => c.SortOrder).FirstOrDefault()?.Id ?? 0;
+                _categoryId = hasFavourites
+                    ? FavouritesStore.CategoryId
+                    : menu.Categories.OrderBy(c => c.SortOrder).FirstOrDefault()?.Id ?? 0;
             }
         }
         else
@@ -340,6 +378,7 @@ else
             if (result.Success && result.Data is { } order)
             {
                 _pendingKey = null;
+                await Favourites.RecordOrderedAsync(_cart.Lines.Select(l => l.MenuItemId));
                 _cart.Clear();
                 await Drafts.RemoveAsync(TableId);
                 Toasts.Success(IsAppend ? $"Added items sent for order #{order.OrderNumber}." : $"Order #{order.OrderNumber} sent to the kitchen.");
