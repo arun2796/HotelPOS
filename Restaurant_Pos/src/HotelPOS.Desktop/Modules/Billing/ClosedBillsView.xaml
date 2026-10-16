@@ -4,6 +4,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:billing="clr-namespace:HotelPOS.Desktop.Modules.Billing"
+             xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance billing:ClosedBillsViewModel}"
              d:DesignWidth="1100" d:DesignHeight="700">
@@ -21,10 +22,12 @@
 
     <Grid Grid.ColumnSpan="2" Margin="0,0,0,12">
       <StackPanel Orientation="Horizontal">
-        <DatePicker SelectedDate="{Binding SelectedDate}" Width="150" VerticalAlignment="Center" ToolTip="Business day (empty = today)" />
+        <DatePicker SelectedDate="{Binding SelectedDate}" Width="150" VerticalAlignment="Center" ToolTip="Business day (empty = today)"
+                    md:HintAssist.Hint="Business day" AutomationProperties.Name="Business day" />
         <Button Content="Today" Command="{Binding TodayCommand}" Margin="8,0,0,0" />
         <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" Width="240" Margin="16,0,0,0" MaxLength="50"
-                 VerticalContentAlignment="Center" ToolTip="Table, invoice or order number">
+                 VerticalContentAlignment="Center" ToolTip="Table, invoice or order number"
+                 md:HintAssist.Hint="Table, invoice or order no." AutomationProperties.Name="Search bills">
           <TextBox.InputBindings>
             <KeyBinding Key="Enter" Command="{Binding SearchCommand}" />
           </TextBox.InputBindings>

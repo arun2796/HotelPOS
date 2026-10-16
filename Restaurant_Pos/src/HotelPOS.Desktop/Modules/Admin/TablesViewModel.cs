@@ -253,13 +253,14 @@ public sealed partial class TablesViewModel : ViewModelBase
 
         await ExecuteAsync(async () =>
         {
+            var before = Editor.IsNew ? null : Tables.FirstOrDefault(r => r.Table.Id == Editor.TableId)?.Table;
             var result = Editor.IsNew
                 ? await _floorApi.CreateTableAsync(Editor.ToCreateRequest())
                 : await _floorApi.UpdateTableAsync(Editor.TableId, Editor.ToUpdateRequest());
 
             if (result.Success && result.Data is not null)
             {
-                _notifications.Success(Editor.IsNew ? $"Table {result.Data.Code} created." : $"Table {result.Data.Code} updated.");
+                _notifications.Success(DescribeSave(before, result.Data));
                 Editor.Close();
                 await LoadAsync(result.Data.Id);
                 return;
@@ -276,6 +277,32 @@ public sealed partial class TablesViewModel : ViewModelBase
 
             Editor.ErrorMessage = ApiFailures.Describe(result);
         });
+    }
+
+    // Two saves in a row should not read the same ("Table X01 updated."): say what changed.
+    private static string DescribeSave(TableDto? before, TableDto after)
+    {
+        if (before is null)
+        {
+            return $"Table {after.Code} created.";
+        }
+
+        if (before.IsActive != after.IsActive)
+        {
+            return after.IsActive ? $"Table {after.Code} reactivated." : $"Table {after.Code} deactivated.";
+        }
+
+        if (before.Code != after.Code)
+        {
+            return $"Table {before.Code} is now {after.Code}.";
+        }
+
+        if (before.Name != after.Name)
+        {
+            return string.IsNullOrWhiteSpace(after.Name) ? $"Table {after.Code}: name removed." : $"Table {after.Code} renamed to \"{after.Name}\".";
+        }
+
+        return $"Table {after.Code} updated.";
     }
 
     [RelayCommand(CanExecute = nameof(HasSelection))]

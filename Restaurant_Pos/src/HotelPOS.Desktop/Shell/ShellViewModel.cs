@@ -184,6 +184,7 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
         var previous = CurrentPage;
         (previous as INavigationAware)?.OnNavigatedFrom();
         (previous as IDisposable)?.Dispose();
+        _services.GetService<INotificationService>()?.DismissStale();
 
         CurrentPage = page;
         if (page is INavigationAware aware)

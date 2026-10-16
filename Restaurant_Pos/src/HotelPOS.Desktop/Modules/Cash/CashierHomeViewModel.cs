@@ -231,7 +231,7 @@ public sealed partial class CashierHomeViewModel : ViewModelBase, INavigationAwa
 
         if (shift is null)
         {
-            tiles.Add(new KpiTile("My shift", "No shift", "open one from the bar under the top bar before taking cash", "\uE823"));
+            tiles.Add(new KpiTile("My shift", "No shift", "open one from the shift bar at the top before taking cash", "\uE823"));
             tiles.Add(new KpiTile("Expected cash", "—", "no open shift on this terminal", "\uE8D4"));
         }
         else

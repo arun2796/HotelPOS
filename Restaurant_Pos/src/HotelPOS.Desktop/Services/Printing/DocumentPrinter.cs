@@ -4,6 +4,7 @@ using HotelPOS.Contracts.Realtime;
 using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Modules.Printing;
 using HotelPOS.Desktop.Services.Api;
+using HotelPOS.Desktop.Services.Auth;
 using HotelPOS.Desktop.Services.Configuration;
 using HotelPOS.Desktop.Services.Navigation;
 using HotelPOS.Desktop.Services.Realtime;
@@ -39,6 +40,7 @@ public sealed class DocumentPrinter : IDocumentPrinter
     private readonly INavigationService _navigation;
     private readonly INotificationService _notifications;
     private readonly IClientSettingsService _settings;
+    private readonly IAuthSession _session;
 
     public DocumentPrinter(
         IPrintApi api,
@@ -47,7 +49,8 @@ public sealed class DocumentPrinter : IDocumentPrinter
         IPrintService printer,
         INavigationService navigation,
         INotificationService notifications,
-        IClientSettingsService settings)
+        IClientSettingsService settings,
+        IAuthSession session)
     {
         _api = api;
         _profiles = profiles;
@@ -56,6 +59,7 @@ public sealed class DocumentPrinter : IDocumentPrinter
         _navigation = navigation;
         _notifications = notifications;
         _settings = settings;
+        _session = session;
     }
 
     public bool CanPrint(PrintDocumentType type) => _profiles.For(type) is not null;
@@ -67,7 +71,11 @@ public sealed class DocumentPrinter : IDocumentPrinter
         {
             if (!quietWhenUnconfigured)
             {
-                _notifications.Warning($"No {Label(type).ToLowerInvariant()} printer is set up on this terminal (Printers in the menu).");
+                // Only Admin and Manager have the Printers screen; a cashier has to ask.
+                var hint = _session.HasAnyRole(ModuleRegistry.Find(ModuleRegistry.Printers)!.Roles)
+                    ? "Set one up under Printers in the menu."
+                    : "Ask a manager to set one up under Printers.";
+                _notifications.Warning($"No {Label(type).ToLowerInvariant()} printer is set up on this terminal. {hint}");
             }
 
             return false;
@@ -198,19 +206,19 @@ public sealed class DocumentPrinter : IDocumentPrinter
             case PrintDocumentType.Kot:
                 var kot = await _api.ReserveCopyAsync<KitchenTicketDocument>(type, entityId, request, key);
                 job = kot.Data is { } ticket
-                    ? new PrintJob(type, entityId, Titled($"KOT {ticket.TicketNumber}", ticket.CopyNumber), ticket, profile, 1) { PrintLogId = ticket.PrintLogId }
+                    ? new PrintJob(type, entityId, Titled($"KOT {ticket.TicketNumber}", ticket.CopyNumber), ticket, profile, 1) { PrintLogId = ticket.PrintLogId, DocumentNumber = ticket.TicketNumber }
                     : Fail(kot);
                 break;
             case PrintDocumentType.Invoice:
                 var invoice = await _api.ReserveCopyAsync<InvoiceDocument>(type, entityId, request, key);
                 job = invoice.Data is { } bill
-                    ? new PrintJob(type, entityId, Titled($"Invoice {bill.InvoiceNumber ?? "#" + bill.BillNumber}", bill.CopyNumber), bill, profile, 1) { PrintLogId = bill.PrintLogId }
+                    ? new PrintJob(type, entityId, Titled($"Invoice {bill.InvoiceNumber ?? "#" + bill.BillNumber}", bill.CopyNumber), bill, profile, 1) { PrintLogId = bill.PrintLogId, DocumentNumber = bill.InvoiceNumber }
                     : Fail(invoice);
                 break;
             default:
                 var receipt = await _api.ReserveCopyAsync<ReceiptDocument>(type, entityId, request, key);
                 job = receipt.Data is { } payment
-                    ? new PrintJob(type, entityId, Titled($"Receipt {payment.InvoiceNumber ?? "#" + payment.BillId}", payment.CopyNumber), payment, profile, 1) { PrintLogId = payment.PrintLogId }
+                    ? new PrintJob(type, entityId, Titled($"Receipt {payment.InvoiceNumber ?? "#" + payment.BillId}", payment.CopyNumber), payment, profile, 1) { PrintLogId = payment.PrintLogId, DocumentNumber = payment.InvoiceNumber }
                     : Fail(receipt);
                 break;
         }

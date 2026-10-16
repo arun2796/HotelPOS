@@ -2,11 +2,13 @@ using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Auth;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Gst;
+using HotelPOS.Contracts.Print;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Contracts.Security;
 using HotelPOS.Desktop.Modules.Printing;
 using HotelPOS.Desktop.Services.Auth;
 using HotelPOS.Desktop.Services.Navigation;
+using HotelPOS.Desktop.Services.Printing;
 using HotelPOS.Desktop.Services.Ui;
 using HotelPOS.Desktop.Tests.Support;
 using NSubstitute;
@@ -22,13 +24,68 @@ public sealed class NotificationRouterTests
     private readonly NoticeCenter _notices = new(new ImmediateDispatcher());
     private readonly ISoundPlayer _sound = Substitute.For<ISoundPlayer>();
     private readonly FakeUserPreferences _preferences = new();
+    private readonly InMemorySettings _settings = InMemorySettings.Configured();
+    private readonly IPrintQueue _printQueue = Substitute.For<IPrintQueue>();
 
     private NotificationRouter Router(string role, int userId = 7)
     {
         _session.User.Returns(new CurrentUserDto { Id = userId, Username = "u", DisplayName = "U", Roles = new[] { role } });
-        var router = new NotificationRouter(_realtime, _session, _notices, _toasts, _navigation, new NotificationPreferences(_preferences, _session), _sound);
+        _printQueue.Failed.Returns(Array.Empty<FailedPrintJob>());
+        var router = new NotificationRouter(_realtime, _session, _notices, _toasts, _navigation, new NotificationPreferences(_preferences, _session), _sound,
+            _settings, _printQueue);
         router.Start();
         return router;
+    }
+
+    [Fact]
+    public void TheTerminalThatClaimedTheBill_IsNotToldAboutItsOwnClaim()
+    {
+        Router(Roles.Cashier);
+
+        _realtime.Publish(HubEvents.BillUpdated, new BillUpdatedEvent { BillId = 3, TableCode = "T1", ChangeType = BillChangeTypes.Claimed, ClaimedByDevice = "waiter-01" });
+        _realtime.Publish(HubEvents.BillUpdated, new BillUpdatedEvent { BillId = 4, TableCode = "T2", ChangeType = BillChangeTypes.Claimed, ClaimedByDevice = "CASH-2" });
+
+        _notices.Items.Should().ContainSingle().Which.Message.Should().Be("Table T2 bill claimed by CASH-2");
+        _toasts.ReceivedWithAnyArgs(1).Notify(default, default!, default!, default!);
+    }
+
+    [Fact]
+    public void APaymentThisTerminalExpects_IsDroppedOnce_OtherPaymentsStillArrive()
+    {
+        var router = Router(Roles.Cashier);
+
+        router.ExpectOwn(NotificationKind.PaymentCompleted, NotificationTargetType.Bill, "3");
+        _realtime.Publish(HubEvents.PaymentCompleted, new PaymentCompletedEvent { BillId = 3, TableCode = "T1", InvoiceNumber = "INV-9", GrandTotal = 525m });
+        _notices.Items.Should().BeEmpty("the PAID panel is already on screen");
+        _toasts.ReceivedCalls().Should().BeEmpty();
+
+        _realtime.Publish(HubEvents.PaymentCompleted, new PaymentCompletedEvent { BillId = 5, TableCode = "T3", InvoiceNumber = "INV-10", GrandTotal = 100m });
+        _realtime.Publish(HubEvents.PaymentCompleted, new PaymentCompletedEvent { BillId = 3, TableCode = "T1", InvoiceNumber = "INV-9", GrandTotal = 525m });
+        _notices.Items.Select(n => n.Message).Should().Equal("Table T1 paid (INV-9, 525.00)", "Table T3 paid (INV-10, 100.00)");
+    }
+
+    [Fact]
+    public void APrintFailure_NamesTheInvoice_FromTheEventOrFromTheQueue_AndToastsOnlyOnOtherTerminals()
+    {
+        Router(Roles.Manager);
+        var invoice = new PrintJob(HotelPOS.Contracts.Print.PrintDocumentType.Invoice, 12, "Invoice INV-202610-000004", new object(),
+            new PrinterProfile(), 1) { DocumentNumber = "INV-202610-000004" };
+        _printQueue.Failed.Returns(new[] { new FailedPrintJob(invoice, "No answer", DateTime.UtcNow) });
+
+        _realtime.Publish(HubEvents.PrintFailed, new PrintFailedEvent
+        {
+            DocumentType = HotelPOS.Contracts.Print.PrintDocumentType.Invoice, DocumentId = 12, CopyNumber = 1, DeviceName = "WAITER-01", Error = "No answer",
+        });
+        _realtime.Publish(HubEvents.PrintFailed, new PrintFailedEvent
+        {
+            DocumentType = HotelPOS.Contracts.Print.PrintDocumentType.Invoice, DocumentId = 40, CopyNumber = 1, DeviceName = "BILLING-02", DocumentNumber = "INV-7",
+        });
+
+        _notices.Items.Select(n => n.Message).Should().Equal(
+            "Invoice INV-7 did not print on BILLING-02",
+            "Invoice INV-202610-000004 did not print on WAITER-01 (No answer)");
+        _toasts.ReceivedWithAnyArgs(1).Notify(default, default!, default!, default!);
+        _toasts.Received(1).Notify(ToastKind.Error, "Invoice INV-7 did not print on BILLING-02", "Open", Arg.Any<Action>());
     }
 
     private static OrderProgressEvent Progress(int waiterId, int orderId = 1) => new()

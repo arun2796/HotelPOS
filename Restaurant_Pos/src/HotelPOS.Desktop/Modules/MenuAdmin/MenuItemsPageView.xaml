@@ -1,6 +1,7 @@
 <UserControl x:Class="HotelPOS.Desktop.Modules.MenuAdmin.MenuItemsPageView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:HotelPOS.Desktop.Controls"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:m="clr-namespace:HotelPOS.Desktop.Modules.MenuAdmin"
@@ -57,7 +58,7 @@
     </Border>
 
     <Grid Grid.Row="2">
-      <DataGrid ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedItem}" HorizontalScrollBarVisibility="Disabled">
+      <DataGrid ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedItem}" controls:SelectorBehaviors.ScrollSelectedIntoView="True" HorizontalScrollBarVisibility="Disabled">
         <DataGrid.RowStyle>
           <Style TargetType="DataGridRow">
             <Style.Triggers>
@@ -80,7 +81,15 @@
                               ElementStyle="{StaticResource Text.GridNumber}" HeaderStyle="{StaticResource DataGrid.NumberHeader}" />
           <DataGridTextColumn Header="TAX" Binding="{Binding TaxRatePercent, StringFormat={}{0:0.##}%}" Width="0.45*" MinWidth="52" />
           <DataGridTextColumn Header="STATION" Binding="{Binding StationName}" Width="1.1*" MinWidth="100" />
-          <DataGridCheckBoxColumn Header="IN STOCK" Binding="{Binding IsAvailable, Mode=OneWay}" Width="0.6*" MinWidth="88" />
+          <!-- A template column so the themed CheckBox is used (DataGridCheckBoxColumn draws the plain WPF one). -->
+          <DataGridTemplateColumn Header="IN STOCK" Width="0.6*" MinWidth="88">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate>
+                <CheckBox IsChecked="{Binding IsAvailable, Mode=OneWay}" IsHitTestVisible="False" Focusable="False"
+                          VerticalAlignment="Center" Margin="4,0,0,0" />
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
         </DataGrid.Columns>
       </DataGrid>
       <ProgressBar IsIndeterminate="True" Height="3" VerticalAlignment="Top"

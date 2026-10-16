@@ -367,3 +367,63 @@ Fixes for the browser-client issues in `docs/ui-ux/web/README.md` (commit 368605
 - Touch targets: `.chip-btn` and the sign-in Waiter/Kitchen toggle are 44 px; checkboxes 22 px inside a 44 px label. Chip rows fade at the right edge. The sticky cart's lines scroll inside a 24vh area and the header collapses the cart. CANCEL ORDER is an outlined danger button set apart from ADD ITEMS. Search clears the chip highlight; a chip tap clears the search. Sign-in fields bind on input.
 - Unstyled app under `dotnet run`: the shared library keeps its own static-web-asset base path, so its CSS is served at `/_content/HotelPOS.Client.Shared/...` both in Development and after publish (checked: the published API has `wwwroot/_content/HotelPOS.Client.Shared/css/app.css`). `/app/_content/...` matches no file and the API's authorization fallback policy answers 401. Not an ordering problem in `Program.cs`, so the API was not changed; `HotelPOS.Web/wwwroot/index.html` now links `../_content/...`. Still open: the published `service-worker-assets.js` lists `app/_content/...` (401) and `service-worker.published.js` resolves `new Request(asset.url)` against `/app/`, giving `/app/app/...`, so the offline install of the published PWA fails; needs its own fix and a published-build check.
 - Tests: `Client.Tests/WebUiFixTests` (26 cases): toast without a SynchronizationContext, options sheet closes after Add, send clears the cart and opens the table, Request bill reloads the table, Kitchen+TablesView gets the kitchen nav, `ShellModes` theory, initials theory, offline banner on status change, OrderReady reaches the own waiter's bell with a JsonElement subscriber registered first (and not another waiter's), failing-subscriber isolation, status words and plurals. Client suite 92 green.
+
+### 20.11 Desktop UI/UX fixes
+
+Fixes for the desktop issues found during the screenshot run (`docs/ui-ux/desktop/README.md`, issues 1â€“41); the
+gallery was regenerated afterwards with the live harness on table T03 with the `5` demo suffix.
+
+- **Toasts (1).** The host in `Shell/MainWindow.xaml` moved from the bottom-right corner to top-centre under the top bar,
+  so dialog buttons (centre / bottom-right of a dialog) and the pages' action rows stay clear. `INotificationService`
+  gained `DismissStale()`, called by `ShellViewModel.ShowPageAsync` on every navigation (a toast younger than a quarter
+  of a second is kept: it belongs to the action that navigated). Toasts with an action auto-dismiss after 6 s (errors 12 s).
+- **Own actions (2).** `NotificationAudience` (Contracts) carries the terminal's `DeviceName`;
+  `NotificationMapper.BillUpdated` returns null when `ClaimedByDevice` is this terminal. `PaymentCompleted` has no actor
+  on the wire, so `INotificationRouter.ExpectOwn(kind, target)` lets `BillDetailViewModel` mark the payment it is about
+  to make and the router drops that one echo (2-minute window; the screens still refresh from the event). A
+  `PrintFailed` the terminal reported itself goes to the bell only, because the print queue already toasted
+  "was not printed Â· Retry".
+- **Bill lines (3).** `BillItemDto` carries only the modifier amount, so `BillDetailViewModel` loads the order
+  (`IOrdersApi.GetAsync`, once per order id) and shows "Spicy, Extra raita (+30.00 each) Â· Note: less oil" under the
+  line; the amount alone is the fallback when the order is unavailable. No DTO change.
+- **Print-failed number (4).** `PrintFailedEvent.DocumentNumber` (additive). `CompletePrintHandler` resolves it
+  (`PrintLog.DocumentNumberAsync`: invoice number for invoices and receipts, ticket number for KOTs). The desktop falls
+  back to the failed job's `PrintJob.DocumentNumber` from the queue, so the notice reads "Invoice INV-â€¦ did not print"
+  even against a server without the field.
+- **Wording.** Role-aware no-printer hint (`DocumentPrinter` checks the Printers module roles); the cashier home is
+  "Cashier home" in the sidebar and top bar too; "Cancel item" / "Keep item" (`IDialogService.PromptAsync` gained
+  `cancelText`); table saves say what changed (created / renamed / deactivated / reactivated); `Modules/Common/Plural`
+  for "1 row", "1 guest", "1 unpaid bill"; the payments legend uses `Money.Format`; the net-sales legend no longer says
+  "blue" and empty days have no "0" label; report cells headed "percent" / "minutes" show one decimal (`20%`, `6.9`);
+  LOCKOUT reads "Not locked" / "Locked"; the export toast has an Open button (`IFilePicker.Open`); a test print shows a
+  green / red banner plus a toast; the IN STOCK column uses the themed CheckBox; Closed Bills filters have hints and the
+  print history says "(did not print)"; Login hides Retry once the server is reachable; the refund approval dialog
+  repeats the amount and the reason.
+- **Clipping.** `Text.GridTrim` style (ellipsis + tooltip) on Print log DOCUMENT / PRINTER / WHY, audit ACTION, backup
+  FILE / ERROR; audit TIME 150 px and the "on" line only when there is a terminal; Devices LIVE 100 px; the sidebar
+  user block puts the three buttons on their own row so the name and role get the full width; the top-bar description
+  sits in a star column with a tooltip; denomination rows are 44 px (seven notes fit) and the shift dialog may be
+  700 px high.
+- **Lists (6, 27, 31).** `Controls/SelectorBehaviors.ScrollSelectedIntoView` on the Tables, Sections, Users, Customers,
+  Categories and Menu items grids; the view-models already re-selected the saved row. Not observable in the gallery:
+  the harness renders a window that is never shown and WPF defers a DataGrid's `ScrollIntoView` until it is loaded.
+- **Toasts, residual.** Tab switches inside one page (Menu: Categories to Items) are not navigations, so a toast from
+  the previous tab can still be on screen for its 3 s; the harness moves faster than a person.
+- **GST hub (9, 18, 37).** Opens on the current month; no error banner when the month has no invoices.
+- **Settings (10, 41).** `SettingSections` groups the flat list under headings (Restaurant, Business day, Orders and
+  billing, Invoices and printing, Kitchen, Cash, Security, Backup, Other); a side list scrolls to a heading
+  (`SettingsView.xaml.cs`), with Notifications last.
+- **Dashboard (8, 12).** KPI strip in one row of six and the bar chart 170 px high so the operations panels start on
+  the first screen at 1366Ã—800.
+- **Refund (11, 29).** Left as three dialogs: the dialog service has one input per dialog and the reason is required
+  by the API. The approval dialog now repeats the amount and the reason, so nothing entered is hidden.
+- **Not done.** 12 (preset vs range wording), 14 (totals card space), 21 (editor squeezes the list), 22 (two labels
+  for "inactive"), 23 (printers page), 25 (preferences list cut), 26 (palette groups), 34 (reset-password hint), 36
+  (audit action prefix match: server-side exact match).
+- **Harness.** `LiveFlowScreenshots` reads `HOTELPOS_LIVE_TABLE` (default T02) and `HOTELPOS_LIVE_RUN` (suffix for the
+  demo user, section, table, category, item and customer), so a rerun does not collide with earlier records.
+- **Tests.** `NotificationRouterTests` (+3: own claim, own payment, print-failed wording and fallback),
+  `BillingViewModelTests.BillLines_ShowTheChosenOptionsAndTheNote_FromTheOrder`, `GstViewModelTests` (+2: current
+  month, empty month), `PluralTests` (plurals, day-end item, report cell formats). Desktop 312 passing; the print
+  tests of Application (23) and Api (8) pass. Screen count unchanged.
+

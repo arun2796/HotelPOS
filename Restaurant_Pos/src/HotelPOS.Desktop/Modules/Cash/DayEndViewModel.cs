@@ -29,7 +29,7 @@ public sealed partial class DayEndCheckItemViewModel : ObservableObject
 
     public DayEndCheckItemDto Item { get; }
 
-    public string Title => $"{Item.Count} {Item.Title.ToLowerInvariant()}";
+    public string Title => Plural.CountPhrase(Item.Count, Item.Title.ToLowerInvariant());
 
     public string Details => string.Join("\n", Item.Details) + (Item.Count > Item.Details.Count ? $"\n… and {Item.Count - Item.Details.Count} more" : string.Empty);
 

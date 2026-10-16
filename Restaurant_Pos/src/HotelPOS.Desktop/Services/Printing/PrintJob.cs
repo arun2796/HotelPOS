@@ -14,6 +14,9 @@ public sealed record PrintJob(PrintDocumentType Type, int EntityId, string Title
     // Phase 14: the server's print log entry of this copy; the queue reports whether it came out.
     public long? PrintLogId { get; init; }
 
+    // The number people know the document by (invoice or ticket number); null before an invoice is issued.
+    public string? DocumentNumber { get; init; }
+
     // Reserves the next copy for a manual retry: a failed copy keeps its number, the retry takes the next one.
     public Func<Task<PrintJob?>>? Renew { get; init; }
 }

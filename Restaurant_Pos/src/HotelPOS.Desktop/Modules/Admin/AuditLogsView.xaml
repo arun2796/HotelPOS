@@ -31,7 +31,7 @@
                    md:HintAssist.Hint="User" AutomationProperties.Name="User" />
           <TextBox Text="{Binding DeviceFilter, UpdateSourceTrigger=PropertyChanged}" Width="120" Margin="0,0,8,0"
                    md:HintAssist.Hint="Terminal" AutomationProperties.Name="Terminal" />
-          <TextBox Text="{Binding ActionFilter, UpdateSourceTrigger=PropertyChanged}" Width="150"
+          <TextBox Text="{Binding ActionFilter, UpdateSourceTrigger=PropertyChanged}" Width="200"
                    md:HintAssist.Hint="Action, e.g. Order.Cancelled" AutomationProperties.Name="Action (exact)" />
         </StackPanel>
       </controls:ReportFilterBar.Filters>
@@ -77,8 +77,8 @@
       <controls:BusyOverlay IsBusy="{Binding IsBusy}" Message="Loading the audit log…">
         <DataGrid ItemsSource="{Binding AuditEntries}" SelectedItem="{Binding SelectedEntry}" HorizontalScrollBarVisibility="Disabled">
           <DataGrid.Columns>
-            <DataGridTextColumn Header="TIME" Binding="{Binding TimestampUtc, Converter={StaticResource UtcToLocal}}" Width="120" />
-            <DataGridTextColumn Header="ACTION" Binding="{Binding Action}" Width="1.4*" MinWidth="120" />
+            <DataGridTextColumn Header="TIME" Binding="{Binding TimestampUtc, Converter={StaticResource UtcToLocal}}" Width="150" MinWidth="150" />
+            <DataGridTextColumn Header="ACTION" Binding="{Binding Action}" Width="1.6*" MinWidth="170" ElementStyle="{StaticResource Text.GridTrim}" />
             <DataGridTextColumn Header="USER" Binding="{Binding UserName}" Width="1*" MinWidth="80" />
             <DataGridTextColumn Header="TERMINAL" Binding="{Binding DeviceName}" Width="1*" MinWidth="80" />
             <DataGridTextColumn Header="ENTITY" Binding="{Binding EntityType}" Width="0.9*" MinWidth="70" />
@@ -102,7 +102,11 @@
             <TextBlock Style="{StaticResource Text.Caption}" Margin="0,4,0,0">
               <Run Text="By: " />
               <Run Text="{Binding SelectedEntry.UserName, Mode=OneWay}" FontWeight="SemiBold" />
-              <Run Text="  on: " />
+            </TextBlock>
+            <!-- An entry made without a terminal (the server, a browser) has no "on" line at all. -->
+            <TextBlock Style="{StaticResource Text.Caption}" Margin="0,2,0,0"
+                       Visibility="{Binding SelectedEntry.DeviceName, Converter={StaticResource StringToVisibility}}">
+              <Run Text="On terminal: " />
               <Run Text="{Binding SelectedEntry.DeviceName, Mode=OneWay}" />
             </TextBlock>
             <TextBlock Style="{StaticResource Text.Caption}" Margin="0,2,0,0">

@@ -102,7 +102,7 @@ internal sealed class PrintLog
     }
 
     // The terminal reported a reserved copy failed: tell that terminal (or its user) and the managers, after the commit.
-    public void AnnounceFailure(PrintLogEntry entry)
+    public void AnnounceFailure(PrintLogEntry entry, string? documentNumber)
     {
         var failed = new PrintFailedEvent
         {
@@ -114,6 +114,7 @@ internal sealed class PrintLog
             Output = entry.Output,
             Error = entry.Error,
             DeviceName = _currentUser.DeviceName,
+            DocumentNumber = documentNumber,
         };
         var managers = new[] { Roles.Admin, Roles.Manager };
         var audience = _currentUser.DeviceId is { } deviceId
@@ -121,6 +122,20 @@ internal sealed class PrintLog
             : new RealtimeAudience { UserIds = _currentUser.UserId is { } userId ? new[] { userId } : Array.Empty<int>(), Roles = managers };
         _afterCommit.Enqueue(() => _realtime.PublishAsync(HubEvents.PrintFailed, failed, audience));
     }
+
+    // The number a cashier knows the document by: the invoice number for an invoice or a receipt, the ticket number
+    // for a KOT. Null when the document has none (yet) or no longer exists.
+    public async Task<string?> DocumentNumberAsync(PrintDocumentType type, int documentId, CancellationToken cancellationToken) =>
+        type switch
+        {
+            PrintDocumentType.Invoice => await _db.Bills.AsNoTracking().Where(b => b.Id == documentId)
+                .Select(b => b.InvoiceNumber).FirstOrDefaultAsync(cancellationToken),
+            PrintDocumentType.Receipt => await _db.Payments.AsNoTracking().Where(p => p.Id == documentId)
+                .Join(_db.Bills.AsNoTracking(), p => p.BillId, b => b.Id, (p, b) => b.InvoiceNumber).FirstOrDefaultAsync(cancellationToken),
+            PrintDocumentType.Kot => await _db.KitchenOrders.AsNoTracking().Where(k => k.Id == documentId)
+                .Select(k => k.TicketNumber).FirstOrDefaultAsync(cancellationToken),
+            _ => null,
+        };
 
     public async Task<IReadOnlyList<PrintLogDto>> ToDtosAsync(IReadOnlyList<PrintLogEntry> entries, CancellationToken cancellationToken)
     {

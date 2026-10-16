@@ -173,7 +173,9 @@ public sealed partial class ClosedBillsViewModel : ViewModelBase, INavigationAwa
         }
 
         // Each attempt carries a different approval, so each gets its own key.
-        var result = await Approvals.WithApprovalAsync(_dialogs, _billingApi, ApprovalActions.Refund, "a refund", approval => _billingApi.RefundAsync(detail.Id, new RefundRequest
+        // The approval dialog repeats what was entered, so the manager sees the amount and the reason before signing.
+        var result = await Approvals.WithApprovalAsync(_dialogs, _billingApi, ApprovalActions.Refund,
+            $"a refund of {Money.Format(amount)} from {row.Text} ({reason.Trim()})", approval => _billingApi.RefundAsync(detail.Id, new RefundRequest
         {
             PaymentId = row.Payment.Id,
             Amount = amount,
@@ -275,7 +277,7 @@ public sealed partial class ClosedBillsViewModel : ViewModelBase, INavigationAwa
         : string.Join(" · ", copies.Select(c =>
             $"{(c.CopyNumber == 1 ? "Original" : "Copy " + c.CopyNumber.ToString(CultureInfo.CurrentCulture))} {c.CreatedAtUtc.ToLocalTime().ToString("HH:mm", CultureInfo.CurrentCulture)}"
             + $" {(c.Output == PrintOutput.Pdf ? "PDF" : c.DeviceName ?? c.PrinterName ?? string.Empty)}"
-            + (c.Result == PrintResult.Failed ? " (failed)" : string.Empty)).Select(s => s.TrimEnd()));
+            + (c.Result == PrintResult.Failed ? " (did not print)" : string.Empty)).Select(s => s.TrimEnd()));
 
     private async Task LoadHistoryAsync(int billId)
     {

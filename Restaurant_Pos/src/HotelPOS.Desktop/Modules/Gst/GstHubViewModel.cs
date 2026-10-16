@@ -45,9 +45,9 @@ public sealed partial class GstHubViewModel : ViewModelBase, INavigationAware
         _notifications = notifications;
         _realtime = realtime;
         _ui = ui;
-        var lastMonth = DateTime.Today.AddMonths(-1);
-        _year = lastMonth.Year;
-        _month = lastMonth.Month;
+        // The current month: that is where the day's invoices are; the previous month is one click away.
+        _year = DateTime.Today.Year;
+        _month = DateTime.Today.Month;
     }
 
     public IReadOnlyList<string> Tabs { get; } = new[] { "GSTR-1", "GSTR-3B", "HSN summary", "Validation" };
@@ -145,9 +145,11 @@ public sealed partial class GstHubViewModel : ViewModelBase, INavigationAware
         }
 
         (_gstr1, _gstr3b, _hsn, _validation) = (gstr1, gstr3b, hsn, validation);
-        ValidationBanner = validation.CanFile
+        // A month without invoices has nothing to fix; the validation findings are still on their tab.
+        var errors = validation.Issues.Count(i => i.Severity == GstIssueSeverity.Error);
+        ValidationBanner = validation.CanFile || gstr1.Totals.Invoices == 0
             ? null
-            : $"{validation.Issues.Count(i => i.Severity == GstIssueSeverity.Error)} error(s) must be fixed before this month can be filed or closed. See the Validation tab.";
+            : $"{Plural.Count(errors, "error")} must be fixed before this month can be filed or closed. See the Validation tab.";
         Render();
     });
 

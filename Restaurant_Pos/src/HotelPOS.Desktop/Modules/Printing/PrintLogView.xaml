@@ -36,12 +36,12 @@
 
     <DataGrid Grid.Row="3" ItemsSource="{Binding Rows}" HorizontalScrollBarVisibility="Disabled">
       <DataGrid.Columns>
-        <DataGridTextColumn Header="WHEN" Binding="{Binding WhenText}" Width="0.8*" MinWidth="110" />
-        <DataGridTextColumn Header="DOCUMENT" Binding="{Binding Title}" Width="1.3*" MinWidth="140" />
-        <DataGridTextColumn Header="COPY" Binding="{Binding CopyText}" Width="1.1*" MinWidth="130" />
-        <DataGridTextColumn Header="STATUS" Binding="{Binding StatusText}" Width="0.8*" MinWidth="100" />
-        <DataGridTextColumn Header="PRINTER" Binding="{Binding WhereText}" Width="1*" MinWidth="110" />
-        <DataGridTextColumn Header="WHY" Binding="{Binding Copy.Error}" Width="1.6*" MinWidth="150" />
+        <DataGridTextColumn Header="WHEN" Binding="{Binding WhenText}" Width="0.7*" MinWidth="110" />
+        <DataGridTextColumn Header="DOCUMENT" Binding="{Binding Title}" Width="1.6*" MinWidth="200" ElementStyle="{StaticResource Text.GridTrim}" />
+        <DataGridTextColumn Header="COPY" Binding="{Binding CopyText}" Width="0.8*" MinWidth="110" />
+        <DataGridTextColumn Header="STATUS" Binding="{Binding StatusText}" Width="0.6*" MinWidth="90" />
+        <DataGridTextColumn Header="PRINTER" Binding="{Binding WhereText}" Width="1*" MinWidth="120" ElementStyle="{StaticResource Text.GridTrim}" />
+        <DataGridTextColumn Header="WHY" Binding="{Binding Copy.Error}" Width="2.4*" MinWidth="220" ElementStyle="{StaticResource Text.GridTrim}" />
         <DataGridTemplateColumn Header="" Width="Auto">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate DataType="{x:Type printing:PrintLogRow}">

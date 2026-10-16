@@ -2,7 +2,9 @@ using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Desktop.Modules.Printing;
 using HotelPOS.Desktop.Services.Auth;
+using HotelPOS.Desktop.Services.Configuration;
 using HotelPOS.Desktop.Services.Navigation;
+using HotelPOS.Desktop.Services.Printing;
 using HotelPOS.Desktop.Services.Realtime;
 
 namespace HotelPOS.Desktop.Services.Ui;
@@ -18,12 +20,18 @@ public interface INotificationRouter
 
     // A kitchen ticket just crossed the late threshold (raised by the kitchen display, not by the server).
     void TicketDelayed(int ticketId, string ticketNumber, string tableCode);
+
+    // This terminal is about to cause the event itself (it is paying the bill): the echo from the hub is not news
+    // to it, so the router drops the matching notification once. The screens still refresh from the event.
+    void ExpectOwn(NotificationKind kind, NotificationTargetType targetType, string targetId);
 }
 
 // Turns hub events into bell entries and toasts for the signed-in user. Which events a role sees is decided by
 // NotificationMapper (shared with the browser client); this class only subscribes, stores and navigates.
 public sealed class NotificationRouter : INotificationRouter
 {
+    private static readonly TimeSpan OwnActionWindow = TimeSpan.FromMinutes(2);
+
     private readonly IRealtimeClient _realtime;
     private readonly IAuthSession _session;
     private readonly NoticeCenter _notices;
@@ -31,7 +39,10 @@ public sealed class NotificationRouter : INotificationRouter
     private readonly INavigationService _navigation;
     private readonly NotificationPreferences _preferences;
     private readonly ISoundPlayer _sound;
+    private readonly IClientSettingsService _settings;
+    private readonly IPrintQueue _printQueue;
     private readonly List<IDisposable> _subscriptions = new();
+    private readonly Dictionary<(NotificationKind, NotificationTargetType, string), DateTime> _ownActions = new();
 
     public NotificationRouter(
         IRealtimeClient realtime,
@@ -40,7 +51,9 @@ public sealed class NotificationRouter : INotificationRouter
         INotificationService notifications,
         INavigationService navigation,
         NotificationPreferences preferences,
-        ISoundPlayer sound)
+        ISoundPlayer sound,
+        IClientSettingsService settings,
+        IPrintQueue printQueue)
     {
         _realtime = realtime;
         _session = session;
@@ -49,6 +62,8 @@ public sealed class NotificationRouter : INotificationRouter
         _navigation = navigation;
         _preferences = preferences;
         _sound = sound;
+        _settings = settings;
+        _printQueue = printQueue;
     }
 
     public void Start()
@@ -80,8 +95,10 @@ public sealed class NotificationRouter : INotificationRouter
 
         // PrintFailed and PaymentFailed are addressed by the server (the device, plus managers for prints), so whoever
         // receives one is meant to see it. DayEndDue goes to Manager/Admin; the mapper checks the role again.
+        // The terminal that reported the failure already has the print queue's own "was not printed · Retry" toast,
+        // so for it the failure goes to the bell only.
         _subscriptions.Add(_realtime.Subscribe<PrintFailedEvent>(HubEvents.PrintFailed,
-            e => Publish(NotificationMapper.PrintFailed(e))));
+            e => Publish(NotificationMapper.PrintFailed(e, DocumentNumberOf(e)), toast: !IsThisDevice(e.DeviceName))));
         _subscriptions.Add(_realtime.Subscribe<PaymentFailedEvent>(HubEvents.PaymentFailed,
             e => Publish(NotificationMapper.PaymentFailed(e))));
         _subscriptions.Add(_realtime.Subscribe<DayEndDueEvent>(HubEvents.DayEndDue,
@@ -126,12 +143,46 @@ public sealed class NotificationRouter : INotificationRouter
         };
     }
 
-    private NotificationAudience? Audience() =>
-        _session.User is { } user ? new NotificationAudience(user.Id, user.Roles.ToList()) : null;
-
-    private void Publish(NotificationDraft? draft)
+    public void ExpectOwn(NotificationKind kind, NotificationTargetType targetType, string targetId)
     {
-        if (draft is null)
+        lock (_ownActions)
+        {
+            _ownActions[(kind, targetType, targetId)] = DateTime.UtcNow;
+        }
+    }
+
+    private NotificationAudience? Audience() =>
+        _session.User is { } user ? new NotificationAudience(user.Id, user.Roles.ToList(), _settings.Current.DeviceName) : null;
+
+    private bool IsThisDevice(string? deviceName) =>
+        !string.IsNullOrWhiteSpace(deviceName) && string.Equals(deviceName, _settings.Current.DeviceName, StringComparison.OrdinalIgnoreCase);
+
+    // The queue rendered the document before it failed, so it knows the number even when the server did not send one.
+    private string? DocumentNumberOf(PrintFailedEvent e) =>
+        _printQueue.Failed.FirstOrDefault(f => f.Job.Type == e.DocumentType && f.Job.EntityId == e.DocumentId)?.Job.DocumentNumber;
+
+    private bool IsOwnAction(NotificationDraft draft)
+    {
+        if (draft.Target is not { } target)
+        {
+            return false;
+        }
+
+        lock (_ownActions)
+        {
+            var cutoff = DateTime.UtcNow - OwnActionWindow;
+            foreach (var stale in _ownActions.Where(p => p.Value < cutoff).Select(p => p.Key).ToList())
+            {
+                _ownActions.Remove(stale);
+            }
+
+            return _ownActions.Remove((draft.Kind, target.Type, target.Id));
+        }
+    }
+
+    private void Publish(NotificationDraft? draft, bool toast = true)
+    {
+        if (draft is null || IsOwnAction(draft))
         {
             return;
         }
@@ -154,7 +205,7 @@ public sealed class NotificationRouter : INotificationRouter
             _sound.Play(draft.Kind);
         }
 
-        if (!preference.Toast)
+        if (!preference.Toast || !toast)
         {
             // The bell entry stays; only the pop-up is switched off for this kind on this terminal.
             return;

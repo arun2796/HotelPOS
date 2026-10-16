@@ -1,7 +1,10 @@
 # Desktop client: screenshots of the real cashier, manager and admin flows
 
 Captured on 16 Oct 2026 from the **real WPF client against the running Development API** (`http://localhost:5000`,
-seeded demo data), 1366×800, light theme unless the name says `dark`. Nothing here is sample data: every screen is
+seeded demo data), 1366×800, light theme unless the name says `dark`. Regenerated the same day after the Phase 20.11
+fixes (second run: table T03, demo records suffixed `6` for the admin edits, i.e. `waiter96`, `Terrace6`, `X016`, `Chef specials6`,
+`Kothu Parotta6` (code C06), and `5` for the customer `Ravi Kumar5`; the API still ran the pre-fix server code, so the print-failed notice number
+comes from the client-side fallback). Nothing here is sample data: every screen is
 the real view bound to the real view-model, fed by the real `ApiClient`, `RealtimeClient` and session. Only the
 machine-bound services are replaced (settings and the secure store live in memory; file picker, app lifetime and sound
 player are stubs; the file picker returns `%TEMP%\hotelpos-live-exports\<suggested name>` for exports).
@@ -27,11 +30,15 @@ dotnet test tests/HotelPOS.Desktop.Tests -c Debug -p:OutDir=C:\a-personal\Projec
 
 Device names must already be registered (the licence counts terminals): defaults `BILLING-01`, `ADMIN-01`,
 `VERIFY-01` (waiter), `APP-KITCHEN-B4134F` (kitchen); override with `HOTELPOS_LIVE_DEVICE_BILLING|WAITER|KITCHEN|ADMIN`.
-`cashier`, `functions-manager` and `functions-cashier*` create orders and bills on **T02**; `functions-admin-edits`
-creates user `waiter9`, section `Terrace`, table `X01`, category `Chef specials` and item `Kothu Parotta`, so it is not
-replayable as-is (the saves would report duplicates). A capture log is written to `%TEMP%\hotelpos-live-screens.log`.
+`cashier`, `functions-manager` and `functions-cashier*` create orders and bills on the table in `HOTELPOS_LIVE_TABLE`
+(default **T02**); `functions-admin-edits` creates user `waiter9`, section `Terrace`, table `X01`, category `Chef
+specials` and item `Kothu Parotta`, each with the `HOTELPOS_LIVE_RUN` suffix appended, so set a new suffix (and a free
+table) for every replay or the saves report duplicates. A capture log is written to `%TEMP%\hotelpos-live-screens.log`.
 
 ## `cashier/` — the cashier flow (cashier1 on BILLING-01), 16 screens
+
+The descriptions below are from the first run; the regenerated pictures show the same steps on **T03** (order #1012,
+invoice INV-202610-000008 and later), with the fixes of 20.11 applied.
 
 | File | What it shows |
 |---|---|
@@ -96,6 +103,8 @@ dashboard (no terminals) and no Administration group.
 
 ## `functions/` — function-by-function pass, before / after each action, 83 screens
 
+The regenerated pictures use the suffix-`6` records (`waiter96`, `Terrace6`, `X016`, `Chef specials6`,
+`Kothu Parotta6`, customer `Ravi Kumar5`) and table T03; the rows below keep the first run's names.
 Each row is one function: `NN-area-action-before.png` (state and filled-in form before the action),
 `-dialog[N].png` (every dialog the action opened, with the answer typed in) and `-after.png` (the result). All actions
 ran against the API; the records they created are still in the demo database (listed above).
@@ -133,119 +142,94 @@ ran against the API; the records they created are still in the demo database (li
 | cashier | Bill: pay by card | `43-bill-pay-card-*` | PAID, INV-202610-000005. |
 | cashier | Closed bills: refund 100.00 of the card payment | `44-refund-partial-*` (dialogs: amount, reason, Manager approval) | "Paid · 100.00 back", refund row −100.00. |
 | cashier | Dark theme on Closed Bills | `45-closed-bills-dark` | |
-| cashier | Bill: finalize order #1008 (invoice issued) and REOPEN it | `46-bill-reopen-invoiced-*` (dialogs: reason, Manager approval; the first run's `-dialog3` is the retry prompt after the approver was rate-limited) | Invoice cancelled, order back with the waiter. A **settled** bill cannot be reopened by design (REOPEN is offered only while nothing is paid; settled bills are refunded), so the invoiced-unpaid case was used. Order #1008 was settled through the API afterwards to free T02. |
+| cashier | Bill: finalize order #1008 (invoice issued) and REOPEN it | `46-bill-reopen-invoiced-*` (dialogs: reason, Manager approval; the first run's `-dialog3`, a retry prompt after the approver was rate-limited, did not recur) | Invoice cancelled, order back with the waiter. A **settled** bill cannot be reopened by design (REOPEN is offered only while nothing is paid; settled bills are refunded), so the invoiced-unpaid case was used. Order #1008 was settled through the API afterwards to free T02. |
 
 ## UI/UX issues
 
 Ordered roughly by how much they would bother a cashier or manager at the counter. 1–26 from the flow pass, 27 onwards
-from the function pass.
+from the function pass. **Fixed** entries were corrected in Phase 20.11 and the screenshot named is the regenerated one
+(second run: table T03, demo records with the suffixes `6` and `5`); the rest are still open.
 
-1. **Toasts cover modal and page buttons.** `cashier/14-cashier-close-shift.png`: "Pay-out of 450.00 recorded." sits
-   on CLOSE SHIFT; `cashier/08-cashier-paid.png`: two toasts cover NEXT BILL; `functions/06-roles-edit-before.png`:
-   the Users toast ("waiter9 has been unlocked") survives navigation and hides Save permissions;
-   `functions/12-menu-item-create-after.png`: hides Close / Save changes of the editor. Toast host in
-   `Shell/ShellView.xaml` (bottom-right `ItemsControl`) is above the dialog layer and the page's action row.
-2. **The terminal is notified about its own actions.** `cashier/05-cashier-bill-detail.png`, `06`, `15`: "Table T02
-   bill claimed by BILLING-01" with an **Open** button appears on the very terminal that just claimed it, and
-   `cashier/08-cashier-paid.png` shows both "Table T02 paid (INV-…, 439.00) · Open" and "Paid. Table T02 is free." for
-   one payment. `Contracts/Realtime/NotificationKind.cs` (`BillClaimed`, `PaymentCompleted`),
-   `Services/Ui/NotificationRouter.cs` (no originating-device filter), `BillDetailViewModel.ConfirmPaymentAsync`.
-3. **Bill lines hide the chosen options and notes.** `cashier/05-cashier-bill-detail.png`: Chicken Biryani (Spicy,
-   Extra raita) shows only "incl. extras 30.00 each"; Paneer Tikka (Medium, "Less oil") shows nothing, while the
-   table panel (`functions/30-order-cancel-line-before.png`) does show them. `BillDetailViewModel.Lines`
-   (`Modules/Billing/BillDetailViewModel.cs` ~l.329), `BillDetailView.xaml`.
-4. **Print-failure notices use the internal bill id.** `cashier/15-cashier-notifications-bell.png`: "Invoice #5 did
-   not print" while the screen and the print log say INV-202610-000004. `NotificationKind.PrintFailed`
-   (`Contracts/Realtime/NotificationKind.cs` l.157).
-5. **Misleading help in the no-printer toast for cashiers.** `cashier/09-cashier-print-receipt-warning.png`:
-   "(Printers in the menu)" — a Cashier has no Printers entry (`Services/Navigation/ModuleRegistry.cs`); text in
-   `Services/Printing/DocumentPrinter.cs` l.70.
-6. **Print Log clips the two columns that matter.** `cashier/10-cashier-print-log.png`: DOCUMENT and WHY are cut
-   without ellipsis or tooltip while COPY and STATUS have spare width. `Modules/Printing/PrintLogView.xaml` l.39-44.
-7. **Denomination sheet does not fit the dialog.** `cashier/03-cashier-open-shift.png`, `14`: the notes column is cut
-   mid-row (₹20 half visible, ₹10 hidden) and scrolls inside a modal while the coins column has empty space.
-   `Modules/Cash/DenominationSheetView.xaml`, `ShiftCountPanelView.xaml`.
-8. **Dashboard panels are below the fold.** `admin/17-admin-dashboard.png`, `manager/17-…`: at 1366×800 the Kitchen
-   performance, Staff and Terminals panels are only visible after scrolling. `Modules/Dashboard/DashboardView.xaml`.
-9. **Inconsistent currency formatting on the dashboard.** `admin/17-admin-dashboard.png`: the payments legend shows
-   "₹1,589" / "₹690" next to "2,279.00" everywhere else. `Modules/Dashboard/DashboardViewModel.cs` l.288 hard-codes
-   `"₹" + N0`; the rest uses `Money.Format`.
-10. **Copy says "Today in blue" but today's bar is green**, and empty days show a "0" label each.
-    `admin/17-admin-dashboard.png`, `…-dark.png`; `DashboardView.xaml` net-sales card.
-11. **Terminals tile is dead for managers.** `manager/17-manager-dashboard-panels.png`: a placeholder "Terminals are
-    listed for administrators" with an "Open audit log" button takes a third of the row.
-12. **Audit log clips and mislabels.** `admin/24-admin-audit-log.png`: TIME "16 Oct 26, 14:5" (Width=120) and ACTION
-    "Auth.LoginSucceec" are cut; the detail header reads "By: manager1  on:" with nothing after "on:" when the entry
-    has no terminal (`AuditLogsView.xaml` l.105-106); the preset says "Today" while the range beside it reads
-    16-09-2026 to 16-10-2026; the placeholder "Action, e.g. Order.C…" is clipped at Width=150.
-13. **Three names for the cashier's home.** `cashier/02-cashier-home.png`: sidebar "Dashboard", top bar "Dashboard",
-    page heading "Cashier home" (`ModuleRegistry.cs`, `Modules/Cash/CashierHomeView.xaml`); the My shift tile says
-    "open one from the bar under the top bar".
-14. **"Discount DISCOUNT".** `cashier/05-cashier-bill-detail.png`: the totals row label and the action link are the
-    same word; the totals card leaves a large empty area under TOTAL (`Modules/Billing/BillDetailView.xaml`).
-15. **Sidebar user block truncates name and role.** Every screen: "Priya…" / "Cashier", "Meen…" / "Mana…",
-    "Admi…" / "Admin". `Shell/ShellView.xaml` l.82-84.
-16. **Page descriptions are cut in the top bar.** `admin/26-admin-gst-hub.png`, `27`, `cashier/10`,
-    `functions/19-licence-page.png` ("…where to apply a…"). Single-line `PageDescription` in `Shell/ShellView.xaml`.
-17. **Closed bills: unlabeled filters.** `cashier/11-cashier-closed-bills.png`: an empty date box with a "Today"
-    button and an empty search box with no placeholder; the print history line "Original 14:50 BILLING-01 (failed)"
-    does not say what failed. `Modules/Billing/ClosedBillsView.xaml`.
-18. **GST hub opens on an error.** `admin/26-admin-gst-hub.png`: default month is the previous month and the red
-    "1 error(s) must be fixed…" banner sits above an empty "Nothing to show" grid; headers "Customer gstin", "Igst",
-    "Cgst", "Sgst" lower-case the acronyms. `Modules/Gst/GstHubView.xaml`, `GstHubViewModel.cs`.
-19. **Plurals.** `admin/27-admin-day-end-checks.png`: "1 unpaid bills", "1 open cash shifts"; Reports: "1 rows".
-    `Modules/Cash/DayEndViewModel.cs`, `Modules/Reports/ReportsViewModel.cs`.
-20. **Unstyled checkbox column.** `admin/19-admin-menu-items.png`: the IN STOCK `DataGridCheckBoxColumn` renders the
-    default WPF checkbox unlike the themed checkboxes beside it. `Modules/MenuAdmin/MenuItemsPageView.xaml` l.83.
-21. **Opening the item editor squeezes the list.** `admin/20-admin-menu-item-editor.png`: STATION is clipped and the
-    search box shrinks; the modifier groups are the last thing in a scrolling form. `MenuItemsPageView.xaml`.
-22. **Same filter, two labels.** "Show inactive" on Sections & Tables and Users vs "Inactive" on Menu.
-    `Modules/Admin/TablesView.xaml`, `UsersView.xaml`, `Modules/MenuAdmin/MenuItemsPageView.xaml` l.42.
-23. **Printers page.** `admin/29-admin-printers.png`: every field looks editable while "Enabled" is unticked, the
-    connection kind reads "EscPosRaw", "Print ₹ as" with placeholder "Rs." is unclear, TEST PRINT is disabled without
-    a hint why. `Modules/Printing/PrinterSettingsView.xaml`.
-24. **Login keeps "Retry" when online.** `cashier/01-cashier-sign-in.png`. `Modules/Auth/LoginView.xaml`.
-25. **Notification preferences list is cut mid-row.** `cashier/16-cashier-notification-preferences.png`.
-    `Shell/NotificationPreferencesView.xaml`.
-26. **Command palette groups are not visible as groups.** `admin/31-admin-command-palette.png`: "Go to" and
-    "Actions" entries are interleaved by score. `Shell/CommandPaletteViewModel.cs`, `ShellView.xaml`.
-27. **Lists do not scroll to the record just created or changed.** `functions/12-menu-item-create-after.png`,
-    `13-menu-sold-out-after.png`, `14-…`: Kothu Parotta sits below the fold, so the result of "create", "sold out" and
-    "available" is invisible except for the toast and the button text; `10-tables-deactivate-after.png`: X01 likewise.
-    `Modules/MenuAdmin/MenuItemsPageView.xaml`, `Modules/Admin/TablesView.xaml` (no `ScrollIntoView` on selection).
-28. **"Cancel" next to "Cancel item".** `functions/30-order-cancel-line-dialog.png`: the abort button and the confirm
-    button both start with "Cancel". `Modules/Tables/TableDetailsViewModel.cs` l.413 (`PromptAsync` confirm text).
-29. **Refund is three dialogs in a row.** `functions/44-refund-partial-dialog.png`, `-dialog2`, `-dialog3`: amount →
-    reason → manager approval, each a separate modal with no summary of what was entered before; one form would do.
-    `Modules/Billing/ClosedBillsViewModel.cs` l.147-200.
-30. **Identical toasts stack.** `functions/10-tables-deactivate-after.png`: two "Table X01 updated." toasts (rename
-    then deactivate) — the message does not say what changed. `Modules/Admin/TablesViewModel.cs` l.113.
-31. **Item created: editor title flips to "Edit item"** and stays open with "You can now add a picture", but nothing
-    marks the new row in the list. `functions/12-menu-item-create-after.png`; `MenuItemsPageViewModel.cs` l.358-395.
-32. **Backup FILE column clips the extension.** `functions/21-backup-page.png`: "hotelpos-20261016-111207.dum".
-    `Modules/Admin/BackupView.xaml`.
-33. **LOCKOUT column says "Normal".** `functions/05-users-unlock-before.png`: after five wrong passwords the API had
-    locked waiter9 (server log, `20-server-page.png`) but the list still read "Normal" and Unlock was the only hint;
-    "Normal" is an odd word for "not locked". `Modules/Admin/UsersView.xaml`, `UsersViewModel.cs`.
-34. **Reset-password dialog has no policy hint or show-password toggle.** `functions/03-users-reset-password-dialog.png`;
-    the editor shows the rules, the dialog does not. `Shell/MainWindow.xaml` dialog template.
-35. **Test print feedback is easy to miss.** `functions/18-printers-test-print-after.png`: the failure is small grey
-    text under the button, no toast and no colour. `Modules/Printing/PrinterSettingsView.xaml`.
-36. **Audit action filter finds nothing for a prefix.** `functions/22-audit-filter-after.png`: user `cashier1` +
-    action "Bill." returns 0 records although the same user has Bill.Settled / Bill.Finalized entries minutes earlier
-    (`admin/24-admin-audit-log.png`); the placeholder "Action, e.g. Order.C…" suggests a prefix match. `Modules/Admin/AuditLogsViewModel.cs`.
-37. **GST hub: totals and grid disagree.** `functions/24-gst-current-month-after.png`: the footer counts "4 invoices ·
-    invoice value 2,615.00" while the B2B grid says "Nothing to show" (B2C invoices are in another section) and the
-    error banner does not say what the error is. `Modules/Gst/GstHubView.xaml`.
-38. **Report percentages with two decimals.** `functions/25-reports-05-kitchen.png`: "Late percent 20.00",
-    "Average accept minutes 6.90". `Modules/Reports/ReportsViewModel.cs` (numeric columns formatted N2).
-39. **Export toast has no "open" action and covers the totals.** `functions/26-reports-export-excel-after.png`:
-    "Saved sales-daily-….xlsx." with no way to open the file or folder. `ReportsViewModel.DownloadAsync`.
-40. **Devices LIVE column clips "Online"/"Offline".** `admin/23-admin-devices.png`: "Onlin", "Offlin".
-    `Modules/Admin/DevicesView.xaml`.
-41. **Settings list has no section navigation.** `admin/28-admin-settings.png`: a long alphabetical list; the
-    Notifications section is at the very end (`28-admin-settings-notifications.png`) and "Save changes" is at the
-    top, out of sight once scrolled. `Modules/Admin/SettingsView.xaml`.
+1. **Fixed — Toasts cover modal and page buttons.** Toasts now appear top-centre under the top bar and are dismissed
+   when the page changes: `cashier/08-cashier-paid.png` (one toast, clear of NEXT BILL), `cashier/14-cashier-close-shift.png`
+   (the pay-out toast sits over the dialog title, not the buttons), `functions/06-roles-edit-before.png` (no Users
+   toast left over), `functions/12-menu-item-create-after.png`. Was: the bottom-right host sat above the dialog layer and
+   the page's action row.
+2. **Fixed — The terminal is notified about its own actions.** `cashier/05-cashier-bill-detail.png` has no "bill
+   claimed by BILLING-01" toast and `cashier/08-cashier-paid.png` shows only "Paid. Table T03 is free."; the bell
+   (`cashier/15-cashier-notifications-bell.png`) lists the bill request and the print failure only. The mapper drops a
+   claim by this device; the router drops the payment echo the bill screen announced.
+3. **Fixed — Bill lines hide the chosen options and notes.** `cashier/05-cashier-bill-detail.png`: "Spicy, Extra raita
+   (+30.00 each)" and "Medium · Note: Less oil" under the lines (loaded from the order).
+4. **Fixed — Print-failure notices use the internal bill id.** `cashier/15-cashier-notifications-bell.png`: "Invoice
+   INV-202610-000008 did not print on BILLING-01 …". The server now sends the number; the client falls back to the
+   queue's copy of it.
+5. **Fixed — Misleading help in the no-printer toast for cashiers.** `cashier/09-cashier-print-receipt-warning.png`:
+   "Ask a manager to set one up under Printers." for a cashier; managers and admins read "Set one up under Printers in
+   the menu."
+6. **Fixed — Print Log clips the two columns that matter.** `cashier/10-cashier-print-log.png`: DOCUMENT and WHY are
+   wider, end in an ellipsis and show the full text as a tooltip.
+7. **Fixed — Denomination sheet does not fit the dialog.** `cashier/03-cashier-open-shift.png`, `14`: 40 px rows, all
+   seven notes visible.
+8. **Fixed — Dashboard panels are below the fold.** `admin/17-admin-dashboard.png`: six tiles in one row and a shorter
+   chart; Kitchen performance, Staff and Terminals start on the first screen.
+9. **Fixed — Inconsistent currency formatting on the dashboard.** `admin/17-admin-dashboard.png`: "3,303.00" / "1,170.00"
+   in the payments legend.
+10. **Fixed — "Today in blue" / "0" labels.** `admin/17-admin-dashboard.png`: "Today is the solid bar; …" and empty days
+    have no label.
+11. **Terminals tile is dead for managers.** `manager/17-manager-dashboard-panels.png`: unchanged (the devices endpoint
+    is Admin-only).
+12. **Partly fixed — Audit log clips and mislabels.** `admin/24-admin-audit-log.png`: TIME is 150 px, ACTION trims with a
+    tooltip, the detail shows "On terminal: …" only when there is one, the action filter box is wider. Still open: the
+    preset says "Today" while the range reads a month.
+13. **Fixed — Three names for the cashier's home.** `cashier/02-cashier-home.png`: "Cashier home" in the sidebar, top bar
+    and heading; the My shift tile says "open one from the shift bar at the top".
+14. **"Discount DISCOUNT".** `cashier/05-cashier-bill-detail.png`: unchanged.
+15. **Fixed — Sidebar user block truncates name and role.** Every screen: "Priya (Cashier)" / "Cashier" in full; the
+    three buttons moved to their own row.
+16. **Fixed — Page descriptions are cut in the top bar.** `admin/26-admin-gst-hub.png`, `functions/19-licence-page.png`:
+    the description takes the whole title column and shows a tooltip when it still has to trim.
+17. **Fixed — Closed bills: unlabeled filters.** `cashier/11-cashier-closed-bills.png`: "Business day" and "Table, invoice
+    or order no." hints; the print history says "(did not print)".
+18. **Fixed — GST hub opens on an error.** `admin/26-admin-gst-hub.png`: opens on the current month; a month without
+    invoices shows no error banner. Still open: the lower-cased acronyms in the headers.
+19. **Fixed — Plurals.** `admin/27-admin-day-end-checks.png`: "1 unpaid bill", "1 open cash shift"; Reports "1 row";
+    bill subtitle "1 guest".
+20. **Fixed — Unstyled checkbox column.** `admin/19-admin-menu-items.png`: IN STOCK uses the themed CheckBox.
+21. **Opening the item editor squeezes the list.** `admin/20-admin-menu-item-editor.png`: unchanged.
+22. **Same filter, two labels.** Unchanged.
+23. **Printers page.** `admin/29-admin-printers.png`: unchanged apart from the test-print result (35).
+24. **Fixed — Login keeps "Retry" when online.** `cashier/01-cashier-sign-in.png`: Retry is hidden while the server is
+    reachable.
+25. **Notification preferences list is cut mid-row.** `cashier/16-cashier-notification-preferences.png`: unchanged.
+26. **Command palette groups are not visible as groups.** `admin/31-admin-command-palette.png`: unchanged.
+27. **Fixed in the app, not visible here — Lists do not scroll to the record just created or changed.** The Tables,
+    Sections, Users, Customers, Categories and Menu items grids now call `ScrollIntoView` on the selected row. The
+    harness renders a window that is never shown, and WPF defers a DataGrid's `ScrollIntoView` until the control is
+    loaded, so `functions/12-menu-item-create-after.png` and `13-menu-sold-out-after.png` still show the top of the
+    list; check it in the running app.
+28. **Fixed — "Cancel" next to "Cancel item".** `functions/30-order-cancel-line-dialog.png`: "Keep item" / "Cancel item".
+29. **Refund is three dialogs in a row.** `functions/44-refund-partial-dialog3.png`: still three (one input per dialog
+    and the API needs the reason), but the approval dialog now repeats the amount and the reason.
+30. **Fixed — Identical toasts stack.** `functions/09-tables-rename-after.png`, `10-tables-deactivate-after.png`: "Table
+    X016 renamed to "Terrace window6"." then "Table X016 deactivated." (and toasts no longer outlive the page).
+31. **Fixed in the app, not visible here — Item created: nothing marks the new row.** The new item is selected and
+    scrolled into view (same caveat as 27); the editor still stays open for the picture.
+32. **Fixed — Backup FILE column clips the extension.** `functions/21-backup-page.png`: wider, trims with a tooltip.
+33. **Fixed — LOCKOUT column says "Normal".** `functions/05-users-unlock-before.png`: "Not locked" / "Locked".
+34. **Reset-password dialog has no policy hint or show-password toggle.** Unchanged.
+35. **Fixed — Test print feedback is easy to miss.** `functions/18-printers-test-print-after.png`: a red (or green)
+    banner under the button plus a toast.
+36. **Audit action filter finds nothing for a prefix.** `functions/22-audit-filter-after.png`: unchanged (the server
+    matches the action exactly).
+37. **Fixed — GST hub: totals and grid disagree.** `functions/24-gst-current-month-after.png`: no error banner on a
+    month without invoices; the footer and the empty section are otherwise as before (B2C invoices live in another
+    section).
+38. **Fixed — Report percentages with two decimals.** `functions/25-reports-05-kitchen.png`: "20%", "6.9".
+39. **Fixed — Export toast has no "open" action.** `functions/26-reports-export-excel-after.png`: "Saved … · Open".
+40. **Fixed — Devices LIVE column clips "Online"/"Offline".** `admin/23-admin-devices.png`.
+41. **Fixed — Settings list has no section navigation.** `admin/28-admin-settings.png`: a section list on the left
+    (Restaurant … Backup, Notifications) scrolls the list to the heading.
 
 What worked well: the shift bar, the X report and the count sheet are clear and consistent; the status-bar "1 print
 failed · Retry · Discard" and the Print failures tile close the loop on a dead printer; manager approval is one

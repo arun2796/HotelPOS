@@ -50,9 +50,13 @@ public sealed record NotificationDraft(
     public string Message => string.IsNullOrWhiteSpace(Body) ? Title : $"{Title} ({Body})";
 }
 
-/// <summary>Who is signed in on this client; decides which events become notifications.</summary>
-public sealed record NotificationAudience(int UserId, IReadOnlyCollection<string> Roles)
+/// <summary>Who is signed in on this client; decides which events become notifications. <see cref="DeviceName"/> is this
+/// terminal's registered name, so an event the terminal caused itself is not announced back to it.</summary>
+public sealed record NotificationAudience(int UserId, IReadOnlyCollection<string> Roles, string? DeviceName = null)
 {
+    public bool IsThisDevice(string? deviceName) =>
+        !string.IsNullOrWhiteSpace(DeviceName) && string.Equals(DeviceName, deviceName, StringComparison.OrdinalIgnoreCase);
+
     public bool Is(string role) => Roles.Contains(role, StringComparer.OrdinalIgnoreCase);
 
     public bool IsManagement => Is(Security.Roles.Admin) || Is(Security.Roles.Manager);
@@ -107,7 +111,8 @@ public static class NotificationMapper
 
     public static NotificationDraft? BillUpdated(BillUpdatedEvent e, NotificationAudience who)
     {
-        if (e.ChangeType != BillChangeTypes.Claimed || !who.IsBilling)
+        // The terminal that claimed the bill is looking at it; only the other billing terminals need telling.
+        if (e.ChangeType != BillChangeTypes.Claimed || !who.IsBilling || who.IsThisDevice(e.ClaimedByDevice))
         {
             return null;
         }
@@ -149,12 +154,16 @@ public static class NotificationMapper
                 string.IsNullOrWhiteSpace(e.SentBy) ? e.Message : $"{e.Message} ({e.SentBy})", string.Empty,
                 $"notice:{e.Message}", null, e.SentBy);
 
-    /// <summary>A reserved print copy failed. The server already sent it only to the reporting terminal and to managers.</summary>
-    public static NotificationDraft PrintFailed(PrintFailedEvent e)
+    /// <summary>A reserved print copy failed. The server already sent it only to the reporting terminal and to managers.
+    /// The document is named by its number (invoice number, ticket number); <paramref name="documentNumber"/> is a
+    /// client-side fallback for a server that does not send one yet.</summary>
+    public static NotificationDraft PrintFailed(PrintFailedEvent e, string? documentNumber = null)
     {
         var where = string.IsNullOrWhiteSpace(e.DeviceName) ? string.Empty : $" on {e.DeviceName}";
+        var number = e.DocumentNumber ?? documentNumber;
+        var name = string.IsNullOrWhiteSpace(number) ? $"#{e.DocumentId}" : number;
         return new NotificationDraft(NotificationKind.PrintFailed, NoticeLevel.Critical,
-            $"{e.DocumentType} #{e.DocumentId} did not print{where}", e.Error ?? string.Empty,
+            $"{e.DocumentType} {name} did not print{where}", e.Error ?? string.Empty,
             $"print-failed:{e.DocumentType}:{e.DocumentId}:{e.CopyNumber}",
             new NotificationTarget(NotificationTargetType.Print, e.DocumentId.ToString()));
     }

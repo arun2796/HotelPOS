@@ -8,6 +8,7 @@ using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Customers;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Gst;
+using HotelPOS.Contracts.Orders;
 using HotelPOS.Contracts.Print;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Contracts.Security;
@@ -53,6 +54,12 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
     private readonly IDocumentPrinter _printer;
     private readonly ICashDrawer? _cashDrawer;
     private readonly ICustomersApi? _customers;
+    private readonly IOrdersApi? _orders;
+    private readonly INotificationRouter? _router;
+    // The bill lines carry only the modifier amount; the chosen options and the note come from the order (keyed by
+    // order item id), reloaded when the bill points at a different order.
+    private int _orderItemsOf;
+    private Dictionary<int, OrderItemDto> _orderItems = new();
     private CustomerDto? _picked;
     private bool _settingSearch;
     private CancellationTokenSource? _searchPause;
@@ -72,9 +79,13 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
         IAuthSession session,
         IDocumentPrinter printer,
         ICashDrawer? cashDrawer = null,
-        ICustomersApi? customers = null)
+        ICustomersApi? customers = null,
+        IOrdersApi? orders = null,
+        INotificationRouter? router = null)
     {
         _customers = customers;
+        _orders = orders;
+        _router = router;
         _printer = printer;
         _cashDrawer = cashDrawer;
         _billingApi = billingApi;
@@ -313,7 +324,7 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
     public string Title => Bill is null ? "Bill" : $"Table {Bill.TableCode} · Order #{Bill.OrderNumber}";
 
     public string Subtitle => Bill is null ? string.Empty
-        : $"Bill {Bill.BillNumber} · {Bill.WaiterName} · {Bill.GuestCount} guests · requested {Bill.RequestedAtUtc.ToLocalTime().ToString("HH:mm", CultureInfo.CurrentCulture)}";
+        : $"Bill {Bill.BillNumber} · {Bill.WaiterName} · {Plural.Count(Bill.GuestCount, "guest")} · requested {Bill.RequestedAtUtc.ToLocalTime().ToString("HH:mm", CultureInfo.CurrentCulture)}";
 
     public string StatusText => Bill?.Status switch
     {
@@ -331,7 +342,51 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
         i.Quantity.ToString(CultureInfo.CurrentCulture),
         Money.Format(i.UnitPrice + i.ModifiersAmount),
         Money.Format(i.LineSubtotal),
-        i.ModifiersAmount != 0 ? $"incl. extras {Money.Format(i.ModifiersAmount)} each" : null)).ToList() ?? new List<BillLineRow>();
+        LineDetail(i))).ToList() ?? new List<BillLineRow>();
+
+    // "Spicy, Extra raita (+30.00 each) · Note: less oil"; falls back to the amount alone when the order is not loaded.
+    private string? LineDetail(BillItemDto item)
+    {
+        var parts = new List<string>();
+        if (_orderItems.TryGetValue(item.OrderItemId, out var ordered))
+        {
+            if (ordered.Modifiers.Count > 0)
+            {
+                var extras = item.ModifiersAmount != 0 ? $" (+{Money.Format(item.ModifiersAmount)} each)" : string.Empty;
+                parts.Add(string.Join(", ", ordered.Modifiers.Select(m => m.Name)) + extras);
+            }
+
+            if (!string.IsNullOrWhiteSpace(ordered.Notes))
+            {
+                parts.Add($"Note: {ordered.Notes.Trim()}");
+            }
+        }
+
+        if (parts.Count == 0 && item.ModifiersAmount != 0)
+        {
+            parts.Add($"incl. extras {Money.Format(item.ModifiersAmount)} each");
+        }
+
+        return parts.Count == 0 ? null : string.Join(" · ", parts);
+    }
+
+    private async Task LoadOrderItemsAsync()
+    {
+        if (_orders is null || Bill is null || Bill.OrderId == _orderItemsOf)
+        {
+            return;
+        }
+
+        var order = await _orders.GetAsync(Bill.OrderId);
+        if (order.Data is null)
+        {
+            return;
+        }
+
+        _orderItemsOf = Bill.OrderId;
+        _orderItems = order.Data.Items.ToDictionary(i => i.Id);
+        OnPropertyChanged(nameof(Lines));
+    }
 
     public string SubtotalText => Money.Format(Bill?.Subtotal ?? 0);
 
@@ -427,6 +482,7 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
         {
             Bill = result.Data;
             ErrorMessage = null;
+            await LoadOrderItemsAsync();
         }
         else
         {
@@ -668,6 +724,8 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
                     Reference = part.Reference,
                     RowVersion = Bill.RowVersion,
                 };
+                // The hub echoes the payment back to every billing terminal; this one shows the PAID panel instead.
+                _router?.ExpectOwn(NotificationKind.PaymentCompleted, NotificationTargetType.Bill, Bill.Id.ToString(CultureInfo.InvariantCulture));
                 var result = await _billingApi.AddPaymentAsync(Bill.Id, part.Line.PendingRequest, part.Line.IdempotencyKey);
 
                 if (!result.Success || result.Data is null)

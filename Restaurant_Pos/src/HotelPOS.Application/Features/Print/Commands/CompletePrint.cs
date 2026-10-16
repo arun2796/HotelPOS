@@ -69,7 +69,7 @@ internal sealed class CompletePrintHandler : ICommandHandler<CompletePrintComman
         _log.Announce(entry);
         if (entry.Result == PrintResult.Failed)
         {
-            _log.AnnounceFailure(entry);
+            _log.AnnounceFailure(entry, await _log.DocumentNumberAsync(entry.DocumentType, entry.DocumentId, cancellationToken));
         }
 
         return (await _log.ToDtosAsync(new[] { entry }, cancellationToken))[0];

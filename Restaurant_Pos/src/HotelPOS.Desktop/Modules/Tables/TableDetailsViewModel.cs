@@ -411,7 +411,7 @@ public sealed partial class TableDetailsViewModel : ViewModelBase
             return;
         }
 
-        var reason = await _dialogs.PromptAsync("Cancel item", $"Cancel {line.Text}? Enter the reason for the kitchen.", "Cancel item");
+        var reason = await _dialogs.PromptAsync("Cancel item", $"Cancel {line.Text}? Enter the reason for the kitchen.", "Cancel item", cancelText: "Keep item");
         if (reason is null)
         {
             return;

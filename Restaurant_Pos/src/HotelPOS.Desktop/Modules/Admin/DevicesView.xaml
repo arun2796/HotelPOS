@@ -40,7 +40,7 @@
       <DataGrid ItemsSource="{Binding Devices}" SelectedItem="{Binding SelectedDevice}" HorizontalScrollBarVisibility="Disabled">
         <DataGrid.Columns>
           <!-- Online status -->
-          <DataGridTemplateColumn Header="LIVE" Width="80">
+          <DataGridTemplateColumn Header="LIVE" Width="100" MinWidth="100">
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate>
                 <Border CornerRadius="4" Padding="6,2" HorizontalAlignment="Left" VerticalAlignment="Center">

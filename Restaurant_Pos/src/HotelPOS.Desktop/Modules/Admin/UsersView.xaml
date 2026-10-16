@@ -56,7 +56,7 @@
     </Border>
 
     <Grid Grid.Row="2">
-      <DataGrid ItemsSource="{Binding Users}" SelectedItem="{Binding SelectedUser}" HorizontalScrollBarVisibility="Disabled">
+      <DataGrid ItemsSource="{Binding Users}" SelectedItem="{Binding SelectedUser}" controls:SelectorBehaviors.ScrollSelectedIntoView="True" HorizontalScrollBarVisibility="Disabled">
         <DataGrid.InputBindings>
           <MouseBinding Gesture="LeftDoubleClick" Command="{Binding EditCommand}" />
         </DataGrid.InputBindings>
@@ -71,11 +71,11 @@
                 <TextBlock VerticalAlignment="Center">
                   <TextBlock.Style>
                     <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
-                      <Setter Property="Text" Value="Normal" />
+                      <Setter Property="Text" Value="Not locked" />
                       <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
                       <Style.Triggers>
                         <DataTrigger Binding="{Binding IsLockedOut}" Value="True">
-                          <Setter Property="Text" Value="Locked Out" />
+                          <Setter Property="Text" Value="Locked" />
                           <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
                           <Setter Property="FontWeight" Value="SemiBold" />
                         </DataTrigger>

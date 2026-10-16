@@ -66,7 +66,7 @@ public static class ModuleRegistry
     {
         new(Dashboard, "Dashboard", "", "Service", new[] { Roles.Admin, Roles.Manager, Roles.Waiter }, 8,
             "Today's sales, open orders, active tables and pending bills at a glance.", typeof(DashboardViewModel)),
-        new(CashierHome, "Dashboard", "", "Service", new[] { Roles.Cashier }, 20,
+        new(CashierHome, "Cashier home", "", "Service", new[] { Roles.Cashier }, 20,
             "Pending bills, your open shift, expected cash and the business day at a glance.", typeof(CashierHomeViewModel)),
         new(Tables, "Tables", "", "Service", new[] { Roles.Admin, Roles.Manager, Roles.Waiter, Roles.Cashier }, 2,
             "Live table map: occupy tables, open orders and follow their status.", typeof(TableMapViewModel)),

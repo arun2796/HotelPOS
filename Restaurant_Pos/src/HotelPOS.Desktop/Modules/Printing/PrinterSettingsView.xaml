@@ -112,8 +112,32 @@
                 <Button Content="TEST PRINT" MinHeight="48" Margin="0,16,0,0" IsEnabled="{Binding IsEnabled}"
                         Command="{Binding DataContext.TestPrintCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                         CommandParameter="{Binding}" />
-                <TextBlock Text="{Binding TestResult}" Style="{StaticResource Text.Caption}" TextWrapping="Wrap" Margin="0,8,0,0"
-                           Visibility="{Binding TestResult, Converter={StaticResource StringToVisibility}}" />
+                <!-- The test outcome as a coloured banner (green sent, red failed) rather than grey small print. -->
+                <Border Margin="0,10,0,0" Visibility="{Binding TestResult, Converter={StaticResource StringToVisibility}}">
+                  <Border.Style>
+                    <Style TargetType="Border" BasedOn="{StaticResource Banner.Success}">
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding TestFailed}" Value="True">
+                          <Setter Property="Background" Value="{DynamicResource Brush.DangerSoft}" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding IsTesting}" Value="True">
+                          <Setter Property="Background" Value="{DynamicResource Brush.InfoSoft}" />
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </Border.Style>
+                  <TextBlock Text="{Binding TestResult}" TextWrapping="Wrap" FontWeight="SemiBold">
+                    <TextBlock.Style>
+                      <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Body}">
+                        <Style.Triggers>
+                          <DataTrigger Binding="{Binding TestFailed}" Value="True">
+                            <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
+                          </DataTrigger>
+                        </Style.Triggers>
+                      </Style>
+                    </TextBlock.Style>
+                  </TextBlock>
+                </Border>
               </StackPanel>
             </Border>
           </DataTemplate>
