@@ -245,3 +245,12 @@ path), Api tests (three new events' audiences, day-end reminder), rendering test
 ## 14. Changes during implementation
 
 (filled while building)
+
+### 20.5 Web polish (G10)
+
+- `app.css`/`tokens.css`: new `--focus` token (light and dark) and a global `:focus-visible` ring; `outline:none` removed from `.input`. `.skeleton` shimmer (disabled under `prefers-reduced-motion`), `.sr-only`.
+- New `Client.Shared/Shared/Skeleton.razor` (Line/Card variants, `role=status aria-busy`), `ErrorState.razor` (`role=alert`, optional Retry callback), `EmptyState.razor`, `ThemeToggle.razor` (system, light, dark; persisted under `hotelpos.theme` through `IBrowserStorage`, applied by `hotelposTheme.set` in `js/theme.js`, referenced from the Web and Android `index.html`; the Android copy lives in `HotelPOS.Android/wwwroot/js`).
+- Markup-only swaps of "Loading…" and ad-hoc retry banners on KitchenPage, CompletedPage, TablesPage, MyOrdersPage, OrderBuilderPage, TableDetailsPage.
+- `MainLayout`: theme toggle in the top bar, `aria-label` on both `nav` blocks, `aria-current="page"` on the active link, decorative icons `aria-hidden`, "Home" link (`/home`) for waiters. `Toasts` live region is now always in the DOM so announcements are reliable.
+- Tests: `WebPolishTests` (6 bUnit tests); Client.Tests 33 passing.
+- Not done: bell-count live region and `HomePage` skeleton (NotificationBell and HomePage come from 20.1/20.6 on other branches; re-apply the same swaps when merged); the `/home` link is dead until 20.6 lands.

@@ -1,0 +1,23 @@
+<div class="skeleton-group" role="status" aria-busy="true" aria-label="@Label">
+    @for (var i = 0; i < Count; i++)
+    {
+        <div class="skeleton @(Variant == SkeletonVariant.Card ? "skeleton-card" : "skeleton-line")" aria-hidden="true"></div>
+    }
+</div>
+
+@code {
+    public enum SkeletonVariant
+    {
+        Line,
+        Card,
+    }
+
+    /// <summary>Placeholder shape: a text line or a card-sized block.</summary>
+    [Parameter] public SkeletonVariant Variant { get; set; } = SkeletonVariant.Line;
+
+    /// <summary>How many placeholders to draw.</summary>
+    [Parameter] public int Count { get; set; } = 3;
+
+    /// <summary>Announced to screen readers while content loads.</summary>
+    [Parameter] public string Label { get; set; } = "Loading";
+}

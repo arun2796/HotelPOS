@@ -15,6 +15,7 @@
             }
         </div>
         <ConnectionPill />
+        <ThemeToggle />
         @if (Auth.IsSignedIn)
         {
             <button class="btn icon ghost" title="@($"{Auth.User!.DisplayName} · Sign out")" @onclick="SignOutAsync" aria-label="Sign out">
@@ -23,23 +24,24 @@
         }
     </header>
 
-    <main class="page">
+    <main class="page" id="main">
         @Body
     </main>
 
     @if (Auth.IsSignedIn && IsWaiter)
     {
-        <nav class="bottomnav">
-            <NavLink href="tables" Match="NavLinkMatch.Prefix"><span class="ico">▦</span>Tables</NavLink>
-            <NavLink href="my-orders"><span class="ico">☰</span>My orders</NavLink>
+        <nav class="bottomnav" aria-label="Primary">
+            <NavLink href="home" aria-current="@Current("home")"><span class="ico" aria-hidden="true">⌂</span>Home</NavLink>
+            <NavLink href="tables" Match="NavLinkMatch.Prefix" aria-current="@Current("tables")"><span class="ico" aria-hidden="true">▦</span>Tables</NavLink>
+            <NavLink href="my-orders" aria-current="@Current("my-orders")"><span class="ico" aria-hidden="true">☰</span>My orders</NavLink>
         </nav>
     }
     else if (Auth.IsSignedIn && IsKitchen)
     {
-        <nav class="bottomnav">
-            <NavLink href="kitchen" Match="NavLinkMatch.All"><span class="ico">✓</span>Kitchen</NavLink>
-            <NavLink href="kitchen/completed"><span class="ico">☑</span>Completed</NavLink>
-            <NavLink href="kitchen/station"><span class="ico">⚙</span>Station</NavLink>
+        <nav class="bottomnav" aria-label="Primary">
+            <NavLink href="kitchen" Match="NavLinkMatch.All" aria-current="@Current("kitchen", true)"><span class="ico" aria-hidden="true">✓</span>Kitchen</NavLink>
+            <NavLink href="kitchen/completed" aria-current="@Current("kitchen/completed")"><span class="ico" aria-hidden="true">☑</span>Completed</NavLink>
+            <NavLink href="kitchen/station" aria-current="@Current("kitchen/station")"><span class="ico" aria-hidden="true">⚙</span>Station</NavLink>
         </nav>
     }
 
@@ -49,6 +51,13 @@
 @code {
     private bool IsWaiter => Auth.Has(Permissions.TablesView) && !Auth.IsInRole(Roles.Kitchen);
     private bool IsKitchen => Auth.Has(Permissions.KitchenOperate) && !Auth.Has(Permissions.TablesView);
+
+    private string? Current(string path, bool exact = false)
+    {
+        var rel = Navigation.ToBaseRelativePath(Navigation.Uri).Split('?', '#')[0].TrimEnd('/');
+        var on = exact ? rel == path : rel == path || rel.StartsWith(path + "/", StringComparison.Ordinal);
+        return on ? "page" : null;
+    }
 
     private string Initials
     {

@@ -31,11 +31,11 @@ else
 
     @if (_error is not null)
     {
-        <div class="banner error">@_error <button class="btn ghost" @onclick="RefreshAsync">Retry</button></div>
+        <ErrorState Message="@_error" OnRetry="RefreshAsync" />
     }
     else if (_tickets is null)
     {
-        <div class="empty">Loading tickets…</div>
+        <Skeleton Variant="Skeleton.SkeletonVariant.Card" Count="3" Label="Loading tickets" />
     }
     else
     {
