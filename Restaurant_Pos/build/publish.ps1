@@ -22,12 +22,19 @@
 param(
     [switch] $SkipTests,
     [switch] $AllowOutdatedRuntime,
-    [string] $InnoCompiler = 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
+    [string] $InnoCompiler
 )
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $minimumAspNetCore = [Version]'8.0.32'
+
+# Inno Setup installs per machine (Program Files (x86)) or per user (LocalAppData, the winget default); accept either.
+if (-not $InnoCompiler) {
+    $candidates = @("${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe")
+    $InnoCompiler = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+    if (-not $InnoCompiler) { $InnoCompiler = $candidates[0] }
+}
 
 [xml] $props = Get-Content (Join-Path $PSScriptRoot 'version.props')
 $version = $props.Project.PropertyGroup.Version

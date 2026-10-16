@@ -255,8 +255,9 @@ Server
       `tests/Shared/TestPostgres.cs` (now user-secrets and `HOTELPOS_TEST_POSTGRES`, see `docs/dev-setup.md`);
       `StaticSecurityChecksTests` fails on any committed connection-string password. Earlier commits still contain
       the old value, so it should be changed if it is used anywhere else.
-- [ ] Server PCs must run ASP.NET Core runtime 8.0.32 or later (the server's SignalR comes from the shared
-      runtime, not from NuGet); add to the Phase 10 install checklist.
+- [x] Server PCs must run ASP.NET Core runtime 8.0.32 or later (the server's SignalR comes from the shared
+      runtime, not from NuGet). Done 2026-10-16: the server is published self-contained, `publish.ps1` refuses a
+      bundle below 8.0.32, and `docs/ops/01-installation.md` § 2 states the requirement.
 
 Manual
 - [ ] Demo script (§ 11 of the template) on two machines, including a network pull during lockout/approval.

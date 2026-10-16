@@ -17,7 +17,9 @@ The server PC may also be used as the admin or billing terminal.
 - Windows 10/11 Pro or Windows Server 2019+, x64, 8 GB RAM, SSD with at least 20 GB free.
 - A UPS is strongly recommended: a power cut during a write is the main risk to the database.
 - Network profile set to **Private** (see [02](02-lan-and-firewall.md)).
-- No .NET install is needed: the server and the app carry their own runtime.
+- No .NET install is needed: the server and the app carry their own runtime. The bundled ASP.NET Core runtime must
+  be 8.0.32 or later (CVE-2026-70159, SignalR denial of service); `version.txt` in the package names it, and the
+  release build refuses anything older. Never install a package marked `NOT-FOR-RELEASE.txt`.
 
 ## 3. Install PostgreSQL
 
