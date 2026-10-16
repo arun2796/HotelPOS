@@ -245,3 +245,11 @@ path), Api tests (three new events' audiences, day-end reminder), rendering test
 ## 14. Changes during implementation
 
 (filled while building)
+
+### 20.9 HTTPS by default (G20, D6)
+
+- Template: `Kestrel:Endpoints` Http 5000 + Https 5001 with `<set by installer>` certificate placeholders; `Urls` is set to empty because a `Urls` value (the base appsettings.json has one) overrides Kestrel endpoints.
+- `configure-server.ps1`: `-HttpsPort`, `-CertificatePath`, `-CertificatePassword` (also handover keys). Without a certificate it keeps the one in the existing settings, else calls `new-lan-certificate.ps1` (host name + non-loopback IPv4 addresses, random PFX password). Firewall opens 5000 and 5001. Health check stays on http://localhost:5000.
+- `installer/server.iss`: certificate page (both optional; a given file must exist and have a password). Not compiled here (no publish folder).
+- `Program.cs`: `UseHsts()` only outside Development/Testing and only when `Kestrel:Endpoints:Https` exists; no `UseHttpsRedirection`. Test hook `Hsts:Enabled=true` lets `HstsTests` exercise it in the Testing environment (3 tests).
+- Docs: ops 01, 02, 05, 09 updated. Root CA distribution unchanged.

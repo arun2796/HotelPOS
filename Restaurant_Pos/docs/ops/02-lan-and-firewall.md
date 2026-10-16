@@ -55,11 +55,15 @@ Test-NetConnection 192.168.1.100 -Port 5432   # TcpTestSucceeded : False  (must 
 - Kitchen screens far from the router: add an access point rather than relying on a weak signal. The app survives
   drop-outs (orders are kept and re-sent), but staff notice the delay.
 
-## 5. HTTPS (required for phones and tablets, optional for Windows-only sites)
+## 5. HTTPS (on by default since Phase 20)
 
-Plain HTTP is acceptable on an isolated staff network with Windows terminals only. Use HTTPS when anyone else can
-join the network — and **always when phones or tablets use the browser client** (`https://<server>:5001/app`,
-Phase 18): the home-screen install and offline cache of a web app only work over HTTPS.
+The server listens on both **5000 (plain HTTP, for Windows terminals)** and **5001 (HTTPS)**. The installer / 
+`configure-server.ps1` writes the Kestrel endpoints, creates the LAN certificate (or uses the `.pfx` you give with
+`-CertificatePath` / `-CertificatePassword`) and opens both ports. On re-runs the existing certificate is kept. HSTS is
+sent on the HTTPS endpoint only; there is no redirect from 5000 to 5001, so terminals on plain HTTP keep working.
+Phones and tablets use `https://<server>:5001/app` (home-screen install and offline cache only work over HTTPS).
+Distributing the root CA to the devices is unchanged (step 4 below). Steps 1-3 are what the installer already did;
+they remain here for renewing the certificate or for doing it by hand.
 
 1. Create the certificates with the internal-CA script (run as Administrator on the server):
 

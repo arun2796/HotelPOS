@@ -26,6 +26,10 @@ param(
     [string] $DbPassword,
     [string] $AdminPassword,
     [int] $Port = 5000,
+    [int] $HttpsPort = 5001,
+    # Optional .pfx for the HTTPS endpoint; without one a LAN root CA + server certificate is created (new-lan-certificate.ps1).
+    [string] $CertificatePath,
+    [string] $CertificatePassword,
     [string] $DataRoot = 'C:\ProgramData\HotelPOS',
     [string] $ServiceName = 'HotelPOSApi',
     [switch] $ConfigOnly
@@ -36,7 +40,7 @@ $ErrorActionPreference = 'Stop'
 if ($SettingsFile) {
     $handover = Get-Content $SettingsFile -Raw | ConvertFrom-Json
     Remove-Item $SettingsFile -Force
-    foreach ($name in 'DbHost', 'DbPort', 'Database', 'DbUser', 'DbPassword', 'AdminPassword', 'Port', 'DataRoot') {
+    foreach ($name in 'DbHost', 'DbPort', 'Database', 'DbUser', 'DbPassword', 'AdminPassword', 'Port', 'HttpsPort', 'CertificatePath', 'CertificatePassword', 'DataRoot') {
         if ($null -ne $handover.$name -and "$($handover.$name)" -ne '') { Set-Variable -Name $name -Value $handover.$name }
     }
 }
@@ -83,7 +87,37 @@ if ($existing -and $existing.Jwt.SigningKey -and $existing.Jwt.SigningKey -notli
 
 # Only used when the admin account is first created; afterwards the password is changed in the app.
 $settings.Seed.AdminPassword = if ($AdminPassword) { $AdminPassword } elseif ($existing) { $existing.Seed.AdminPassword } else { 'Admin@123' }
-$settings.Urls = "http://0.0.0.0:$Port"
+# Plain HTTP stays for the Windows terminals; HTTPS (phones, PWA install) is on 5001. A "Urls" value would override
+# the Kestrel endpoints, so it is cleared (the base appsettings.json has one for Development).
+$settings.Urls = ''
+
+# Certificate: given (-CertificatePath), else kept from the previous configuration, else a LAN certificate is created.
+$certPath = $CertificatePath
+$certPassword = $CertificatePassword
+$keptCert = if ($existing) { $existing.Kestrel.Endpoints.Https.Certificate } else { $null }
+if (-not $certPath -and $keptCert -and $keptCert.Path -and $keptCert.Path -notlike '<*') {
+    $certPath = $keptCert.Path
+    if (-not $certPassword) { $certPassword = $keptCert.Password }
+}
+if (-not $certPath) {
+    $pfxBytes = New-Object byte[] 24
+    [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($pfxBytes)
+    $certPassword = [Convert]::ToBase64String($pfxBytes)
+    $names = @([Net.Dns]::GetHostName()) + @(
+        Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+            Where-Object { $_.IPAddress -notlike '127.*' -and $_.IPAddress -notlike '169.254.*' } |
+            ForEach-Object { $_.IPAddress })
+    $certFolder = Join-Path $DataRoot 'Api'
+    & (Join-Path $PSScriptRoot 'new-lan-certificate.ps1') -DnsNames $names `
+        -PfxPassword (ConvertTo-SecureString $certPassword -AsPlainText -Force) -OutputFolder $certFolder
+    $certPath = Join-Path $certFolder 'hotelpos.pfx'
+}
+if (-not (Test-Path $certPath)) { throw "Certificate file not found: $certPath" }
+if (-not $certPassword) { throw 'A certificate password is needed (-CertificatePassword).' }
+$settings.Kestrel.Endpoints.Http.Url = "http://0.0.0.0:$Port"
+$settings.Kestrel.Endpoints.Https.Url = "https://0.0.0.0:$HttpsPort"
+$settings.Kestrel.Endpoints.Https.Certificate.Path = $certPath
+$settings.Kestrel.Endpoints.Https.Certificate.Password = $certPassword
 $settings.Logging.Directory = Join-Path $DataRoot 'Api\logs'
 $settings.Media.RootPath = Join-Path $DataRoot 'Api\media'
 
@@ -92,7 +126,7 @@ foreach ($folder in $settings.Logging.Directory, $settings.Media.RootPath, (Join
 }
 
 $settings | ConvertTo-Json -Depth 10 | Set-Content -Path $target -Encoding UTF8
-# Administrators and SYSTEM only: the file holds the database password and the token signing key.
+# Administrators and SYSTEM only: the file holds the database and certificate passwords and the token signing key.
 & icacls $target /inheritance:r /grant:r '*S-1-5-32-544:F' '*S-1-5-18:F' | Out-Null
 Write-Host "Settings written to $target"
 
@@ -109,7 +143,7 @@ if ($service) {
 
 # Restart after a crash or a failed start-up check (e.g. PostgreSQL not up yet after a power cut).
 & sc.exe failure $ServiceName reset= 86400 actions= restart/5000/restart/15000/restart/60000 | Out-Null
-& (Join-Path $PSScriptRoot 'create-firewall-rule.ps1') -Port $Port
+& (Join-Path $PSScriptRoot 'create-firewall-rule.ps1') -Port $Port -Https -HttpsPort $HttpsPort
 
 Start-Service -Name $ServiceName
 Write-Host "Service '$ServiceName' started; waiting for http://localhost:$Port/health ..."

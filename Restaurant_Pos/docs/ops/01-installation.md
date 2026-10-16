@@ -42,10 +42,14 @@ The server PC may also be used as the admin or billing terminal.
    step 3. API port: `5000` unless something else uses it.
 3. **Administrator** page: the first admin password. It is used once, when the admin account is created, and must
    be changed at the first sign-in.
-4. Finish. The installer writes the settings, registers the **HotelPOS API** service (starts automatically,
-   restarts itself after a failure), opens the firewall for the API port on Private networks, blocks PostgreSQL
+4. **HTTPS certificate** page (Phase 20): leave both fields empty to create a LAN certificate automatically (a root CA
+   "HotelPOS Root CA" plus a server certificate for this PC's name and addresses), or enter the path of your own `.pfx`
+   file and its password. The root CA file for the devices is written to `C:\ProgramData\HotelPOS\Api\hotelpos-root-ca.cer`.
+   When upgrading, empty keeps the current certificate.
+5. Finish. The installer writes the settings, registers the **HotelPOS API** service (starts automatically,
+   restarts itself after a failure), opens the firewall for the API ports (5000 and 5001) on Private networks, blocks PostgreSQL
    from the network, starts the service and waits until it reports healthy.
-5. Check: open `http://localhost:5000/health` on the server. It should say `"status":"Healthy"`.
+6. Check: open `http://localhost:5000/health` on the server. It should say `"status":"Healthy"`.
 
 What the installer created:
 
@@ -77,8 +81,9 @@ in **Administration → Devices**.
 
 Waiters on phones and the kitchen on tablets use the browser client instead of an installer. Per device:
 
-1. Install the root CA certificate created in [02 § 5](02-lan-and-firewall.md) (HTTPS is required).
-2. Open `https://<server>:5001/app` and add it to the home screen (Chrome: *Add to Home screen*; Safari: Share →
+1. Install the root CA certificate the installer created (`hotelpos-root-ca.cer`, [02 § 5](02-lan-and-firewall.md)); HTTPS
+   is on by default since Phase 20 and is required for the home-screen install.
+2. Open `https://<server>:5001/app` (phones use port 5001, not 5000) and add it to the home screen (Chrome: *Add to Home screen*; Safari: Share →
    *Add to Home Screen*). The icon opens full-screen like an app.
 3. On the sign-in screen choose **Waiter** or **Kitchen** for the device; it registers itself as `WEB-WAITER-xxxxxx` /
    `WEB-KITCHEN-xxxxxx` and appears under Administration → Devices, where it can be renamed or deactivated.
