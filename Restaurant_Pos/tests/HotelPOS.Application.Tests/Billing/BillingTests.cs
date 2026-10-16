@@ -256,6 +256,32 @@ public class BillingTests : DatabaseTestBase
     }
 
     [Fact]
+    public async Task ARejectedPayment_TellsOnlyThePayingDevice_AndASuccessfulOneDoesNot()
+    {
+        var s = await SetupAsync();
+        var bill = await BillAsync(s, s.Tables[0]);
+        AsCashier(s, CounterOne);
+        Realtime.Reset();
+
+        var stale = await SendAsync(new AddPaymentCommand(bill.Id, Upi(bill.RowVersion + "x", 100m), Guid.NewGuid()));
+        var noMethod = await SendAsync(new AddPaymentCommand(bill.Id, new AddPaymentRequest { PaymentMethodId = 9999, Amount = 100m, RowVersion = bill.RowVersion }, Guid.NewGuid()));
+        var tooMuch = await SendAsync(new AddPaymentCommand(bill.Id, Upi(bill.RowVersion, 99999m), Guid.NewGuid()));
+
+        stale.Error!.Code.Should().Be(ErrorCodes.ConcurrencyConflict);
+        noMethod.Error!.Code.Should().Be(ErrorCodes.ValidationError);
+        var failures = Realtime.Events.Where(e => e.EventName == HubEvents.PaymentFailed).ToList();
+        failures.Should().HaveCount(2, "only validation and concurrency rejections are announced");
+        failures.Should().OnlyContain(e => e.Audience.DeviceIds.SequenceEqual(new[] { CounterOne }) && e.Audience.Roles.Count == 0 && !e.Audience.Everyone);
+        failures.Select(e => ((PaymentFailedEvent)e.Payload).Code).Should().Equal(ErrorCodes.ConcurrencyConflict, ErrorCodes.ValidationError);
+        ((PaymentFailedEvent)failures[0].Payload).BillId.Should().Be(bill.Id);
+        tooMuch.IsFailure.Should().BeTrue();
+
+        Realtime.Reset();
+        (await SendAsync(new AddPaymentCommand(bill.Id, Upi(bill.RowVersion, 630m), Guid.NewGuid()))).IsSuccess.Should().BeTrue();
+        Realtime.Events.Should().NotContain(e => e.EventName == HubEvents.PaymentFailed);
+    }
+
+    [Fact]
     public async Task TwoPaymentsAtOnce_OneWins_TheOtherGetsAConflict()
     {
         var s = await SetupAsync();

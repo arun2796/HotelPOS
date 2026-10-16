@@ -67,6 +67,11 @@ internal sealed class CompletePrintHandler : ICommandHandler<CompletePrintComman
         _audit.Add(AuditActions.PrintCopyCompleted, PrintLog.EntityType(entry.DocumentType), entry.DocumentId.ToString(CultureInfo.InvariantCulture),
             newValues: new { entry.DocumentType, entry.CopyNumber, entry.Result, entry.Error, Device = _currentUser.DeviceName });
         _log.Announce(entry);
+        if (entry.Result == PrintResult.Failed)
+        {
+            _log.AnnounceFailure(entry);
+        }
+
         return (await _log.ToDtosAsync(new[] { entry }, cancellationToken))[0];
     }
 }

@@ -78,6 +78,29 @@ public class PrintLogTests : PrintScenario
     }
 
     [Fact]
+    public async Task AFailedCopy_TellsTheReportingDeviceAndManagers_ASuccessfulOneDoesNot()
+    {
+        var s = await FinalizedBillAsync();
+        var device = Guid.NewGuid();
+        CurrentUser.DeviceId = device;
+        CurrentUser.DeviceName = "BILLING-01";
+        var first = (InvoiceDocument)(await SendAsync(Reserve(s.BillId))).Value;
+        var second = (InvoiceDocument)(await SendAsync(Reserve(s.BillId))).Value;
+        Realtime.Reset();
+
+        await SendAsync(new CompletePrintCommand(first.PrintLogId!.Value, new CompletePrintRequest { Succeeded = true }));
+        Realtime.Events.Should().NotContain(e => e.EventName == HubEvents.PrintFailed);
+
+        await SendAsync(new CompletePrintCommand(second.PrintLogId!.Value, new CompletePrintRequest { Succeeded = false, Error = "Paper out." }));
+        var failed = Realtime.Events.Single(e => e.EventName == HubEvents.PrintFailed);
+        failed.Audience.DeviceIds.Should().Equal(device);
+        failed.Audience.Roles.Should().BeEquivalentTo(new[] { Roles.Admin, Roles.Manager });
+        var payload = (PrintFailedEvent)failed.Payload;
+        (payload.DocumentType, payload.DocumentId, payload.CopyNumber, payload.Error, payload.DeviceName)
+            .Should().Be((PrintDocumentType.Invoice, s.BillId, 2, "Paper out.", "BILLING-01"));
+    }
+
+    [Fact]
     public async Task OnlyTheReservingUserOrAManagerReportsACopy_AndAWaiterCannotPrintAnotherWaitersInvoice()
     {
         var s = await FinalizedBillAsync();

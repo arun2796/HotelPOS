@@ -45,6 +45,7 @@ public static class SettingKeys
     public const string RoundOffTotals = "RoundOffTotals";
     public const string BusinessDayStartTime = "BusinessDayStartTime";
     public const string KitchenWarnMinutes = "KitchenWarnMinutes";
+    public const string DayEndReminderTime = "DayEndReminderTime";
     public const string KitchenLateMinutes = "KitchenLateMinutes";
     public const string AutoCloseOnFullPayment = "AutoCloseOnFullPayment";
     public const string ReceiptFooter = "ReceiptFooter";

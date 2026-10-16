@@ -245,3 +245,17 @@ path), Api tests (three new events' audiences, day-end reminder), rendering test
 ## 14. Changes during implementation
 
 (filled while building)
+
+### 20.3 Server events (G5)
+
+- Added `PrintFailed`, `PaymentFailed`, `DayEndDue` (`HubEvents`, payload records beside `RealtimeEvent`).
+- `CompletePrint` queues `PrintFailed` after commit when a copy is reported failed: audience is the reporting device
+  (or the user when no device is on the token) plus the Admin and Manager roles (same managers as `DocumentPrinted`).
+- `AddPayment` publishes `PaymentFailed` to the paying device only when the handler rejects the payment with a
+  validation or concurrency error. It is published directly because the transaction never commits on those paths.
+  Failures of the request-body validators (for example amount <= 0) run before the handler and do not publish; the
+  client already shows those inline. Refunds are not covered (spec names AddPayment only).
+- `DayEndReminder` (`Application/Features/DayEnd`) decides; `Api/Hosting/DayEndReminderService` ticks once a minute.
+  Setting `DayEndReminderTime` (HH:mm, default 23:00, seeded for existing databases too). Fires once per business day,
+  not when that day is closed. Measured on the business-day clock, so a time such as 01:00 means after midnight of the
+  same business day.

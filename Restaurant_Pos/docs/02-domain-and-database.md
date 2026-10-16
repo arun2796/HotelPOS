@@ -272,7 +272,7 @@ Prices are tax-exclusive in v1 (`PricesIncludeTax` setting reserved).
 - Preparation station: `MAIN` (Main Kitchen)
 - Settings: `RestaurantName`, `Address`, `Gstin`, `CurrencySymbol` (₹), `InvoicePrefix` (INV-),
   `InvoiceResetPolicy` (Yearly), `RoundOffTotals` (true), `BusinessDayStartTime` (04:00),
-  `KitchenWarnMinutes` (10), `KitchenLateMinutes` (20), `AutoCloseOnFullPayment` (true),
+  `DayEndReminderTime` (23:00), `KitchenWarnMinutes` (10), `KitchenLateMinutes` (20), `AutoCloseOnFullPayment` (true),
   `ReceiptFooter`, `MenuVersion` (1), `TaxSplitDisplay` (CGST_SGST), `AllowAnyWaiterToEditOrders` (false),
   `MaxCashierDiscountPercent` (10), `AllowBillBeforeReady` (false), `PrintInvoiceCopies` (1), `KotShowPrices` (false),
   `LockoutThreshold` (5), `LockoutMinutes` (15), `AuditRetentionDays` (0 = keep all) (Phase 9)
