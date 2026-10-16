@@ -6,6 +6,7 @@ using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
 using HotelPOS.Application.Features.Shifts;
 using HotelPOS.Contracts.Billing;
+using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Contracts.Security;
@@ -82,7 +83,7 @@ internal sealed class AddPaymentHandler : ICommandHandler<AddPaymentCommand, Bil
 
         PaymentMethod? method = null;
         int? shiftId = null;
-        return await _workflow.RunAsync(id, request.RowVersion, claim: true,
+        var result = await _workflow.RunAsync(id, request.RowVersion, claim: true,
             prepare: async _ =>
             {
                 method = await _db.PaymentMethods.AsNoTracking().FirstOrDefaultAsync(m => m.Id == request.PaymentMethodId, cancellationToken);
@@ -139,6 +140,14 @@ internal sealed class AddPaymentHandler : ICommandHandler<AddPaymentCommand, Bil
                 return null;
             },
             cancellationToken);
+
+        // A rejected payment saved nothing, so there is no commit to wait for; only the paying terminal is told.
+        if (result.IsFailure && result.Error is { Code: ErrorCodes.ValidationError or ErrorCodes.ConcurrencyConflict } error)
+        {
+            await _events.PublishPaymentFailedAsync(id, error, _currentUser.DeviceId, _currentUser.UserId);
+        }
+
+        return result;
     }
 
     // Card and UPI references are kept on the payment; the audit trail shows only their last four characters.

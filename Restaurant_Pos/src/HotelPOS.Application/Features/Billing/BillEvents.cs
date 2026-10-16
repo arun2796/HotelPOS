@@ -1,5 +1,6 @@
 using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Interfaces;
+using HotelPOS.Application.Common.Results;
 using HotelPOS.Application.Features.Kitchen;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Contracts.Security;
@@ -28,6 +29,22 @@ internal sealed class BillEvents
         _clock = clock;
         _kitchen = kitchen;
         _bills = bills;
+    }
+
+    // Nothing was saved, so this is not queued after a commit. Only the paying terminal (or its user) hears it.
+    public Task PublishPaymentFailedAsync(int billId, AppError error, Guid? deviceId, int? userId)
+    {
+        var audience = deviceId is { } device
+            ? new RealtimeAudience { DeviceIds = new[] { device } }
+            : new RealtimeAudience { UserIds = userId is { } user ? new[] { user } : Array.Empty<int>() };
+        return _realtime.PublishAsync(HubEvents.PaymentFailed, new PaymentFailedEvent
+        {
+            OccurredAtUtc = _clock.UtcNow,
+            EntityId = billId,
+            BillId = billId,
+            Code = error.Code,
+            Message = error.Message,
+        }, audience, CancellationToken.None);
     }
 
     public async Task PublishRequestedAsync(Bill bill, Order order, string tableCode) =>

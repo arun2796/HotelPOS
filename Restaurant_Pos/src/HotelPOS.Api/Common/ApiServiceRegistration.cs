@@ -1,9 +1,11 @@
 using System.Reflection;
 using System.Text.Json;
+using HotelPOS.Api.Hosting;
 using HotelPOS.Api.Hubs;
 using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Security;
+using HotelPOS.Application.Features.DayEnd;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Security;
 using HotelPOS.Infrastructure.Identity;
@@ -63,6 +65,9 @@ public static class ApiServiceRegistration
         services.AddSingleton<ConnectionTracker>();
         services.AddSingleton<IOnlineDeviceTracker>(sp => sp.GetRequiredService<ConnectionTracker>());
         services.AddSingleton<IRealtimeNotifier, SignalRRealtimeNotifier>();
+        services.AddSingleton<DayEndReminderState>();
+        services.AddScoped<DayEndReminder>();
+        services.AddHostedService<DayEndReminderService>();
         services.Configure<LoginRateLimitOptions>(configuration.GetSection(LoginRateLimitOptions.SectionName));
         services.AddSingleton<LoginRateLimiter>();
         services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();

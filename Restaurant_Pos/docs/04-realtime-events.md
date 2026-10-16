@@ -63,6 +63,9 @@ it receives only its station's ticket events; `LeaveStation` puts it back. The c
 | `BusinessDayClosed` | all | `businessDay, status, changedBy` (`entityId` = day number) | Day End closed the day | 13 |
 | `BusinessDayReopened` | all | same | a manager reopened a closed day | 13 |
 | `PeriodStatusChanged` | all | `PeriodStatusChangedEvent` (kind, period, label, from, to, closed, changedBy, reason) | an administrator closed or reopened a GST month or financial year | 15 |
+| `PrintFailed` | the reporting device + Admin, Manager roles | `PrintFailedEvent` (documentType, documentId, copyNumber, output, error, deviceName) | a terminal reported a reserved print copy as failed (queued after commit) | 20 |
+| `PaymentFailed` | the paying device only | `PaymentFailedEvent` (billId, code, message) | a payment was rejected for a validation or concurrency reason; nothing was saved | 20 |
+| `DayEndDue` | Admin, Manager roles | `DayEndDueEvent` (businessDay, reminderTime) | the `DayEndReminderTime` setting (default 23:00) passed and the business day is not closed; once per business day | 20 |
 
 Event names are constants in `HotelPOS.Contracts.Realtime.HubEvents`. Phase 13 resync: the shift bar reloads
 `GET /api/shifts/current` on reconnect; screens re-read on navigation.

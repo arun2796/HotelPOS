@@ -29,6 +29,9 @@ public static class HubEvents
     public const string BusinessDayClosed = "BusinessDayClosed";
     public const string BusinessDayReopened = "BusinessDayReopened";
     public const string PeriodStatusChanged = "PeriodStatusChanged";
+    public const string PrintFailed = "PrintFailed";
+    public const string PaymentFailed = "PaymentFailed";
+    public const string DayEndDue = "DayEndDue";
 }
 
 public static class HubMethods
@@ -44,4 +47,30 @@ public abstract record RealtimeEvent
     public DateTime OccurredAtUtc { get; init; }
     public int EntityId { get; init; }
     public string? EntityVersion { get; init; }
+}
+
+// A reserved print copy was reported failed. Sent to the reporting terminal and to managers.
+public sealed record PrintFailedEvent : RealtimeEvent
+{
+    public Print.PrintDocumentType DocumentType { get; init; }
+    public int DocumentId { get; init; }
+    public int CopyNumber { get; init; }
+    public Print.PrintOutput Output { get; init; }
+    public string? Error { get; init; }
+    public string? DeviceName { get; init; }
+}
+
+// A payment was rejected (validation or a changed bill). Sent only to the terminal that tried it; EntityId is the bill.
+public sealed record PaymentFailedEvent : RealtimeEvent
+{
+    public int BillId { get; init; }
+    public string Code { get; init; } = string.Empty;
+    public string Message { get; init; } = string.Empty;
+}
+
+// Reminder that the business day is still open at the configured time. Sent to managers and admins.
+public sealed record DayEndDueEvent : RealtimeEvent
+{
+    public DateOnly BusinessDay { get; init; }
+    public string ReminderTime { get; init; } = string.Empty;
 }

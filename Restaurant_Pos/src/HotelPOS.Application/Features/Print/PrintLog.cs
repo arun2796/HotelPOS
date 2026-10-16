@@ -101,6 +101,27 @@ internal sealed class PrintLog
         _afterCommit.Enqueue(() => _realtime.PublishAsync(HubEvents.DocumentPrinted, printed, RealtimeAudience.ForRoles(Roles.Admin, Roles.Manager)));
     }
 
+    // The terminal reported a reserved copy failed: tell that terminal (or its user) and the managers, after the commit.
+    public void AnnounceFailure(PrintLogEntry entry)
+    {
+        var failed = new PrintFailedEvent
+        {
+            OccurredAtUtc = _clock.UtcNow,
+            EntityId = entry.DocumentId,
+            DocumentType = entry.DocumentType,
+            DocumentId = entry.DocumentId,
+            CopyNumber = entry.CopyNumber,
+            Output = entry.Output,
+            Error = entry.Error,
+            DeviceName = _currentUser.DeviceName,
+        };
+        var managers = new[] { Roles.Admin, Roles.Manager };
+        var audience = _currentUser.DeviceId is { } deviceId
+            ? new RealtimeAudience { DeviceIds = new[] { deviceId }, Roles = managers }
+            : new RealtimeAudience { UserIds = _currentUser.UserId is { } userId ? new[] { userId } : Array.Empty<int>(), Roles = managers };
+        _afterCommit.Enqueue(() => _realtime.PublishAsync(HubEvents.PrintFailed, failed, audience));
+    }
+
     public async Task<IReadOnlyList<PrintLogDto>> ToDtosAsync(IReadOnlyList<PrintLogEntry> entries, CancellationToken cancellationToken)
     {
         var userIds = entries.Select(e => e.UserId).OfType<int>().Distinct().ToList();

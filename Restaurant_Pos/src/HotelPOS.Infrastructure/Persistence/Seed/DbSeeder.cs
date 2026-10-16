@@ -54,6 +54,7 @@ public sealed class DbSeeder
         new Setting(SettingKeys.InvoiceResetPolicy, "Yearly", SettingDataType.String, "When invoice numbering restarts: Never, Yearly or Monthly.", false),
         new Setting(SettingKeys.RoundOffTotals, "true", SettingDataType.Bool, "Round bill totals to whole currency units.", true),
         new Setting(SettingKeys.BusinessDayStartTime, "04:00", SettingDataType.Time, "Local time at which a new business day starts (HH:mm).", true),
+        new Setting(SettingKeys.DayEndReminderTime, "23:00", SettingDataType.Time, "Local time at which managers are reminded if the business day is still open (HH:mm).", true),
         new Setting(SettingKeys.KitchenWarnMinutes, "10", SettingDataType.Int, "Kitchen ticket turns amber after this many minutes.", true),
         new Setting(SettingKeys.KitchenLateMinutes, "20", SettingDataType.Int, "Kitchen ticket turns red after this many minutes.", true),
         new Setting(SettingKeys.AutoCloseOnFullPayment, "true", SettingDataType.Bool, "Close the order and release the table when the bill is fully paid.", true),
