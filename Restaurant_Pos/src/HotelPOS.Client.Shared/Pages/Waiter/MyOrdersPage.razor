@@ -25,7 +25,7 @@ else if (_orders.Count == 0)
 }
 else
 {
-    <div class="muted small" style="margin-bottom:8px">@_orders.Count active orders</div>
+    <div class="muted small" style="margin-bottom:8px">@TextFormat.Count(_orders.Count, "active order")</div>
     <div class="stack">
         @foreach (var order in _orders)
         {
@@ -34,8 +34,8 @@ else
                     <b>#@order.OrderNumber · @order.TableCode</b>
                     <span class="muted small">@Elapsed(order)</span>
                 </div>
-                <div style="margin:6px 0"><span class="chip @(order.Status == OrderStatus.Ready ? "danger" : "primary")">@StatusText(order.Status)</span></div>
-                <div class="muted small">@order.ItemCount items · @order.GuestCount guests · @order.WaiterName</div>
+                <div style="margin:6px 0"><span class="chip @StatusLabels.OrderChip(order.Status)">@StatusLabels.Order(order.Status)</span></div>
+                <div class="muted small">@TextFormat.Count(order.ItemCount, "item") · @TextFormat.Count(order.GuestCount, "guest") · @order.WaiterName</div>
                 <div><b>approx. @order.ApproxTotal.ToString("N2")</b></div>
             </button>
         }
@@ -49,7 +49,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        Shell.Set("My orders", "Your active orders; ready ones highlighted");
+        Shell.Set("My orders", "Ready ones first");
         await Realtime.StartAsync();
         foreach (var name in new[] { HubEvents.OrderCreated, HubEvents.OrderUpdated, HubEvents.OrderCancelled, HubEvents.TableStatusChanged,
                                      HubEvents.OrderReady, HubEvents.OrderAccepted, HubEvents.OrderPreparing, HubEvents.OrderServed })
@@ -85,12 +85,6 @@ else
         var span = DateTime.UtcNow - (order.SubmittedAtUtc ?? order.CreatedAtUtc);
         return span.TotalHours >= 1 ? $"{(int)span.TotalHours} h {span.Minutes} min" : $"{Math.Max(0, (int)span.TotalMinutes)} min";
     }
-
-    private static string StatusText(OrderStatus status) => status switch
-    {
-        OrderStatus.BillRequested => "Bill requested",
-        var s => s.ToString(),
-    };
 
     public void Dispose()
     {

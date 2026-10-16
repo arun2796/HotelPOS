@@ -1,0 +1,19 @@
+@* Shown while the real-time connection is not up. Re-renders on every status change, so it appears together with
+   the "Reconnecting…" pill instead of waiting for the next tap on the page. *@
+@implements IDisposable
+@inject WebRealtimeClient Realtime
+
+@if (Realtime.Status is WebConnectionStatus.Reconnecting or WebConnectionStatus.Disconnected)
+{
+    <div class="banner warning" role="status" data-testid="offline-banner">@ChildContent</div>
+}
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    protected override void OnInitialized() => Realtime.StatusChanged += OnChanged;
+
+    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Realtime.StatusChanged -= OnChanged;
+}

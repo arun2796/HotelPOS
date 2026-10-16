@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <SupportedPlatform Include="browser" />
+    <InternalsVisibleTo Include="HotelPOS.Client.Tests" />
   </ItemGroup>
 
   <ItemGroup>

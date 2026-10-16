@@ -30,16 +30,21 @@ h3 { font-size: 15px; }
 
 /* Shell */
 .shell { min-height: 100vh; display: flex; flex-direction: column; }
-.topbar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 12px; height: 52px; padding: 0 12px;
+/* The title keeps one line; the subtitle may take two short lines instead of being cut mid-word when the pill grows. */
+.topbar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 6px; min-height: 52px; padding: 4px 8px 4px 12px;
   background: var(--surface); border-bottom: 1px solid var(--border); }
-.topbar .title { flex: 1; min-width: 0; font-weight: 600; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.topbar .sub { display: block; font-size: 12px; font-weight: 400; color: var(--text-2); }
+.topbar .title { flex: 1; min-width: 0; font-weight: 600; font-size: 16px; line-height: 1.2; }
+.topbar .title-main { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.topbar .sub { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-size: 12px; font-weight: 400;
+  line-height: 1.25; color: var(--text-2); }
+.topbar .avatar { font-weight: 700; color: var(--success-text); }
+@media (min-width: 480px) { .topbar { gap: 12px; } }
 .page { flex: 1; padding: 12px 16px calc(16px + var(--safe-bottom)); }
 .bottomnav { position: sticky; bottom: 0; z-index: 20; display: flex; background: var(--surface); border-top: 1px solid var(--border);
   padding-bottom: var(--safe-bottom); }
 .bottomnav a { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 56px;
   font-size: 11px; color: var(--text-2); }
-.bottomnav a.active { color: var(--primary); }
+.bottomnav a.active { color: var(--success-text); font-weight: 600; }
 .bottomnav a .ico { font-size: 20px; line-height: 1; }
 
 /* Connection pill (always visible). */
@@ -55,11 +60,12 @@ h3 { font-size: 15px; }
 .card + .card { margin-top: 10px; }
 .chip { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600;
   background: var(--surface-subtle); color: var(--text-2); white-space: nowrap; }
-.chip.success { background: var(--success-soft); color: var(--success); }
-.chip.warning { background: var(--warning-soft); color: var(--warning); }
+.chip.success { background: var(--success-soft); color: var(--success-text); }
+.chip.warning { background: var(--warning-soft); color: var(--warning-text); }
 .chip.danger { background: var(--danger-soft); color: var(--danger-text); }
 .chip.info { background: var(--info-soft); color: var(--info); }
-.chip.primary { background: var(--primary-soft); color: var(--primary); }
+.chip.primary { background: var(--primary-soft); color: var(--success-text); }
+.chip.lg { font-size: 15px; padding: 4px 12px; }
 
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: var(--touch); padding: 0 16px;
   border: 1px solid var(--border); border-radius: var(--radius-button); background: var(--surface); color: var(--text);
@@ -68,6 +74,9 @@ h3 { font-size: 15px; }
 .btn.primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
 .btn.primary:not(:disabled):active { background: var(--primary-hover); }
 .btn.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+.btn.danger-outline { background: transparent; border-color: var(--danger-text); color: var(--danger-text); }
+/* Second choice next to a primary button: outlined, so two actions never look identical (kitchen ACCEPT / START). */
+.btn.secondary { background: var(--surface); border: 2px solid var(--success-text); color: var(--success-text); }
 .btn.ghost { background: transparent; border-color: transparent; }
 .btn.block { width: 100%; }
 .btn.lg { min-height: 56px; font-size: 17px; }
@@ -79,6 +88,8 @@ h3 { font-size: 15px; }
   background: var(--input-bg); }
 .input:focus { border-color: var(--primary); background: var(--surface); }
 textarea.input { padding: 10px 12px; min-height: 72px; resize: vertical; }
+input[type="checkbox"] { width: 22px; height: 22px; margin: 0; accent-color: var(--primary); }
+label:has(> input[type="checkbox"]) { min-height: var(--touch); cursor: pointer; }
 
 .banner { padding: 10px 12px; border-radius: var(--radius-button); font-size: 14px; margin-bottom: 12px; }
 .banner.error { background: var(--danger-soft); color: var(--danger-text); }
@@ -94,7 +105,7 @@ textarea.input { padding: 10px 12px; min-height: 72px; resize: vertical; }
 
 /* Segmented control (tabs that act like radio buttons) */
 .seg { display: flex; background: var(--surface-subtle); border-radius: var(--radius-button); padding: 3px; gap: 3px; }
-.seg button { flex: 1; min-height: 38px; border: 0; border-radius: 6px; background: transparent; color: var(--text-2); font-weight: 600; }
+.seg button { flex: 1; min-height: var(--touch); border: 0; border-radius: 6px; background: transparent; color: var(--text-2); font-weight: 600; }
 .seg button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
 
 /* Dialog / sheet: bottom sheet on phones, centred dialog from 720 px up */
@@ -123,9 +134,14 @@ textarea.input { padding: 10px 12px; min-height: 72px; resize: vertical; }
 .signin .card { width: 100%; max-width: 420px; padding: 24px; }
 
 /* ---- Phase 18.3: waiter screens ---- */
-.chip-btn { min-height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface);
-  color: var(--text); font-weight: 600; white-space: nowrap; }
+.chip-btn { min-height: var(--touch); padding: 0 16px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface);
+  color: var(--text); font-weight: 600; white-space: nowrap; flex: none; }
 .chip-btn.on { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+/* A scrolling chip row fades out at the right edge, so a cut-off chip reads as "more this way" rather than a typo. */
+.chip-row { display: flex; align-items: center; gap: 8px; overflow-x: auto; padding: 2px 24px 6px 0; scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); }
+.chip-row::-webkit-scrollbar { display: none; }
 
 /* Table map: coloured tiles, same meanings as the desktop legend. */
 .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
@@ -162,9 +178,16 @@ textarea.input { padding: 10px 12px; min-height: 72px; resize: vertical; }
 .item-img .sold { position: absolute; top: 8px; left: 8px; }
 .item-body { padding: 8px 10px 10px; }
 .item-name { font-weight: 600; font-size: 14px; line-height: 1.25; max-height: 2.5em; overflow: hidden; }
-.price { color: var(--primary); font-weight: 600; }
+.price { color: var(--success-text); font-weight: 600; }
 .cart { position: sticky; bottom: calc(56px + var(--safe-bottom)); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card);
   padding: 12px; box-shadow: var(--shadow-popup); }
+.cart-toggle { display: flex; align-items: baseline; gap: 8px; min-height: var(--touch); padding: 0; border: 0; background: none; color: inherit;
+  text-align: left; cursor: pointer; }
+.cart-toggle:disabled { cursor: default; }
+/* On a phone the pinned cart may use about a quarter of the screen for its lines; the rest scrolls inside it,
+   and the header collapses it to one row so the menu stays usable. */
+.cart-lines { max-height: 24vh; overflow-y: auto; overscroll-behavior: contain; }
+@media (min-height: 900px) and (min-width: 720px) { .cart-lines { max-height: 40vh; } }
 .cart-line { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border-subtle); }
 .cart-line .row { gap: 4px; }
 .stepper { display: inline-flex; align-items: center; gap: 4px; }
@@ -186,7 +209,10 @@ textarea.input { padding: 10px 12px; min-height: 72px; resize: vertical; }
 .ticket-table { font-size: 24px; font-weight: 700; margin-right: 8px; }
 .ticket-lines { margin-top: 8px; font-size: 17px; }
 .ticket-line { padding: 2px 0; }
-.ticket-note { margin-left: 24px; color: var(--warning); font-style: italic; font-size: 14px; }
+/* The one line the cook must not miss: amber 700 on white (5.0:1), bright amber in dark mode, bold, not italic. */
+.ticket-note { margin-left: 24px; color: var(--warning-text); font-weight: 600; font-size: 15px; }
+.ticket-note::before { content: "✎ "; }
+.ticket-station { font-size: 13px; }
 .ticket .btn.lg { flex: 1; min-height: 52px; font-size: 16px; }
 .empty.small { padding: 12px; }
 

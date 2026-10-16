@@ -1,3 +1,4 @@
+using System.Text.Json;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Realtime;
 using Microsoft.AspNetCore.SignalR.Client;
@@ -18,10 +19,19 @@ public enum WebConnectionStatus
 /// automatic reconnect that never gives up, and the station group re-joined after every reconnect. Pages subscribe to
 /// the same event names the desktop uses (HubEvents).
 /// </summary>
+/// <remarks>
+/// The hub connection gets exactly one handler per event name, receiving the raw JSON; each subscriber's payload is
+/// deserialized here for its own type. SignalR binds every argument with the parameter types of the first handler
+/// registered for a name, so a page subscribing with JsonElement before the notification router subscribed with
+/// OrderProgressEvent made the router's handler fail its cast, and the waiter's bell never got "Order ready".
+/// </remarks>
 public sealed class WebRealtimeClient : IAsyncDisposable
 {
     private readonly IClientHost _host;
     private readonly WebAuthState _auth;
+    private readonly object _gate = new();
+    private readonly Dictionary<string, List<Subscriber>> _subscribers = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _bound = new(StringComparer.Ordinal);
     private HubConnection? _connection;
     private int? _station;
 
@@ -74,17 +84,75 @@ public sealed class WebRealtimeClient : IAsyncDisposable
         };
 
         _connection = connection;
+        string[] names;
+        lock (_gate)
+        {
+            _bound.Clear();
+            names = _subscribers.Keys.ToArray();
+        }
+
+        foreach (var name in names)
+        {
+            Bind(connection, name);
+        }
+
         await ConnectAsync();
     }
 
+    /// <summary>
+    /// Calls <paramref name="handler"/> for every <paramref name="eventName"/> the hub sends until the returned handle is
+    /// disposed. Works before <see cref="StartAsync"/> too; the subscription is attached when the connection is built.
+    /// </summary>
     public IDisposable Subscribe<T>(string eventName, Action<T> handler)
     {
-        if (_connection is null)
+        var subscriber = new Subscriber(typeof(T), payload => handler((T)payload!));
+        lock (_gate)
         {
-            throw new InvalidOperationException("Call StartAsync before subscribing.");
+            if (!_subscribers.TryGetValue(eventName, out var list))
+            {
+                _subscribers[eventName] = list = new List<Subscriber>();
+            }
+
+            list.Add(subscriber);
         }
 
-        return _connection.On(eventName, handler);
+        if (_connection is { } connection)
+        {
+            Bind(connection, eventName);
+        }
+
+        return new Unsubscriber(this, eventName, subscriber);
+    }
+
+    /// <summary>Delivers one hub message to every subscriber of the name, each with its own payload type.</summary>
+    internal void Dispatch(string eventName, JsonElement payload)
+    {
+        Subscriber[] targets;
+        lock (_gate)
+        {
+            if (!_subscribers.TryGetValue(eventName, out var list) || list.Count == 0)
+            {
+                return;
+            }
+
+            targets = list.ToArray();
+        }
+
+        foreach (var target in targets)
+        {
+            try
+            {
+                var value = target.PayloadType == typeof(JsonElement)
+                    ? payload
+                    : payload.Deserialize(target.PayloadType, PosJson.Options);
+                target.Invoke(value);
+            }
+            catch (Exception ex)
+            {
+                // One subscriber's bad payload or failing handler must not cost the others their event.
+                Console.Error.WriteLine($"HotelPOS realtime: handler for {eventName} failed: {ex.Message}");
+            }
+        }
     }
 
     public async Task JoinStationAsync(int? stationId)
@@ -109,12 +177,52 @@ public sealed class WebRealtimeClient : IAsyncDisposable
         if (_connection is { } connection)
         {
             _connection = null;
+            lock (_gate)
+            {
+                _bound.Clear();
+            }
+
             await connection.DisposeAsync();
             SetStatus(WebConnectionStatus.Disconnected);
         }
     }
 
     public ValueTask DisposeAsync() => new(StopAsync());
+
+    internal void SetStatus(WebConnectionStatus status)
+    {
+        if (Status == status)
+        {
+            return;
+        }
+
+        Status = status;
+        StatusChanged?.Invoke();
+    }
+
+    private void Bind(HubConnection connection, string eventName)
+    {
+        lock (_gate)
+        {
+            if (!_bound.Add(eventName))
+            {
+                return;
+            }
+        }
+
+        connection.On<JsonElement>(eventName, payload => Dispatch(eventName, payload));
+    }
+
+    private void Unsubscribe(string eventName, Subscriber subscriber)
+    {
+        lock (_gate)
+        {
+            if (_subscribers.TryGetValue(eventName, out var list))
+            {
+                list.Remove(subscriber);
+            }
+        }
+    }
 
     private async Task ConnectAsync()
     {
@@ -149,15 +257,28 @@ public sealed class WebRealtimeClient : IAsyncDisposable
         }
     }
 
-    private void SetStatus(WebConnectionStatus status)
+    private sealed record Subscriber(Type PayloadType, Action<object?> Invoke);
+
+    private sealed class Unsubscriber : IDisposable
     {
-        if (Status == status)
+        private readonly WebRealtimeClient _owner;
+        private readonly string _eventName;
+        private Subscriber? _subscriber;
+
+        public Unsubscriber(WebRealtimeClient owner, string eventName, Subscriber subscriber)
         {
-            return;
+            _owner = owner;
+            _eventName = eventName;
+            _subscriber = subscriber;
         }
 
-        Status = status;
-        StatusChanged?.Invoke();
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref _subscriber, null) is { } subscriber)
+            {
+                _owner.Unsubscribe(_eventName, subscriber);
+            }
+        }
     }
 
     private sealed class ForeverRetryPolicy : IRetryPolicy

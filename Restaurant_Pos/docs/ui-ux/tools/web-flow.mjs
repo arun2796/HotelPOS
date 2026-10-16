@@ -5,8 +5,10 @@
 //   2. In any scratch folder OUTSIDE the repo:  npm init -y && npm i playwright
 //   3. From that scratch folder:  node <repo>/docs/ui-ux/tools/web-flow.mjs
 //      (Playwright is resolved from the current folder; uses the installed Edge via channel 'msedge', no browser download.)
-// Env: START_AT=kitchen|offline (resume at that part), HOTELPOS_URL (default http://localhost:5000/app/), HOTELPOS_TABLE (default T05), HOTELPOS_SPARE_TABLE (default T06,
+// Env: START_AT=kitchen|offline (resume at that part), HOTELPOS_URL (default http://localhost:5000/app/; the 20.11 run used
+//      http://localhost:5100/app/ from a worktree's API), HOTELPOS_TABLE (default T05), HOTELPOS_SPARE_TABLE (default T06,
 //      only used to open an empty order builder for the offline banner), PW_CHANNEL (msedge | chrome), OUT_DIR.
+// The "stuck" shots (07c, 09a, 22b, 24a) are taken only when the defect shows; after the Phase 20.11 fixes they are skipped.
 // STATE_DIR (default <tmp>/hotelpos-web-flow) keeps the browser device identity so reruns do not use new licence seats.
 // Demo accounts: waiter1 / Pass@123, kitchen1 / Pass@123. The flow ends with the bill requested on the table.
 // It also writes small-targets.json: visible buttons/links/inputs under 44 px in either dimension, per screenshot.
@@ -46,7 +48,8 @@ const pause = (p, ms = 700) => p.waitForTimeout(ms);
 
 async function shot(page, name, opts = {}) {
   await pause(page, opts.wait ?? 800);
-  await page.screenshot({ path: path.join(OUT, name.includes("-kitchen-") ? "kitchen" : "waiter", `${name}.png`), fullPage: !!opts.full });
+  // The role is the second word of the name ("07b-waiter-kitchen-note" is a waiter screen).
+  await page.screenshot({ path: path.join(OUT, name.split('-')[1] === 'kitchen' ? 'kitchen' : 'waiter', `${name}.png`), fullPage: !!opts.full });
   small[name] = await page.evaluate(() => {
     const out = [];
     for (const el of document.querySelectorAll('button, a[href], input, textarea, [role=button]')) {
@@ -93,16 +96,16 @@ async function nav(page, label) {
   await pause(page, 900);
 }
 
-// The kitchen bottom nav is missing for the demo kitchen user (README issue); fall back to the URL like a user typing it.
+// Before Phase 20.11 the kitchen bottom nav was missing (README issue 2); fall back to the URL like a user typing it.
 async function kGo(page, label, rel) {
   const link = page.locator('nav.bottomnav a', { hasText: label });
   if (await link.count()) await nav(page, label);
   else {
     await page.goto(BASE + rel);
     await page.locator('.topbar').waitFor();
-    await page.locator('.skeleton-group').waitFor({ state: 'detached', timeout: 15000 }).catch(() => {});
-    await pause(page, 800);
   }
+  await page.locator('.skeleton-group').waitFor({ state: 'detached', timeout: 15000 }).catch(() => {});
+  await pause(page, 800);
 }
 
 async function openTable(page, code) {
@@ -158,8 +161,8 @@ const browser = await chromium.launch({ channel: CHANNEL, headless: true });
 const common = { serviceWorkers: 'block', deviceScaleFactor: 2, hasTouch: true, colorScheme: 'light', locale: 'en-IN', timezoneId: 'Asia/Kolkata' };
 const waiterCtx = await browser.newContext({ ...common, viewport: { width: 390, height: 844 }, isMobile: true, storageState: stateFor('waiter') });
 const kitchenCtx = await browser.newContext({ ...common, viewport: { width: 1024, height: 768 }, storageState: stateFor('kitchen') });
-// Dev-mode workaround (see README issue 1): under 'dotnet run' the Client.Shared stylesheets are served at /_content/...,
-// while index.html asks for /app/_content/... and the API answers 401, so the app renders unstyled. Rewrite in the browser only.
+// Workaround for README issue 3 (fixed in 20.11: index.html now asks for ../_content/...): the Client.Shared stylesheets
+// are served at /_content/..., and /app/_content/... answered 401. Kept so older builds still render; it matches nothing now.
 if (process.env.HOTELPOS_NO_CSS_FIX !== '1') {
   for (const ctx of [waiterCtx, kitchenCtx]) {
     await ctx.route('**/app/_content/**', r => r.continue({ url: r.request().url().replace('/app/_content/', '/_content/') }));
