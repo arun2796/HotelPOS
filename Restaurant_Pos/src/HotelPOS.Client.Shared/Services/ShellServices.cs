@@ -21,6 +21,7 @@ public enum ToastKind
 {
     Info,
     Success,
+    Warning,
     Error,
 }
 
@@ -39,6 +40,8 @@ public sealed class ToastService
     public void Info(string text) => Add(ToastKind.Info, text, TimeSpan.FromSeconds(4));
 
     public void Success(string text) => Add(ToastKind.Success, text, TimeSpan.FromSeconds(3));
+
+    public void Warning(string text) => Add(ToastKind.Warning, text, TimeSpan.FromSeconds(6));
 
     public void Error(string text) => Add(ToastKind.Error, text, TimeSpan.FromSeconds(6));
 

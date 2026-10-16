@@ -22,6 +22,8 @@ public static class ClientServiceCollectionExtensions
         services.AddScoped<DraftStore>();
         services.AddScoped<WebRealtimeClient>();
         services.AddScoped<ToastService>();
+        services.AddScoped<NotificationCenter>();
+        services.AddScoped<NotificationRouter>();
         services.AddScoped<ShellState>();
         return services;
     }

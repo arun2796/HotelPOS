@@ -223,7 +223,11 @@
         <Border Style="{StaticResource Card}" Padding="16" DataContext="{Binding Notices}">
           <StackPanel>
             <TextBlock Text="Notices" Style="{StaticResource Text.Subtitle}" />
-            <TextBlock Text="Messages from the server since you signed in." Style="{StaticResource Text.Caption}" Margin="0,2,0,10" />
+            <Grid Margin="0,2,0,10">
+              <TextBlock Text="Since you signed in." Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
+              <Button Content="Mark all read" Style="{StaticResource Button.Ghost}" HorizontalAlignment="Right"
+                      Command="{Binding DataContext.MarkAllNoticesReadCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+            </Grid>
             <TextBlock Text="No notices." Style="{StaticResource Text.Caption}" Margin="0,8"
                        Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}" />
             <ItemsControl ItemsSource="{Binding Items}" MaxHeight="420">
@@ -251,8 +255,50 @@
                       </Style>
                     </Border.Style>
                     <StackPanel>
-                      <TextBlock Text="{Binding Message}" Style="{StaticResource Text.Body}" />
-                      <TextBlock Text="{Binding SentByText}" Style="{StaticResource Text.Caption}" Margin="0,4,0,0" />
+                      <Grid Cursor="Hand">
+                        <Grid.InputBindings>
+                          <MouseBinding MouseAction="LeftClick"
+                                        Command="{Binding DataContext.OpenNoticeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        CommandParameter="{Binding}" />
+                        </Grid.InputBindings>
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="Auto" />
+                          <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="{Binding Glyph}" Style="{StaticResource Text.Icon}" FontSize="18" Margin="0,2,10,0" VerticalAlignment="Top" />
+                        <StackPanel Grid.Column="1">
+                          <TextBlock Text="{Binding Message}" TextWrapping="Wrap">
+                            <TextBlock.Style>
+                              <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Body}">
+                                <Setter Property="FontWeight" Value="SemiBold" />
+                                <Style.Triggers>
+                                  <DataTrigger Binding="{Binding IsRead}" Value="True">
+                                    <Setter Property="FontWeight" Value="Normal" />
+                                  </DataTrigger>
+                                </Style.Triggers>
+                              </Style>
+                            </TextBlock.Style>
+                          </TextBlock>
+                          <TextBlock Style="{StaticResource Text.Caption}" Margin="0,4,0,0">
+                            <Run Text="{Binding LevelText, Mode=OneWay}" />
+                            <Run Text="·" />
+                            <Run Text="{Binding SentByText, Mode=OneWay}" />
+                          </TextBlock>
+                        </StackPanel>
+                      </Grid>
+                      <Button Content="Acknowledge" HorizontalAlignment="Right" Margin="0,6,0,0"
+                              Command="{Binding DataContext.AcknowledgeNoticeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                              CommandParameter="{Binding}">
+                        <Button.Style>
+                          <Style TargetType="Button" BasedOn="{StaticResource Button.Ghost}">
+                            <Style.Triggers>
+                              <DataTrigger Binding="{Binding IsAcknowledged}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                              </DataTrigger>
+                            </Style.Triggers>
+                          </Style>
+                        </Button.Style>
+                      </Button>
                     </StackPanel>
                   </Border>
                 </DataTemplate>

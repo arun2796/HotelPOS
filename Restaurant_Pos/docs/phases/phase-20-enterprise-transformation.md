@@ -244,4 +244,32 @@ path), Api tests (three new events' audiences, day-end reminder), rendering test
 
 ## 14. Changes during implementation
 
-(filled while building)
+### 20.1 Notification core on both clients (G1–G4) — done
+
+- **Shared mapping in Contracts.** `Contracts/Realtime/NotificationKind.cs` holds the `NotificationKind` enum (the 15
+  kinds), `NotificationTargetType`/`NotificationTarget` (type + string id), `NotificationDraft`, `NotificationAudience`
+  and `NotificationMapper`. The mapper decides which role sees which hub event and what it says, so desktop and browser
+  cannot drift. Roles: waiter sees progress of its own orders only; kitchen sees new tickets; cashier/manager/admin see
+  bill requested, claimed and payment; manager/admin see device status; everyone sees server notices and GST period
+  changes. No new event, endpoint or permission.
+- **Desktop.** `NoticeItem` is now observable with `Id`, `Kind`, `Target`, `Key`, `IsRead`, `IsAcknowledged`, glyph and
+  level text. `NoticeCenter` gained `MarkRead`, `Acknowledge`, per-item unread count and keyed dedup (same key within
+  30 s updates the entry; `Add` returns false for a repeat so no second toast). New `Services/Ui/NotificationRouter.cs`
+  (`INotificationRouter`) replaces `ReadyNotifier` and `PeriodStatusNotices` (both deleted) and also takes the
+  `ServerNotice` broadcast from `AppNavigator` (which keeps only the `DEVICE_DISABLED` sign-out). Toasts for entries with
+  a target carry an "Open" button (`INotificationService.Notify`) that navigates through `INavigationService`. The
+  shell starts the router for every role (it was waiter-only) and stops it on dispose. The notices panel in
+  `Shell/ShellView.xaml` (there is no `Modules/Shell` folder) shows kind icon, severity, time, read state, an
+  Acknowledge button and Mark all read; tapping an entry marks it read and opens its screen. Opening the panel no longer
+  marks everything read.
+- **Web/Android.** `Services/NotificationCenter.cs` (same shape, last 50 in `IBrowserStorage`, cleared on sign-out),
+  `Services/NotificationRouter.cs`, `Shared/NotificationBell.razor`, `Shared/NotificationPanel.razor`, wired into
+  `Layout/MainLayout.razor` next to `ConnectionPill`; `ToastService` gained a Warning kind. Tap navigates with
+  `NavigationManager` to `/tables/{id}`, `/my-orders` or `/kitchen`; bill and device entries have no browser page.
+- **Tests.** `tests/HotelPOS.Desktop.Tests/NotificationRouterTests.cs` (role mapping, no leaks, dedup, 50 cap, toast
+  navigation, read/acknowledge; the period-notice test moved here from `GstViewModelTests`),
+  `tests/HotelPOS.Client.Tests/NotificationTests.cs` (bUnit: bell count, panel list order, tap marks read and navigates,
+  acknowledge, persistence across reload, dedup and cap, target-to-URL, shared mapper). The rendering test registers a
+  substitute `INotificationRouter` instead of `IReadyNotifier`; no screen was added, so the screen count is unchanged.
+- **Left for later steps.** Sound and vibration (20.2); `TicketDelayed`, `DayEndWarning`, `PrintFailed`, `PaymentFailed`
+  mappings arrive with their server events (20.3).

@@ -29,7 +29,7 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
     private readonly IAuthSession _session;
     private readonly IRealtimeClient _realtime;
     private readonly IMenuCache _menuCache;
-    private readonly IReadyNotifier _readyNotifier;
+    private readonly INotificationRouter _notificationRouter;
     private readonly IKotAutoPrinter _kotPrinter;
     private readonly IAppNavigator _navigator;
     private readonly NavigationService _navigation;
@@ -46,7 +46,7 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
         IAuthSession session,
         IRealtimeClient realtime,
         IMenuCache menuCache,
-        IReadyNotifier readyNotifier,
+        INotificationRouter notificationRouter,
         IKotAutoPrinter kotPrinter,
         IPrintQueue printQueue,
         IAppNavigator navigator,
@@ -62,7 +62,7 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
         _session = session;
         _realtime = realtime;
         _menuCache = menuCache;
-        _readyNotifier = readyNotifier;
+        _notificationRouter = notificationRouter;
         _kotPrinter = kotPrinter;
         _navigator = navigator;
         _navigation = navigation;
@@ -131,10 +131,8 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
 
         // Every role works with the menu (ordering, kitchen sold-out, billing); load it in the background.
         _ = _menuCache.StartAsync();
-        if (_session.User?.Roles.Contains(Roles.Waiter) == true)
-        {
-            _readyNotifier.Start();
-        }
+        // Bell entries and toasts for this user's role (replaces the waiter-only "order ready" notifier).
+        _notificationRouter.Start();
 
         _kotPrinter.Start();
 
@@ -155,7 +153,7 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
         _lifetime.Dispose();
         _realtime.Reconnected -= OnReconnected;
         _menuCache.Stop();
-        _readyNotifier.Stop();
+        _notificationRouter.Stop();
         _kotPrinter.Stop();
         _navigation.Detach(this);
         StatusBar.Dispose();
@@ -265,9 +263,34 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
     private void ToggleNotices()
     {
         IsNoticesOpen = !IsNoticesOpen;
-        if (IsNoticesOpen)
+    }
+
+    [RelayCommand]
+    private void MarkAllNoticesRead() => Notices.MarkAllRead();
+
+    [RelayCommand]
+    private void AcknowledgeNotice(NoticeItem? notice)
+    {
+        if (notice is not null)
         {
-            Notices.MarkAllRead();
+            Notices.Acknowledge(notice.Id);
+        }
+    }
+
+    // Tapping a notice marks it read and opens the screen it is about.
+    [RelayCommand]
+    private async Task OpenNoticeAsync(NoticeItem? notice)
+    {
+        if (notice is null)
+        {
+            return;
+        }
+
+        Notices.MarkRead(notice.Id);
+        if (notice.Target is { } target)
+        {
+            IsNoticesOpen = false;
+            await _notificationRouter.OpenAsync(target);
         }
     }
 
