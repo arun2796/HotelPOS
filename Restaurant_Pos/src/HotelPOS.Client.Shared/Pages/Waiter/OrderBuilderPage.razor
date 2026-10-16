@@ -24,10 +24,13 @@
 }
 else if (_menu is null)
 {
-    <div class="empty">@(_error ?? "Loading the menu…")</div>
     @if (_error is not null)
     {
-        <button class="btn block" @onclick="LoadAsync">Retry</button>
+        <ErrorState Message="@_error" OnRetry="LoadAsync" />
+    }
+    else
+    {
+        <Skeleton Variant="Skeleton.SkeletonVariant.Card" Count="4" Label="Loading the menu" />
     }
 }
 else

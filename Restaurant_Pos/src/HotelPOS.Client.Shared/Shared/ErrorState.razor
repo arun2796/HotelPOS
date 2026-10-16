@@ -1,0 +1,13 @@
+<div class="banner error error-state" role="alert">
+    <span>@Message</span>
+    @if (OnRetry.HasDelegate)
+    {
+        <button type="button" class="btn ghost" @onclick="OnRetry">Retry</button>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Message { get; set; }
+
+    [Parameter] public EventCallback OnRetry { get; set; }
+}

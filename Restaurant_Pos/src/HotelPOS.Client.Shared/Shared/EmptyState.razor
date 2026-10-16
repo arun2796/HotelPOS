@@ -1,0 +1,17 @@
+<div class="empty @(Small ? "small" : null)">
+    @if (!string.IsNullOrEmpty(Icon))
+    {
+        <div class="empty-icon" aria-hidden="true">@Icon</div>
+    }
+    <div>@Text@ChildContent</div>
+</div>
+
+@code {
+    [Parameter] public string? Icon { get; set; }
+
+    [Parameter] public string? Text { get; set; }
+
+    [Parameter] public bool Small { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

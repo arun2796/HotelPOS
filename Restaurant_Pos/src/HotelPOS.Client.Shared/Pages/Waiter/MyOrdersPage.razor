@@ -13,15 +13,15 @@
 
 @if (_error is not null)
 {
-    <div class="banner error">@_error <button class="btn ghost" @onclick="RefreshAsync">Retry</button></div>
+    <ErrorState Message="@_error" OnRetry="RefreshAsync" />
 }
 else if (_orders is null)
 {
-    <div class="empty">Loading…</div>
+    <Skeleton Variant="Skeleton.SkeletonVariant.Card" Count="3" Label="Loading" />
 }
 else if (_orders.Count == 0)
 {
-    <div class="empty">No active orders.</div>
+    <EmptyState Icon="☰" Text="No active orders." />
 }
 else
 {

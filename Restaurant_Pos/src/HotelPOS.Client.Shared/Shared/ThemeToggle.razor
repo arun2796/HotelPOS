@@ -1,0 +1,53 @@
+@using Microsoft.JSInterop
+@inject IBrowserStorage Storage
+@inject IJSRuntime Js
+
+<button type="button" class="btn icon ghost theme-toggle" title="@Title" aria-label="@Title" @onclick="CycleAsync">
+    <span aria-hidden="true">@Glyph</span>
+</button>
+
+@code {
+    public const string StorageKey = "hotelpos.theme";
+
+    private string _mode = "system";
+
+    private string Glyph => _mode switch { "light" => "☀", "dark" => "☾", _ => "◐" };
+
+    private string Title => $"Theme: {_mode} (tap to change)";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var saved = await Storage.GetAsync(StorageKey);
+        _mode = saved is "light" or "dark" ? saved : "system";
+        await ApplyAsync();
+    }
+
+    private async Task CycleAsync()
+    {
+        _mode = _mode switch { "system" => "light", "light" => "dark", _ => "system" };
+        if (_mode == "system")
+        {
+            await Storage.RemoveAsync(StorageKey);
+        }
+        else
+        {
+            await Storage.SetAsync(StorageKey, _mode);
+        }
+
+        await ApplyAsync();
+    }
+
+    private async Task ApplyAsync()
+    {
+        try
+        {
+            await Js.InvokeVoidAsync("hotelposTheme.set", _mode);
+        }
+        catch (JSException)
+        {
+        }
+        catch (InvalidOperationException)
+        {
+        }
+    }
+}

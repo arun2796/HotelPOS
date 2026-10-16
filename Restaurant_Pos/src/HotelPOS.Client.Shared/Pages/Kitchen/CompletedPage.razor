@@ -16,15 +16,15 @@
 }
 else if (_error is not null)
 {
-    <div class="banner error">@_error <button class="btn ghost" @onclick="RefreshAsync">Retry</button></div>
+    <ErrorState Message="@_error" OnRetry="RefreshAsync" />
 }
 else if (_tickets is null)
 {
-    <div class="empty">Loading…</div>
+    <Skeleton Variant="Skeleton.SkeletonVariant.Card" Count="3" Label="Loading" />
 }
 else if (_tickets.Count == 0)
 {
-    <div class="empty">No tickets completed today yet.</div>
+    <EmptyState Icon="☑" Text="No tickets completed today yet." />
 }
 else
 {

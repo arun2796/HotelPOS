@@ -29,11 +29,11 @@ else
 
     @if (_error is not null)
     {
-        <div class="banner error">@_error <button class="btn ghost" @onclick="RefreshAsync">Retry</button></div>
+        <ErrorState Message="@_error" OnRetry="RefreshAsync" />
     }
     else if (_map is null)
     {
-        <div class="empty">Loading tables…</div>
+        <Skeleton Variant="Skeleton.SkeletonVariant.Card" Count="6" Label="Loading tables" />
     }
     else
     {

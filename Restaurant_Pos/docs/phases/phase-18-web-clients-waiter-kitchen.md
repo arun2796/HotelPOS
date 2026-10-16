@@ -270,3 +270,10 @@ _(filled per step)_
   (browser client), `03` § 3.1 (web auth routes). Status tables: In progress (code complete; device demo open).
 - Not done here (needs real devices): § 11 manual demo, PWA install and certificate trust on Android/iOS, 125 %
   Windows tablets, airplane-mode and server-outage drills.
+
+## Web accessibility rules (Phase 20.5)
+
+- Every interactive control shows the `:focus-visible` ring (`--focus`); never set `outline:none`.
+- Loading uses `<Skeleton>`, failures `<ErrorState>` (with Retry), empty lists `<EmptyState>`; do not hand-write "Loading…" divs.
+- Icon-only buttons need `aria-label`; decorative glyphs get `aria-hidden="true"`; each `nav` has an `aria-label`; the active link carries `aria-current="page"`.
+- Toasts live in an `aria-live="polite"` region. Theme (system/light/dark) is chosen with the top-bar toggle and stored as `hotelpos.theme`.
