@@ -16,6 +16,7 @@
         <RowDefinition Height="Auto" />
         <RowDefinition Height="Auto" />
         <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
       </Grid.RowDefinitions>
 
       <controls:PageHeader Title="{Binding BusinessDayText}" Description="{Binding UpdatedText}" Margin="0,0,0,12">
@@ -171,6 +172,126 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
+          </StackPanel>
+        </Border>
+      </Grid>
+
+      <!-- Operations panels (managers): kitchen performance, staff today, terminals. Compact tables from existing endpoints. -->
+      <Grid Grid.Row="4" Visibility="{Binding IsManagerView, Converter={StaticResource BoolToVisibility}}">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Kitchen performance -->
+        <Border Style="{StaticResource Card}" Padding="20" Margin="0,0,16,16">
+          <StackPanel>
+            <TextBlock Text="Kitchen performance today" Style="{StaticResource Text.Subtitle}" />
+            <TextBlock Style="{StaticResource Text.Caption}">
+              <Run Text="Average preparation" /><Run Text="{Binding KitchenAveragePrep, Mode=OneWay, StringFormat=' {0}'}" FontWeight="SemiBold" />
+              <Run Text=" · late" /><Run Text="{Binding KitchenLatePercent, Mode=OneWay, StringFormat=' {0}'}" FontWeight="SemiBold" />
+            </TextBlock>
+            <controls:EmptyState Glyph="&#xE9D9;" Title="No tickets yet" Message="Station times appear once the kitchen has worked tickets."
+                                 Margin="0,24,0,0" Visibility="{Binding HasKitchen, Converter={StaticResource InverseBoolToVisibility}}" />
+            <ItemsControl ItemsSource="{Binding KitchenStations}" Focusable="False" Margin="0,8,0,0">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="{x:Type dashboard:KitchenStationRow}">
+                  <Grid Margin="0,6">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="Auto" />
+                      <ColumnDefinition Width="72" />
+                      <ColumnDefinition Width="52" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{Binding Station}" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Grid.Column="1" Text="{Binding Tickets, StringFormat='{}{0} tickets'}" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="8,0" />
+                    <TextBlock Grid.Column="2" Text="{Binding AveragePrep}" TextAlignment="Right" Typography.NumeralAlignment="Tabular" />
+                    <TextBlock Grid.Column="3" Text="{Binding LatePercent}" TextAlignment="Right" FontWeight="SemiBold" Typography.NumeralAlignment="Tabular">
+                      <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                          <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasLate}" Value="True">
+                              <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
+                            </DataTrigger>
+                          </Style.Triggers>
+                        </Style>
+                      </TextBlock.Style>
+                    </TextBlock>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+
+        <!-- Staff today -->
+        <Border Grid.Column="1" Style="{StaticResource Card}" Padding="20" Margin="0,0,16,16">
+          <StackPanel>
+            <TextBlock Text="Staff today" Style="{StaticResource Text.Subtitle}" />
+            <TextBlock Text="Waiters by net sales." Style="{StaticResource Text.Caption}" />
+            <controls:EmptyState Glyph="&#xE716;" Title="No orders yet" Message="Waiters appear with their first order of the day."
+                                 Margin="0,24,0,0" Visibility="{Binding HasStaff, Converter={StaticResource InverseBoolToVisibility}}" />
+            <ItemsControl ItemsSource="{Binding Staff}" Focusable="False" Margin="0,8,0,0">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="{x:Type dashboard:StaffRow}">
+                  <Grid Margin="0,6">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="Auto" />
+                      <ColumnDefinition Width="96" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{Binding Name}" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Grid.Column="1" Text="{Binding Orders, StringFormat='{}{0} orders'}" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="8,0" />
+                    <TextBlock Grid.Column="2" Text="{Binding Sales}" TextAlignment="Right" FontWeight="SemiBold" Typography.NumeralAlignment="Tabular" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+
+        <!-- Devices (administrators) and the way to the audit log -->
+        <Border Grid.Column="2" Style="{StaticResource Card}" Padding="20" Margin="0,0,16,16">
+          <StackPanel>
+            <TextBlock Text="Terminals" Style="{StaticResource Text.Subtitle}" />
+            <TextBlock Text="{Binding DevicesSummary}" Style="{StaticResource Text.Caption}"
+                       Visibility="{Binding ShowDevices, Converter={StaticResource BoolToVisibility}}" />
+            <controls:EmptyState Glyph="&#xE977;" Title="Terminal status" Message="Terminals are listed for administrators; the audit log shows who did what."
+                                 Margin="0,24,0,0" Visibility="{Binding ShowDevices, Converter={StaticResource InverseBoolToVisibility}}" />
+            <ItemsControl ItemsSource="{Binding Devices}" Focusable="False" Margin="0,8,0,0"
+                          Visibility="{Binding ShowDevices, Converter={StaticResource BoolToVisibility}}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="{x:Type dashboard:DeviceRow}">
+                  <Grid Margin="0,6">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="Auto" />
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Ellipse Width="10" Height="10" VerticalAlignment="Center" Margin="0,0,8,0">
+                      <Ellipse.Style>
+                        <Style TargetType="Ellipse">
+                          <Setter Property="Fill" Value="{DynamicResource Brush.Danger}" />
+                          <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsOnline}" Value="True">
+                              <Setter Property="Fill" Value="{DynamicResource Brush.Success}" />
+                            </DataTrigger>
+                          </Style.Triggers>
+                        </Style>
+                      </Ellipse.Style>
+                    </Ellipse>
+                    <TextBlock Grid.Column="1" TextTrimming="CharacterEllipsis">
+                      <Run Text="{Binding Name, Mode=OneWay}" FontWeight="Medium" />
+                      <Run Text="{Binding Kind, Mode=OneWay, StringFormat=' · {0}'}" Foreground="{DynamicResource Brush.TextSecondary}" />
+                    </TextBlock>
+                    <TextBlock Grid.Column="2" Text="{Binding Status}" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Button Content="Open audit log" Command="{Binding OpenAuditCommand}" HorizontalAlignment="Left" Margin="0,12,0,0"
+                    MinHeight="{DynamicResource Size.Control}" />
           </StackPanel>
         </Border>
       </Grid>

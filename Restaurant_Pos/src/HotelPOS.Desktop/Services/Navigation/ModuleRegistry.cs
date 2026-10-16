@@ -29,6 +29,7 @@ public sealed record ModuleDefinition(
 public static class ModuleRegistry
 {
     public const string Dashboard = "dashboard";
+    public const string CashierHome = "cashier-home";
     public const string Tables = "tables";
     public const string MyOrders = "my-orders";
     public const string KitchenDisplay = "kitchen-display";
@@ -62,8 +63,10 @@ public static class ModuleRegistry
 
     public static IReadOnlyList<ModuleDefinition> All { get; } = new ModuleDefinition[]
     {
-        new(Dashboard, "Dashboard", "", "Service", new[] { Roles.Admin, Roles.Manager, Roles.Waiter, Roles.Cashier }, 8,
+        new(Dashboard, "Dashboard", "", "Service", new[] { Roles.Admin, Roles.Manager, Roles.Waiter }, 8,
             "Today's sales, open orders, active tables and pending bills at a glance.", typeof(DashboardViewModel)),
+        new(CashierHome, "Dashboard", "", "Service", new[] { Roles.Cashier }, 20,
+            "Pending bills, your open shift, expected cash and the business day at a glance.", typeof(CashierHomeViewModel)),
         new(Tables, "Tables", "", "Service", new[] { Roles.Admin, Roles.Manager, Roles.Waiter, Roles.Cashier }, 2,
             "Live table map: occupy tables, open orders and follow their status.", typeof(TableMapViewModel)),
         new(MyOrders, "My Orders", "", "Service", new[] { Roles.Admin, Roles.Manager, Roles.Waiter }, 4,
@@ -180,7 +183,7 @@ public static class ModuleRegistry
 
         if (roles.Contains(Roles.Cashier))
         {
-            return Billing;
+            return CashierHome;
         }
 
         return roles.Contains(Roles.Waiter) ? Tables : ThisDevice;

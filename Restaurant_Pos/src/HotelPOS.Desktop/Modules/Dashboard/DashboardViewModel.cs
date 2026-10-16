@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Windows.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using HotelPOS.Contracts.Devices;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Contracts.Reports;
 using HotelPOS.Contracts.Security;
@@ -21,6 +22,13 @@ public sealed record KpiTile(string Title, string Value, string Detail, string G
 // Share: the item's amount relative to the best seller (0..1), drawn as a bar.
 public sealed record TopItemRow(int Rank, string Name, string Quantity, string Amount, double Share = 0);
 
+// Manager panels (Phase 20.6): kitchen performance per station, waiters today, terminals online/offline.
+public sealed record KitchenStationRow(string Station, string Tickets, string AveragePrep, string LatePercent, bool HasLate);
+
+public sealed record StaffRow(string Name, string Orders, string Sales);
+
+public sealed record DeviceRow(string Name, string Kind, string Status, bool IsOnline);
+
 public sealed record DayBar(string Label, string Amount, double Height, bool IsToday, string CompactAmount = "");
 
 // One payment method in today's split: ColorIndex picks the chart colour (Brush.Chart.N).
@@ -30,26 +38,53 @@ public sealed partial class DashboardViewModel : ViewModelBase, INavigationAware
 {
     private static readonly string[] RefreshEvents =
     {
-        HubEvents.PaymentCompleted, HubEvents.OrderCreated, HubEvents.BillRequested, HubEvents.KitchenTicketUpdated, HubEvents.OrderCancelled,
+        HubEvents.PaymentCompleted, HubEvents.OrderCreated, HubEvents.BillRequested, HubEvents.KitchenTicketUpdated, HubEvents.OrderCancelled, HubEvents.DeviceStatusChanged,
     };
 
     private readonly IReportsApi _api;
+    private readonly IDevicesApi _devices;
     private readonly IRealtimeClient _realtime;
     private readonly INavigationService _navigation;
     private readonly List<IDisposable> _subscriptions = new();
     private CancellationTokenSource? _debounce;
     private CancellationTokenSource? _timer;
 
-    public DashboardViewModel(IReportsApi api, IRealtimeClient realtime, IAuthSession session, INavigationService navigation)
+    public DashboardViewModel(IReportsApi api, IRealtimeClient realtime, IAuthSession session, INavigationService navigation, IDevicesApi devices)
     {
         _api = api;
         _realtime = realtime;
         _navigation = navigation;
+        _devices = devices;
         var roles = session.User?.Roles ?? Array.Empty<string>();
         IsManagerView = roles.Contains(Roles.Admin) || roles.Contains(Roles.Manager);
+        // api/admin/devices is administrator-only, so a manager sees the kitchen and staff panels but not the devices one.
+        ShowDevices = roles.Contains(Roles.Admin);
     }
 
     public bool IsManagerView { get; }
+
+    public bool ShowDevices { get; }
+
+    public ObservableCollection<KitchenStationRow> KitchenStations { get; } = new();
+
+    public ObservableCollection<StaffRow> Staff { get; } = new();
+
+    public ObservableCollection<DeviceRow> Devices { get; } = new();
+
+    [ObservableProperty]
+    private string _kitchenAveragePrep = "—";
+
+    [ObservableProperty]
+    private string _kitchenLatePercent = "—";
+
+    [ObservableProperty]
+    private string _devicesSummary = string.Empty;
+
+    public bool HasKitchen => KitchenStations.Count > 0;
+
+    public bool HasStaff => Staff.Count > 0;
+
+    public bool HasDevices => Devices.Count > 0;
 
     public ObservableCollection<KpiTile> Tiles { get; } = new();
 
@@ -191,7 +226,50 @@ public sealed partial class DashboardViewModel : ViewModelBase, INavigationAware
             Money.Compact(p.NetSales))));
         OnPropertyChanged(nameof(HasTopItems));
         await LoadPaymentSplitAsync(d.BusinessDay);
+        await LoadKitchenAsync(d.BusinessDay);
+        await LoadStaffAsync(d.BusinessDay);
+        await LoadDevicesAsync();
     }
+
+    // The three panels below are optional: each keeps the dashboard intact when its endpoint is unavailable.
+    private async Task LoadKitchenAsync(DateOnly day)
+    {
+        var result = await _api.GetRowsAsync<KitchenPerformanceRowDto>(ReportKeys.Kitchen, day, day);
+        var rows = result is { Success: true, Data: not null } ? result.Data.Where(r => r.Tickets > 0).ToList() : new List<KitchenPerformanceRowDto>();
+        var tickets = rows.Sum(r => r.Tickets);
+        KitchenAveragePrep = tickets == 0 ? "—" : $"{rows.Sum(r => r.AveragePrepMinutes * r.Tickets) / tickets:0.#} min";
+        KitchenLatePercent = tickets == 0 ? "—" : $"{(decimal)rows.Sum(r => r.LateTickets) * 100 / tickets:0.#}%";
+        Replace(KitchenStations, rows.Select(r => new KitchenStationRow(r.Station, r.Tickets.ToString(CultureInfo.CurrentCulture),
+            $"{r.AveragePrepMinutes:0.#} min", $"{r.LatePercent:0.#}%", r.LateTickets > 0)));
+        OnPropertyChanged(nameof(HasKitchen));
+    }
+
+    private async Task LoadStaffAsync(DateOnly day)
+    {
+        var result = await _api.GetRowsAsync<WaiterPerformanceRowDto>(ReportKeys.Waiters, day, day);
+        var rows = result is { Success: true, Data: not null } ? result.Data.OrderByDescending(r => r.NetSales).Take(6) : Enumerable.Empty<WaiterPerformanceRowDto>();
+        Replace(Staff, rows.Select(r => new StaffRow(r.WaiterName, r.Orders.ToString(CultureInfo.CurrentCulture), Money.Format(r.NetSales))));
+        OnPropertyChanged(nameof(HasStaff));
+    }
+
+    private async Task LoadDevicesAsync()
+    {
+        if (!ShowDevices)
+        {
+            return;
+        }
+
+        var result = await _devices.ListAsync();
+        var active = result is { Success: true, Data: not null } ? result.Data.Where(x => x.IsActive).ToList() : new List<DeviceDto>();
+        var online = active.Count(x => x.IsOnline);
+        DevicesSummary = active.Count == 0 ? "No terminals registered" : $"{online} online · {active.Count - online} offline";
+        Replace(Devices, active.OrderBy(x => x.IsOnline).ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase).Select(x => new DeviceRow(
+            x.Name, x.Type.ToString(), x.IsOnline ? "Online" : x.LastSeenAtUtc is { } seen ? "Seen " + seen.ToLocalTime().ToString("dd MMM HH:mm", CultureInfo.CurrentCulture) : "Never seen", x.IsOnline)));
+        OnPropertyChanged(nameof(HasDevices));
+    }
+
+    [RelayCommand]
+    private Task OpenAuditAsync() => _navigation.NavigateToAsync(ModuleRegistry.Audit);
 
     // Today's net takings per payment method, from the payments report (no extra endpoint). Optional: the rest of
     // the dashboard stays when it cannot load.

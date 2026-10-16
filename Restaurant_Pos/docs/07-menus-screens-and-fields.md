@@ -19,7 +19,8 @@ The sidebar shows five groups in this order. A group header is only shown when t
 
 | Menu | Sub-menu (screen) | Who sees it (default roles) | Purpose |
 |---|---|---|---|
-| Service | Dashboard | Admin, Manager, Waiter, Cashier | Today's figures at a glance |
+| Service | Dashboard | Admin, Manager, Waiter | Today's figures at a glance |
+| Service | Dashboard (cashier home) | Cashier | Pending bills, own shift, expected cash, business day |
 | Service | Tables | Admin, Manager, Waiter, Cashier | Live table map; occupy tables, take orders |
 | Service | My Orders | Admin, Manager, Waiter | Your active orders; ready ones highlighted |
 | Kitchen | Kitchen Display | Admin, Manager, Kitchen | New / preparing / ready tickets |
@@ -50,7 +51,7 @@ The sidebar shows five groups in this order. A group header is only shown when t
 
 That is 28 screens. Where a screen has tabs they are listed in its section below (Sections & Tables, Menu, Discounts & Payments, Restaurant Settings, Tax Returns).
 
-After sign-in each person lands on a home screen: Admin and Manager on Dashboard, Kitchen on Kitchen Display, Cashier on Billing, Waiter on Tables.
+After sign-in each person lands on a home screen: Admin and Manager on Dashboard, Kitchen on Kitchen Display, Cashier on the cashier home (shown as "Dashboard"), Waiter on Tables (in the browser and the Android app, on the waiter Home page at /home).
 
 ---
 
@@ -161,14 +162,32 @@ Ctrl+D/T/B/R only work if the person may open that screen.
 
 ### 3.1 Dashboard
 
-Purpose: today's figures at a glance, refreshed live. Opened by Admin, Manager, Waiter, Cashier. Managers and administrators see the restaurant figures; other roles see their own figures (the code uses the "own figures" view for every non-manager role; it was not checked whether a cashier's figures are meaningful).
+Purpose: today's figures at a glance, refreshed live. Opened by Admin, Manager, Waiter (a Cashier has their own home, 3.1.1). Managers and administrators see the restaurant figures; other roles see their own figures (the code uses the "own figures" view for every non-manager role; it was not checked whether a cashier's figures are meaningful).
 
 Tiles (manager view): Today's sales (and bills settled), Orders today (and still open), Active tables (x / total), Kitchen tickets (waiting or in preparation), Pending bills (requested or invoiced), Avg ticket time (minutes, order to ready). Click a tile to open the related screen.
 Tiles (own view): My orders today (and still open), My sales today (settled bills), Tables I am serving (and guests today).
 Manager view also shows: "Net sales - last 7 days" bar chart, "Payments today" split by method with ₹ and percent, "Top items today" (name, quantity sold, amount).
+Phase 20.6 adds three panels below the charts (manager view): **Kitchen performance today** (average preparation and late percentage, then one row per station with tickets, average prep and late %, late rows in red; from `api/reports/kitchen`), **Staff today** (up to six waiters by net sales with orders and sales; from `api/reports/staff/waiters`) and **Terminals** (administrators only, because `api/admin/devices` is administrator-only: "n online, m offline", then one row per active terminal, offline first, with last seen). An **Open audit log** button opens the Audit Log screen. A panel whose endpoint fails stays empty; the rest of the dashboard is unaffected.
 Buttons: refresh icon. The header shows the business day.
 
 Source: `Modules/Dashboard/DashboardView.xaml`
+
+#### 3.1.1 Cashier home (Phase 20.6)
+
+Purpose: the Cashier role's Dashboard (menu entry "Dashboard", module key `cashier-home`). Opened by Cashier. Refreshed live (bill, payment and shift events, one reload per burst).
+Tiles: **Pending bills** (count and "oldest waiting n min"; opens Billing), **My shift** (takings since the shift opened, from the X report, and the float; "No shift" when none is open on this terminal), **Expected cash** (from the X report; "Blind count" when the drawer count is blind; pay-ins, pay-outs and cash sales in the detail), **Business day** (Open, then Closed or Reopened as the day-end events arrive; the Day End precheck is manager-only, so a cashier's tile follows the events).
+List: **Waiting for payment**, up to six bills oldest first (table, order and waiter, minutes waiting, total).
+Not included: a "print failures" tile. No endpoint lists failed print copies for a terminal (only per-document history), so it waits for the 20.8 failed-print queue.
+Buttons: refresh icon.
+
+Source: `Modules/Cash/CashierHomeView.xaml`
+
+#### 3.1.2 Waiter home, browser and Android (Phase 20.6)
+
+Page `/home` (the landing after sign-in for users who may view tables, other than Kitchen). Sections with counts, each a list of touch rows (min 44 px) that open the table: **My tables** (tables where the signed-in waiter has an open order, with status), **Ready** (their orders that are ready to serve), **Bill requests** (their orders with a bill requested or issued). Data: `api/orders/active` filtered to the waiter; refreshed on the order, table, bill and payment events with a 250 ms debounce, and after a reconnect. The Tables page stays at `/tables` (nav link "Tables"); a "Home" nav link is not added here (the layout belongs to step 20.1).
+Kitchen Display (browser) header now shows **Delayed** (open tickets past the late minutes) and **Completed today** (from the completed-tickets list).
+
+Source: `Client.Shared/Pages/Waiter/HomePage.razor`
 
 ### 3.2 Tables
 
@@ -914,7 +933,8 @@ Default audience of each menu. Administrators can change these under Roles & Per
 
 | Menu / screen | Admin | Manager | Cashier | Waiter | Kitchen |
 |---|---|---|---|---|---|
-| Service > Dashboard | Yes | Yes | Yes | Yes | - |
+| Service > Dashboard | Yes | Yes | - | Yes | - |
+| Service > Dashboard (cashier home) | - | - | Yes | - | - |
 | Service > Tables | Yes | Yes | Yes | Yes | - |
 | Service > My Orders | Yes | Yes | - | Yes | - |
 | Kitchen > Kitchen Display | Yes | Yes | - | - | Yes |
@@ -943,13 +963,13 @@ Default audience of each menu. Administrators can change these under Roles & Per
 | Administration > This Terminal | Yes | Yes | - | - | - |
 | Administration > Printers | Yes | Yes | - | - | - |
 
-Home screen after sign-in: Admin and Manager - Dashboard; Cashier - Billing; Kitchen - Kitchen Display; Waiter - Tables.
+Home screen after sign-in: Admin and Manager - Dashboard; Cashier - cashier home; Kitchen - Kitchen Display; Waiter - Tables.
 Cash shift bar: billing-type terminals, for users with the "open and close own cash shift" permission (and administrators).
 Manager approval: a Manager (or Admin) username and password; Admin and Manager can approve their own actions.
 
 ## Appendix B. Things the code does not settle
 
-- Whether a Cashier's Dashboard (non-manager view) is meant to show waiter-style figures; the code uses the own-figures view for every non-manager role.
+- Cashier's Dashboard: resolved in Phase 20.6; a Cashier gets the cashier home (3.1.1). The waiter-style own-figures view remains for the Waiter role.
 - Settings values other than the password minimum length are checked only for type on the server; the ranges in the descriptions (for example invoice copies 1 to 5) may be enforced elsewhere or not at all.
 - The GSTIN entered under Restaurant Settings has no format check in the settings screen; GSTINs on the bill and the customer editor are fully checked.
 - Phone numbers are not limited to 10 digits anywhere; the rule is digits, spaces, `+` and `-`, up to 20 characters.

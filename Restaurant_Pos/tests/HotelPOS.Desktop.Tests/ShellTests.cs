@@ -81,7 +81,7 @@ public class ModuleRegistryTests
     [Theory]
     [InlineData(Roles.Waiter, ModuleRegistry.Tables)]
     [InlineData(Roles.Kitchen, ModuleRegistry.KitchenDisplay)]
-    [InlineData(Roles.Cashier, ModuleRegistry.Billing)]
+    [InlineData(Roles.Cashier, ModuleRegistry.CashierHome)]
     [InlineData(Roles.Manager, ModuleRegistry.Dashboard)]
     [InlineData(Roles.Admin, ModuleRegistry.Dashboard)]
     public void HomeFor_IsTheMostUsedScreenOfTheRole(string role, string expected)

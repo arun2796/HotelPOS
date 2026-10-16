@@ -39,6 +39,7 @@ else
     }
     else
     {
+        <div class="muted small" style="margin-bottom:8px" id="kds-summary">Delayed <b>@DelayedCount</b> · Completed today <b>@(_completedToday?.ToString() ?? "—")</b></div>
         <div class="kds">
             @foreach (var column in new[] { TicketColumn.New, TicketColumn.Preparing, TicketColumn.Ready })
             {
@@ -109,6 +110,10 @@ else
 
     private DateTime Now => DateTime.UtcNow + _clockOffset;
 
+    private int? _completedToday;
+
+    private int DelayedCount => _tickets?.Count(t => KitchenRules.ColumnOf(t.Status) is not null && KitchenRules.Timing(t.CreatedAtUtc, Now, _warn, _late) == TicketTiming.Late) ?? 0;
+
     protected override async Task OnInitializedAsync()
     {
         Shell.Set("Kitchen Display", "New, preparing and ready tickets");
@@ -159,6 +164,13 @@ else
         else
         {
             Toasts.Error(result.Message);
+        }
+
+        // Same data the Completed page shows; a failure here only leaves the count as "—".
+        var completed = await Api.CompletedAsync();
+        if (completed.Success && completed.Data is { } done)
+        {
+            _completedToday = done.Tickets.Count(t => t.Status == KitchenOrderStatus.Completed);
         }
 
         await InvokeAsync(StateHasChanged);

@@ -266,6 +266,9 @@ public class ScreenRenderingTests
             env.Settings.Save(billingTerminal);
             var cashierShell = env.Create<ShellViewModel>();
             await cashierShell.OnNavigatedToAsync(null);
+            // Phase 20.6: a cashier lands on the cashier home.
+            cashierShell.CurrentPage.Should().BeOfType<CashierHomeViewModel>();
+            rendered.Add(await RenderScreenAsync(env, cashierShell, "74-cashier-home"));
             cashierShell.HandleShortcut(Key.R, ModifierKeys.Control).Should().BeFalse("a cashier has no Reports module");
             cashierShell.HandleShortcut(Key.B, ModifierKeys.Control).Should().BeTrue();
             env.Realtime.Raise(ConnectionStatus.Connected);
@@ -460,7 +463,7 @@ public class ScreenRenderingTests
         }
 
         bindingErrors.Errors.Should().BeEmpty("every binding in the views must point at an existing property");
-        rendered.Should().HaveCount(73);
+        rendered.Should().HaveCount(74);
         // Phase 17: Segoe UI Variable first, Segoe UI next, bundled Inter as the fallback on older Windows.
         bodyFontFiles.Should().HaveCount(4).And.OnlyContain(f => f.StartsWith("seguivar") || f.StartsWith("segoeui") || f.StartsWith("inter-"));
     }
@@ -1454,6 +1457,20 @@ public class ScreenRenderingTests
                     new() { Method = "Cash", Payments = 18, Amount = 19400m, Net = 19400m },
                     new() { Method = "UPI", Payments = 17, Amount = 21580m, Refunds = 1, RefundAmount = 450m, Net = 21130m },
                     new() { Method = "Card", Payments = 6, Amount = 7700m, Net = 7700m },
+                }));
+            api.GetRowsAsync<KitchenPerformanceRowDto>(Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+                .Returns(ApiResult<List<KitchenPerformanceRowDto>>.Ok(new List<KitchenPerformanceRowDto>
+                {
+                    new() { Station = "Main Kitchen", Tickets = 52, AverageAcceptMinutes = 1.5m, AveragePrepMinutes = 13.4m, AverageTotalMinutes = 15m, LateTickets = 6, LatePercent = 11.5m },
+                    new() { Station = "Tandoor", Tickets = 24, AverageAcceptMinutes = 1m, AveragePrepMinutes = 9.8m, AverageTotalMinutes = 11m, LateTickets = 0, LatePercent = 0m },
+                    new() { Station = "Beverage Bar", Tickets = 31, AverageAcceptMinutes = 0.5m, AveragePrepMinutes = 3.2m, AverageTotalMinutes = 4m, LateTickets = 0, LatePercent = 0m },
+                }));
+            api.GetRowsAsync<WaiterPerformanceRowDto>(Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+                .Returns(ApiResult<List<WaiterPerformanceRowDto>>.Ok(new List<WaiterPerformanceRowDto>
+                {
+                    new() { WaiterName = "Arun (Waiter)", Orders = 14, Covers = 38, NetSales = 18420m },
+                    new() { WaiterName = "Meena (Waiter)", Orders = 11, Covers = 29, NetSales = 14110m },
+                    new() { WaiterName = "Karthik (Waiter)", Orders = 9, Covers = 21, NetSales = 9800m },
                 }));
             return api;
         }
