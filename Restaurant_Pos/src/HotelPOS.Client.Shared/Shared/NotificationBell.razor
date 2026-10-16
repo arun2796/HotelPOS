@@ -13,6 +13,7 @@
                 <span class="bell-badge" data-testid="bell-count">@Center.UnreadCount</span>
             }
         </button>
+        <span class="sr-only" role="status" aria-live="polite" data-testid="bell-live">@LiveText</span>
         @if (_open)
         {
             <NotificationPanel OnClose="Close" />
@@ -22,6 +23,13 @@
 
 @code {
     private bool _open;
+
+    private string LiveText => Center.UnreadCount switch
+    {
+        0 => string.Empty,
+        1 => "1 unread notification",
+        var n => $"{n} unread notifications",
+    };
 
     private string Label => Center.UnreadCount > 0 ? $"Notifications, {Center.UnreadCount} unread" : "Notifications";
 

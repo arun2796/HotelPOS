@@ -136,6 +136,9 @@
       <DataTemplate DataType="{x:Type gst:PeriodCloseViewModel}">
         <gst:PeriodCloseView />
       </DataTemplate>
+      <DataTemplate DataType="{x:Type shell:NotificationPreferencesViewModel}">
+        <shell:NotificationPreferencesView />
+      </DataTemplate>
       <DataTemplate DataType="{x:Type cash:ShiftCountPanelViewModel}">
         <cash:ShiftCountPanelView />
       </DataTemplate>

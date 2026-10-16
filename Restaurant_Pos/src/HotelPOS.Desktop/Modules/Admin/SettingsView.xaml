@@ -4,6 +4,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:admin="clr-namespace:HotelPOS.Desktop.Modules.Admin"
+             xmlns:common="clr-namespace:HotelPOS.Desktop.Modules.Common"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance admin:SettingsViewModel}"
              d:DesignWidth="1100" d:DesignHeight="700">
@@ -74,28 +75,7 @@
             </ItemsControl.ItemTemplate>
           </ItemsControl>
 
-          <Border Padding="24,18,24,6">
-            <StackPanel>
-              <TextBlock Text="Notifications on this terminal" Style="{StaticResource Text.Subtitle}" />
-              <TextBlock Text="Saved on this PC only. Tick Pop-up to show a message, Sound to play a sound when it arrives." Style="{StaticResource Text.Caption}" Margin="0,2,0,0" />
-            </StackPanel>
-          </Border>
-          <ItemsControl ItemsSource="{Binding Notifications}" Focusable="False" AutomationProperties.AutomationId="NotificationPreferences">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate DataType="{x:Type admin:NotificationPreferenceItemViewModel}">
-                <Grid Margin="24,0" MinHeight="36">
-                  <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="110" />
-                    <ColumnDefinition Width="110" />
-                  </Grid.ColumnDefinitions>
-                  <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
-                  <CheckBox Grid.Column="1" Content="Pop-up" IsChecked="{Binding Toast}" VerticalAlignment="Center" />
-                  <CheckBox Grid.Column="2" Content="Sound" IsChecked="{Binding Sound}" VerticalAlignment="Center" />
-                </Grid>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
+          <common:NotificationPreferencesSection />
           <Border Height="18" />
           </StackPanel>
         </ScrollViewer>

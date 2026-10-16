@@ -87,6 +87,11 @@
             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center"
                         Visibility="{Binding IsSidebarCollapsed, Converter={StaticResource InverseBoolToVisibility}}">
               <Button Style="{StaticResource Button.Icon}" Width="36" Height="36" MinWidth="36" MinHeight="36"
+                      Foreground="{DynamicResource Brush.SidebarText}" Command="{Binding OpenNotificationPreferencesCommand}"
+                      ToolTip="Notifications…" AutomationProperties.Name="Notifications…" AutomationProperties.AutomationId="NotificationPreferencesButton">
+                <TextBlock Text="&#xEA8F;" Style="{StaticResource Text.Icon}" FontSize="15" />
+              </Button>
+              <Button Style="{StaticResource Button.Icon}" Width="36" Height="36" MinWidth="36" MinHeight="36"
                       Foreground="{DynamicResource Brush.SidebarText}" Command="{Binding ChangePasswordCommand}" ToolTip="Change my password">
                 <TextBlock Text="&#xE8D7;" Style="{StaticResource Text.Icon}" FontSize="15" />
               </Button>
@@ -214,6 +219,12 @@
       <Grid Grid.Row="1" Grid.RowSpan="2" Background="{DynamicResource Brush.Overlay}" DataContext="{Binding ShiftBar}"
             Visibility="{Binding IsPanelOpen, Converter={StaticResource BoolToVisibility}}">
         <ContentControl Content="{Binding Panel}" HorizontalAlignment="Center" VerticalAlignment="Center" Focusable="False" />
+      </Grid>
+
+      <!-- "Notifications…" dialog (every role) -->
+      <Grid Grid.Row="1" Grid.RowSpan="2" Background="{DynamicResource Brush.Overlay}"
+            Visibility="{Binding IsPreferencesOpen, Converter={StaticResource BoolToVisibility}}">
+        <ContentControl Content="{Binding Preferences}" HorizontalAlignment="Center" VerticalAlignment="Center" Focusable="False" />
       </Grid>
 
       <!-- Notices panel under the bell -->
