@@ -163,21 +163,4 @@ public sealed class GstViewModelTests
         await Task.Delay(100);
         await _api.Received(1).GetValidationAsync("2026-09", Arg.Any<CancellationToken>());
     }
-
-    [Fact]
-    public void PeriodStatusNotices_TellEveryTerminalThatBillsInTheClosedPeriodCannotChange()
-    {
-        var notices = new NoticeCenter(new ImmediateDispatcher());
-        new PeriodStatusNotices(_realtime, notices, _notifications).Start();
-
-        _realtime.Publish(HubEvents.PeriodStatusChanged, SeptemberClosed(true));
-        _realtime.Publish(HubEvents.PeriodStatusChanged, SeptemberClosed(false));
-
-        notices.Items.Select(n => n.Message).Should().Equal(
-            "GST period September 2026 reopened by Asha — bills dated in it can change again.",
-            "GST period September 2026 closed by Asha — bills dated in it can no longer be changed.");
-        notices.Items[1].Level.Should().Be(NoticeLevel.Warning);
-        _notifications.Received(1).Warning("GST period September 2026 closed by Asha — bills dated in it can no longer be changed.");
-        _notifications.Received(1).Info("GST period September 2026 reopened by Asha — bills dated in it can change again.");
-    }
 }

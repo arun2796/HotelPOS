@@ -67,6 +67,32 @@ it receives only its station's ticket events; `LeaveStation` puts it back. The c
 Event names are constants in `HotelPOS.Contracts.Realtime.HubEvents`. Phase 13 resync: the shift bar reloads
 `GET /api/shifts/current` on reconnect; screens re-read on navigation.
 
+### 3.1 Client handling: notification bell (Phase 20.1)
+
+Both clients turn these events into bell entries and toasts. The mapping and the role filter live in one place,
+`HotelPOS.Contracts.Realtime.NotificationMapper`; the desktop `NotificationRouter` and the browser/Android
+`NotificationRouter` only subscribe, store and navigate. A hub event that is not in this table is not surfaced.
+
+| Event | Bell kind | Shown to | Level | Tap opens (desktop / web) |
+|---|---|---|---|---|
+| `OrderAccepted` | `OrderAccepted` | waiter, own orders only (`WaiterId` = signed-in user) | Info | Tables, that table / `/tables/{id}` |
+| `OrderPreparing` | `OrderPreparing` | same | Info | same |
+| `OrderReady` | `OrderReady` | same | Warning | same |
+| `KitchenTicketCreated` | `TicketCreated` | kitchen | Info | Kitchen Display / `/kitchen` |
+| `BillRequested` | `BillRequested` | cashier, manager, admin | Warning | Billing / none (desktop only) |
+| `BillUpdated` with `changeType = Claimed` | `BillClaimed` | cashier, manager, admin | Info | Billing / none |
+| `PaymentCompleted` | `PaymentCompleted` | cashier, manager, admin | Info | Billing / none |
+| `DeviceStatusChanged` | `DeviceOnline` / `DeviceOffline` | manager, admin | Info / Warning | Devices (admin) / none |
+| `ServerNotice` (except `DEVICE_DISABLED`) | `ServerNotice` | every role | the notice's own level | none |
+| `PeriodStatusChanged` | `PeriodChanged` | every role | Warning on close, Info on reopen | none |
+
+Rules shared by both clients: the list keeps the last 50 entries; an entry has a dedup key (for example
+`ready:{orderId}`) and a repeat with the same key within 30 seconds updates the existing entry (moves it to the top,
+unread again) instead of adding another or toasting again; each entry has read and acknowledged state. Desktop keeps the
+list for the session; the browser persists it in `IBrowserStorage` (`notifications.v1`) and clears it on sign-out.
+`TicketDelayed`, `DayEndWarning`, `PrintFailed` and `PaymentFailed` kinds exist in `NotificationKind` for step 20.3 and
+have no mapping yet.
+
 ## 4. Publishing rules (server)
 
 1. Services call `IRealtimeNotifier` **after** the database transaction commits, never inside it.

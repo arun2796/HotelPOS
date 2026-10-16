@@ -1,0 +1,41 @@
+@implements IDisposable
+@inject NotificationCenter Center
+@inject WebAuthState Auth
+
+@if (Auth.IsSignedIn)
+{
+    <div class="bell-wrap">
+        <button class="btn icon ghost bell" type="button" aria-label="@Label" aria-expanded="@_open.ToString().ToLowerInvariant()"
+                title="Notifications" @onclick="Toggle">
+            <span aria-hidden="true">🔔</span>
+            @if (Center.UnreadCount > 0)
+            {
+                <span class="bell-badge" data-testid="bell-count">@Center.UnreadCount</span>
+            }
+        </button>
+        @if (_open)
+        {
+            <NotificationPanel OnClose="Close" />
+        }
+    </div>
+}
+
+@code {
+    private bool _open;
+
+    private string Label => Center.UnreadCount > 0 ? $"Notifications, {Center.UnreadCount} unread" : "Notifications";
+
+    protected override async Task OnInitializedAsync()
+    {
+        Center.Changed += OnChanged;
+        await Center.LoadAsync();
+    }
+
+    private void Toggle() => _open = !_open;
+
+    private void Close() => _open = false;
+
+    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Center.Changed -= OnChanged;
+}

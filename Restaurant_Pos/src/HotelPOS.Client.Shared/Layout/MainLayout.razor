@@ -4,6 +4,8 @@
 @inject WebRealtimeClient Realtime
 @inject ShellState Shell
 @inject NavigationManager Navigation
+@inject NotificationRouter Notifications
+@inject NotificationCenter NotificationList
 
 <div class="shell">
     <header class="topbar">
@@ -15,6 +17,7 @@
             }
         </div>
         <ConnectionPill />
+        <NotificationBell />
         @if (Auth.IsSignedIn)
         {
             <button class="btn icon ghost" title="@($"{Auth.User!.DisplayName} · Sign out")" @onclick="SignOutAsync" aria-label="Sign out">
@@ -60,14 +63,24 @@
         }
     }
 
-    protected override void OnInitialized() => Shell.Changed += StateHasChanged;
+    protected override async Task OnInitializedAsync()
+    {
+        Shell.Changed += StateHasChanged;
+        await Notifications.StartAsync();
+    }
 
     private async Task SignOutAsync()
     {
+        Notifications.Stop();
+        NotificationList.Clear();
         await Realtime.StopAsync();
         await Auth.SignOutAsync();
         Navigation.NavigateTo("signin", replace: true);
     }
 
-    public void Dispose() => Shell.Changed -= StateHasChanged;
+    public void Dispose()
+    {
+        Shell.Changed -= StateHasChanged;
+        Notifications.Stop();
+    }
 }

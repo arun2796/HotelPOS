@@ -30,9 +30,7 @@ public sealed class AppNavigator : IAppNavigator
         IRealtimeClient realtime,
         IAuthApi authApi,
         IUiDispatcher dispatcher,
-        INotificationService notifications,
         NoticeCenter notices,
-        PeriodStatusNotices periodNotices,
         ILogger<AppNavigator> logger)
     {
         _main = main;
@@ -44,8 +42,6 @@ public sealed class AppNavigator : IAppNavigator
         _logger = logger;
 
         // The server refused to renew the session (user disabled, password reset, token revoked...).
-        periodNotices.Start();
-
         _session.Expired += (_, reason) => dispatcher.Post(() => _ = LogoutAsync(reason));
 
         // Sent just before the server closes this terminal's connection; without it an idle screen would only find
@@ -58,21 +54,8 @@ public sealed class AppNavigator : IAppNavigator
                 return;
             }
 
-            // An administrator's broadcast, e.g. "Server restarting in 2 minutes for maintenance".
-            _notices.Add(new NoticeItem(notice.Message, notice.SentBy, notice.Level, DateTime.Now));
-            var text = string.IsNullOrWhiteSpace(notice.SentBy) ? notice.Message : $"{notice.Message} ({notice.SentBy})";
-            switch (notice.Level)
-            {
-                case NoticeLevel.Critical:
-                    notifications.Error(text);
-                    break;
-                case NoticeLevel.Warning:
-                    notifications.Warning(text);
-                    break;
-                default:
-                    notifications.Info(text);
-                    break;
-            }
+            // An administrator's broadcast, e.g. "Server restarting in 2 minutes for maintenance", reaches the bell
+            // and a toast through NotificationRouter.
         });
     }
 

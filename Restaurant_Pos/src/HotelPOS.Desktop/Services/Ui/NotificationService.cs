@@ -24,6 +24,9 @@ public interface INotificationService
     void Error(string message, string? correlationId = null);
 
     void Error(string message, string actionText, Action action);
+
+    // A toast with a button, e.g. "Open" to jump to the table or bill the notice is about.
+    void Notify(ToastKind kind, string message, string actionText, Action action);
 }
 
 public sealed class NotificationService : INotificationService
@@ -58,6 +61,12 @@ public sealed class NotificationService : INotificationService
     {
         _logger.LogWarning("Error shown to user: {Message}", message);
         Show(ToastKind.Error, message, TimeSpan.FromSeconds(20), new ToastAction(actionText, action));
+    }
+
+    public void Notify(ToastKind kind, string message, string actionText, Action action)
+    {
+        var duration = kind == ToastKind.Error ? TimeSpan.FromSeconds(20) : TimeSpan.FromSeconds(8);
+        Show(kind, message, duration, new ToastAction(actionText, action));
     }
 
     private void Show(ToastKind kind, string message, TimeSpan duration, ToastAction? action = null)

@@ -74,7 +74,7 @@ public static class AppHost
         services.AddSingleton<ShiftReportPrinting>();
         services.AddSingleton<ShiftBarViewModel>();
         services.AddSingleton<ICashDrawer>(sp => sp.GetRequiredService<ShiftBarViewModel>());
-        services.AddSingleton<IReadyNotifier, ReadyNotifier>();
+        services.AddSingleton<INotificationRouter, NotificationRouter>();
         services.AddSingleton<IPrintApi, PrintApi>();
         services.AddSingleton<ITemplatesApi, TemplatesApi>();
         services.AddSingleton<IPrintCopyReporter, PrintCopyReporter>();
@@ -101,7 +101,6 @@ public static class AppHost
         services.AddSingleton<INotificationService>(sp => sp.GetRequiredService<NotificationService>());
         services.AddSingleton<ThemeService>();
         services.AddSingleton<NoticeCenter>();
-        services.AddSingleton<PeriodStatusNotices>();
         services.AddSingleton<IFilePicker, WpfFilePicker>();
         services.AddSingleton<ISoundPlayer, SystemSoundPlayer>();
         services.AddSingleton<MainViewModel>();

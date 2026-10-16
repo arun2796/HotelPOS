@@ -178,7 +178,7 @@ public class NoticeCenterTests
             notices.Add(new NoticeItem($"Notice {i}", "Administrator", NoticeLevel.Info, DateTime.Now));
         }
 
-        notices.UnreadCount.Should().Be(55);
+        notices.UnreadCount.Should().Be(50, "only entries still in the list count");
         notices.Items.Should().HaveCount(50);
         notices.Items[0].Message.Should().Be("Notice 55");
 
