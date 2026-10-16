@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text.Json;
 using HotelPOS.Contracts.Common;
+using HotelPOS.Contracts.Realtime;
 using Microsoft.Extensions.Logging;
 
 namespace HotelPOS.Desktop.Services.Configuration;
@@ -8,6 +9,11 @@ namespace HotelPOS.Desktop.Services.Configuration;
 public interface IUserPreferences
 {
     string? LastUsername { get; set; }
+
+    // Per-terminal toast/sound choice for one kind of notification; null until the user changes it (Phase 20.2).
+    NotificationPreference? GetNotification(NotificationKind kind);
+
+    void SetNotification(NotificationKind kind, NotificationPreference preference);
 }
 
 public sealed class UserPreferences : IUserPreferences
@@ -31,6 +37,19 @@ public sealed class UserPreferences : IUserPreferences
             _model = _model with { LastUsername = value };
             Persist();
         }
+    }
+
+    public NotificationPreference? GetNotification(NotificationKind kind) =>
+        _model.Notifications is { } map && map.TryGetValue(kind.ToString(), out var preference) ? preference : null;
+
+    public void SetNotification(NotificationKind kind, NotificationPreference preference)
+    {
+        var map = new Dictionary<string, NotificationPreference>(_model.Notifications ?? new(), StringComparer.Ordinal)
+        {
+            [kind.ToString()] = preference,
+        };
+        _model = _model with { Notifications = map };
+        Persist();
     }
 
     private Model Load()
@@ -64,5 +83,7 @@ public sealed class UserPreferences : IUserPreferences
     private sealed record Model
     {
         public string? LastUsername { get; init; }
+
+        public Dictionary<string, NotificationPreference>? Notifications { get; init; }
     }
 }

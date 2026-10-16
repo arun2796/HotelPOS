@@ -121,7 +121,7 @@ public sealed partial class KitchenDisplayViewModel : ViewModelBase, INavigation
     private readonly ISystemApi _systemApi;
     private readonly IRealtimeClient _realtime;
     private readonly IClientSettingsService _settings;
-    private readonly ISoundPlayer _sound;
+    private readonly INotificationRouter _router;
     private readonly INotificationService _notifications;
     private readonly List<IDisposable> _subscriptions = new();
     private CancellationTokenSource? _timer;
@@ -135,7 +135,7 @@ public sealed partial class KitchenDisplayViewModel : ViewModelBase, INavigation
         ISystemApi systemApi,
         IRealtimeClient realtime,
         IClientSettingsService settings,
-        ISoundPlayer sound,
+        INotificationRouter router,
         INotificationService notifications)
     {
         _kitchenApi = kitchenApi;
@@ -144,7 +144,7 @@ public sealed partial class KitchenDisplayViewModel : ViewModelBase, INavigation
         _systemApi = systemApi;
         _realtime = realtime;
         _settings = settings;
-        _sound = sound;
+        _router = router;
         _notifications = notifications;
     }
 
@@ -373,11 +373,8 @@ public sealed partial class KitchenDisplayViewModel : ViewModelBase, INavigation
         if (result.Success && result.Data is not null)
         {
             var known = AllCards.Any(c => c.Id == ticketId);
+            // The sound and toast for a new ticket come from NotificationRouter (KitchenTicketCreated), per terminal preference.
             Upsert(result.Data, isNew && !known);
-            if (isNew && !known)
-            {
-                _sound.NewTicket();
-            }
         }
     }
 
@@ -445,6 +442,21 @@ public sealed partial class KitchenDisplayViewModel : ViewModelBase, INavigation
         card.IsHighlighted = false;
     }
 
+    // Re-colours every card; a card that was not late before this tick and is now raises one TicketDelayed notification.
+    // Cards already late when first shown (a reload, a restart) were ticked on placement, so they never announce.
+    internal void TickCards()
+    {
+        foreach (var card in AllCards)
+        {
+            var wasLate = card.Urgency == TicketUrgency.Late;
+            card.Tick(ServerNowUtc, WarnMinutes, LateMinutes);
+            if (!wasLate && card.Urgency == TicketUrgency.Late)
+            {
+                _router.TicketDelayed(card.Id, card.Ticket.TicketNumber, card.Ticket.TableCode);
+            }
+        }
+    }
+
     private async Task RunTimerAsync(CancellationToken cancellationToken)
     {
         using var timer = new PeriodicTimer(TimeSpan.FromSeconds(15));
@@ -453,10 +465,7 @@ public sealed partial class KitchenDisplayViewModel : ViewModelBase, INavigation
         {
             while (await timer.WaitForNextTickAsync(cancellationToken))
             {
-                foreach (var card in AllCards)
-                {
-                    card.Tick(ServerNowUtc, WarnMinutes, LateMinutes);
-                }
+                TickCards();
 
                 // A full reload every minute repairs anything a lost event left behind.
                 if (++ticks % 4 == 0)

@@ -687,6 +687,7 @@ public class ScreenRenderingTests
             services.AddSingleton<ShiftReportPrinting>();
             services.AddSingleton(Substitute.For<ISoundPlayer>());
             services.AddSingleton(Substitute.For<INotificationRouter>());
+            services.AddSingleton<NotificationPreferences>();
             services.AddSingleton(Substitute.For<HotelPOS.Desktop.Services.Printing.IKotAutoPrinter>());
             services.AddSingleton(Substitute.For<HotelPOS.Desktop.Services.Printing.IPrintQueue>());
             services.AddSingleton(Substitute.For<HotelPOS.Desktop.Services.Printing.IDocumentPrinter>());

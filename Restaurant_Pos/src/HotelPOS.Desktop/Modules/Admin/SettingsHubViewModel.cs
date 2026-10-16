@@ -21,9 +21,10 @@ public sealed partial class SettingsHubViewModel : ObservableObject, INavigation
         IPrinterProfiles profiles,
         IFilePicker files,
         INotificationService notifications,
-        IRealtimeClient realtime)
+        IRealtimeClient realtime,
+        NotificationPreferences preferences)
     {
-        Settings = new SettingsViewModel(settingsApi, notifications);
+        Settings = new SettingsViewModel(settingsApi, notifications, preferences);
         Templates = new TemplateStudioViewModel(templatesApi, billingApi, printer, profiles, files, notifications, realtime);
     }
 

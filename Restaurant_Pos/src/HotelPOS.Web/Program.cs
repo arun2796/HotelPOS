@@ -15,6 +15,7 @@ var version = typeof(Program).Assembly.GetName().Version?.ToString(3);
 builder.Services.AddScoped(_ => new HttpClient());
 builder.Services.AddScoped<IClientHost>(_ => new BrowserClientHost(origin, version));
 builder.Services.AddScoped<IBrowserStorage, JsBrowserStorage>();
+builder.Services.AddScoped<IAlertSignal, JsAlertSignal>();
 builder.Services.AddScoped<ISessionTransport, CookieSessionTransport>();
 builder.Services.AddHotelPosClient();
 

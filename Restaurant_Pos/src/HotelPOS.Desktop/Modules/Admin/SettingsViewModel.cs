@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Enums;
+using HotelPOS.Contracts.Realtime;
 using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Navigation;
@@ -78,18 +79,54 @@ public sealed partial class SettingItemViewModel : ObservableObject
     }
 }
 
+// One row of the "Notifications" section: a kind of notification with its two per-terminal switches.
+public sealed partial class NotificationPreferenceItemViewModel : ObservableObject
+{
+    private readonly NotificationPreferences _preferences;
+
+    public NotificationPreferenceItemViewModel(NotificationKind kind, NotificationPreferences preferences)
+    {
+        _preferences = preferences;
+        Kind = kind;
+        var current = preferences.Get(kind);
+        _toast = current.Toast;
+        _sound = current.Sound;
+    }
+
+    public NotificationKind Kind { get; }
+
+    public string Label => NotificationPreferenceDefaults.Label(Kind);
+
+    [ObservableProperty]
+    private bool _toast;
+
+    [ObservableProperty]
+    private bool _sound;
+
+    partial void OnToastChanged(bool value) => _preferences.Set(Kind, value, Sound);
+
+    partial void OnSoundChanged(bool value) => _preferences.Set(Kind, Toast, value);
+}
+
 public sealed partial class SettingsViewModel : ViewModelBase, INavigationAware, IRefreshable
 {
     private readonly IAdminSettingsApi _api;
     private readonly INotificationService _notifications;
 
-    public SettingsViewModel(IAdminSettingsApi api, INotificationService notifications)
+    public SettingsViewModel(IAdminSettingsApi api, INotificationService notifications, NotificationPreferences preferences)
     {
         _api = api;
         _notifications = notifications;
+        foreach (var kind in NotificationPreferenceDefaults.AllKinds)
+        {
+            Notifications.Add(new NotificationPreferenceItemViewModel(kind, preferences));
+        }
     }
 
     public ObservableCollection<SettingItemViewModel> Items { get; } = new();
+
+    // Per-terminal toast and sound choices (Phase 20.2); saved as soon as a box is ticked, not by "Save changes".
+    public ObservableCollection<NotificationPreferenceItemViewModel> Notifications { get; } = new();
 
     public Task OnNavigatedToAsync(object? parameter) => LoadAsync();
 

@@ -74,6 +74,7 @@ public static class AppHost
         services.AddSingleton<ShiftReportPrinting>();
         services.AddSingleton<ShiftBarViewModel>();
         services.AddSingleton<ICashDrawer>(sp => sp.GetRequiredService<ShiftBarViewModel>());
+        services.AddSingleton<NotificationPreferences>();
         services.AddSingleton<INotificationRouter, NotificationRouter>();
         services.AddSingleton<IPrintApi, PrintApi>();
         services.AddSingleton<ITemplatesApi, TemplatesApi>();

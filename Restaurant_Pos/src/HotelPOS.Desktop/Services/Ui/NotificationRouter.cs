@@ -14,6 +14,9 @@ public interface INotificationRouter
 
     // Opens the screen a notice is about (table map, billing, kitchen display, devices).
     Task OpenAsync(NotificationTarget target);
+
+    // A kitchen ticket just crossed the late threshold (raised by the kitchen display, not by the server).
+    void TicketDelayed(int ticketId, string ticketNumber, string tableCode);
 }
 
 // Turns hub events into bell entries and toasts for the signed-in user. Which events a role sees is decided by
@@ -25,6 +28,8 @@ public sealed class NotificationRouter : INotificationRouter
     private readonly NoticeCenter _notices;
     private readonly INotificationService _notifications;
     private readonly INavigationService _navigation;
+    private readonly NotificationPreferences _preferences;
+    private readonly ISoundPlayer _sound;
     private readonly List<IDisposable> _subscriptions = new();
 
     public NotificationRouter(
@@ -32,13 +37,17 @@ public sealed class NotificationRouter : INotificationRouter
         IAuthSession session,
         NoticeCenter notices,
         INotificationService notifications,
-        INavigationService navigation)
+        INavigationService navigation,
+        NotificationPreferences preferences,
+        ISoundPlayer sound)
     {
         _realtime = realtime;
         _session = session;
         _notices = notices;
         _notifications = notifications;
         _navigation = navigation;
+        _preferences = preferences;
+        _sound = sound;
     }
 
     public void Start()
@@ -68,11 +77,23 @@ public sealed class NotificationRouter : INotificationRouter
         _subscriptions.Add(_realtime.Subscribe<ServerNoticeEvent>(HubEvents.ServerNotice,
             e => Publish(NotificationMapper.ServerNotice(e))));
 
+        // PrintFailed and PaymentFailed are addressed by the server (the device, plus managers for prints), so whoever
+        // receives one is meant to see it. DayEndDue goes to Manager/Admin; the mapper checks the role again.
+        _subscriptions.Add(_realtime.Subscribe<PrintFailedEvent>(HubEvents.PrintFailed,
+            e => Publish(NotificationMapper.PrintFailed(e))));
+        _subscriptions.Add(_realtime.Subscribe<PaymentFailedEvent>(HubEvents.PaymentFailed,
+            e => Publish(NotificationMapper.PaymentFailed(e))));
+        _subscriptions.Add(_realtime.Subscribe<DayEndDueEvent>(HubEvents.DayEndDue,
+            e => Publish(Audience() is { } who ? NotificationMapper.DayEndDue(e, who) : null)));
+
         // Bills dated in a closed GST period can no longer be changed, which a cashier would otherwise only learn
         // from the next refusal, so every role is told wherever it is.
         _subscriptions.Add(_realtime.Subscribe<PeriodStatusChangedEvent>(HubEvents.PeriodStatusChanged,
             e => Publish(NotificationMapper.PeriodChanged(e))));
     }
+
+    public void TicketDelayed(int ticketId, string ticketNumber, string tableCode) =>
+        Publish(Audience() is { } who ? NotificationMapper.TicketDelayed(ticketId, ticketNumber, tableCode, who) : null);
 
     public void Stop()
     {
@@ -120,6 +141,18 @@ public sealed class NotificationRouter : INotificationRouter
         if (!added)
         {
             // A repeat inside 30 seconds updated the bell entry; do not toast it again.
+            return;
+        }
+
+        var preference = _preferences.Get(draft.Kind);
+        if (preference.Sound)
+        {
+            _sound.Play(draft.Kind);
+        }
+
+        if (!preference.Toast)
+        {
+            // The bell entry stays; only the pop-up is switched off for this kind on this terminal.
             return;
         }
 
