@@ -43,7 +43,7 @@ PostgreSQL is the single source of truth.
 | Phase 17 – Enterprise UI Refresh | In progress  |
 | Phase 18 – Web Clients (Waiter, Kitchen) | In progress  |
 | Phase 19 – Android App (MAUI Blazor Hybrid) | In progress  |
-| Phase 20 – Enterprise Transformation (notifications, role homes, HTTPS) | Planned (spec for review) |
+| Phase 20 – Enterprise Transformation (notifications, role homes, HTTPS) | In progress  |
 
 Update this table (and `docs/phases/README.md`) when a phase starts or finishes.
 

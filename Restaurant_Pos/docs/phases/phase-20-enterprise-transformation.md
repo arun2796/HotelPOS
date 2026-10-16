@@ -1,6 +1,6 @@
 # Phase 20 — Enterprise Product Transformation (audit and plan)
 
-Status: Planned, spec for owner review (audit 2026-10-16 on `main` 6acda85) · Depends on: Phases 11–19
+Status: In progress — code complete 2026-10-16 (steps 20.1–20.9 merged on `main`; audit on 6acda85); open: § 11 device demo, 125 % pass · Depends on: Phases 11–19
 
 Source: the owner's "Enterprise Product Transformation Master Prompt" (2026-10-16). This document is the audit that the
 prompt's § 12 requires before any code: every requested capability is classified against the current source, and the
@@ -225,13 +225,18 @@ path), Api tests (three new events' audiences, day-end reminder), rendering test
 
 ## 12. Acceptance criteria
 
-- [ ] Every event in § 3.2 G3 is visible in the right role's bell on desktop and web; none leaks to other roles.
-- [ ] Bell items navigate to their target; acknowledge persists across reload (web) and session (desktop).
-- [ ] Sound/vibration per kind can be switched off per terminal.
-- [ ] Waiter home, kitchen counts, cashier home, manager panels show live data from existing endpoints only.
-- [ ] Web conflict path reloads instead of failing silently; desktop reconnect refreshes notices.
-- [ ] HTTPS endpoint configured by the installer; HTTP terminals unaffected.
-- [ ] Full suite green; rendering tests at 100 % and 125 %; device demo § 11 run.
+- [x] Every event in § 3.2 G3 is visible in the right role's bell on desktop and web; none leaks to other roles
+      (router/mapper tests on both clients, 2026-10-16; cross-device check is demo § 11 step 1–3).
+- [x] Bell items navigate to their target; acknowledge persists across reload (web) and session (desktop)
+      (web: Bill/Device targets mark read without navigating — no page for them; desktop: all targets).
+- [x] Sound/vibration per kind can be switched off per terminal (desktop dialog for every role + Settings; web /settings).
+- [x] Waiter home, kitchen counts, cashier home, manager panels show live data from existing endpoints only (no API change).
+- [x] Web conflict path reloads instead of failing silently; desktop reconnect refreshes the current page and adds a
+      "Reconnected" notice (there is no stored-notice endpoint to reload; push-only by design).
+- [ ] HTTPS endpoint configured by the installer; HTTP terminals unaffected (code + HSTS tests done; installer run on a
+      clean VM still open — Phase 10 § 15 smoke test).
+- [ ] Full suite green (2026-10-16: Domain 365, Client 66, Api 197, Desktop 296 + 1 skipped, Application 253);
+      rendering at 125 % and device demo § 11 still open.
 
 ## 13. Risks and notes
 
