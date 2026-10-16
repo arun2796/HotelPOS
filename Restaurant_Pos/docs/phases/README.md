@@ -31,6 +31,7 @@ documents say what to build, in which order, and how to verify it.
 | 18 | [Web Clients for Waiter and Kitchen](phase-18-web-clients-waiter-kitchen.md) | 9, 12, 16, 17 | Blazor PWA served by the API under /app: waiter on phones, kitchen on tablets; same backend, no new business logic | In progress (code complete; device demo open) |
 | 19 | [Android App for Waiter and Kitchen](phase-19-android-app.md) | 18 | .NET MAUI Blazor Hybrid host for the same Razor pages; signed APK, server page, SecureStorage tokens | In progress (code complete; device demo open) |
 | 20 | [Enterprise Product Transformation](phase-20-enterprise-transformation.md) | 11–19 | Role-aware notifications on every client, surfaced live events, role homes and dashboard panels, web polish, HTTPS by default; audit of the owner's master prompt | In progress (code complete 2026-10-16; device demo § 11 open; D1–D4 deferred) |
+| 21 | [Role-based UI/UX Redesign](phase-21-role-ui-ux-redesign.md) | 17–20 | Waiter, kitchen, cashier and admin clients restyled to the owner's mock-ups (`docs/design/reference`) on one design system; presentation only | Planned (audit done 2026-10-17; owner decisions D1–D11 open) |
 
 Phases 2 and 3 are independent and can be built in parallel. Phase 7 can start once Phase 5 exists
 (KOT) and finish after Phase 6 (invoice/receipt). Phase 8 needs settled bills (Phase 6).
