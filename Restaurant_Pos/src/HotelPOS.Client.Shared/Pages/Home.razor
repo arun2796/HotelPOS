@@ -28,7 +28,7 @@
         // Routing follows what the server says the user may do, never the device type.
         if (Auth.Has(Permissions.TablesView) && !Auth.IsInRole(Roles.Kitchen))
         {
-            Navigation.NavigateTo("tables", replace: true);
+            Navigation.NavigateTo("home", replace: true);
         }
         else if (Auth.Has(Permissions.KitchenOperate))
         {

@@ -80,7 +80,7 @@ public sealed class ReportViewModelTests
         var session = Substitute.For<IAuthSession>();
         session.User.Returns(TestData.Login("manager1", roles: "Manager").User);
         var realtime = new FakeRealtimeClient();
-        var vm = new DashboardViewModel(api, realtime, session, Substitute.For<INavigationService>()) { DebounceDelay = TimeSpan.FromMilliseconds(100) };
+        var vm = new DashboardViewModel(api, realtime, session, Substitute.For<INavigationService>(), Substitute.For<IDevicesApi>()) { DebounceDelay = TimeSpan.FromMilliseconds(100) };
 
         await vm.OnNavigatedToAsync(null);
         realtime.Publish(HubEvents.PaymentCompleted, new PaymentCompletedEvent { BillId = 1 });
@@ -113,7 +113,7 @@ public sealed class ReportViewModelTests
         }));
         var session = Substitute.For<IAuthSession>();
         session.User.Returns(TestData.Login("waiter1", roles: "Waiter").User);
-        var vm = new DashboardViewModel(api, new FakeRealtimeClient(), session, Substitute.For<INavigationService>());
+        var vm = new DashboardViewModel(api, new FakeRealtimeClient(), session, Substitute.For<INavigationService>(), Substitute.For<IDevicesApi>());
 
         await vm.OnNavigatedToAsync(null);
 

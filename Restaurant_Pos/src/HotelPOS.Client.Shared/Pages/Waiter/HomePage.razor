@@ -1,0 +1,149 @@
+@page "/home"
+@attribute [Authorize]
+@implements IDisposable
+@using HotelPOS.Contracts.Orders
+@using HotelPOS.Contracts.Realtime
+@inject WebAuthState Auth
+@inject WaiterApi Api
+@inject WebRealtimeClient Realtime
+@inject ShellState Shell
+@inject NavigationManager Navigation
+
+<PageTitle>Home · HotelPOS</PageTitle>
+
+@if (_error is not null)
+{
+    <div class="banner error">@_error <button class="btn ghost" @onclick="RefreshAsync">Retry</button></div>
+}
+else if (_mine is null)
+{
+    <div class="empty">Loading…</div>
+}
+else
+{
+    <div class="muted small" style="margin-bottom:8px">Hello @Auth.User?.DisplayName · @MyTables.Count tables · @ReadyOrders.Count ready · @BillRequests.Count bill requests</div>
+
+    <h2 class="kds-head" id="home-my-tables">MY TABLES · @MyTables.Count</h2>
+    @if (MyTables.Count == 0)
+    {
+        <div class="empty small">No tables with an open order. <button class="btn ghost" @onclick="@(() => Navigation.NavigateTo("tables"))">Open tables</button></div>
+    }
+    <div class="stack">
+        @foreach (var order in MyTables)
+        {
+            <button class="card order-card @(order.Status == OrderStatus.Ready ? "ready" : null)" style="min-height:var(--touch)" @onclick="() => Open(order)">
+                <div class="row between">
+                    <b>@order.TableCode · #@order.OrderNumber</b>
+                    <span class="chip @(order.Status == OrderStatus.Ready ? "danger" : "primary")">@StatusText(order.Status)</span>
+                </div>
+                <div class="muted small">@order.ItemCount items · @order.GuestCount guests</div>
+            </button>
+        }
+    </div>
+
+    <h2 class="kds-head" style="margin-top:16px" id="home-ready">READY · @ReadyOrders.Count</h2>
+    @if (ReadyOrders.Count == 0)
+    {
+        <div class="empty small">Nothing ready to serve.</div>
+    }
+    <div class="stack">
+        @foreach (var order in ReadyOrders)
+        {
+            <button class="card order-card ready" style="min-height:var(--touch)" @onclick="() => Open(order)">
+                <div class="row between">
+                    <b>@order.TableCode · #@order.OrderNumber</b>
+                    <span class="muted small">@order.ItemCount items</span>
+                </div>
+            </button>
+        }
+    </div>
+
+    <h2 class="kds-head" style="margin-top:16px" id="home-bills">BILL REQUESTS · @BillRequests.Count</h2>
+    @if (BillRequests.Count == 0)
+    {
+        <div class="empty small">No bills waiting.</div>
+    }
+    <div class="stack">
+        @foreach (var order in BillRequests)
+        {
+            <button class="card order-card" style="min-height:var(--touch)" @onclick="() => Open(order)">
+                <div class="row between">
+                    <b>@order.TableCode · #@order.OrderNumber</b>
+                    <span class="chip warning">@StatusText(order.Status)</span>
+                </div>
+                <div class="muted small">approx. @order.ApproxTotal.ToString("N2")</div>
+            </button>
+        }
+    </div>
+}
+
+@code {
+    private List<OrderSummaryDto>? _mine;
+    private string? _error;
+    private readonly List<IDisposable> _subscriptions = new();
+    private CancellationTokenSource? _debounce;
+
+    // One row per table: the signed-in waiter's open order there.
+    private List<OrderSummaryDto> MyTables => _mine!.GroupBy(o => o.TableId).Select(g => g.OrderByDescending(o => o.CreatedAtUtc).First()).OrderBy(o => o.TableCode, StringComparer.OrdinalIgnoreCase).ToList();
+
+    private List<OrderSummaryDto> ReadyOrders => _mine!.Where(o => o.Status == OrderStatus.Ready).OrderBy(o => o.CreatedAtUtc).ToList();
+
+    private List<OrderSummaryDto> BillRequests => _mine!.Where(o => o.Status is OrderStatus.BillRequested or OrderStatus.Billed).OrderBy(o => o.CreatedAtUtc).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Shell.Set("Home", "Your tables, ready orders and bill requests");
+        await Realtime.StartAsync();
+        foreach (var name in new[] { HubEvents.OrderCreated, HubEvents.OrderUpdated, HubEvents.OrderCancelled, HubEvents.TableStatusChanged, HubEvents.BillUpdated,
+                                     HubEvents.OrderReady, HubEvents.OrderAccepted, HubEvents.OrderPreparing, HubEvents.OrderServed, HubEvents.PaymentCompleted })
+        {
+            _subscriptions.Add(Realtime.Subscribe<System.Text.Json.JsonElement>(name, _ => ScheduleRefresh()));
+        }
+
+        Realtime.Reconnected += RefreshAsync;
+        await RefreshAsync();
+    }
+
+    private async Task RefreshAsync()
+    {
+        var result = await Api.GetActiveOrdersAsync();
+        if (result.Success && result.Data is { } orders)
+        {
+            var me = Auth.User?.Id;
+            _mine = orders.Where(o => o.WaiterId == me).ToList();
+            _error = null;
+        }
+        else if (_mine is null)
+        {
+            _error = result.Message;
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    // Several events arrive for one change; one refresh a quarter second later is enough.
+    private void ScheduleRefresh()
+    {
+        _debounce?.Cancel();
+        var cts = _debounce = new CancellationTokenSource();
+        _ = Task.Delay(250, cts.Token).ContinueWith(t => { if (!t.IsCanceled) { _ = InvokeAsync(RefreshAsync); } }, TaskScheduler.Default);
+    }
+
+    private void Open(OrderSummaryDto order) => Navigation.NavigateTo($"tables/{order.TableId}");
+
+    private static string StatusText(OrderStatus status) => status switch
+    {
+        OrderStatus.BillRequested => "Bill requested",
+        var s => s.ToString(),
+    };
+
+    public void Dispose()
+    {
+        Realtime.Reconnected -= RefreshAsync;
+        _debounce?.Cancel();
+        foreach (var subscription in _subscriptions)
+        {
+            subscription.Dispose();
+        }
+    }
+}
