@@ -27,6 +27,7 @@ The sidebar shows five groups in this order. A group header is only shown when t
 | Kitchen | Completed Orders | Admin, Manager, Kitchen | Tickets completed today with timings |
 | Billing | Billing | Admin, Manager, Cashier | Pending bills; discount, tax, payments |
 | Billing | Closed Bills | Admin, Manager, Cashier | Settled and voided bills, reprint, refund |
+| Billing | Print Log | Admin, Manager, Cashier | Prints that failed on this terminal, with a Failed filter and Retry |
 | Billing | Customers | Admin, Manager, Cashier | Customer list used by the bill |
 | Billing | Cash Shifts | Admin, Manager | All cash shifts of a day; X/Z reports, force close |
 | Billing | Day End | Admin, Manager | Close the business day |
@@ -177,7 +178,7 @@ Source: `Modules/Dashboard/DashboardView.xaml`
 Purpose: the Cashier role's Dashboard (menu entry "Dashboard", module key `cashier-home`). Opened by Cashier. Refreshed live (bill, payment and shift events, one reload per burst).
 Tiles: **Pending bills** (count and "oldest waiting n min"; opens Billing), **My shift** (takings since the shift opened, from the X report, and the float; "No shift" when none is open on this terminal), **Expected cash** (from the X report; "Blind count" when the drawer count is blind; pay-ins, pay-outs and cash sales in the detail), **Business day** (Open, then Closed or Reopened as the day-end events arrive; the Day End precheck is manager-only, so a cashier's tile follows the events).
 List: **Waiting for payment**, up to six bills oldest first (table, order and waiter, minutes waiting, total).
-Not included: a "print failures" tile. No endpoint lists failed print copies for a terminal (only per-document history), so it waits for the 20.8 failed-print queue.
+**Print failures** (Phase 20.8, between Expected cash and Business day): the number of prints that failed on this terminal, from the print queue; it opens the Print Log on its Failed filter.
 Buttons: refresh icon.
 
 Source: `Modules/Cash/CashierHomeView.xaml`
@@ -359,6 +360,21 @@ Buttons: **Reprint** (per payment: reprints the receipt), **Refund...** (per pay
 3. Manager approval pop-up if the refunder is not a manager.
 
 Source: `Modules/Billing/ClosedBillsView.xaml`
+
+### 5.2.1 Print Log (Phase 20.8)
+
+Purpose: find prints that did not come out on this terminal and print them again. Opened by Admin, Manager, Cashier (Billing operate permission). Also opened from the cashier home **Print failures** tile and from a "did not print" notice in the bell, both with the **Failed** filter already chosen.
+
+| Field | Type | Required | Rules / notes |
+|---|---|---|---|
+| Show | list | No | **All copies** or **Failed**. |
+
+Grid columns: WHEN, DOCUMENT, COPY (Original, or Copy n with DUPLICATE), STATUS (Printed, Failed, Failed (retried), Waiting), PRINTER, WHY (the printer error), and a **Retry** button.
+Retry prints the document again through the normal print path: the next copy number is reserved on the server, so the paper says DUPLICATE, the failed copy keeps its number in the log, and the result of the new copy is reported back. The outcome appears above the grid ("printed" or "failed again: reason") and the list refreshes. Retry is available only on the latest copy of a document and only for printer output, not PDFs. If this terminal has no printer for the document type, a notice says so and nothing changes.
+What is listed: the server has no list of print copies across documents, so the screen starts from the failed prints this terminal still holds (kept for 8 hours or until the app closes) and shows every copy of those documents that this terminal printed. A failure on another terminal is not listed here; that terminal retries its own.
+Buttons: refresh icon.
+
+Source: `Modules/Printing/PrintLogView.xaml`
 
 ### 5.3 Customers
 

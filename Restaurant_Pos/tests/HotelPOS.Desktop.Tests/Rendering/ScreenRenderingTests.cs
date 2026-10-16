@@ -269,6 +269,9 @@ public class ScreenRenderingTests
             // Phase 20.6: a cashier lands on the cashier home.
             cashierShell.CurrentPage.Should().BeOfType<CashierHomeViewModel>();
             rendered.Add(await RenderScreenAsync(env, cashierShell, "74-cashier-home"));
+            await cashierShell.NavigateToAsync(ModuleRegistry.PrintLog, new HotelPOS.Desktop.Modules.Printing.PrintLogContext(HotelPOS.Desktop.Modules.Printing.PrintLogFilter.Failed));
+            rendered.Add(await RenderScreenAsync(env, cashierShell, "76-print-log"));
+            await cashierShell.NavigateToAsync(ModuleRegistry.CashierHome, null);
             cashierShell.HandleShortcut(Key.R, ModifierKeys.Control).Should().BeFalse("a cashier has no Reports module");
             cashierShell.HandleShortcut(Key.B, ModifierKeys.Control).Should().BeTrue();
             env.Realtime.Raise(ConnectionStatus.Connected);
@@ -463,7 +466,7 @@ public class ScreenRenderingTests
         }
 
         bindingErrors.Errors.Should().BeEmpty("every binding in the views must point at an existing property");
-        rendered.Should().HaveCount(74);
+        rendered.Should().HaveCount(75);
         // Phase 17: Segoe UI Variable first, Segoe UI next, bundled Inter as the fallback on older Windows.
         bodyFontFiles.Should().HaveCount(4).And.OnlyContain(f => f.StartsWith("seguivar") || f.StartsWith("segoeui") || f.StartsWith("inter-"));
     }
@@ -689,7 +692,7 @@ public class ScreenRenderingTests
             services.AddSingleton(Substitute.For<INotificationRouter>());
             services.AddSingleton<NotificationPreferences>();
             services.AddSingleton(Substitute.For<HotelPOS.Desktop.Services.Printing.IKotAutoPrinter>());
-            services.AddSingleton(Substitute.For<HotelPOS.Desktop.Services.Printing.IPrintQueue>());
+            services.AddSingleton(DemoPrintQueue());
             services.AddSingleton(Substitute.For<HotelPOS.Desktop.Services.Printing.IDocumentPrinter>());
             services.AddSingleton<HotelPOS.Desktop.Services.Printing.FlowDocumentRenderer>();
             services.AddSingleton(Substitute.For<HotelPOS.Desktop.Services.Printing.IWindowsPrinterChannel>());
@@ -1052,6 +1055,16 @@ public class ScreenRenderingTests
             return api;
         }
 
+        // One failed invoice print, so the print log and the cashier tile show something.
+        private static HotelPOS.Desktop.Services.Printing.IPrintQueue DemoPrintQueue()
+        {
+            var queue = Substitute.For<HotelPOS.Desktop.Services.Printing.IPrintQueue>();
+            var job = new HotelPOS.Desktop.Services.Printing.PrintJob(PrintDocumentType.Invoice, 1, "Invoice INV-0001", new object(), new PrinterProfile(), 1) { PrintLogId = 3 };
+            queue.Failed.Returns(new[] { new HotelPOS.Desktop.Services.Printing.FailedPrintJob(job, "Printer 10.0.0.5:9100 did not answer.", DateTime.UtcNow) });
+            queue.FailedCount.Returns(1);
+            return queue;
+        }
+
         private static IPrintApi DemoPrintApi()
         {
             var api = Substitute.For<IPrintApi>();
@@ -1060,6 +1073,7 @@ public class ScreenRenderingTests
             {
                 new() { Id = 1, CopyNumber = 1, Output = PrintOutput.Printer, DeviceName = "BILLING-01", CreatedAtUtc = at, Result = PrintResult.Printed },
                 new() { Id = 2, CopyNumber = 2, CopyLabel = "DUPLICATE", Output = PrintOutput.Pdf, CreatedAtUtc = at.AddMinutes(27), Result = PrintResult.Printed },
+                new() { Id = 3, CopyNumber = 3, CopyLabel = "DUPLICATE", Output = PrintOutput.Printer, PrinterName = "10.0.0.5:9100", CreatedAtUtc = at.AddMinutes(40), Result = PrintResult.Failed, Error = "Printer 10.0.0.5:9100 did not answer." },
             }));
             return api;
         }

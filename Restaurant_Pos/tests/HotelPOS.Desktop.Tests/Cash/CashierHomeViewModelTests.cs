@@ -2,9 +2,12 @@ using HotelPOS.Contracts.Billing;
 using HotelPOS.Contracts.Cash;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Realtime;
+using HotelPOS.Contracts.Print;
 using HotelPOS.Desktop.Modules.Cash;
+using HotelPOS.Desktop.Modules.Printing;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Navigation;
+using HotelPOS.Desktop.Services.Printing;
 using HotelPOS.Desktop.Tests.Support;
 using NSubstitute;
 
@@ -17,8 +20,9 @@ public class CashierHomeViewModelTests
     private readonly ICashApi _cash = Substitute.For<ICashApi>();
     private readonly FakeRealtimeClient _realtime = new();
     private readonly INavigationService _navigation = Substitute.For<INavigationService>();
+    private readonly IPrintQueue _queue = Substitute.For<IPrintQueue>();
 
-    private CashierHomeViewModel Create() => new(_billing, _cash, _realtime, _navigation) { DebounceDelay = TimeSpan.FromMilliseconds(50) };
+    private CashierHomeViewModel Create() => new(_billing, _cash, _realtime, _navigation, _queue, new ImmediateDispatcher()) { DebounceDelay = TimeSpan.FromMilliseconds(50) };
 
     private void Pending(params BillSummaryDto[] bills) =>
         _billing.GetPendingAsync(Arg.Any<CancellationToken>()).Returns(ApiResult<List<BillSummaryDto>>.Ok(bills.ToList()));
@@ -40,13 +44,15 @@ public class CashierHomeViewModelTests
 
         await vm.OnNavigatedToAsync(null);
 
-        vm.Tiles.Select(t => t.Title).Should().Equal("Pending bills", "My shift", "Expected cash", "Business day");
+        vm.Tiles.Select(t => t.Title).Should().Equal("Pending bills", "My shift", "Expected cash", "Print failures", "Business day");
         vm.Tiles[0].Value.Should().Be("2");
         vm.Tiles[0].Detail.Should().Contain("oldest waiting 9 min");
         vm.Tiles[0].Module.Should().Be(ModuleRegistry.Billing);
         vm.Tiles[1].Value.Should().Be("4,300.00", "cash and UPI takings of the open shift");
         vm.Tiles[2].Value.Should().Be("3,550.00");
-        vm.Tiles[3].Value.Should().Be("Open");
+        vm.Tiles[3].Value.Should().Be("0");
+        vm.Tiles[3].Module.Should().Be(ModuleRegistry.PrintLog);
+        vm.Tiles[4].Value.Should().Be("Open");
         vm.WaitingBills.Select(b => b.TableCode).Should().Equal("T04", "T07");
         vm.HasWaitingBills.Should().BeTrue();
         vm.Dispose();
@@ -78,7 +84,7 @@ public class CashierHomeViewModelTests
         await vm.OnNavigatedToAsync(null);
 
         _realtime.Publish(HubEvents.BusinessDayClosed, new BusinessDayChangedEvent { BusinessDay = new DateOnly(2026, 10, 7), Status = BusinessDayStatus.Closed });
-        vm.Tiles[3].Value.Should().Be("Closed");
+        vm.Tiles[4].Value.Should().Be("Closed");
 
         _realtime.Publish(HubEvents.BillRequested, new BillRequestedEvent { BillId = 9 });
         _realtime.Publish(HubEvents.BillUpdated, new BillUpdatedEvent { BillId = 9 });
@@ -113,6 +119,29 @@ public class CashierHomeViewModelTests
         await vm.OpenCommand.ExecuteAsync(vm.Tiles[0]);
 
         await _navigation.Received(1).NavigateToAsync(ModuleRegistry.Billing, Arg.Any<object?>());
+        vm.Dispose();
+    }
+
+    [Fact]
+    public async Task PrintFailuresTile_CountsThisTerminalsFailedPrints_FollowsTheQueue_AndOpensTheFailedLog()
+    {
+        Pending();
+        _cash.GetCurrentShiftAsync(Arg.Any<CancellationToken>()).Returns(ApiResult<CashShiftDto?>.Ok(null));
+        _queue.FailedCount.Returns(2);
+        var vm = Create();
+        await vm.OnNavigatedToAsync(null);
+
+        var tile = vm.Tiles.Single(t => t.Title == "Print failures");
+        tile.Value.Should().Be("2");
+        tile.Module.Should().Be(ModuleRegistry.PrintLog);
+
+        _queue.FailedCount.Returns(0);
+        _queue.Changed += Raise.Event();
+        vm.Tiles.Single(t => t.Title == "Print failures").Value.Should().Be("0");
+        vm.Tiles.Select(t => t.Title).Should().Equal("Pending bills", "My shift", "Expected cash", "Print failures", "Business day");
+
+        await vm.OpenCommand.ExecuteAsync(vm.Tiles.Single(t => t.Title == "Print failures"));
+        await _navigation.Received(1).NavigateToAsync(ModuleRegistry.PrintLog, Arg.Is<object?>(p => p is PrintLogContext && ((PrintLogContext)p).Filter == PrintLogFilter.Failed));
         vm.Dispose();
     }
 }
