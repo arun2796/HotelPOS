@@ -49,6 +49,7 @@ public static class ModuleRegistry
     public const string Server = "server";
     public const string ThisDevice = "this-device";
     public const string Printers = "printers";
+    public const string PrintLog = "print-log";
     public const string Shifts = "shifts";
     public const string DayEnd = "day-end";
     public const string DayEndHistory = "day-end-history";
@@ -125,6 +126,8 @@ public static class ModuleRegistry
             "Server address and identity of this terminal.", typeof(ConfigurationViewModel)),
         new(Printers, "Printers", "", "Administration", Management, 7,
             "Kitchen, invoice and receipt printers attached to this terminal.", typeof(PrinterSettingsViewModel)),
+        new(PrintLog, "Print Log", "", "Billing", new[] { Roles.Admin, Roles.Manager, Roles.Cashier }, 20,
+            "Prints that failed on this terminal: filter the failed ones and retry them as the next copy.", typeof(PrintLogViewModel)),
     };
 
     // The permission each module is for (Phase 9). Its Roles list stays the audience under the default permission
@@ -138,6 +141,7 @@ public static class ModuleRegistry
         [KitchenCompleted] = Permissions.KitchenOperate,
         [Billing] = Permissions.BillingOperate,
         [ClosedBills] = Permissions.BillingOperate,
+        [PrintLog] = Permissions.BillingOperate,
         [Customers] = Permissions.BillingOperate,
         [Shifts] = Permissions.ShiftManage,
         [DayEnd] = Permissions.DayEndRun,

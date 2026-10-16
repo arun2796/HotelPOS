@@ -30,6 +30,7 @@ public enum NotificationTargetType
     Table,
     Device,
     Ticket,
+    Print,
 }
 
 /// <summary>The thing a notification is about; a tap opens the screen that shows it.</summary>
@@ -154,7 +155,8 @@ public static class NotificationMapper
         var where = string.IsNullOrWhiteSpace(e.DeviceName) ? string.Empty : $" on {e.DeviceName}";
         return new NotificationDraft(NotificationKind.PrintFailed, NoticeLevel.Critical,
             $"{e.DocumentType} #{e.DocumentId} did not print{where}", e.Error ?? string.Empty,
-            $"print-failed:{e.DocumentType}:{e.DocumentId}:{e.CopyNumber}");
+            $"print-failed:{e.DocumentType}:{e.DocumentId}:{e.CopyNumber}",
+            new NotificationTarget(NotificationTargetType.Print, e.DocumentId.ToString()));
     }
 
     /// <summary>A payment was rejected. The server sent it only to the terminal that tried it.</summary>

@@ -46,16 +46,35 @@ public sealed class PrintService : IPrintService
 
 public sealed record FailedPrintJob(PrintJob Job, string Error, DateTime FailedAtUtc);
 
+// How a queued job ended, after its retries: the print log screen shows it inline.
+public sealed class PrintOutcome : EventArgs
+{
+    public PrintOutcome(PrintJob job, bool succeeded, string? error)
+    {
+        Job = job;
+        Succeeded = succeeded;
+        Error = error;
+    }
+
+    public PrintJob Job { get; }
+
+    public bool Succeeded { get; }
+
+    public string? Error { get; }
+}
+
 public sealed class PrintQueueOptions
 {
     public IReadOnlyList<TimeSpan> RetryDelays { get; init; } = new[] { TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(5) };
 
-    public TimeSpan KeepFailedFor { get; init; } = TimeSpan.FromMinutes(10);
+    public TimeSpan KeepFailedFor { get; init; } = TimeSpan.FromHours(8);
 }
 
 public interface IPrintQueue
 {
     event EventHandler? Changed;
+
+    event EventHandler<PrintOutcome>? Completed;
 
     int FailedCount { get; }
 
@@ -97,6 +116,8 @@ public sealed class PrintQueue : IPrintQueue, IDisposable
     }
 
     public event EventHandler? Changed;
+
+    public event EventHandler<PrintOutcome>? Completed;
 
     public int FailedCount
     {
@@ -217,6 +238,7 @@ public sealed class PrintQueue : IPrintQueue, IDisposable
                 }
 
                 Report(job, true, null);
+                Completed?.Invoke(this, new PrintOutcome(job, true, null));
                 return;
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -240,6 +262,7 @@ public sealed class PrintQueue : IPrintQueue, IDisposable
         Report(job, false, failed.Error);
         _notifications.Error($"{job.Title} was not printed. {failed.Error}", "Retry", () => Retry(failed));
         Changed?.Invoke(this, EventArgs.Empty);
+        Completed?.Invoke(this, new PrintOutcome(job, false, failed.Error));
     }
 
     // The server's print log learns whether the copy came out; the report never holds up the next job.

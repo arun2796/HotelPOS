@@ -9,16 +9,19 @@ using HotelPOS.Contracts.Realtime;
 using HotelPOS.Desktop.Modules.Billing;
 using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Modules.Dashboard;
+using HotelPOS.Desktop.Modules.Printing;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Navigation;
 using HotelPOS.Desktop.Services.Realtime;
+using HotelPOS.Desktop.Services.Printing;
+using HotelPOS.Desktop.Services.Ui;
 
 namespace HotelPOS.Desktop.Modules.Cash;
 
 // Home of the Cashier role (Phase 20.6): pending bills, this terminal's open shift (cash, sales, expected cash) and the
 // state of the business day, each tile opening the screen behind it. Only existing endpoints: the billing queue, the
 // current shift with its X report, and the business-day events. The Day End precheck is for managers, so a cashier's
-// tile follows the day-closed/reopened events instead. Failed prints have no list endpoint yet, so there is no tile.
+// tile follows the day-closed/reopened events instead. The Print failures tile (20.8) counts this terminal's failed prints from the print queue and opens the print log on its Failed filter.
 public sealed partial class CashierHomeViewModel : ViewModelBase, INavigationAware, IRefreshable, IDisposable
 {
     private static readonly string[] RefreshEvents =
@@ -30,17 +33,21 @@ public sealed partial class CashierHomeViewModel : ViewModelBase, INavigationAwa
     private readonly ICashApi _cashApi;
     private readonly IRealtimeClient _realtime;
     private readonly INavigationService _navigation;
+    private readonly IPrintQueue _printQueue;
+    private readonly IUiDispatcher _ui;
     private readonly List<IDisposable> _subscriptions = new();
     private CancellationTokenSource? _debounce;
     private string _dayStatus = "Open";
     private string _dayDetail = "Bills and payments continue as normal";
 
-    public CashierHomeViewModel(IBillingApi billingApi, ICashApi cashApi, IRealtimeClient realtime, INavigationService navigation)
+    public CashierHomeViewModel(IBillingApi billingApi, ICashApi cashApi, IRealtimeClient realtime, INavigationService navigation, IPrintQueue printQueue, IUiDispatcher ui)
     {
         _billingApi = billingApi;
         _cashApi = cashApi;
         _realtime = realtime;
         _navigation = navigation;
+        _printQueue = printQueue;
+        _ui = ui;
     }
 
     public ObservableCollection<KpiTile> Tiles { get; } = new();
@@ -63,6 +70,8 @@ public sealed partial class CashierHomeViewModel : ViewModelBase, INavigationAwa
 
     public async Task OnNavigatedToAsync(object? parameter)
     {
+        _printQueue.Changed -= OnPrintQueueChanged;
+        _printQueue.Changed += OnPrintQueueChanged;
         foreach (var eventName in RefreshEvents)
         {
             _subscriptions.Add(_realtime.Subscribe<object>(eventName, notice => ScheduleRefresh()));
@@ -83,6 +92,12 @@ public sealed partial class CashierHomeViewModel : ViewModelBase, INavigationAwa
     public void OnNavigatedFrom() => Dispose();
 
     public void Dispose()
+    {
+        _printQueue.Changed -= OnPrintQueueChanged;
+        DisposeSubscriptions();
+    }
+
+    private void DisposeSubscriptions()
     {
         foreach (var subscription in _subscriptions)
         {
@@ -139,7 +154,9 @@ public sealed partial class CashierHomeViewModel : ViewModelBase, INavigationAwa
     private Task RefreshNowAsync() => RefreshAsync();
 
     [RelayCommand]
-    private Task OpenAsync(KpiTile? tile) => tile?.Module is { } module ? _navigation.NavigateToAsync(module) : Task.CompletedTask;
+    private Task OpenAsync(KpiTile? tile) => tile?.Module is { } module
+        ? _navigation.NavigateToAsync(module, module == ModuleRegistry.PrintLog ? new PrintLogContext(PrintLogFilter.Failed) : null)
+        : Task.CompletedTask;
 
     private async Task DelayedRefreshAsync(CancellationToken cancellationToken)
     {
@@ -167,6 +184,26 @@ public sealed partial class CashierHomeViewModel : ViewModelBase, INavigationAwa
     }
 
     private const string DayTitle = "Business day";
+
+    // Failed prints of this terminal, from the print queue (the server has no cross-document print list). The tile opens
+    // the print log on its Failed filter.
+    private KpiTile PrintTile()
+    {
+        var failed = _printQueue.FailedCount;
+        return new KpiTile(PrintTitle, failed.ToString(CultureInfo.CurrentCulture),
+            failed == 0 ? "everything printed" : "tap to retry them in the print log", "", ModuleRegistry.PrintLog);
+    }
+
+    private const string PrintTitle = "Print failures";
+
+    private void OnPrintQueueChanged(object? sender, EventArgs e) => _ui.Post(() =>
+    {
+        var existing = Tiles.FirstOrDefault(t => t.Title == PrintTitle);
+        if (existing is not null)
+        {
+            Tiles[Tiles.IndexOf(existing)] = PrintTile();
+        }
+    });
 
     private KpiTile DayTile() => new(DayTitle, _dayStatus, _dayDetail, "\uE930");
 
@@ -209,6 +246,7 @@ public sealed partial class CashierHomeViewModel : ViewModelBase, INavigationAwa
                 report is null ? "in the drawer" : $"in {Money.Format(report.PayIns)} · out {Money.Format(report.PayOuts)} · cash sales {Money.Format(report.CashSales)}", "\uE8D4"));
         }
 
+        tiles.Add(PrintTile());
         tiles.Add(DayTile());
         Tiles.Clear();
         foreach (var tile in tiles)

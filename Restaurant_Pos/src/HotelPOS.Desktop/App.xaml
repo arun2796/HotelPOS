@@ -112,6 +112,9 @@
       <DataTemplate DataType="{x:Type billing:BillingSetupViewModel}">
         <billing:BillingSetupView />
       </DataTemplate>
+      <DataTemplate DataType="{x:Type printing:PrintLogViewModel}">
+        <printing:PrintLogView />
+      </DataTemplate>
       <DataTemplate DataType="{x:Type cash:CashierHomeViewModel}">
         <cash:CashierHomeView />
       </DataTemplate>

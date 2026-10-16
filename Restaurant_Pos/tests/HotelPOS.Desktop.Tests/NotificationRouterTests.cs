@@ -4,6 +4,7 @@ using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Gst;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Contracts.Security;
+using HotelPOS.Desktop.Modules.Printing;
 using HotelPOS.Desktop.Services.Auth;
 using HotelPOS.Desktop.Services.Navigation;
 using HotelPOS.Desktop.Services.Ui;
@@ -163,6 +164,28 @@ public sealed class NotificationRouterTests
         await _navigation.Received(1).NavigateToAsync(ModuleRegistry.MyOrders, null);
         await router.OpenAsync(new NotificationTarget(NotificationTargetType.Bill, "3"));
         await _navigation.Received(1).NavigateToAsync(ModuleRegistry.Billing, null);
+    }
+
+    [Theory]
+    [InlineData(Roles.Cashier, true)]
+    [InlineData(Roles.Manager, true)]
+    [InlineData(Roles.Waiter, false)]
+    public async Task APrintFailedNotice_OpensThePrintLogOnItsFailedFilter_ForRolesThatHaveIt(string role, bool opens)
+    {
+        var router = Router(role);
+        var draft = NotificationMapper.PrintFailed(new PrintFailedEvent { DocumentType = HotelPOS.Contracts.Print.PrintDocumentType.Invoice, DocumentId = 12 });
+        draft.Target.Should().Be(new NotificationTarget(NotificationTargetType.Print, "12"));
+
+        await router.OpenAsync(draft.Target!);
+
+        if (opens)
+        {
+            await _navigation.Received(1).NavigateToAsync(ModuleRegistry.PrintLog, Arg.Is<object?>(p => p is PrintLogContext && ((PrintLogContext)p).Filter == PrintLogFilter.Failed));
+        }
+        else
+        {
+            await _navigation.DidNotReceiveWithAnyArgs().NavigateToAsync(default!, default);
+        }
     }
 
     [Fact]

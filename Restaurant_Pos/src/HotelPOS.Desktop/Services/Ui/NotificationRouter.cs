@@ -1,5 +1,6 @@
 using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Realtime;
+using HotelPOS.Desktop.Modules.Printing;
 using HotelPOS.Desktop.Services.Auth;
 using HotelPOS.Desktop.Services.Navigation;
 using HotelPOS.Desktop.Services.Realtime;
@@ -118,6 +119,9 @@ public sealed class NotificationRouter : INotificationRouter
             NotificationTargetType.Bill => _navigation.NavigateToAsync(ModuleRegistry.Billing),
             NotificationTargetType.Ticket => _navigation.NavigateToAsync(ModuleRegistry.KitchenDisplay),
             NotificationTargetType.Device => _navigation.NavigateToAsync(ModuleRegistry.Devices),
+            // A failed print opens the print log on its Failed filter (cashier and managers have it; others have no such module).
+            NotificationTargetType.Print when roles.Any(r => ModuleRegistry.Find(ModuleRegistry.PrintLog)!.Roles.Contains(r, StringComparer.OrdinalIgnoreCase)) =>
+                _navigation.NavigateToAsync(ModuleRegistry.PrintLog, new PrintLogContext(PrintLogFilter.Failed)),
             _ => Task.CompletedTask,
         };
     }

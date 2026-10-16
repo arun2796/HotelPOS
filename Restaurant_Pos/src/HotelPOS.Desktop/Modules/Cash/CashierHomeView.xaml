@@ -35,7 +35,7 @@
         <TextBlock Text="{Binding ErrorMessage}" Style="{StaticResource Text.Error}" />
       </Border>
 
-      <controls:KpiStrip Grid.Row="2" ItemsSource="{Binding Tiles}" Columns="4">
+      <controls:KpiStrip Grid.Row="2" ItemsSource="{Binding Tiles}" Columns="5">
         <controls:KpiStrip.ItemTemplate>
           <DataTemplate DataType="{x:Type dashboard:KpiTile}">
             <controls:KpiTile Title="{Binding Title}" Value="{Binding Value}" Detail="{Binding Detail}" Glyph="{Binding Glyph}"
