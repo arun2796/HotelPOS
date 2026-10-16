@@ -14,14 +14,19 @@ public sealed class NotificationRouter : IDisposable
     private readonly WebAuthState _auth;
     private readonly NotificationCenter _center;
     private readonly ToastService _toasts;
+    private readonly NotificationPreferences _preferences;
+    private readonly IAlertSignal _signal;
     private readonly List<IDisposable> _subscriptions = new();
 
-    public NotificationRouter(WebRealtimeClient realtime, WebAuthState auth, NotificationCenter center, ToastService toasts)
+    public NotificationRouter(WebRealtimeClient realtime, WebAuthState auth, NotificationCenter center, ToastService toasts,
+        NotificationPreferences preferences, IAlertSignal signal)
     {
         _realtime = realtime;
         _auth = auth;
         _center = center;
         _toasts = toasts;
+        _preferences = preferences;
+        _signal = signal;
     }
 
     public async Task StartAsync()
@@ -32,6 +37,7 @@ public sealed class NotificationRouter : IDisposable
         }
 
         await _center.LoadAsync();
+        await _preferences.LoadAsync();
         await _realtime.StartAsync();
 
         foreach (var name in new[] { HubEvents.OrderAccepted, HubEvents.OrderPreparing, HubEvents.OrderReady })
@@ -55,7 +61,19 @@ public sealed class NotificationRouter : IDisposable
             e => Publish(NotificationMapper.ServerNotice(e))));
         _subscriptions.Add(_realtime.Subscribe<PeriodStatusChangedEvent>(HubEvents.PeriodStatusChanged,
             e => Publish(NotificationMapper.PeriodChanged(e))));
+
+        // PrintFailed and PaymentFailed are addressed by the server; DayEndDue goes to Manager/Admin (the mapper checks again).
+        _subscriptions.Add(_realtime.Subscribe<PrintFailedEvent>(HubEvents.PrintFailed,
+            e => Publish(NotificationMapper.PrintFailed(e))));
+        _subscriptions.Add(_realtime.Subscribe<PaymentFailedEvent>(HubEvents.PaymentFailed,
+            e => Publish(NotificationMapper.PaymentFailed(e))));
+        _subscriptions.Add(_realtime.Subscribe<DayEndDueEvent>(HubEvents.DayEndDue,
+            e => Publish(Audience() is { } who ? NotificationMapper.DayEndDue(e, who) : null)));
     }
+
+    /// <summary>A kitchen ticket just crossed the late threshold (raised by the kitchen page, not by the server).</summary>
+    public void TicketDelayed(int ticketId, string ticketNumber, string tableCode) =>
+        Publish(Audience() is { } who ? NotificationMapper.TicketDelayed(ticketId, ticketNumber, tableCode, who) : null);
 
     public void Stop()
     {
@@ -79,6 +97,18 @@ public sealed class NotificationRouter : IDisposable
         _ => null,
     };
 
+    private async Task SignalAsync()
+    {
+        try
+        {
+            await _signal.SignalAsync();
+        }
+        catch (Exception)
+        {
+            // No audio device or no JS runtime (prerender, tests): the bell and toast still tell the user.
+        }
+    }
+
     private NotificationAudience? Audience() =>
         _auth.User is { } user ? new NotificationAudience(user.Id, user.Roles.ToList()) : null;
 
@@ -87,6 +117,17 @@ public sealed class NotificationRouter : IDisposable
         if (draft is null || !_center.Add(draft))
         {
             // Not for this user, or a repeat that only updated its bell entry.
+            return;
+        }
+
+        var preference = _preferences.Get(draft.Kind);
+        if (preference.Sound)
+        {
+            _ = SignalAsync();
+        }
+
+        if (!preference.Toast)
+        {
             return;
         }
 

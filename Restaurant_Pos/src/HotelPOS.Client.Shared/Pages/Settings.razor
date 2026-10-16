@@ -1,0 +1,63 @@
+@page "/settings"
+@attribute [Authorize]
+@using HotelPOS.Contracts.Realtime
+@inject NotificationPreferences Preferences
+@inject IAlertSignal Signal
+@inject ShellState Shell
+
+<PageTitle>Settings · HotelPOS</PageTitle>
+
+<h2 style="margin:0 0 4px">Notifications on this device</h2>
+<p class="muted small" style="margin:0 0 12px">Saved on this device only. Pop-up shows a message; Sound beeps (and vibrates on a phone).</p>
+
+@if (_loaded)
+{
+    <div id="notification-settings">
+        @foreach (var kind in NotificationPreferenceDefaults.AllKinds)
+        {
+            var preference = Preferences.Get(kind);
+            var current = kind;
+            <div class="row between" style="padding:10px 0;border-bottom:1px solid var(--border, #ddd)" data-kind="@kind">
+                <span>@NotificationPreferenceDefaults.Label(kind)</span>
+                <span class="row" style="gap:16px">
+                    <label class="row" style="gap:6px">
+                        <input type="checkbox" data-testid="toast-@kind" checked="@preference.Toast"
+                               @onchange="e => SetAsync(current, toast: (bool)e.Value!, sound: preference.Sound)" /> Pop-up
+                    </label>
+                    <label class="row" style="gap:6px">
+                        <input type="checkbox" data-testid="sound-@kind" checked="@preference.Sound"
+                               @onchange="e => SetAsync(current, toast: preference.Toast, sound: (bool)e.Value!)" /> Sound
+                    </label>
+                </span>
+            </div>
+        }
+    </div>
+    <div style="margin-top:16px">
+        <button class="btn" data-testid="test-sound" @onclick="TestAsync">Test sound</button>
+    </div>
+}
+
+@code {
+    private bool _loaded;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Shell.Set("Settings", "This device");
+        await Preferences.LoadAsync();
+        _loaded = true;
+    }
+
+    private Task SetAsync(NotificationKind kind, bool toast, bool sound) => Preferences.SetAsync(kind, toast, sound);
+
+    private async Task TestAsync()
+    {
+        try
+        {
+            await Signal.SignalAsync();
+        }
+        catch (Exception)
+        {
+            // A device without audio simply stays quiet.
+        }
+    }
+}

@@ -20,6 +20,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<MauiClientHost>();
         builder.Services.AddSingleton<IClientHost>(sp => sp.GetRequiredService<MauiClientHost>());
         builder.Services.AddSingleton<IBrowserStorage, MauiStorage>();
+        builder.Services.AddSingleton<IAlertSignal, MauiAlertSignal>();
         builder.Services.AddSingleton<ISecureTokenStore, MauiSecureTokenStore>();
         builder.Services.AddScoped<ISessionTransport, TokenSessionTransport>();
         builder.Services.AddHotelPosClient();

@@ -133,6 +133,36 @@ public sealed class MauiStorage : IBrowserStorage
     private static void WriteIndex(HashSet<string> keys) => Preferences.Default.Set(IndexKey, JsonSerializer.Serialize(keys));
 }
 
+/// <summary>Attention signal on the phone: a short tone on the notification stream and a vibration (Phase 20.2).</summary>
+public sealed class MauiAlertSignal : IAlertSignal
+{
+    private global::Android.Media.ToneGenerator? _tone;
+
+    public ValueTask SignalAsync()
+    {
+        try
+        {
+            Vibration.Default.Vibrate(TimeSpan.FromMilliseconds(300));
+        }
+        catch (Exception)
+        {
+            // No vibrator, or the permission was withdrawn: carry on to the tone.
+        }
+
+        try
+        {
+            _tone ??= new global::Android.Media.ToneGenerator(global::Android.Media.Stream.Notification, 80);
+            _tone.StartTone(global::Android.Media.Tone.PropBeep, 250);
+        }
+        catch (Exception)
+        {
+            // Silent device or no audio output.
+        }
+
+        return default;
+    }
+}
+
 /// <summary>The refresh token, and only the refresh token, in Android SecureStorage (Keystore-backed).</summary>
 public sealed class MauiSecureTokenStore : ISecureTokenStore
 {

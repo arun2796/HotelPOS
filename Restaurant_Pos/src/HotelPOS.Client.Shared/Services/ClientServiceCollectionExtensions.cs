@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace HotelPOS.Client.Services;
 
@@ -23,6 +24,8 @@ public static class ClientServiceCollectionExtensions
         services.AddScoped<WebRealtimeClient>();
         services.AddScoped<ToastService>();
         services.AddScoped<NotificationCenter>();
+        services.AddScoped<NotificationPreferences>();
+        services.TryAddSingleton<IAlertSignal, SilentAlertSignal>();
         services.AddScoped<NotificationRouter>();
         services.AddScoped<ShellState>();
         return services;

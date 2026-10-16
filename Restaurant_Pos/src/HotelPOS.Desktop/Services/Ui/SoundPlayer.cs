@@ -1,11 +1,14 @@
 using System.Media;
+using HotelPOS.Contracts.Realtime;
 using Microsoft.Extensions.Logging;
 
 namespace HotelPOS.Desktop.Services.Ui;
 
 public interface ISoundPlayer
 {
-    void NewTicket();
+    // Plays the cue for one kind of notification. Whether a kind may make a sound is decided by the caller
+    // (NotificationRouter, from the per-terminal preferences); this only makes the noise.
+    void Play(NotificationKind kind);
 }
 
 public sealed class SystemSoundPlayer : ISoundPlayer
@@ -17,16 +20,22 @@ public sealed class SystemSoundPlayer : ISoundPlayer
         _logger = logger;
     }
 
-    // Kitchen PCs without an audio device must keep working silently.
-    public void NewTicket()
+    // Terminals without an audio device must keep working silently.
+    public void Play(NotificationKind kind)
     {
         try
         {
-            SystemSounds.Exclamation.Play();
+            var sound = kind switch
+            {
+                NotificationKind.PrintFailed or NotificationKind.PaymentFailed => SystemSounds.Hand,
+                NotificationKind.TicketDelayed or NotificationKind.DayEndWarning => SystemSounds.Beep,
+                _ => SystemSounds.Exclamation,
+            };
+            sound.Play();
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "No sound for the new ticket");
+            _logger.LogDebug(ex, "No sound for {Kind}", kind);
         }
     }
 }

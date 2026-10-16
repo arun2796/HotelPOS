@@ -19,11 +19,13 @@ public sealed class NotificationRouterTests
     private readonly INotificationService _toasts = Substitute.For<INotificationService>();
     private readonly INavigationService _navigation = Substitute.For<INavigationService>();
     private readonly NoticeCenter _notices = new(new ImmediateDispatcher());
+    private readonly ISoundPlayer _sound = Substitute.For<ISoundPlayer>();
+    private readonly FakeUserPreferences _preferences = new();
 
     private NotificationRouter Router(string role, int userId = 7)
     {
         _session.User.Returns(new CurrentUserDto { Id = userId, Username = "u", DisplayName = "U", Roles = new[] { role } });
-        var router = new NotificationRouter(_realtime, _session, _notices, _toasts, _navigation);
+        var router = new NotificationRouter(_realtime, _session, _notices, _toasts, _navigation, new NotificationPreferences(_preferences, _session), _sound);
         router.Start();
         return router;
     }

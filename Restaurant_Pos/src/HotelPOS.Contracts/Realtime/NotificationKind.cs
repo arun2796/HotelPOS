@@ -148,6 +148,36 @@ public static class NotificationMapper
                 string.IsNullOrWhiteSpace(e.SentBy) ? e.Message : $"{e.Message} ({e.SentBy})", string.Empty,
                 $"notice:{e.Message}", null, e.SentBy);
 
+    /// <summary>A reserved print copy failed. The server already sent it only to the reporting terminal and to managers.</summary>
+    public static NotificationDraft PrintFailed(PrintFailedEvent e)
+    {
+        var where = string.IsNullOrWhiteSpace(e.DeviceName) ? string.Empty : $" on {e.DeviceName}";
+        return new NotificationDraft(NotificationKind.PrintFailed, NoticeLevel.Critical,
+            $"{e.DocumentType} #{e.DocumentId} did not print{where}", e.Error ?? string.Empty,
+            $"print-failed:{e.DocumentType}:{e.DocumentId}:{e.CopyNumber}");
+    }
+
+    /// <summary>A payment was rejected. The server sent it only to the terminal that tried it.</summary>
+    public static NotificationDraft PaymentFailed(PaymentFailedEvent e) =>
+        new(NotificationKind.PaymentFailed, NoticeLevel.Critical,
+            string.IsNullOrWhiteSpace(e.Message) ? "The payment was not accepted" : e.Message, string.Empty,
+            $"payment-failed:{e.BillId}", new NotificationTarget(NotificationTargetType.Bill, e.BillId.ToString()));
+
+    public static NotificationDraft? DayEndDue(DayEndDueEvent e, NotificationAudience who) =>
+        who.IsManagement
+            ? new NotificationDraft(NotificationKind.DayEndWarning, NoticeLevel.Warning,
+                $"Day end is due — {e.BusinessDay:dd MMM} is still open", $"reminder {e.ReminderTime}",
+                $"day-end:{e.BusinessDay:yyyyMMdd}")
+            : null;
+
+    /// <summary>Raised on the client when a kitchen ticket first crosses the late threshold; kitchen staff and managers hear it.</summary>
+    public static NotificationDraft? TicketDelayed(int ticketId, string ticketNumber, string tableCode, NotificationAudience who) =>
+        who.Is(Roles.Kitchen) || who.IsManagement
+            ? new NotificationDraft(NotificationKind.TicketDelayed, NoticeLevel.Warning,
+                $"Ticket {ticketNumber} is late — table {tableCode.ToUpperInvariant()}", string.Empty,
+                $"ticket-late:{ticketId}", new NotificationTarget(NotificationTargetType.Ticket, ticketId.ToString()))
+            : null;
+
     public static NotificationDraft PeriodChanged(PeriodStatusChangedEvent e)
     {
         var by = string.IsNullOrWhiteSpace(e.ChangedBy) ? "an administrator" : e.ChangedBy;

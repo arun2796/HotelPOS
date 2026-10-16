@@ -18,7 +18,7 @@ public sealed class KitchenDisplayViewModelTests : IDisposable
 
     private readonly IKitchenApi _api = Substitute.For<IKitchenApi>();
     private readonly FakeRealtimeClient _realtime = new();
-    private readonly ISoundPlayer _sound = Substitute.For<ISoundPlayer>();
+    private readonly INotificationRouter _router = Substitute.For<INotificationRouter>();
     private readonly InMemorySettings _settings = InMemorySettings.Configured();
     private readonly KitchenDisplayViewModel _vm;
 
@@ -37,7 +37,7 @@ public sealed class KitchenDisplayViewModelTests : IDisposable
             new() { Key = SettingKeys.KitchenLateMinutes, Value = "20" },
         }));
         ReturnsOpen(Ticket(1, KitchenOrderStatus.New), Ticket(2, KitchenOrderStatus.Preparing, minutesAgo: 12));
-        _vm = new KitchenDisplayViewModel(_api, menu, Substitute.For<IMenuCache>(), system, _realtime, _settings, _sound, Substitute.For<INotificationService>());
+        _vm = new KitchenDisplayViewModel(_api, menu, Substitute.For<IMenuCache>(), system, _realtime, _settings, _router, Substitute.For<INotificationService>());
     }
 
     public void Dispose() => _vm.Dispose();
@@ -85,7 +85,7 @@ public sealed class KitchenDisplayViewModelTests : IDisposable
     }
 
     [Fact]
-    public async Task ANewTicket_AppearsOnce_WithOneSound_AndCompletedTicketsLeaveTheBoard()
+    public async Task ANewTicket_AppearsOnce_AndCompletedTicketsLeaveTheBoard()
     {
         await _vm.OnNavigatedToAsync(null);
         _api.GetAsync(3, Arg.Any<CancellationToken>()).Returns(ApiResult<KitchenTicketDto>.Ok(Ticket(3, KitchenOrderStatus.New)));
@@ -98,7 +98,24 @@ public sealed class KitchenDisplayViewModelTests : IDisposable
 
         _vm.NewTickets.Select(c => c.Id).Should().Equal(1, 3);
         _vm.NewTickets[1].IsHighlighted.Should().BeTrue();
-        _sound.Received(1).NewTicket();
+    }
+
+    [Fact]
+    public async Task ATicketThatCrossesTheLateThreshold_RaisesTicketDelayedOnce_ButOneAlreadyLateOnLoadStaysQuiet()
+    {
+        ReturnsOpen(Ticket(5, KitchenOrderStatus.Preparing, minutesAgo: 25), Ticket(6, KitchenOrderStatus.Preparing, minutesAgo: 12));
+        await _vm.OnNavigatedToAsync(null);
+        _vm.TickCards();
+        _router.DidNotReceiveWithAnyArgs().TicketDelayed(default, default!, default!);
+
+        // Ticket 6 was amber; pretend the clock moved on until it is late.
+        var card = _vm.PreparingTickets.Single(c => c.Id == 6);
+        card.Urgency = TicketUrgency.Warn;
+        card.Ticket = card.Ticket with { CreatedAtUtc = Now.AddMinutes(-21) };
+        _vm.TickCards();
+        _vm.TickCards();
+
+        _router.Received(1).TicketDelayed(6, Arg.Any<string>(), Arg.Any<string>());
     }
 
     [Fact]

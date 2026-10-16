@@ -96,6 +96,10 @@ else
 }
 
 @code {
+    [Inject] private NotificationRouter Notifier { get; set; } = default!;
+
+    private readonly HashSet<int> _lateSeen = new();
+    private bool _lateBaselined;
     private List<KitchenTicketDto>? _tickets;
     private List<StationDto> _stations = new();
     private int? _stationId;
@@ -136,7 +140,7 @@ else
         (_warn, _late) = KitchenRules.ReadTiming(settings.Data);
 
         // Re-colour the tickets every 30 s even when nothing changes on the server.
-        _clock = new System.Threading.Timer(_ => _ = InvokeAsync(StateHasChanged), null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
+        _clock = new System.Threading.Timer(_ => _ = InvokeAsync(() => { AnnounceNewlyLate(); StateHasChanged(); }), null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
         await RefreshAsync();
     }
 
@@ -156,6 +160,7 @@ else
             _tickets = data.Tickets.ToList();
             _clockOffset = data.ServerTimeUtc - DateTime.UtcNow;
             _error = null;
+            AnnounceNewlyLate();
         }
         else if (_tickets is null)
         {
@@ -174,6 +179,32 @@ else
         }
 
         await InvokeAsync(StateHasChanged);
+    }
+
+    // A ticket that first crosses the late threshold while this page is open raises one TicketDelayed notification
+    // (bell, toast, beep and vibration per this device's preferences). Tickets already late when the page first
+    // loads are remembered silently, so opening the page never sounds an alarm for old news.
+    private void AnnounceNewlyLate()
+    {
+        if (_tickets is null)
+        {
+            return;
+        }
+
+        var lateNow = _tickets
+            .Where(t => t.Status != KitchenOrderStatus.Ready && KitchenRules.ColumnOf(t.Status) is not null
+                && KitchenRules.Timing(t.CreatedAtUtc, Now, _warn, _late) == TicketTiming.Late)
+            .ToList();
+        foreach (var ticket in lateNow)
+        {
+            if (_lateSeen.Add(ticket.Id) && _lateBaselined)
+            {
+                Notifier.TicketDelayed(ticket.Id, ticket.TicketNumber, ticket.TableCode);
+            }
+        }
+
+        _lateSeen.IntersectWith(lateNow.Select(t => t.Id));
+        _lateBaselined = true;
     }
 
     private void ScheduleRefresh()

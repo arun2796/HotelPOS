@@ -837,6 +837,8 @@ A single alphabetical list, one row per setting: name, description, an edit box 
 
 The Menu version setting is kept by the system and is not shown. The password-rule settings apply to the Change password screen, the new user editor and Reset password.
 
+**Notifications on this terminal** (below the settings list, Phase 20.2). One row per kind of notification (new kitchen ticket, order ready, ticket running late, bill requested, bill claimed, payment completed, device online/offline, server message, GST period change, day end due, print failed, payment failed) with two checkboxes: **Pop-up** (show the toast) and **Sound** (play a sound). These are kept for this terminal and Windows profile in `preferences.json`, are not shared with other terminals and are not part of **Save changes**: each tick is saved at once. The bell list always keeps the item, even with Pop-up off. Until a row is changed it follows the default: Pop-up on for every kind; Sound on only for a new kitchen ticket on a kitchen terminal, a bill request on a cashier terminal, and a failed print on every terminal. The browser and Android app have the same list on their Settings page (route `settings`) with an extra **Test sound** button; there Sound also vibrates where the phone can.
+
 #### 7.5.2 Print templates tab (Template Studio)
 Purpose: design the kitchen ticket, invoice and receipt. Each save creates a numbered version; one version is active.
 
