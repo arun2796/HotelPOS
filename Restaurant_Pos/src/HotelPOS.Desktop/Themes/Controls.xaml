@@ -48,8 +48,11 @@
               <StackPanel>
                 <TextBlock Text="{TemplateBinding Title}" FontSize="{DynamicResource Font.Size.Label}" FontWeight="SemiBold"
                            Foreground="{DynamicResource Brush.TextSecondary}" />
-                <TextBlock Text="{TemplateBinding Value}" FontSize="30" FontWeight="Bold" Margin="0,6,0,2"
-                           Foreground="{DynamicResource Brush.TextPrimary}" Typography.NumeralAlignment="Tabular" />
+                <!-- DownOnly: the value keeps its 30 px size and only shrinks when the tile is too narrow (five tiles at 1366 px). -->
+                <Viewbox StretchDirection="DownOnly" HorizontalAlignment="Left" Margin="0,6,0,2">
+                  <TextBlock Text="{TemplateBinding Value}" FontSize="30" FontWeight="Bold"
+                             Foreground="{DynamicResource Brush.TextPrimary}" Typography.NumeralAlignment="Tabular" />
+                </Viewbox>
                 <TextBlock Text="{TemplateBinding Detail}" Style="{StaticResource Text.Caption}" />
               </StackPanel>
               <Border Grid.Column="1" Width="40" Height="40" CornerRadius="10" VerticalAlignment="Top"
