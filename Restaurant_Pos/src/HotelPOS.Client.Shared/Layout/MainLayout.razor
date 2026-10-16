@@ -37,6 +37,7 @@
             <NavLink href="home" aria-current="@Current("home")"><span class="ico" aria-hidden="true">⌂</span>Home</NavLink>
             <NavLink href="tables" Match="NavLinkMatch.Prefix" aria-current="@Current("tables")"><span class="ico" aria-hidden="true">▦</span>Tables</NavLink>
             <NavLink href="my-orders" aria-current="@Current("my-orders")"><span class="ico" aria-hidden="true">☰</span>My orders</NavLink>
+            <NavLink href="settings" aria-current="@Current("settings")"><span class="ico" aria-hidden="true">⚙</span>Settings</NavLink>
         </nav>
     }
     else if (Auth.IsSignedIn && IsKitchen)
@@ -45,6 +46,7 @@
             <NavLink href="kitchen" Match="NavLinkMatch.All" aria-current="@Current("kitchen", true)"><span class="ico" aria-hidden="true">✓</span>Kitchen</NavLink>
             <NavLink href="kitchen/completed" aria-current="@Current("kitchen/completed")"><span class="ico" aria-hidden="true">☑</span>Completed</NavLink>
             <NavLink href="kitchen/station" aria-current="@Current("kitchen/station")"><span class="ico" aria-hidden="true">⚙</span>Station</NavLink>
+            <NavLink href="settings" aria-current="@Current("settings")"><span class="ico" aria-hidden="true">⚙</span>Settings</NavLink>
         </nav>
     }
 

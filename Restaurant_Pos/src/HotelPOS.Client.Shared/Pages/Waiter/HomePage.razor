@@ -13,11 +13,11 @@
 
 @if (_error is not null)
 {
-    <div class="banner error">@_error <button class="btn ghost" @onclick="RefreshAsync">Retry</button></div>
+    <ErrorState Message="@_error" OnRetry="@RefreshAsync" />
 }
 else if (_mine is null)
 {
-    <div class="empty">Loading…</div>
+    <Skeleton Variant="Skeleton.SkeletonVariant.Card" Count="3" Label="Loading your tables" />
 }
 else
 {
@@ -26,7 +26,9 @@ else
     <h2 class="kds-head" id="home-my-tables">MY TABLES · @MyTables.Count</h2>
     @if (MyTables.Count == 0)
     {
-        <div class="empty small">No tables with an open order. <button class="btn ghost" @onclick="@(() => Navigation.NavigateTo("tables"))">Open tables</button></div>
+        <EmptyState Small="true" Text="No tables with an open order. ">
+            <button class="btn ghost" @onclick="@(() => Navigation.NavigateTo("tables"))">Open tables</button>
+        </EmptyState>
     }
     <div class="stack">
         @foreach (var order in MyTables)
@@ -44,7 +46,7 @@ else
     <h2 class="kds-head" style="margin-top:16px" id="home-ready">READY · @ReadyOrders.Count</h2>
     @if (ReadyOrders.Count == 0)
     {
-        <div class="empty small">Nothing ready to serve.</div>
+        <EmptyState Small="true" Text="Nothing ready to serve." />
     }
     <div class="stack">
         @foreach (var order in ReadyOrders)
@@ -61,7 +63,7 @@ else
     <h2 class="kds-head" style="margin-top:16px" id="home-bills">BILL REQUESTS · @BillRequests.Count</h2>
     @if (BillRequests.Count == 0)
     {
-        <div class="empty small">No bills waiting.</div>
+        <EmptyState Small="true" Text="No bills waiting." />
     }
     <div class="stack">
         @foreach (var order in BillRequests)

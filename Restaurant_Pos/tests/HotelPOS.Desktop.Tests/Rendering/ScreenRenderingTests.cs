@@ -257,6 +257,11 @@ public class ScreenRenderingTests
             rendered.Add(await RenderScreenAsync(env, kitchenShell, "24-kitchen-display"));
             await kitchenShell.NavigateToAsync(ModuleRegistry.KitchenCompleted, null);
             rendered.Add(await RenderScreenAsync(env, kitchenShell, "25-kitchen-completed"));
+            kitchenShell.OpenNotificationPreferencesCommand.Execute(null);
+            kitchenShell.IsPreferencesOpen.Should().BeTrue("the Notifications entry is open to every role");
+            rendered.Add(await RenderScreenAsync(env, kitchenShell, "75-notification-preferences"));
+            kitchenShell.Preferences!.CloseCommand.Execute(null);
+            kitchenShell.IsPreferencesOpen.Should().BeFalse();
             kitchenShell.Dispose();
 
             env.Theme.ApplyDensity(ThemeService.Compact);
@@ -463,7 +468,7 @@ public class ScreenRenderingTests
         }
 
         bindingErrors.Errors.Should().BeEmpty("every binding in the views must point at an existing property");
-        rendered.Should().HaveCount(74);
+        rendered.Should().HaveCount(75);
         // Phase 17: Segoe UI Variable first, Segoe UI next, bundled Inter as the fallback on older Windows.
         bodyFontFiles.Should().HaveCount(4).And.OnlyContain(f => f.StartsWith("seguivar") || f.StartsWith("segoeui") || f.StartsWith("inter-"));
     }

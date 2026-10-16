@@ -153,6 +153,28 @@ public sealed class NotificationSoundTests
     }
 
     [Fact]
+    public void PreferencesDialog_ForAnyRole_ListsEveryKind_PersistsToggles_AndCloses()
+    {
+        _session.User.Returns(new CurrentUserDto { Id = 2, Username = "w", DisplayName = "W", Roles = new[] { Roles.Waiter } });
+        var closed = 0;
+        var dialog = new HotelPOS.Desktop.Shell.NotificationPreferencesViewModel(new NotificationPreferences(_preferences, _session), () => closed++);
+
+        dialog.Notifications.Select(n => n.Kind).Should().BeEquivalentTo(NotificationPreferenceDefaults.AllKinds);
+        var ready = dialog.Notifications.Single(n => n.Kind == NotificationKind.OrderReady);
+        ready.Sound = !ready.Sound;
+        ready.Toast = false;
+
+        // Same store as the Settings screen: a second view model over the same preferences sees the choice.
+        var settings = new SettingsViewModel(Substitute.For<HotelPOS.Desktop.Services.Api.IAdminSettingsApi>(),
+            Substitute.For<INotificationService>(), new NotificationPreferences(_preferences, _session));
+        settings.Notifications.Single(n => n.Kind == NotificationKind.OrderReady).Toast.Should().BeFalse();
+        _preferences.GetNotification(NotificationKind.OrderReady).Should().NotBeNull();
+
+        dialog.CloseCommand.Execute(null);
+        closed.Should().Be(1);
+    }
+
+    [Fact]
     public void SettingsNotificationsSection_ListsEveryKind_WithRoleDefaults_AndSavesEachToggle()
     {
         _session.User.Returns(new CurrentUserDto { Id = 1, Username = "k", DisplayName = "K", Roles = new[] { Roles.Kitchen } });

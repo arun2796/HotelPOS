@@ -230,6 +230,20 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
         }
     }
 
+    /// <summary>The "Notifications…" dialog while open; null otherwise.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsPreferencesOpen))]
+    private NotificationPreferencesViewModel? _preferences;
+
+    public bool IsPreferencesOpen => Preferences is not null;
+
+    [RelayCommand]
+    private void OpenNotificationPreferences()
+    {
+        IsNoticesOpen = false;
+        Preferences = new NotificationPreferencesViewModel(_services.GetRequiredService<NotificationPreferences>(), () => Preferences = null);
+    }
+
     [RelayCommand]
     private async Task ChangePasswordAsync()
     {
@@ -319,6 +333,12 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
                 _ = OpenPaletteAsync();
             }
 
+            return true;
+        }
+
+        if (key == Key.Escape && Preferences is not null)
+        {
+            Preferences = null;
             return true;
         }
 
