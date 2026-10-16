@@ -27,13 +27,31 @@ public enum ToastKind
 
 public sealed record ToastItem(int Id, ToastKind Kind, string Text);
 
-/// <summary>Short notices at the bottom of the screen; they go away by themselves.</summary>
+/// <summary>
+/// Short notices at the bottom of the screen; they go away by themselves. Expiry is a plain delayed task, never a
+/// SynchronizationContext scheduler: Blazor WebAssembly has no context (TaskScheduler.FromCurrentSynchronizationContext
+/// throws there and aborted every caller), and in the Android host the delay can finish on a pool thread, so the list
+/// is locked and the Toasts component re-renders through InvokeAsync.
+/// </summary>
 public sealed class ToastService
 {
+    private readonly object _gate = new();
     private readonly List<ToastItem> _items = new();
     private int _nextId;
 
-    public IReadOnlyList<ToastItem> Items => _items;
+    public IReadOnlyList<ToastItem> Items
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _items.ToArray();
+            }
+        }
+    }
+
+    /// <summary>Tests shorten every lifetime with this; null keeps the per-kind defaults.</summary>
+    internal TimeSpan? LifetimeOverride { get; init; }
 
     public event Action? Changed;
 
@@ -47,15 +65,34 @@ public sealed class ToastService
 
     public void Dismiss(int id)
     {
-        _items.RemoveAll(t => t.Id == id);
-        Changed?.Invoke();
+        bool removed;
+        lock (_gate)
+        {
+            removed = _items.RemoveAll(t => t.Id == id) > 0;
+        }
+
+        if (removed)
+        {
+            Changed?.Invoke();
+        }
     }
 
     private void Add(ToastKind kind, string text, TimeSpan lifetime)
     {
-        var item = new ToastItem(++_nextId, kind, text);
-        _items.Add(item);
+        ToastItem item;
+        lock (_gate)
+        {
+            item = new ToastItem(++_nextId, kind, text);
+            _items.Add(item);
+        }
+
         Changed?.Invoke();
-        _ = Task.Delay(lifetime).ContinueWith(_ => Dismiss(item.Id), TaskScheduler.FromCurrentSynchronizationContext());
+        _ = ExpireAsync(item.Id, LifetimeOverride ?? lifetime);
+    }
+
+    private async Task ExpireAsync(int id, TimeSpan lifetime)
+    {
+        await Task.Delay(lifetime).ConfigureAwait(false);
+        Dismiss(id);
     }
 }

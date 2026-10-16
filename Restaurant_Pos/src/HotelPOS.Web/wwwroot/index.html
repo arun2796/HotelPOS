@@ -9,8 +9,11 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <title>HotelPOS</title>
     <base href="/app/" />
-    <link rel="stylesheet" href="_content/HotelPOS.Client.Shared/css/tokens.css" />
-    <link rel="stylesheet" href="_content/HotelPOS.Client.Shared/css/app.css" />
+    <!-- The shared library's files keep their own base path (_content/...), not this app's "app": the API serves them at
+         /_content/... both under dotnet run and after publish (wwwroot/_content). /app/_content/... matches no file and the
+         API's authorization fallback answers 401, which left the app unstyled. -->
+    <link rel="stylesheet" href="../_content/HotelPOS.Client.Shared/css/tokens.css" />
+    <link rel="stylesheet" href="../_content/HotelPOS.Client.Shared/css/app.css" />
     <link rel="icon" type="image/png" href="favicon.png" />
     <link href="manifest.webmanifest" rel="manifest" />
     <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png" />

@@ -21,7 +21,7 @@ else if (_mine is null)
 }
 else
 {
-    <div class="muted small" style="margin-bottom:8px">Hello @Auth.User?.DisplayName · @MyTables.Count tables · @ReadyOrders.Count ready · @BillRequests.Count bill requests</div>
+    <div class="muted small" style="margin-bottom:8px">Hello @Auth.User?.DisplayName · @TextFormat.Count(MyTables.Count, "table") · @ReadyOrders.Count ready · @TextFormat.Count(BillRequests.Count, "bill request")</div>
 
     <h2 class="kds-head" id="home-my-tables">MY TABLES · @MyTables.Count</h2>
     @if (MyTables.Count == 0)
@@ -36,9 +36,9 @@ else
             <button class="card order-card @(order.Status == OrderStatus.Ready ? "ready" : null)" style="min-height:var(--touch)" @onclick="() => Open(order)">
                 <div class="row between">
                     <b>@order.TableCode · #@order.OrderNumber</b>
-                    <span class="chip @(order.Status == OrderStatus.Ready ? "danger" : "primary")">@StatusText(order.Status)</span>
+                    <span class="chip @StatusLabels.OrderChip(order.Status)">@StatusLabels.Order(order.Status)</span>
                 </div>
-                <div class="muted small">@order.ItemCount items · @order.GuestCount guests</div>
+                <div class="muted small">@TextFormat.Count(order.ItemCount, "item") · @TextFormat.Count(order.GuestCount, "guest")</div>
             </button>
         }
     </div>
@@ -54,7 +54,7 @@ else
             <button class="card order-card ready" style="min-height:var(--touch)" @onclick="() => Open(order)">
                 <div class="row between">
                     <b>@order.TableCode · #@order.OrderNumber</b>
-                    <span class="muted small">@order.ItemCount items</span>
+                    <span class="muted small">@TextFormat.Count(order.ItemCount, "item")</span>
                 </div>
             </button>
         }
@@ -71,7 +71,7 @@ else
             <button class="card order-card" style="min-height:var(--touch)" @onclick="() => Open(order)">
                 <div class="row between">
                     <b>@order.TableCode · #@order.OrderNumber</b>
-                    <span class="chip warning">@StatusText(order.Status)</span>
+                    <span class="chip @StatusLabels.OrderChip(order.Status)">@StatusLabels.Order(order.Status)</span>
                 </div>
                 <div class="muted small">approx. @order.ApproxTotal.ToString("N2")</div>
             </button>
@@ -94,7 +94,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        Shell.Set("Home", "Your tables, ready orders and bill requests");
+        Shell.Set("Home", "Tables, ready, bills");
         await Realtime.StartAsync();
         foreach (var name in new[] { HubEvents.OrderCreated, HubEvents.OrderUpdated, HubEvents.OrderCancelled, HubEvents.TableStatusChanged, HubEvents.BillUpdated,
                                      HubEvents.OrderReady, HubEvents.OrderAccepted, HubEvents.OrderPreparing, HubEvents.OrderServed, HubEvents.PaymentCompleted })
@@ -132,12 +132,6 @@ else
     }
 
     private void Open(OrderSummaryDto order) => Navigation.NavigateTo($"tables/{order.TableId}");
-
-    private static string StatusText(OrderStatus status) => status switch
-    {
-        OrderStatus.BillRequested => "Bill requested",
-        var s => s.ToString(),
-    };
 
     public void Dispose()
     {

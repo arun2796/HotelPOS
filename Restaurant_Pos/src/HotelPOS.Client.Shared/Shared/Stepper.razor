@@ -1,7 +1,7 @@
 @* − value + control with 44 px touch targets. *@
 <div class="stepper" role="group" aria-label="@Label">
     <button type="button" class="btn icon" @onclick="() => ValueChanged.InvokeAsync(Math.Max(Min, Value - 1))" disabled="@(Value <= Min)" aria-label="@($"{Label}: one less")">−</button>
-    <span class="stepper-value">@Value@(string.IsNullOrEmpty(Suffix) ? null : " " + Suffix)</span>
+    <span class="stepper-value">@ValueText</span>
     <button type="button" class="btn icon" @onclick="() => ValueChanged.InvokeAsync(Math.Min(Max, Value + 1))" disabled="@(Value >= Max)" aria-label="@($"{Label}: one more")">+</button>
 </div>
 
@@ -11,5 +11,9 @@
     [Parameter] public int Min { get; set; } = 1;
     [Parameter] public int Max { get; set; } = 99;
     [Parameter] public string Label { get; set; } = "Quantity";
-    [Parameter] public string? Suffix { get; set; }
+
+    /// <summary>Singular unit shown after the value and pluralised by it ("1 guest", "2 guests").</summary>
+    [Parameter] public string? Unit { get; set; }
+
+    private string ValueText => string.IsNullOrEmpty(Unit) ? Value.ToString(System.Globalization.CultureInfo.CurrentCulture) : TextFormat.Count(Value, Unit);
 }

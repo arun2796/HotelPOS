@@ -25,18 +25,18 @@
         Shell.Set("HotelPOS");
         await Realtime.StartAsync();
 
-        // Routing follows what the server says the user may do, never the device type.
-        if (Auth.Has(Permissions.TablesView) && !Auth.IsInRole(Roles.Kitchen))
+        // Routing follows what the server says the user may do, never the device type; the bottom navigation uses the same rule.
+        switch (ShellModes.For(Auth))
         {
-            Navigation.NavigateTo("home", replace: true);
-        }
-        else if (Auth.Has(Permissions.KitchenOperate))
-        {
-            Navigation.NavigateTo("kitchen", replace: true);
-        }
-        else
-        {
-            _noRole = true;
+            case ShellMode.Waiter:
+                Navigation.NavigateTo("home", replace: true);
+                break;
+            case ShellMode.Kitchen:
+                Navigation.NavigateTo("kitchen", replace: true);
+                break;
+            default:
+                _noRole = true;
+                break;
         }
     }
 }

@@ -36,23 +36,21 @@ else if (_menu is null)
 }
 else
 {
-    @if (Realtime.Status != WebConnectionStatus.Connected)
-    {
-        <div class="banner warning">Offline — your items are kept on this phone until you send them.</div>
-    }
+    <OfflineBanner>Offline — your items are kept on this phone until you send them.</OfflineBanner>
     @if (_restoredDraft)
     {
         <div class="banner info">Unsent items from earlier were restored.</div>
     }
 
-    <div class="row" style="gap:8px;overflow-x:auto;padding-bottom:6px">
+    @* While searching, the results span every category, so no chip is shown as selected. *@
+    <div class="chip-row">
         @if (Favourites.Items(_menu).Count > 0)
         {
-            <button id="chip-favourites" class="chip-btn @(_categoryId == FavouritesStore.CategoryId ? "on" : null)" @onclick="() => _categoryId = FavouritesStore.CategoryId">@FavouritesStore.CategoryName</button>
+            <button id="chip-favourites" class="chip-btn @(ChipOn(FavouritesStore.CategoryId) ? "on" : null)" @onclick="() => SelectCategory(FavouritesStore.CategoryId)">@FavouritesStore.CategoryName</button>
         }
         @foreach (var category in _menu.Categories.OrderBy(c => c.SortOrder))
         {
-            <button class="chip-btn @(_categoryId == category.Id ? "on" : null)" @onclick="() => _categoryId = category.Id">@category.Name</button>
+            <button class="chip-btn @(ChipOn(category.Id) ? "on" : null)" @onclick="() => SelectCategory(category.Id)">@category.Name</button>
         }
     </div>
 
@@ -89,20 +87,28 @@ else
         }
     </div>
 
-    <div class="cart">
+    <div class="cart @(_cartCollapsed ? "collapsed" : null)">
         <div class="row between">
-            <h2>Order · @_cart.ItemCount items</h2>
+            <button type="button" class="cart-toggle" aria-expanded="@((!_cartCollapsed).ToString().ToLowerInvariant())" aria-controls="cart-lines"
+                    disabled="@_cart.IsEmpty" @onclick="() => _cartCollapsed = !_cartCollapsed">
+                <h2>Order · @TextFormat.Count(_cart.ItemCount, "item")</h2>
+                @if (!_cart.IsEmpty)
+                {
+                    <span class="muted small" aria-hidden="true">@(_cartCollapsed ? "Show ▴" : "Hide ▾")</span>
+                }
+            </button>
             @if (!IsAppend)
             {
-                <Stepper @bind-Value="Guests" Min="FloorLimits.MinGuests" Max="FloorLimits.MaxGuests" Label="Guests" Suffix="guests" />
+                <Stepper @bind-Value="Guests" Min="FloorLimits.MinGuests" Max="FloorLimits.MaxGuests" Label="Guests" Unit="guest" />
             }
         </div>
         @if (_cart.IsEmpty)
         {
             <div class="muted small" style="padding:8px 0">Tap an item to add it.</div>
         }
-        else
+        else if (!_cartCollapsed)
         {
+            <div class="cart-lines" id="cart-lines">
             @foreach (var line in _cart.Lines)
             {
                 <div class="cart-line">
@@ -122,6 +128,7 @@ else
                     </div>
                 </div>
             }
+            </div>
         }
         <div class="row between" style="margin-top:8px">
             <b>approx. @_cart.ApproxTotal.ToString("N2")</b>
@@ -200,13 +207,26 @@ else
     private string _noteText = string.Empty;
     private IDisposable? _menuSubscription;
 
+    private bool _cartCollapsed;
+
     private string SearchText { get; set; } = string.Empty;
 
     private bool IsAppend => OrderId is not null;
 
+    private bool IsSearching => SearchText.Trim().Length > 0;
+
+    private bool ChipOn(int categoryId) => !IsSearching && _categoryId == categoryId;
+
+    // A chip tap ends a search: the waiter asked for that category.
+    private void SelectCategory(int categoryId)
+    {
+        _categoryId = categoryId;
+        SearchText = string.Empty;
+    }
+
     // Search-as-you-type spans the whole menu; otherwise the selected chip (a real category or Favourites).
     private IEnumerable<MenuEntryDto> VisibleItems() =>
-        SearchText.Trim().Length > 0
+        IsSearching
             ? FavouritesStore.Search(_menu!, SearchText)
             : _categoryId == FavouritesStore.CategoryId
                 ? Favourites.Items(_menu!)

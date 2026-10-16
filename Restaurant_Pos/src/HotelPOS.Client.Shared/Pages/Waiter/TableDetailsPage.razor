@@ -33,11 +33,11 @@ else
                 <h1>@table.Code <span class="muted" style="font-weight:400;font-size:15px">@table.Name</span></h1>
                 <div class="muted small">@table.SectionName · @table.Capacity seats</div>
             </div>
-            <span class="chip st-chip-@table.Status.ToString().ToLowerInvariant()">@table.Status</span>
+            <span class="chip st-chip-@table.Status.ToString().ToLowerInvariant()">@StatusLabels.Table(table.Status)</span>
         </div>
         @if (table.GuestCount is { } guests)
         {
-            <div class="muted" style="margin-top:6px">@guests guests@(table.OccupiedAtUtc is { } since ? $" · since {since.ToLocalTime():HH:mm}" : null)</div>
+            <div class="muted" style="margin-top:6px">@TextFormat.Count(guests, "guest")@(table.OccupiedAtUtc is { } since ? $" · since {since.ToLocalTime():HH:mm}" : null)</div>
         }
     </div>
 
@@ -46,7 +46,7 @@ else
         <div class="card" style="margin-top:10px">
             <h2>Seat guests</h2>
             <div class="row between" style="margin-top:8px">
-                <Stepper @bind-Value="_guests" Min="FloorLimits.MinGuests" Max="FloorLimits.MaxGuests" Label="Guests" Suffix="guests" />
+                <Stepper @bind-Value="_guests" Min="FloorLimits.MinGuests" Max="FloorLimits.MaxGuests" Label="Guests" Unit="guest" />
                 <button class="btn primary lg" @onclick="OccupyAsync" disabled="@_busy">OCCUPY</button>
             </div>
         </div>
@@ -57,9 +57,9 @@ else
         <div class="card" style="margin-top:10px">
             <div class="row between">
                 <h2>Order #@order.OrderNumber</h2>
-                <span class="chip info">@order.Status</span>
+                <span class="chip @StatusLabels.OrderChip(order.Status)" data-testid="order-status">@StatusLabels.Order(order.Status)</span>
             </div>
-            <div class="muted small">@order.WaiterName · @order.GuestCount guests · approx. @order.ApproxSubtotal.ToString("N2")</div>
+            <div class="muted small">@order.WaiterName · @TextFormat.Count(order.GuestCount, "guest") · approx. @order.ApproxSubtotal.ToString("N2")</div>
             <div class="stack" style="margin-top:10px">
                 @foreach (var item in order.Items)
                 {
@@ -71,7 +71,7 @@ else
                                 <div class="muted small">@string.Join(", ", item.Modifiers.Select(m => m.Name))@(string.IsNullOrEmpty(item.Notes) ? null : $" · “{item.Notes}”")</div>
                             }
                         </div>
-                        <span class="chip @TicketChip(item.TicketStatus)">@(item.TicketStatus?.ToString() ?? item.Status.ToString())</span>
+                        <span class="chip @(item.TicketStatus is { } ticket && item.Status != OrderItemStatus.Cancelled ? StatusLabels.TicketChip(ticket) : null)">@(item.TicketStatus is { } status && item.Status != OrderItemStatus.Cancelled ? StatusLabels.Ticket(status) : StatusLabels.Line(item.Status))</span>
                         <span class="num" style="min-width:72px">@item.LineTotal.ToString("N2")</span>
                     </div>
                 }
@@ -106,7 +106,8 @@ else
         }
         @if (ShowCancelOrder)
         {
-            <button class="btn block danger" @onclick="() => _cancelOpen = true" disabled="@_busy">CANCEL ORDER</button>
+            @* Outlined and set apart: a destructive action must not look like the next step after ADD ITEMS. *@
+            <button class="btn block danger-outline" style="margin-top:20px" @onclick="() => _cancelOpen = true" disabled="@_busy">CANCEL ORDER</button>
         }
         <a class="btn block ghost" href="tables">Back to the tables</a>
     </div>
@@ -285,15 +286,6 @@ else
             _busy = false;
         }
     }
-
-    private static string TicketChip(KitchenOrderStatus? status) => status switch
-    {
-        KitchenOrderStatus.Ready => "danger",
-        KitchenOrderStatus.Preparing => "warning",
-        KitchenOrderStatus.Completed => "success",
-        null => string.Empty,
-        _ => "info",
-    };
 
     public void Dispose()
     {

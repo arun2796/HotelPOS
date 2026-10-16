@@ -19,7 +19,7 @@
 else
 {
     <div class="row between" style="margin-bottom:8px">
-        <div class="row" style="gap:8px;overflow-x:auto">
+        <div class="chip-row grow">
             <button class="chip-btn @(_stationId is null ? "on" : null)" @onclick="() => SetStationAsync(null)">All stations</button>
             @foreach (var station in _stations)
             {
@@ -39,7 +39,10 @@ else
     }
     else
     {
-        <div class="muted small" style="margin-bottom:8px" id="kds-summary">Delayed <b>@DelayedCount</b> · Completed today <b>@(_completedToday?.ToString() ?? "—")</b></div>
+        <div class="row" style="margin-bottom:8px" id="kds-summary">
+            <span class="chip @(DelayedCount > 0 ? "danger lg" : null)">Delayed @DelayedCount</span>
+            <span class="muted small">Completed today <b>@(_completedToday?.ToString() ?? "—")</b></span>
+        </div>
         <div class="kds">
             @foreach (var column in new[] { TicketColumn.New, TicketColumn.Preparing, TicketColumn.Ready })
             {
@@ -57,6 +60,15 @@ else
                             <div class="row between">
                                 <div class="row">
                                     <span class="ticket-table">@ticket.TableCode</span>
+                                    @if (_stationId is null && !string.IsNullOrEmpty(ticket.StationCode))
+                                    {
+                                        @* One order makes one ticket per station; the station tells two "T05" tickets apart at a glance. *@
+                                        <span class="chip info ticket-station">@ticket.StationCode</span>
+                                    }
+                                    @if (ticket.Status == KitchenOrderStatus.Accepted)
+                                    {
+                                        <span class="chip info">Accepted</span>
+                                    }
                                     @if (KitchenRules.IsAddedItems(ticket))
                                     {
                                         <span class="chip primary">+ADD</span>
@@ -64,7 +76,7 @@ else
                                 </div>
                                 <span class="chip @(timing == TicketTiming.Late ? "danger" : timing == TicketTiming.Warn ? "warning" : null)">@KitchenRules.ElapsedText(ticket.CreatedAtUtc, Now)</span>
                             </div>
-                            <div class="muted small">@ticket.TicketNumber · @ticket.WaiterName · @ticket.Status@(_stationId is null ? $" · {ticket.StationCode}" : null)</div>
+                            <div class="muted small">@ticket.TicketNumber · @ticket.WaiterName</div>
                             <div class="ticket-lines">
                                 @foreach (var line in ticket.Items)
                                 {
@@ -82,9 +94,11 @@ else
                                 }
                             </div>
                             <div class="row" style="margin-top:10px;gap:8px">
-                                @foreach (var action in KitchenRules.ActionsFor(ticket.Status))
+                                @{ var actions = KitchenRules.ActionsFor(ticket.Status); }
+                                @foreach (var action in actions)
                                 {
-                                    <button class="btn lg @(action is KitchenRules.Recall ? null : "primary")" disabled="@(_busyTicket == ticket.Id)" @onclick="() => ActAsync(ticket, action)">@KitchenRules.Label(action)</button>
+                                    @* Only the expected next step is solid; ACCEPT and START side by side must not look alike. *@
+                                    <button class="btn lg @(action == actions[0] ? "primary" : "secondary")" data-action="@action" disabled="@(_busyTicket == ticket.Id)" @onclick="() => ActAsync(ticket, action)">@KitchenRules.Label(action)</button>
                                 }
                             </div>
                         </article>

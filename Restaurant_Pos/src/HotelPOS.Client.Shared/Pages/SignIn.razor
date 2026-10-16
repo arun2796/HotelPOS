@@ -34,11 +34,12 @@
         <EditForm Model="this" OnValidSubmit="SubmitAsync">
             <label class="field">
                 <span>Username</span>
-                <input class="input" @bind="_username" autocomplete="username" autocapitalize="none" inputmode="text" />
+                @* oninput, not onchange: the Sign in button enables while the field still has focus. *@
+                <input class="input" @bind="_username" @bind:event="oninput" autocomplete="username" autocapitalize="none" inputmode="text" />
             </label>
             <label class="field">
                 <span>Password</span>
-                <input class="input" type="password" @bind="_password" autocomplete="current-password" />
+                <input class="input" type="password" @bind="_password" @bind:event="oninput" autocomplete="current-password" />
             </label>
             <button type="submit" class="btn primary block lg" disabled="@(_busy || string.IsNullOrWhiteSpace(_username) || string.IsNullOrWhiteSpace(_password))">
                 @(_busy ? "Signing in…" : "Sign in")
