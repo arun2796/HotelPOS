@@ -8,8 +8,8 @@ the restaurant's own. Cashiers, managers and administrators keep the Windows cli
 ## 1. What the app needs
 
 - Android 8.0 or newer (phones and tablets).
-- The HotelPOS server on the same Wi-Fi. Plain `http://` works; `https://` works when the Phase 18 root CA is
-  installed on the device ([02 § 5](02-lan-and-firewall.md)).
+- The HotelPOS server on the same Wi-Fi. The server offers `http://<server>:5000` and, since Phase 20, `https://<server>:5001`; HTTPS works when the
+  root CA (`hotelpos-root-ca.cer`) is installed on the device ([02 § 5](02-lan-and-firewall.md)).
 - Nothing else: no store account, no internet.
 
 ## 2. Install

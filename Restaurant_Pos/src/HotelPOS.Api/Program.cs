@@ -61,6 +61,16 @@ builder.Services
 
 var app = builder.Build();
 
+// Phase 20.9: HSTS only when an HTTPS endpoint is configured (browsers ignore it on plain HTTP anyway). No
+// UseHttpsRedirection: the Windows terminals keep working on plain port 5000.
+// "Hsts:Enabled" lets the test host exercise this (tests run as "Testing", where HSTS is otherwise off).
+var hstsAllowed = !app.Environment.IsDevelopment() && !app.Environment.IsEnvironment("Testing")
+    || app.Configuration.GetValue<bool>("Hsts:Enabled");
+if (hstsAllowed && app.Configuration.GetSection("Kestrel:Endpoints:Https").Exists())
+{
+    app.UseHsts();
+}
+
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseSerilogRequestLogging(options =>
 {

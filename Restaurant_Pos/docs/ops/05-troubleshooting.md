@@ -17,6 +17,8 @@ Start with two checks: `http://<server>:5000/health` from the terminal's browser
 | A terminal is signed out with "This terminal has been disabled" | An admin deactivated the device | Administration → Devices → Activate, if intended. |
 | Waiters cannot see a screen they need | Role permissions changed | Administration → Roles & Permissions; changes reach signed-in users within the hour (next session renewal) or at once with "force re-login". |
 | Prints do not come out | Printer off/out of paper, or wrong printer on that terminal | Status bar shows print failures with Retry; Administration → Printers on that terminal. |
+| Browser says "Your connection is not private" / certificate error on `https://<server>:5001` | The root CA is not installed on that device, the address used is not in the certificate (name or IP changed), or the certificate expired (2 years) | Install `hotelpos-root-ca.cer` ([02 § 5](02-lan-and-firewall.md)). If the server's name or IP changed, or the certificate expired, run `new-lan-certificate.ps1` again with the current names and `configure-server.ps1 -CertificatePath <hotelpos.pfx> -CertificatePassword <password>`, then restart the service. |
+| Service will not start after installing; log mentions the certificate | The `.pfx` path or password in `appsettings.Production.json` is wrong or the file was moved | Re-run `configure-server.ps1 -CertificatePath … -CertificatePassword …` (or without them to create a new LAN certificate). |
 | Times on bills are wrong | Server clock or time zone | Set the server's time zone and enable internet time; restart the service. |
 
 ## Collecting information for support
