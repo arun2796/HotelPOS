@@ -344,7 +344,20 @@ else
                 return;
             }
 
-            if (result.IsTransient)
+            if (result.IsConflict)
+            {
+                // Another device changed the table/order. Keep the cart and the pending key (the draft is
+                // already persisted), re-read the server state and let the waiter send again.
+                Toasts.Error(WaiterApi.ConflictMessage);
+                if (IsAppend)
+                {
+                    await Api.GetOrderAsync(OrderId!.Value);
+                }
+
+                await Api.GetTableAsync(TableId);
+                await LoadAsync();
+            }
+            else if (result.IsTransient)
             {
                 Toasts.Error("Not confirmed by the server. Your items are kept; try again when the connection is back.");
             }

@@ -245,3 +245,10 @@ path), Api tests (three new events' audiences, day-end reminder), rendering test
 ## 14. Changes during implementation
 
 (filled while building)
+
+### 20.4 Reconnect and conflict hardening (G8, G9)
+
+- Desktop: the reconnect handling moved from `ShellViewModel.OnReconnected` into `Shell/ReconnectCoordinator`, which the shell owns. On `Reconnected` it refreshes the current page when it is `IRefreshable` (this covers the billing queue, which is only ever the current page: pages are not cached), reloads the restaurant name, and leaves one Info bell entry "Reconnected — refreshed at HH:mm". A repeat replaces the earlier entry instead of stacking. `MenuCache` and `ShiftBar` keep their own `Reconnected` subscriptions, unchanged.
+- No endpoint returns stored server notices (`ServerNotice` is push-only; the only notice endpoint is the admin POST), so notices missed during an outage cannot be reloaded. The bell entry marks the gap instead.
+- Web: `ApiResult<T>.IsConflict` is true for the `CONCURRENCY_CONFLICT` error code (HTTP 409); `WaiterApi.ConflictMessage` holds "Changed on another device — reloaded". `TableDetailsPage` shows it as an error toast and re-fetches the table and order. `OrderBuilderPage` shows it, re-reads the order, table and menu, and keeps the cart, the saved draft and the pending idempotency key. A conflict is a definite answer, so `IdempotentSender` does not retry it.
+- Tests: `ReconnectCoordinatorTests` (desktop, fake realtime client, 2) and `ConflictHandlingTests` (Client.Tests, stub HTTP handler, 3). No page-level bUnit test: the pages need a signed-in `WebRealtimeClient`, which opens a real SignalR connection.

@@ -213,7 +213,7 @@ else
         await RunAsync(async () =>
         {
             var result = await Api.OccupyAsync(Id, _guests, _detail!.Table.RowVersion);
-            return (result.Success, result.Message, result.Success ? $"{_detail.Table.Code} occupied." : null);
+            return (result.Success, result.Message, result.Success ? $"{_detail.Table.Code} occupied." : null, result.IsConflict);
         });
     }
 
@@ -223,7 +223,7 @@ else
         await RunAsync(async () =>
         {
             var result = await Api.ReleaseAsync(Id);
-            return (result.Success, result.Message, result.Success ? $"{_detail!.Table.Code} released." : null);
+            return (result.Success, result.Message, result.Success ? $"{_detail!.Table.Code} released." : null, result.IsConflict);
         });
     }
 
@@ -232,7 +232,7 @@ else
         await RunAsync(async () =>
         {
             var result = await Api.ServeAsync(_order!.Id);
-            return (result.Success, result.Message, result.Success ? "Marked as served." : null);
+            return (result.Success, result.Message, result.Success ? "Marked as served." : null, result.IsConflict);
         });
     }
 
@@ -242,7 +242,7 @@ else
         await RunAsync(async () =>
         {
             var result = await Sender.SendAsync(key, (k, ct) => Api.RequestBillAsync(_order!.Id, k, ct));
-            return (result.Success, result.Message, result.Success ? "Bill requested — the counter has been told." : null);
+            return (result.Success, result.Message, result.Success ? "Bill requested — the counter has been told." : null, result.IsConflict);
         });
     }
 
@@ -252,7 +252,7 @@ else
         await RunAsync(async () =>
         {
             var result = await Api.CancelOrderAsync(_order!.Id, OrderComposer.TrimNotes(_cancelReason));
-            return (result.Success, result.Message, result.Success ? "Order cancelled." : null);
+            return (result.Success, result.Message, result.Success ? "Order cancelled." : null, result.IsConflict);
         });
     }
 
@@ -260,12 +260,12 @@ else
 
     private void AddItems() => Navigation.NavigateTo($"tables/{Id}/order/{_order!.Id}/add");
 
-    private async Task RunAsync(Func<Task<(bool Ok, string Message, string? Success)>> action)
+    private async Task RunAsync(Func<Task<(bool Ok, string Message, string? Success, bool Conflict)>> action)
     {
         _busy = true;
         try
         {
-            var (ok, message, success) = await action();
+            var (ok, message, success, conflict) = await action();
             if (ok)
             {
                 if (success is not null)
@@ -275,7 +275,7 @@ else
             }
             else
             {
-                Toasts.Error(message);
+                Toasts.Error(conflict ? WaiterApi.ConflictMessage : message);
             }
 
             await LoadAsync();
