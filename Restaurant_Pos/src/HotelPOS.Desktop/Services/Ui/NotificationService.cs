@@ -36,7 +36,7 @@ public interface INotificationService
 public sealed class NotificationService : INotificationService
 {
     private const int MaxVisible = 4;
-    private static readonly TimeSpan KeepOnNavigation = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan KeepOnNavigation = TimeSpan.FromMilliseconds(250);
 
     private readonly IUiDispatcher _dispatcher;
     private readonly ILogger<NotificationService> _logger;

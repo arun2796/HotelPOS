@@ -76,6 +76,8 @@ public class LiveFlowScreenshots
 
     private static string Demo(string name) => name + Run;
 
+    private static string Phone => "98400123" + (Run.Length == 0 ? "45" : Run.PadLeft(2, '0'));
+
     private static readonly string ApiBaseUrl = System.Environment.GetEnvironmentVariable("HOTELPOS_LIVE_API") ?? "http://localhost:5000";
 
     private readonly ITestOutputHelper _output;
@@ -876,7 +878,7 @@ public class LiveFlowScreenshots
         menu.Items.NewItemCommand.Execute(null);
         var editor = menu.Items.Editor;
         editor.Name = Demo("Kothu Parotta");
-        editor.Code = "C01";
+        editor.Code = "C0" + (Run.Length == 0 ? "1" : Run);
         editor.Category = editor.Categories.FirstOrDefault(c => c.Name == Demo("Chef specials")) ?? editor.Categories.First();
         editor.Price = "180";
         editor.Tax = editor.Taxes.FirstOrDefault(t => t.Id is not null) ?? editor.Taxes.First();
@@ -1083,7 +1085,7 @@ public class LiveFlowScreenshots
         var customers = await NavigateAsync<CustomersViewModel>(shell, ModuleRegistry.Customers);
         customers.NewCustomerCommand.Execute(null);
         customers.Editor.Name = Demo("Ravi Kumar");
-        customers.Editor.Phone = "9840012345";
+        customers.Editor.Phone = Phone;
         customers.Editor.Email = "ravi.kumar@example.com";
         await RenderAsync(terminal, "40-customers-create-before");
         await DriveAsync(terminal, customers.SaveCustomerCommand.ExecuteAsync(null), "40-customers-create");
@@ -1113,7 +1115,7 @@ public class LiveFlowScreenshots
         else
         {
             bill.CustomerName = Demo("Ravi Kumar");
-            bill.CustomerPhone = "9840012345";
+            bill.CustomerPhone = Phone;
         }
 
         await DriveAsync(terminal, bill.SaveCustomerCommand.ExecuteAsync(null), "41-bill-attach-customer");

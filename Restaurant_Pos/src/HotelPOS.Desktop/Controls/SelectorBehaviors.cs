@@ -48,22 +48,28 @@ public static class SelectorBehaviors
             return;
         }
 
+        // Once now (the rows may already exist) and once more after layout, for a list that was just refilled.
+        Scroll(selector, item);
         selector.Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
         {
-            if (!ReferenceEquals(selector.SelectedItem, item))
+            if (ReferenceEquals(selector.SelectedItem, item))
             {
-                return;
-            }
-
-            switch (selector)
-            {
-                case DataGrid grid:
-                    grid.ScrollIntoView(item);
-                    break;
-                case ListBox list:
-                    list.ScrollIntoView(item);
-                    break;
+                selector.UpdateLayout();
+                Scroll(selector, item);
             }
         });
+    }
+
+    private static void Scroll(Selector selector, object item)
+    {
+        switch (selector)
+        {
+            case DataGrid grid:
+                grid.ScrollIntoView(item);
+                break;
+            case ListBox list:
+                list.ScrollIntoView(item);
+                break;
+        }
     }
 }
