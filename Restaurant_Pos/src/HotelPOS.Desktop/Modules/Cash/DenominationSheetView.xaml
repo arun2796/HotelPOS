@@ -9,9 +9,10 @@
              d:DesignWidth="760" d:DesignHeight="480">
 
   <UserControl.Resources>
-    <!-- One note or coin: touch steppers at least 48 px, the quantity can also be typed. -->
+    <!-- One note or coin: 44 px touch steppers (seven note rows then fit a 1366×800 screen without scrolling),
+         the quantity can also be typed. -->
     <DataTemplate x:Key="DenominationRow" DataType="{x:Type cash:DenominationRowViewModel}">
-      <Grid Margin="0,0,0,6">
+      <Grid Margin="0,0,0,4">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="96" />
           <ColumnDefinition Width="Auto" />
@@ -19,14 +20,14 @@
         </Grid.ColumnDefinitions>
         <TextBlock Text="{Binding Label}" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
         <StackPanel Grid.Column="1" Orientation="Horizontal">
-          <Button Command="{Binding DecrementCommand}" MinWidth="48" MinHeight="48" Padding="0"
+          <Button Command="{Binding DecrementCommand}" MinWidth="44" MinHeight="44" Padding="0"
                   AutomationProperties.Name="{Binding Label, StringFormat='One {0} less'}">
             <TextBlock Text="&#xE738;" Style="{StaticResource Text.Icon}" FontSize="14" />
           </Button>
-          <TextBox Text="{Binding QuantityText, UpdateSourceTrigger=PropertyChanged}" Width="72" MinHeight="48" Margin="6,0"
+          <TextBox Text="{Binding QuantityText, UpdateSourceTrigger=PropertyChanged}" Width="72" MinHeight="44" Margin="6,0"
                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center" MaxLength="6"
                    AutomationProperties.Name="{Binding Label, StringFormat='Number of {0}'}" />
-          <Button Command="{Binding IncrementCommand}" MinWidth="48" MinHeight="48" Padding="0"
+          <Button Command="{Binding IncrementCommand}" MinWidth="44" MinHeight="44" Padding="0"
                   AutomationProperties.Name="{Binding Label, StringFormat='One {0} more'}">
             <TextBlock Text="&#xE710;" Style="{StaticResource Text.Icon}" FontSize="14" />
           </Button>
@@ -61,7 +62,7 @@
       </ScrollViewer>
     </DockPanel>
 
-    <Border Grid.Row="1" Grid.ColumnSpan="3" Margin="0,12,0,0" Padding="16,12" CornerRadius="8"
+    <Border Grid.Row="1" Grid.ColumnSpan="3" Margin="0,8,0,0" Padding="16,8" CornerRadius="8"
             Background="{DynamicResource Brush.SurfaceAlt}">
       <Grid>
         <Grid.ColumnDefinitions>

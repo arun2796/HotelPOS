@@ -8,7 +8,7 @@
              d:DataContext="{d:DesignInstance cash:ShiftCountPanelViewModel}"
              d:DesignWidth="820" d:DesignHeight="640">
 
-  <Border Style="{StaticResource Dialog.Frame}" Width="820" MaxWidth="820" MaxHeight="660">
+  <Border Style="{StaticResource Dialog.Frame}" Width="820" MaxWidth="820" MaxHeight="700">
     <Grid>
       <Grid.RowDefinitions>
         <RowDefinition Height="Auto" />
@@ -22,7 +22,7 @@
       <StackPanel>
         <TextBlock Text="{Binding Title}" Style="{StaticResource Text.Title}" />
         <TextBlock Text="{Binding Subtitle}" Style="{StaticResource Text.Caption}" Margin="0,2,0,0" />
-        <TextBlock Text="{Binding CountCaption}" Style="{StaticResource Text.Body}" Margin="0,12,0,12" />
+        <TextBlock Text="{Binding CountCaption}" Style="{StaticResource Text.Body}" Margin="0,8,0,8" />
       </StackPanel>
 
       <StackPanel Grid.Row="1" Margin="0,0,0,12" Visibility="{Binding IsHandOver, Converter={StaticResource BoolToVisibility}}">

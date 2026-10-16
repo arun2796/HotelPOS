@@ -10,7 +10,7 @@ public interface IDialogService
 
     Task AlertAsync(string title, string message);
 
-    Task<string?> PromptAsync(string title, string message, string confirmText = "OK", bool isPassword = false);
+    Task<string?> PromptAsync(string title, string message, string confirmText = "OK", bool isPassword = false, string cancelText = "Cancel");
 
     Task<ManagerApprovalDto?> RequestApprovalAsync(string title, string message);
 }
@@ -31,9 +31,9 @@ public sealed partial class DialogService : ObservableObject, IDialogService
     public Task AlertAsync(string title, string message) =>
         ShowAsync(new DialogViewModel(title, message, "OK", cancelText: null, destructive: false, hasInput: false, isPassword: false));
 
-    public async Task<string?> PromptAsync(string title, string message, string confirmText = "OK", bool isPassword = false)
+    public async Task<string?> PromptAsync(string title, string message, string confirmText = "OK", bool isPassword = false, string cancelText = "Cancel")
     {
-        var result = await ShowAsync(new DialogViewModel(title, message, confirmText, "Cancel", destructive: false, hasInput: true, isPassword));
+        var result = await ShowAsync(new DialogViewModel(title, message, confirmText, cancelText, destructive: false, hasInput: true, isPassword));
         return result.Confirmed ? result.Input : null;
     }
 

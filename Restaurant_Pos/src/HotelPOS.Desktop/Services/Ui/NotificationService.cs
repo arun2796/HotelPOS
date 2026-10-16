@@ -27,11 +27,16 @@ public interface INotificationService
 
     // A toast with a button, e.g. "Open" to jump to the table or bill the notice is about.
     void Notify(ToastKind kind, string message, string actionText, Action action);
+
+    // Called when the shell shows another page: toasts about the page just left would only cover the new one. A
+    // toast raised in the same moment (by the action that navigated) is kept, because it is about the new page.
+    void DismissStale();
 }
 
 public sealed class NotificationService : INotificationService
 {
     private const int MaxVisible = 4;
+    private static readonly TimeSpan KeepOnNavigation = TimeSpan.FromSeconds(1);
 
     private readonly IUiDispatcher _dispatcher;
     private readonly ILogger<NotificationService> _logger;
@@ -65,8 +70,20 @@ public sealed class NotificationService : INotificationService
 
     public void Notify(ToastKind kind, string message, string actionText, Action action)
     {
-        var duration = kind == ToastKind.Error ? TimeSpan.FromSeconds(20) : TimeSpan.FromSeconds(8);
+        var duration = kind == ToastKind.Error ? TimeSpan.FromSeconds(12) : TimeSpan.FromSeconds(6);
         Show(kind, message, duration, new ToastAction(actionText, action));
+    }
+
+    public void DismissStale()
+    {
+        _dispatcher.Post(() =>
+        {
+            var cutoff = DateTime.UtcNow - KeepOnNavigation;
+            foreach (var toast in Items.Where(t => t.ShownAtUtc < cutoff).ToList())
+            {
+                Items.Remove(toast);
+            }
+        });
     }
 
     private void Show(ToastKind kind, string message, TimeSpan duration, ToastAction? action = null)
@@ -110,6 +127,8 @@ public sealed partial class ToastViewModel : ObservableObject
     public ToastKind Kind { get; }
 
     public string Message { get; }
+
+    public DateTime ShownAtUtc { get; } = DateTime.UtcNow;
 
     public string? ActionText => _action?.Text;
 

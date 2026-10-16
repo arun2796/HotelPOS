@@ -71,8 +71,8 @@
           <DataGridTextColumn Header="SIZE" Binding="{Binding Size}" Width="0.6*" MinWidth="70" />
           <DataGridTextColumn Header="DURATION" Binding="{Binding Duration}" Width="0.7*" MinWidth="95" />
           <DataGridTextColumn Header="TRIGGER" Binding="{Binding Trigger}" Width="1*" MinWidth="110" />
-          <DataGridTextColumn Header="FILE" Binding="{Binding Backup.FileName}" Width="1.6*" MinWidth="180" />
-          <DataGridTextColumn Header="ERROR" Binding="{Binding Backup.Error}" Width="2*" MinWidth="120" />
+          <DataGridTextColumn Header="FILE" Binding="{Binding Backup.FileName}" Width="2*" MinWidth="240" ElementStyle="{StaticResource Text.GridTrim}" />
+          <DataGridTextColumn Header="ERROR" Binding="{Binding Backup.Error}" Width="1.6*" MinWidth="120" ElementStyle="{StaticResource Text.GridTrim}" />
         </DataGrid.Columns>
       </DataGrid>
       <ProgressBar IsIndeterminate="True" Height="3" VerticalAlignment="Top"

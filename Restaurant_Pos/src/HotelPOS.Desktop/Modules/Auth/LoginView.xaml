@@ -86,7 +86,17 @@
               <TextBlock Text="{Binding TerminalDescription}" Style="{StaticResource Text.Caption}" />
             </StackPanel>
             <StackPanel Grid.Column="2" VerticalAlignment="Top">
-              <Button Content="Retry" Command="{Binding CheckServerCommand}" Style="{StaticResource Button.Link}" HorizontalAlignment="Right" />
+              <Button Content="Retry" Command="{Binding CheckServerCommand}" HorizontalAlignment="Right">
+                <Button.Style>
+                  <Style TargetType="Button" BasedOn="{StaticResource Button.Link}">
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding ServerState}" Value="Reachable">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </Button.Style>
+              </Button>
               <Button Content="Server settings" Command="{Binding OpenServerSettingsCommand}" Style="{StaticResource Button.Link}" />
             </StackPanel>
           </Grid>

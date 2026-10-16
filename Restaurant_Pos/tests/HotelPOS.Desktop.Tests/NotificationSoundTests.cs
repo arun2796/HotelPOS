@@ -41,8 +41,10 @@ public sealed class NotificationSoundTests
     private NotificationRouter Router(params string[] roles)
     {
         _session.User.Returns(new CurrentUserDto { Id = 7, Username = "u", DisplayName = "U", Roles = roles });
+        var queue = Substitute.For<HotelPOS.Desktop.Services.Printing.IPrintQueue>();
+        queue.Failed.Returns(Array.Empty<HotelPOS.Desktop.Services.Printing.FailedPrintJob>());
         var router = new NotificationRouter(_realtime, _session, _notices, _toasts, Substitute.For<INavigationService>(),
-            new NotificationPreferences(_preferences, _session), _sound);
+            new NotificationPreferences(_preferences, _session), _sound, InMemorySettings.Configured(), queue);
         router.Start();
         return router;
     }

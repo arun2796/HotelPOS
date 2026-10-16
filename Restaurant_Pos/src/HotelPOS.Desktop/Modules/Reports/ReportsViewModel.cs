@@ -176,8 +176,8 @@ public sealed partial class ReportsViewModel : ViewModelBase, INavigationAware
             }
 
             SummaryText = IsMonthly
-                ? $"{SelectedReport.Title} · {Year} · {Table!.Rows.Count} rows"
-                : $"{SelectedReport.Title} · {FromDate:d MMM yyyy} – {ToDate:d MMM yyyy} · {Table!.Rows.Count} rows";
+                ? $"{SelectedReport.Title} · {Year} · {Plural.Count(Table!.Rows.Count, "row")}"
+                : $"{SelectedReport.Title} · {FromDate:d MMM yyyy} – {ToDate:d MMM yyyy} · {Plural.Count(Table!.Rows.Count, "row")}";
         });
     }
 
@@ -205,7 +205,7 @@ public sealed partial class ReportsViewModel : ViewModelBase, INavigationAware
         try
         {
             await File.WriteAllBytesAsync(path, result.Data);
-            _notifications.Success($"Saved {Path.GetFileName(path)}.");
+            _notifications.Notify(ToastKind.Success, $"Saved {Path.GetFileName(path)}.", "Open", () => _files.Open(path));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -243,7 +243,7 @@ public sealed partial class ReportsViewModel : ViewModelBase, INavigationAware
         try
         {
             await File.WriteAllBytesAsync(path, result.Data);
-            _notifications.Success($"Saved {Path.GetFileName(path)}.");
+            _notifications.Notify(ToastKind.Success, $"Saved {Path.GetFileName(path)}.", "Open", () => _files.Open(path));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -295,7 +295,7 @@ public sealed partial class ReportsViewModel : ViewModelBase, INavigationAware
 
         foreach (var row in rows)
         {
-            table.Rows.Add(columns.Select(c => (object)Display(c.Property.GetValue(row))).ToArray());
+            table.Rows.Add(columns.Select(c => (object)Display(c.Property.GetValue(row), c.Header)).ToArray());
         }
 
         NumericColumns = columns.Where(c => c.IsNumeric).Select(c => c.Header).ToHashSet();
@@ -304,7 +304,7 @@ public sealed partial class ReportsViewModel : ViewModelBase, INavigationAware
         {
             foreach (var column in columns.Where(c => c.HasTotal))
             {
-                Totals.Add($"{column.Header}: {Display(TotalOf(rows, column))}");
+                Totals.Add($"{column.Header}: {Display(TotalOf(rows, column), column.Header)}");
             }
         }
 
@@ -317,9 +317,15 @@ public sealed partial class ReportsViewModel : ViewModelBase, INavigationAware
 
     public bool HasNoRows => Table is { Rows.Count: 0 };
 
-    public static string Display(object? value) => value switch
+    public static string Display(object? value) => Display(value, null);
+
+    // Money columns show two decimals; a percentage or a duration in minutes reads better with one ("Late 20%",
+    // "Average accept minutes 6.9"), and the column header is the only thing that tells them apart.
+    public static string Display(object? value, string? header) => value switch
     {
         null => string.Empty,
+        decimal d when IsPercent(header) => d.ToString("0.#", CultureInfo.CurrentCulture) + "%",
+        decimal d when IsMinutes(header) => d.ToString("0.#", CultureInfo.CurrentCulture),
         decimal d => Money.Format(d),
         double d => d.ToString("N1", CultureInfo.CurrentCulture),
         int or long => Convert.ToInt64(value, CultureInfo.InvariantCulture).ToString("N0", CultureInfo.CurrentCulture),
@@ -327,6 +333,10 @@ public sealed partial class ReportsViewModel : ViewModelBase, INavigationAware
         DateOnly d => d.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture),
         _ => ReportSchema.Format(value),
     };
+
+    private static bool IsPercent(string? header) => header?.Contains("percent", StringComparison.OrdinalIgnoreCase) == true;
+
+    private static bool IsMinutes(string? header) => header?.Contains("minutes", StringComparison.OrdinalIgnoreCase) == true;
 
     private static object TotalOf<T>(IReadOnlyList<T> rows, ReportColumn column)
     {

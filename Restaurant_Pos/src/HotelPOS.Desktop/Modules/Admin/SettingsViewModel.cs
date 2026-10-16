@@ -125,6 +125,12 @@ public sealed partial class SettingsViewModel : ViewModelBase, INavigationAware,
 
     public ObservableCollection<SettingItemViewModel> Items { get; } = new();
 
+    // The same items under their headings (SettingSections), which the side navigation jumps to.
+    public ObservableCollection<SettingGroupViewModel> Groups { get; } = new();
+
+    // Headings for the side navigation: the groups, then the per-terminal Notifications section.
+    public ObservableCollection<string> Sections { get; } = new();
+
     // Per-terminal toast and sound choices (Phase 20.2); saved as soon as a box is ticked, not by "Save changes".
     public ObservableCollection<NotificationPreferenceItemViewModel> Notifications { get; } = new();
 
@@ -151,6 +157,16 @@ public sealed partial class SettingsViewModel : ViewModelBase, INavigationAware,
         {
             Items.Add(new SettingItemViewModel(dto));
         }
+
+        Groups.Clear();
+        Sections.Clear();
+        foreach (var group in SettingSections.Group(Items))
+        {
+            Groups.Add(group);
+            Sections.Add(group.Name);
+        }
+
+        Sections.Add(SettingSections.Notifications);
     });
 
     protected override void OnBusyChanged() => SaveCommand.NotifyCanExecuteChanged();

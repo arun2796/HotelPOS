@@ -38,6 +38,30 @@ public sealed class GstViewModelTests
     }
 
     [Fact]
+    public void TheHub_OpensOnTheCurrentMonth()
+    {
+        var hub = Hub();
+
+        hub.Year.Should().Be(DateTime.Today.Year);
+        hub.Month.Should().Be(DateTime.Today.Month);
+    }
+
+    [Fact]
+    public async Task AMonthWithoutInvoices_ShowsNoErrorBanner()
+    {
+        var hub = Hub();
+        _api.GetGstr1Async(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(ApiResult<Gstr1Dto>.Ok(new Gstr1Dto
+        {
+            Period = "2026-09", Totals = new GstTotalsDto { Invoices = 0 },
+        }));
+
+        await hub.RunCommand.ExecuteAsync(null);
+
+        hub.ValidationBanner.Should().BeNull("the validation findings stay on their tab");
+        hub.HasNoRows.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task TheHub_ShowsTheSectionOfTheTab_AndWarnsWhenValidationHasErrors()
     {
         var hub = Hub();

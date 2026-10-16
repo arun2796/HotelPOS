@@ -9,10 +9,25 @@ public interface IFilePicker
     string? PickSavePath(string suggestedFileName, string filter);
 
     string? PickImportFile();
+
+    // Opens a file the app just saved (export, PDF) in whatever Windows associates with it.
+    void Open(string path);
 }
 
 public sealed class WpfFilePicker : IFilePicker
 {
+    public void Open(string path)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or System.IO.IOException)
+        {
+            // No associated program, or the file is gone: nothing to do beyond not crashing the app.
+        }
+    }
+
     public string? PickImage()
     {
         var dialog = new OpenFileDialog

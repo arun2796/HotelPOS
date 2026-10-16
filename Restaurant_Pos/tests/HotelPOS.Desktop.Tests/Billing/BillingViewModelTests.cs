@@ -338,14 +338,50 @@ public sealed class BillingViewModelTests
     }
 
 
-    private BillDetailViewModel DetailViewModel(string role = "Cashier", IDialogService? dialogs = null, ICustomersApi? customers = null)
+    [Fact]
+    public async Task BillLines_ShowTheChosenOptionsAndTheNote_FromTheOrder()
+    {
+        var bill = Detail(BillStatus.Open, balance: 630m) with
+        {
+            OrderId = 77,
+            GuestCount = 1,
+            Items = new[]
+            {
+                new BillItemDto { Id = 1, OrderItemId = 501, ItemName = "Chicken Biryani", Quantity = 2, UnitPrice = 250m, ModifiersAmount = 30m, LineSubtotal = 560m },
+                new BillItemDto { Id = 2, OrderItemId = 502, ItemName = "Paneer Tikka", Quantity = 1, UnitPrice = 180m, LineSubtotal = 180m },
+                new BillItemDto { Id = 3, OrderItemId = 503, ItemName = "Butter Naan", Quantity = 3, UnitPrice = 40m, LineSubtotal = 120m },
+            },
+        };
+        _api.GetAsync(9, Arg.Any<CancellationToken>()).Returns(ApiResult<BillDetailDto>.Ok(bill));
+        _api.GetPaymentMethodsAsync(false, Arg.Any<CancellationToken>()).Returns(ApiResult<List<PaymentMethodDto>>.Ok(Methods.ToList()));
+        var orders = Substitute.For<IOrdersApi>();
+        orders.GetAsync(77, Arg.Any<CancellationToken>()).Returns(ApiResult<Contracts.Orders.OrderDetailDto>.Ok(new Contracts.Orders.OrderDetailDto
+        {
+            Id = 77,
+            Items = new[]
+            {
+                new Contracts.Orders.OrderItemDto { Id = 501, Modifiers = new[] { new Contracts.Orders.OrderItemModifierDto(1, "Spicy", 0m), new Contracts.Orders.OrderItemModifierDto(2, "Extra raita", 30m) } },
+                new Contracts.Orders.OrderItemDto { Id = 502, Notes = "Less oil", Modifiers = new[] { new Contracts.Orders.OrderItemModifierDto(3, "Medium", 0m) } },
+                new Contracts.Orders.OrderItemDto { Id = 503 },
+            },
+        }));
+        var vm = DetailViewModel(orders: orders);
+
+        await vm.OnNavigatedToAsync(9);
+
+        vm.Lines.Select(l => l.Detail).Should().Equal("Spicy, Extra raita (+30.00 each)", "Medium · Note: Less oil", null);
+        vm.Subtitle.Should().Contain("1 guest ").And.NotContain("guests");
+        vm.Dispose();
+    }
+
+    private BillDetailViewModel DetailViewModel(string role = "Cashier", IDialogService? dialogs = null, ICustomersApi? customers = null, IOrdersApi? orders = null)
     {
         var session = Substitute.For<IAuthSession>();
         session.User.Returns(TestData.Login("cashier1", roles: role).User);
         var system = Substitute.For<ISystemApi>();
         system.GetPublicSettingsAsync(Arg.Any<CancellationToken>()).Returns(ApiResult<List<Contracts.Admin.SettingDto>>.Ok(new List<Contracts.Admin.SettingDto>()));
         return new BillDetailViewModel(_api, system, new FakeRealtimeClient(), Substitute.For<INavigationService>(),
-            dialogs ?? Substitute.For<IDialogService>(), Substitute.For<INotificationService>(), session, Substitute.For<HotelPOS.Desktop.Services.Printing.IDocumentPrinter>(), customers: customers);
+            dialogs ?? Substitute.For<IDialogService>(), Substitute.For<INotificationService>(), session, Substitute.For<HotelPOS.Desktop.Services.Printing.IDocumentPrinter>(), customers: customers, orders: orders);
     }
 
     private static BillSummaryDto Summary(int id, string table, string? claimedBy, int minutesAgo) => new()

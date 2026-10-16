@@ -223,7 +223,7 @@ public sealed partial class DashboardViewModel : ViewModelBase, INavigationAware
             Money.Format(p.NetSales),
             max == 0 ? 0 : (double)(p.NetSales / max),
             p.Day == d.BusinessDay,
-            Money.Compact(p.NetSales))));
+            p.NetSales == 0 ? string.Empty : Money.Compact(p.NetSales))));
         OnPropertyChanged(nameof(HasTopItems));
         await LoadPaymentSplitAsync(d.BusinessDay);
         await LoadKitchenAsync(d.BusinessDay);
@@ -285,7 +285,7 @@ public sealed partial class DashboardViewModel : ViewModelBase, INavigationAware
         foreach (var (row, index) in rows.Select((r, i) => (r, i)))
         {
             var sweep = (double)(row.Net / total) * 360;
-            slices.Add(new ChartSlice(row.Method, "₹" + row.Net.ToString("N0", CultureInfo.CurrentCulture), $"{row.Net / total * 100:0}%", index % ChartColours,
+            slices.Add(new ChartSlice(row.Method, Money.Format(row.Net), $"{row.Net / total * 100:0}%", index % ChartColours,
                 ChartGeometry.RingSegment(angle, sweep, 72, 20)));
             angle += sweep;
         }

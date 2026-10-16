@@ -58,6 +58,9 @@ public sealed record PrintFailedEvent : RealtimeEvent
     public Print.PrintOutput Output { get; init; }
     public string? Error { get; init; }
     public string? DeviceName { get; init; }
+
+    // The number people know the document by (invoice number, ticket number); null for a document without one.
+    public string? DocumentNumber { get; init; }
 }
 
 // A payment was rejected (validation or a changed bill). Sent only to the terminal that tried it; EntityId is the bill.

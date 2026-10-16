@@ -66,25 +66,29 @@
                  Style="{StaticResource NavList}"
                  ItemContainerStyle="{StaticResource NavItem}" />
 
+        <!-- Name and role get the full width; the three actions sit on their own row underneath. -->
         <Border Grid.Row="2" BorderBrush="{DynamicResource Brush.SidebarDivider}" BorderThickness="0,1,0,0" Padding="16,12">
           <Grid>
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="Auto" />
               <ColumnDefinition Width="*" />
-              <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
             <Border Width="40" Height="40" CornerRadius="20" Background="{DynamicResource Brush.Primary}" ToolTip="{Binding UserDisplayName}">
               <TextBlock Text="{Binding UserInitials}" Foreground="White" FontWeight="SemiBold"
                          HorizontalAlignment="Center" VerticalAlignment="Center" />
             </Border>
-            <StackPanel Grid.Column="1" Margin="10,0,4,0" VerticalAlignment="Center"
+            <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center"
                         Visibility="{Binding IsSidebarCollapsed, Converter={StaticResource InverseBoolToVisibility}}">
               <TextBlock Text="{Binding UserDisplayName}" Foreground="{DynamicResource Brush.SidebarTextActive}" FontWeight="SemiBold"
-                         FontSize="13" TextTrimming="CharacterEllipsis" />
+                         FontSize="13" TextTrimming="CharacterEllipsis" ToolTip="{Binding UserDisplayName}" />
               <TextBlock Text="{Binding RolesText}" Foreground="{DynamicResource Brush.SidebarTextMuted}" FontSize="12"
-                         TextTrimming="CharacterEllipsis" />
+                         TextTrimming="CharacterEllipsis" ToolTip="{Binding RolesText}" />
             </StackPanel>
-            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center"
+            <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="-6,8,0,0"
                         Visibility="{Binding IsSidebarCollapsed, Converter={StaticResource InverseBoolToVisibility}}">
               <Button Style="{StaticResource Button.Icon}" Width="36" Height="36" MinWidth="36" MinHeight="36"
                       Foreground="{DynamicResource Brush.SidebarText}" Command="{Binding OpenNotificationPreferencesCommand}"
@@ -157,17 +161,22 @@
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="Auto" />
           </Grid.ColumnDefinitions>
-          <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+          <Grid VerticalAlignment="Center">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
             <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource Brush.PrimarySoft}">
               <TextBlock Text="{Binding SelectedNavItem.Glyph}" Style="{StaticResource Text.Icon}" FontSize="16"
                          Foreground="{DynamicResource Brush.Primary}" HorizontalAlignment="Center" />
             </Border>
-            <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+            <!-- The description takes whatever the title column has and trims with a tooltip, never a hard cut. -->
+            <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
               <TextBlock Text="{Binding SelectedNavItem.Title}" FontSize="16" FontWeight="SemiBold" />
               <TextBlock Text="{Binding PageDescription}" Style="{StaticResource Text.Caption}" TextWrapping="NoWrap"
-                         TextTrimming="CharacterEllipsis" MaxWidth="420" />
+                         TextTrimming="CharacterEllipsis" ToolTip="{Binding PageDescription}" />
             </StackPanel>
-          </StackPanel>
+          </Grid>
 
           <!-- Looks like a search field; opens the command palette. -->
           <Button Grid.Column="1" Command="{Binding OpenPaletteCommand}" Width="320" Height="36" Margin="16,0" Padding="12,0" VerticalAlignment="Center"

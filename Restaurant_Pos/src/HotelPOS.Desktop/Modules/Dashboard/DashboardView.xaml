@@ -34,7 +34,8 @@
         <TextBlock Text="{Binding ErrorMessage}" Style="{StaticResource Text.Error}" />
       </Border>
 
-      <controls:KpiStrip Grid.Row="2" ItemsSource="{Binding Tiles}" Columns="3">
+      <!-- One row of six tiles: at 1366×800 the charts and the operations panels then fit without scrolling. -->
+      <controls:KpiStrip Grid.Row="2" ItemsSource="{Binding Tiles}" Columns="6">
         <controls:KpiStrip.ItemTemplate>
           <DataTemplate DataType="{x:Type dashboard:KpiTile}">
             <controls:KpiTile Title="{Binding Title}" Value="{Binding Value}" Detail="{Binding Detail}" Glyph="{Binding Glyph}"
@@ -56,8 +57,8 @@
         <Border Style="{StaticResource Card}" Padding="20" Margin="0,0,16,16">
           <StackPanel>
             <TextBlock Text="Net sales · last 7 days" Style="{StaticResource Text.Subtitle}" />
-            <TextBlock Text="Today in blue; hover a bar for the exact amount." Style="{StaticResource Text.Caption}" />
-            <ItemsControl ItemsSource="{Binding DayBars}" Focusable="False" Height="210" Margin="0,16,0,0">
+            <TextBlock Text="Today is the solid bar; hover a bar for the exact amount." Style="{StaticResource Text.Caption}" />
+            <ItemsControl ItemsSource="{Binding DayBars}" Focusable="False" Height="170" Margin="0,12,0,0">
               <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
                   <UniformGrid Rows="1" />

@@ -69,7 +69,12 @@ public class LiveFlowScreenshots
 {
     private const int Width = 1366;
     private const int Height = 800;
-    private const string TableCode = "T02";
+    // HOTELPOS_LIVE_TABLE picks the table the flows use; HOTELPOS_LIVE_RUN is a suffix for the demo names (user, section,
+    // table, category, item, customer) so a second run does not collide with the records of the first.
+    private static readonly string TableCode = System.Environment.GetEnvironmentVariable("HOTELPOS_LIVE_TABLE") ?? "T02";
+    private static readonly string Run = System.Environment.GetEnvironmentVariable("HOTELPOS_LIVE_RUN") ?? string.Empty;
+
+    private static string Demo(string name) => name + Run;
 
     private static readonly string ApiBaseUrl = System.Environment.GetEnvironmentVariable("HOTELPOS_LIVE_API") ?? "http://localhost:5000";
 
@@ -702,7 +707,7 @@ public class LiveFlowScreenshots
         // Users: create, edit, reset password, deactivate (then reactivate quietly), unlock after a lockout.
         var users = await NavigateAsync<UsersViewModel>(shell, ModuleRegistry.Users);
         users.NewUserCommand.Execute(null);
-        users.Editor.Username = "waiter9";
+        users.Editor.Username = Demo("waiter9");
         users.Editor.DisplayName = "Kavya (Waiter)";
         users.Editor.Password = "Pass@123";
         foreach (var role in users.Editor.Roles)
@@ -719,7 +724,7 @@ public class LiveFlowScreenshots
             users.CancelEditCommand.Execute(null);
         }
 
-        UserDto? Waiter9() => users.Users.FirstOrDefault(u => u.Username == "waiter9");
+        UserDto? Waiter9() => users.Users.FirstOrDefault(u => u.Username == Demo("waiter9"));
         users.SelectedUser = Waiter9();
         if (users.SelectedUser is not null)
         {
@@ -752,7 +757,7 @@ public class LiveFlowScreenshots
             {
                 for (var i = 0; i < 8; i++)
                 {
-                    var attempt = await locker.Get<IAuthApi>().LoginAsync(new Contracts.Auth.LoginRequest { Username = "waiter9", Password = "wrong" + i, DeviceName = "VERIFY-01", DeviceType = DeviceType.Waiter });
+                    var attempt = await locker.Get<IAuthApi>().LoginAsync(new Contracts.Auth.LoginRequest { Username = Demo("waiter9"), Password = "wrong" + i, DeviceName = "VERIFY-01", DeviceType = DeviceType.Waiter });
                     if (attempt.HasError(Contracts.Common.ErrorCodes.AccountLocked) || attempt.HasError(Contracts.Common.ErrorCodes.RateLimited))
                     {
                         Note($"waiter9 lock attempt {i + 1}: {attempt.ErrorCode}");
@@ -804,7 +809,7 @@ public class LiveFlowScreenshots
         floor.SelectedTab = FloorViewModel.SectionsTab;
         await floor.Sections.LoadAsync();
         floor.Sections.NewSectionCommand.Execute(null);
-        floor.Sections.Editor.Name = "Terrace";
+        floor.Sections.Editor.Name = Demo("Terrace");
         await RenderAsync(terminal, "07-sections-add-before");
         await DriveAsync(terminal, floor.Sections.SaveSectionCommand.ExecuteAsync(null), "07-sections-add");
         await RenderAsync(terminal, "07-sections-add-after");
@@ -817,9 +822,9 @@ public class LiveFlowScreenshots
         floor.SelectedTab = FloorViewModel.TablesTab;
         await floor.Tables.LoadAsync();
         floor.Tables.NewTableCommand.Execute(null);
-        floor.Tables.Editor.Code = "X01";
-        floor.Tables.Editor.Name = "Terrace 1";
-        floor.Tables.Editor.Section = floor.Tables.Editor.Sections.FirstOrDefault(s => s.Name == "Terrace") ?? floor.Tables.Editor.Sections.First();
+        floor.Tables.Editor.Code = Demo("X01");
+        floor.Tables.Editor.Name = Demo("Terrace 1");
+        floor.Tables.Editor.Section = floor.Tables.Editor.Sections.FirstOrDefault(s => s.Name == Demo("Terrace")) ?? floor.Tables.Editor.Sections.First();
         floor.Tables.Editor.Capacity = "2";
         await RenderAsync(terminal, "08-tables-add-before");
         await DriveAsync(terminal, floor.Tables.SaveTableCommand.ExecuteAsync(null), "08-tables-add");
@@ -830,23 +835,23 @@ public class LiveFlowScreenshots
             floor.Tables.CancelEditCommand.Execute(null);
         }
 
-        floor.Tables.SelectedRow = floor.Tables.Tables.FirstOrDefault(t => t.Table.Code == "X01");
+        floor.Tables.SelectedRow = floor.Tables.Tables.FirstOrDefault(t => t.Table.Code == Demo("X01"));
         if (floor.Tables.SelectedRow is not null)
         {
             floor.Tables.EditCommand.Execute(null);
-            floor.Tables.Editor.Name = "Terrace window";
+            floor.Tables.Editor.Name = Demo("Terrace window");
             await RenderAsync(terminal, "09-tables-rename-before");
             await DriveAsync(terminal, floor.Tables.SaveTableCommand.ExecuteAsync(null), "09-tables-rename");
             await RenderAsync(terminal, "09-tables-rename-after");
 
-            floor.Tables.SelectedRow = floor.Tables.Tables.FirstOrDefault(t => t.Table.Code == "X01");
+            floor.Tables.SelectedRow = floor.Tables.Tables.FirstOrDefault(t => t.Table.Code == Demo("X01"));
             floor.Tables.EditCommand.Execute(null);
             floor.Tables.Editor.IsActive = false;
             await RenderAsync(terminal, "10-tables-deactivate-before");
             await DriveAsync(terminal, floor.Tables.SaveTableCommand.ExecuteAsync(null), "10-tables-deactivate");
             floor.Tables.ShowInactive = true;
             await floor.Tables.LoadAsync();
-            floor.Tables.SelectedRow = floor.Tables.Tables.FirstOrDefault(t => t.Table.Code == "X01");
+            floor.Tables.SelectedRow = floor.Tables.Tables.FirstOrDefault(t => t.Table.Code == Demo("X01"));
             await RenderAsync(terminal, "10-tables-deactivate-after");
         }
 
@@ -856,7 +861,7 @@ public class LiveFlowScreenshots
         await menu.SelectedTab.LoadAsync();
         var categories = (CategoriesPageViewModel)menu.SelectedTab;
         categories.NewCategoryCommand.Execute(null);
-        categories.Editor.Name = "Chef specials";
+        categories.Editor.Name = Demo("Chef specials");
         await RenderAsync(terminal, "11-menu-category-create-before");
         await DriveAsync(terminal, categories.SaveCategoryCommand.ExecuteAsync(null), "11-menu-category-create");
         await RenderAsync(terminal, "11-menu-category-create-after");
@@ -870,9 +875,9 @@ public class LiveFlowScreenshots
         await menu.Items.LoadAsync();
         menu.Items.NewItemCommand.Execute(null);
         var editor = menu.Items.Editor;
-        editor.Name = "Kothu Parotta";
+        editor.Name = Demo("Kothu Parotta");
         editor.Code = "C01";
-        editor.Category = editor.Categories.FirstOrDefault(c => c.Name == "Chef specials") ?? editor.Categories.First();
+        editor.Category = editor.Categories.FirstOrDefault(c => c.Name == Demo("Chef specials")) ?? editor.Categories.First();
         editor.Price = "180";
         editor.Tax = editor.Taxes.FirstOrDefault(t => t.Id is not null) ?? editor.Taxes.First();
         editor.Station = editor.Stations.FirstOrDefault();
@@ -889,11 +894,11 @@ public class LiveFlowScreenshots
         menu.Items.CancelEditCommand.Execute(null);
         await menu.Items.LoadAsync();
 
-        menu.Items.SelectedItem = menu.Items.Items.FirstOrDefault(i => i.Name == "Kothu Parotta") ?? menu.Items.Items.First();
+        menu.Items.SelectedItem = menu.Items.Items.FirstOrDefault(i => i.Name == Demo("Kothu Parotta")) ?? menu.Items.Items.First();
         await RenderAsync(terminal, "13-menu-sold-out-before");
         await DriveAsync(terminal, menu.Items.ToggleSoldOutCommand.ExecuteAsync(null), "13-menu-sold-out", Ok);
         await RenderAsync(terminal, "13-menu-sold-out-after");
-        var soldOut = menu.Items.SelectedItem ?? menu.Items.Items.FirstOrDefault(i => i.Name == "Kothu Parotta");
+        var soldOut = menu.Items.SelectedItem ?? menu.Items.Items.FirstOrDefault(i => i.Name == Demo("Kothu Parotta"));
         menu.Items.SelectedItem = soldOut;
         await RenderAsync(terminal, "14-menu-back-in-stock-before");
         await DriveAsync(terminal, menu.Items.ToggleSoldOutCommand.ExecuteAsync(null), "14-menu-back-in-stock", Ok);
@@ -1077,7 +1082,7 @@ public class LiveFlowScreenshots
         // Customers: create one.
         var customers = await NavigateAsync<CustomersViewModel>(shell, ModuleRegistry.Customers);
         customers.NewCustomerCommand.Execute(null);
-        customers.Editor.Name = "Ravi Kumar";
+        customers.Editor.Name = Demo("Ravi Kumar");
         customers.Editor.Phone = "9840012345";
         customers.Editor.Email = "ravi.kumar@example.com";
         await RenderAsync(terminal, "40-customers-create-before");
@@ -1100,14 +1105,14 @@ public class LiveFlowScreenshots
         bill.CustomerSearch = "Ravi";
         await bill.SearchCustomersAsync();
         await RenderAsync(terminal, "41-bill-attach-customer-before");
-        var match = bill.CustomerMatches.FirstOrDefault(c => c.Name == "Ravi Kumar") ?? bill.CustomerMatches.FirstOrDefault();
+        var match = bill.CustomerMatches.FirstOrDefault(c => c.Name == Demo("Ravi Kumar")) ?? bill.CustomerMatches.FirstOrDefault();
         if (match is not null)
         {
             bill.PickCustomerCommand.Execute(match);
         }
         else
         {
-            bill.CustomerName = "Ravi Kumar";
+            bill.CustomerName = Demo("Ravi Kumar");
             bill.CustomerPhone = "9840012345";
         }
 

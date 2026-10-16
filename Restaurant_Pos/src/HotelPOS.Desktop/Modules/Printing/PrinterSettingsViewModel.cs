@@ -85,6 +85,10 @@ public sealed partial class PrinterProfileEditor : ObservableObject
     [ObservableProperty]
     private string? _testResult;
 
+    // True when the last test page did not come out: the result line turns red.
+    [ObservableProperty]
+    private bool _testFailed;
+
     [ObservableProperty]
     private bool _isTesting;
 
@@ -226,20 +230,25 @@ public sealed partial class PrinterSettingsViewModel : ViewModelBase, INavigatio
         editor.Error = error;
         if (profile is null)
         {
+            editor.TestFailed = true;
             editor.TestResult = error ?? "Enable the printer first.";
             return;
         }
 
         editor.IsTesting = true;
+        editor.TestFailed = false;
         editor.TestResult = "Printing…";
         try
         {
             await _printer.TestPrintAsync(editor.Type, profile);
             editor.TestResult = $"Test page sent to {profile.Target}.";
+            _notifications.Success($"Test page sent to {profile.Target}.");
         }
         catch (PrintException ex)
         {
+            editor.TestFailed = true;
             editor.TestResult = ex.Message;
+            _notifications.Error($"Test print failed: {ex.Message}");
         }
         finally
         {

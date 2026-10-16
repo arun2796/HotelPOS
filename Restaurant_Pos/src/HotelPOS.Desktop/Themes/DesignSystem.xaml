@@ -992,6 +992,12 @@
     <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
   </Style>
 
+  <!-- A text column that may not fit: ends in an ellipsis and shows the whole value as a tooltip. -->
+  <Style x:Key="Text.GridTrim" TargetType="TextBlock">
+    <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    <Setter Property="ToolTip" Value="{Binding Text, RelativeSource={RelativeSource Self}}" />
+  </Style>
+
   <!-- Row hover and selection live on the row (style triggers win over the grid's row/alternating backgrounds). -->
   <Style TargetType="DataGridRow">
     <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
