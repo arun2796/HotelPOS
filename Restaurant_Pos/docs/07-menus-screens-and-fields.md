@@ -220,16 +220,20 @@ Source: `Modules/Tables/TableMapView.xaml`, `Modules/Tables/TableDetailsView.xam
 
 #### 3.2.2 Order builder
 
-Reached from Tables > New order / Add items. Left: category tabs and a grid of item tiles (name, price, "+ options", SOLD OUT). Right: the order cart.
+Reached from Tables > New order / Add items. Left: category tabs (with "★ Favourites" first once there is anything in it) and a grid of item tiles (name, price, "+ options", SOLD OUT, a star to pin). Right: the order cart. The same builder is the waiter phone page in the browser/Android app (stars are on each item card).
 
 | Field | Type | Required | Rules / notes |
 |---|---|---|---|
 | Guests | - / + stepper | Yes | 1 to 99. |
 | Quantity per line | - / + stepper | Yes | 1 to 99. |
 | Note for the kitchen (per line) | text + quick buttons | No | Quick notes: Less spicy, Extra spicy, No onion, No garlic, Less oil, Jain, Parcel. Up to 500 characters. |
+| Search items | text, as you type | No | Matches part of an item name or code, any case, across all categories (the category tabs are ignored while the box has text). Clear it to go back to the tab. |
+| Pin star (on each item tile) | toggle | No | Pins or unpins the item for the "★ Favourites" tab on this terminal / this browser only. Not shared with other devices or users, no server change. |
 
 Buttons: **Back to the tables**, **SAVE DRAFT** (kept on this terminal), **SEND TO KITCHEN** (or **SEND ADDED ITEMS** when adding), remove-line icon, note icon.
 Connection banner appears if the terminal is offline; unsent items are kept on this PC.
+
+**★ Favourites** (first tab, shown only when it has items, and then selected on opening): pinned items in pin order, followed by the 8 items most often sent from this terminal. A send counts each item once; the counter keeps the 200 most-ordered items. Stored in the terminal profile (`preferences.json`) on the desktop and in browser storage on the web/Android app.
 
 ##### Item options pop-up
 Opens when an item has modifier groups. Each group shows its rule ("Choose 1", "Optional - up to 3", "Choose 1 to 2") and its options with price change. Quantity stepper. Buttons: **Cancel**, **Add to order**. Add refuses until every group's rule is met.

@@ -21,6 +21,7 @@ public static class ClientServiceCollectionExtensions
         services.AddScoped<KitchenApi>();
         services.AddScoped<IdempotentSender>();
         services.AddScoped<DraftStore>();
+        services.AddScoped<FavouritesStore>();
         services.AddScoped<WebRealtimeClient>();
         services.AddScoped<ToastService>();
         services.AddScoped<NotificationCenter>();

@@ -69,7 +69,7 @@ public sealed class OrderBuilderViewModelTests : IDisposable
         Categories = new[] { new MenuCategoryDto(1, "Biryani", 1), new MenuCategoryDto(2, "Breads", 2) },
         Items = new[]
         {
-            new MenuEntryDto { Id = 10, CategoryId = 1, Name = "Chicken Biryani", Price = 260m, IsAvailable = true, ModifierGroupIds = new[] { 1 } },
+            new MenuEntryDto { Id = 10, CategoryId = 1, Name = "Chicken Biryani", Code = "CB1", Price = 260m, IsAvailable = true, ModifierGroupIds = new[] { 1 } },
             new MenuEntryDto { Id = 20, CategoryId = 2, Name = "Butter Naan", Price = 50m, IsAvailable = true },
             new MenuEntryDto { Id = 21, CategoryId = 2, Name = "Garlic Naan", Price = 60m, IsAvailable = false },
         },
@@ -88,6 +88,7 @@ public sealed class OrderBuilderViewModelTests : IDisposable
     private readonly IDialogService _dialogs = Substitute.For<IDialogService>();
     private readonly INavigationService _navigation = Substitute.For<INavigationService>();
     private readonly LocalDraftStore _drafts;
+    private readonly FakeUserPreferences _preferences = new();
     private readonly OrderBuilderContext _context = new(5, "T05", OrderBuilderMode.NewOrder, 4);
 
     public OrderBuilderViewModelTests()
@@ -212,6 +213,92 @@ public sealed class OrderBuilderViewModelTests : IDisposable
         _drafts.Load(5)!.PendingKey.Should().BeNull();
     }
 
+    [Fact]
+    public async Task PinAndUnpin_ArePersisted_AndFavouritesIsTheFirstCategory()
+    {
+        var vm = await OpenAsync();
+        vm.Categories.Should().NotContain(c => c.Id == OrderBuilderViewModel.FavouritesCategoryId);
+        vm.SelectedCategory = vm.Categories[1];
+
+        vm.TogglePinCommand.Execute(vm.Items[0]);
+
+        _preferences.PinnedItemIds.Should().Equal(20);
+        vm.Categories[0].Id.Should().Be(OrderBuilderViewModel.FavouritesCategoryId);
+        vm.Categories[0].Name.Should().Be("★ Favourites");
+        vm.SelectedCategory!.Name.Should().Be("Breads");
+        vm.Items[0].IsPinned.Should().BeTrue();
+
+        vm.SelectedCategory = vm.Categories[0];
+        vm.Items.Select(i => i.Name).Should().Equal("Butter Naan");
+
+        vm.TogglePinCommand.Execute(vm.Items[0]);
+
+        _preferences.PinnedItemIds.Should().BeEmpty();
+        vm.Categories.Should().NotContain(c => c.Id == OrderBuilderViewModel.FavouritesCategoryId);
+    }
+
+    [Fact]
+    public async Task Favourites_ListPinnedFirst_ThenTheMostOrderedOnThisTerminal()
+    {
+        _preferences.PinnedItemIds = new[] { 21 };
+        _preferences.ItemOrderCounts = new Dictionary<int, int> { [20] = 3, [10] = 5, [999] = 50 };
+        var vm = await OpenAsync();
+
+        vm.SelectedCategory = vm.Categories[0];
+
+        vm.Items.Select(i => i.Item.Id).Should().Equal(21, 10, 20);
+    }
+
+    [Fact]
+    public async Task ASuccessfulSend_CountsEachItemOnce_AndTheCounterStoreIsCapped()
+    {
+        _orders.CreateAsync(Arg.Any<CreateOrderRequest>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(ApiResult<OrderDetailDto>.Ok(new OrderDetailDto { Id = 1, OrderNumber = 1001, Status = OrderStatus.Submitted }));
+        _preferences.ItemOrderCounts = Enumerable.Range(1000, OrderBuilderViewModel.MaxTrackedItems)
+            .ToDictionary(id => id, _ => 1);
+        var vm = await OpenAsync();
+        vm.SelectedCategory = vm.Categories[1];
+        vm.AddItemCommand.Execute(vm.Items[0]);
+        vm.AddItemCommand.Execute(vm.Items[0]);
+
+        await vm.SendCommand.ExecuteAsync(null);
+
+        _preferences.ItemOrderCounts[20].Should().Be(1);
+        _preferences.ItemOrderCounts.Should().HaveCount(OrderBuilderViewModel.MaxTrackedItems);
+    }
+
+    [Fact]
+    public async Task ARejectedSend_DoesNotCountTheItems()
+    {
+        _orders.CreateAsync(Arg.Any<CreateOrderRequest>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(ApiResult<OrderDetailDto>.Fail(ErrorCodes.BusinessRule, "No."));
+        var vm = await OpenAsync();
+        vm.SelectedCategory = vm.Categories[1];
+        vm.AddItemCommand.Execute(vm.Items[0]);
+
+        await vm.SendCommand.ExecuteAsync(null);
+
+        _preferences.ItemOrderCounts.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("naan", new[] { 20, 21 })]
+    [InlineData("  BUTTER ", new[] { 20 })]
+    [InlineData("cb1", new[] { 10 })]
+    [InlineData("zzz", new int[0])]
+    public async Task SearchAsYouType_FiltersByNameOrCode_AcrossAllCategories(string text, int[] expected)
+    {
+        var vm = await OpenAsync();
+
+        vm.SearchText = text;
+
+        vm.Items.Select(i => i.Item.Id).Should().Equal(expected);
+
+        vm.SearchText = string.Empty;
+
+        vm.Items.Select(i => i.Item.Id).Should().Equal(10);
+    }
+
     private async Task<OrderBuilderViewModel> OpenAsync(IOrderSubmitter? submitter = null)
     {
         var cache = Substitute.For<IMenuCache>();
@@ -222,7 +309,7 @@ public sealed class OrderBuilderViewModelTests : IDisposable
             new() { Key = SettingKeys.CurrencySymbol, Value = "₹" },
         }));
         var vm = new OrderBuilderViewModel(cache, _orders, system, _drafts,
-            submitter ?? new OrderSubmitter(NullLogger<OrderSubmitter>.Instance), _navigation, _dialogs, Substitute.For<INotificationService>());
+            submitter ?? new OrderSubmitter(NullLogger<OrderSubmitter>.Instance), _navigation, _dialogs, Substitute.For<INotificationService>(), _preferences);
         await vm.OnNavigatedToAsync(_context);
         return vm;
     }
