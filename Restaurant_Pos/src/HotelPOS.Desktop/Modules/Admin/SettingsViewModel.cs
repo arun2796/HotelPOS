@@ -131,6 +131,13 @@ public sealed partial class SettingsViewModel : ViewModelBase, INavigationAware,
     // Headings for the side navigation: the groups, then the per-terminal Notifications section.
     public ObservableCollection<string> Sections { get; } = new();
 
+    // The heading the side navigation has selected; the view scrolls to it. A deep link (Phase 21 A7) asks for one
+    // before the list is loaded, so the request is applied once the sections exist.
+    [ObservableProperty]
+    private string? _selectedSection;
+
+    public string? RequestedSection { get; set; }
+
     // Per-terminal toast and sound choices (Phase 20.2); saved as soon as a box is ticked, not by "Save changes".
     public ObservableCollection<NotificationPreferenceItemViewModel> Notifications { get; } = new();
 
@@ -167,6 +174,11 @@ public sealed partial class SettingsViewModel : ViewModelBase, INavigationAware,
         }
 
         Sections.Add(SettingSections.Notifications);
+        if (RequestedSection is { } requested)
+        {
+            RequestedSection = null;
+            SelectedSection = Sections.FirstOrDefault(s => s == requested);
+        }
     });
 
     protected override void OnBusyChanged() => SaveCommand.NotifyCanExecuteChanged();

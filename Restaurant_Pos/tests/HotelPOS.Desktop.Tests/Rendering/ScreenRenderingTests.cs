@@ -163,6 +163,17 @@ public class ScreenRenderingTests
                 rendered.Add(await RenderScreenAsync(env, shell, name));
             }
 
+            // Phase 21 A1: "Kitchen stations" is a deep link into the Menu hub's Stations tab; "Orders" lists every active order.
+            await shell.NavigateToAsync(ModuleRegistry.Stations, null);
+            ((MenuAdminViewModel)shell.CurrentPage!).SelectedTab.Title.Should().Be(MenuAdminViewModel.StationsTab);
+            rendered.Add(await RenderScreenAsync(env, shell, "54-admin-kitchen-stations"));
+
+            await shell.NavigateToAsync(ModuleRegistry.Orders, null);
+            var activeOrders = (ActiveOrdersViewModel)shell.CurrentPage!;
+            activeOrders.SelectedRow = activeOrders.Rows.First(r => r.Order.OrderNumber == 1019);
+            await Dispatcher.Yield(DispatcherPriority.Background);
+            rendered.Add(await RenderScreenAsync(env, shell, "55-admin-orders"));
+
             await shell.NavigateToAsync(ModuleRegistry.Users, null);
             env.Realtime.Raise(ConnectionStatus.Reconnecting);
             env.Notifications.Success("User waiter3 created.");
@@ -490,7 +501,7 @@ public class ScreenRenderingTests
         }
 
         bindingErrors.Errors.Should().BeEmpty("every binding in the views must point at an existing property");
-        rendered.Should().HaveCount(79);
+        rendered.Should().HaveCount(81);
         // Phase 21: the bundled Inter (Regular/Medium/SemiBold/Bold) is the body font on every Windows version.
         bodyFontFiles.Should().HaveCount(4).And.OnlyContain(f => f.StartsWith("inter-"));
     }

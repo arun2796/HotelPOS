@@ -185,7 +185,8 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
             : ActivatorUtilities.CreateInstance(_services, module.ViewModelType);
 
         SelectWithoutNavigating(module.Key);
-        await ShowPageAsync(page, parameter);
+        // A module may be a deep link into a shared page (Kitchen stations → the Menu hub's Stations tab).
+        await ShowPageAsync(page, parameter ?? module.DefaultParameter);
     }
 
     public async Task ShowPageAsync(object page, object? parameter)

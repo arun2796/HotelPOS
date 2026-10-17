@@ -1,10 +1,17 @@
+using HotelPOS.Contracts.Admin;
+using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Devices;
 using HotelPOS.Contracts.Enums;
+using HotelPOS.Contracts.Floor;
+using HotelPOS.Contracts.Orders;
 using HotelPOS.Contracts.Reports;
 using HotelPOS.Desktop.Modules.Dashboard;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Auth;
+using HotelPOS.Desktop.Services.Menu;
 using HotelPOS.Desktop.Services.Navigation;
+using HotelPOS.Desktop.Services.Realtime;
+using HotelPOS.Desktop.Services.Ui;
 using HotelPOS.Desktop.Tests.Support;
 using NSubstitute;
 
@@ -44,6 +51,18 @@ public class DashboardPanelTests
         return session;
     }
 
+    // Phase 21 widened the constructor (orders, floor, audit, notices, menu cache); these tests only exercise the 20.6 panels.
+    private static DashboardViewModel Build(IReportsApi reports, IRealtimeClient realtime, IAuthSession session, INavigationService navigation, IDevicesApi devices)
+    {
+        var orders = Substitute.For<IOrdersApi>();
+        orders.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ApiResult<List<OrderSummaryDto>>.Ok(new List<OrderSummaryDto>()));
+        var floor = Substitute.For<IFloorApi>();
+        floor.GetMapAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(ApiResult<TableMapDto>.Ok(new TableMapDto()));
+        var audit = Substitute.For<IAuditApi>();
+        audit.QueryAsync(Arg.Any<AuditLogQuery>(), Arg.Any<CancellationToken>()).Returns(ApiResult<PagedResult<AuditLogDto>>.Ok(new PagedResult<AuditLogDto>()));
+        return new DashboardViewModel(reports, realtime, session, navigation, devices, orders, floor, audit, new NoticeCenter(new ImmediateDispatcher()), Substitute.For<IMenuCache>());
+    }
+
     [Fact]
     public async Task ManagerPanels_ShowKitchenAverages_StaffBySales_AndDevicesForAdmins()
     {
@@ -54,7 +73,7 @@ public class DashboardPanelTests
             new() { Id = Guid.NewGuid(), Name = "WAITER-02", Type = DeviceType.Waiter, IsActive = true, IsOnline = false, LastSeenAtUtc = DateTime.UtcNow.AddHours(-3) },
             new() { Id = Guid.NewGuid(), Name = "OLD-PC", Type = DeviceType.Waiter, IsActive = false, IsOnline = false },
         }));
-        var vm = new DashboardViewModel(Reports(), new FakeRealtimeClient(), Session("Admin"), Substitute.For<INavigationService>(), devices);
+        var vm = Build(Reports(), new FakeRealtimeClient(), Session("Admin"), Substitute.For<INavigationService>(), devices);
 
         await vm.OnNavigatedToAsync(null);
 
@@ -74,7 +93,7 @@ public class DashboardPanelTests
     public async Task Manager_DoesNotCallTheAdminOnlyDevicesEndpoint()
     {
         var devices = Substitute.For<IDevicesApi>();
-        var vm = new DashboardViewModel(Reports(), new FakeRealtimeClient(), Session("Manager"), Substitute.For<INavigationService>(), devices);
+        var vm = Build(Reports(), new FakeRealtimeClient(), Session("Manager"), Substitute.For<INavigationService>(), devices);
 
         await vm.OnNavigatedToAsync(null);
 
@@ -88,7 +107,7 @@ public class DashboardPanelTests
     public async Task OpenAuditCommand_NavigatesToTheAuditLog()
     {
         var navigation = Substitute.For<INavigationService>();
-        var vm = new DashboardViewModel(Reports(), new FakeRealtimeClient(), Session("Manager"), navigation, Substitute.For<IDevicesApi>());
+        var vm = Build(Reports(), new FakeRealtimeClient(), Session("Manager"), navigation, Substitute.For<IDevicesApi>());
 
         await vm.OpenAuditCommand.ExecuteAsync(null);
 
@@ -102,7 +121,7 @@ public class DashboardPanelTests
         var api = Reports();
         api.GetRowsAsync<KitchenPerformanceRowDto>(Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
             .Returns(ApiResult<List<KitchenPerformanceRowDto>>.Fail("SERVER_ERROR", "boom"));
-        var vm = new DashboardViewModel(api, new FakeRealtimeClient(), Session("Manager"), Substitute.For<INavigationService>(), Substitute.For<IDevicesApi>());
+        var vm = Build(api, new FakeRealtimeClient(), Session("Manager"), Substitute.For<INavigationService>(), Substitute.For<IDevicesApi>());
 
         await vm.OnNavigatedToAsync(null);
 

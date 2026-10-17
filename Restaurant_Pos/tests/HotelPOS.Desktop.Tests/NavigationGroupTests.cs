@@ -15,12 +15,12 @@ public class NavigationGroupTests
         groups.Select(g => g.Group).Should().Equal(
             "Overview", "Live Operations", "Menu Management", "Finance", "Analytics & Reports", "People", "Devices", "Settings", "System");
         Keys(groups, "Overview").Should().Equal("dashboard");
-        Keys(groups, "Live Operations").Should().Equal("tables", "floor", "my-orders", "kitchen-display", "kitchen-completed", "billing", "closed-bills", "print-log");
+        Keys(groups, "Live Operations").Should().Equal("tables", "floor", "my-orders", "orders", "kitchen-display", "kitchen-completed", "billing", "closed-bills", "print-log");
         Keys(groups, "Menu Management").Should().Equal("menu");
         Keys(groups, "Finance").Should().Equal("discounts", "shifts", "day-end", "day-end-history", "period-close", "gst");
         Keys(groups, "Analytics & Reports").Should().Equal("reports");
         Keys(groups, "People").Should().Equal("users", "roles");
-        Keys(groups, "Devices").Should().Equal("devices", "printers");
+        Keys(groups, "Devices").Should().Equal("devices", "printers", "stations");
         Keys(groups, "Settings").Should().Equal("settings");
         Keys(groups, "System").Should().Equal("license", "backup", "server", "this-device", "import", "audit");
     }

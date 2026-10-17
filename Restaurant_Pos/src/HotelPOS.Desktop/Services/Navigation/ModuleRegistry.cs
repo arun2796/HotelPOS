@@ -25,7 +25,8 @@ public sealed record ModuleDefinition(
     int Phase,
     string Description,
     Type? ViewModelType = null,
-    bool ShowInNav = true);
+    bool ShowInNav = true,
+    object? DefaultParameter = null);
 
 public static class ModuleRegistry
 {
@@ -59,6 +60,8 @@ public static class ModuleRegistry
     public const string License = "license";
     public const string Import = "import";
     public const string Customers = "customers";
+    public const string Orders = "orders";
+    public const string Stations = "stations";
 
     private static readonly string[] Management = { Roles.Admin, Roles.Manager };
     private static readonly string[] AdminOnly = { Roles.Admin };
@@ -76,6 +79,8 @@ public static class ModuleRegistry
             "Create sections and tables, capacity and service state.", typeof(FloorViewModel)),
         new(MyOrders, "My Orders", "", "Live Operations", new[] { Roles.Admin, Roles.Manager, Roles.Waiter }, 4,
             "Your active orders, with ready orders highlighted.", typeof(MyOrdersViewModel)),
+        new(Orders, "Orders", "", "Live Operations", Management, 21,
+            "Every active order in the restaurant: search, filter by status, sort and open the table.", typeof(ActiveOrdersViewModel)),
         new(KitchenDisplay, "Kitchen Display", "", "Live Operations", new[] { Roles.Admin, Roles.Manager, Roles.Kitchen }, 5,
             "New, preparing and ready tickets with large touch buttons.", typeof(KitchenDisplayViewModel)),
         new(KitchenCompleted, "Completed Orders", "", "Live Operations", new[] { Roles.Admin, Roles.Manager, Roles.Kitchen }, 5,
@@ -117,6 +122,10 @@ public static class ModuleRegistry
             "Registered terminals and which are online.", typeof(DevicesViewModel)),
         new(Printers, "Printers", "", "Devices", Management, 7,
             "Kitchen, invoice and receipt printers attached to this terminal.", typeof(PrinterSettingsViewModel)),
+        // The Stations tab of the Menu hub, reachable from the Devices group as the prompt lists it (Phase 21 A1). Role-based like the
+        // tab itself (MenuAdminViewModel adds Stations for administrators only), so it is not in ModulePermissions.
+        new(Stations, "Kitchen stations", "", "Devices", AdminOnly, 21,
+            "Preparation stations the kitchen tickets are routed to.", typeof(MenuAdminViewModel), DefaultParameter: MenuAdminViewModel.StationsTab),
 
         new(Settings, "Restaurant Settings", "", "Settings", AdminOnly, 1,
             "Restaurant name, invoice details, print templates and other settings.", typeof(SettingsHubViewModel)),

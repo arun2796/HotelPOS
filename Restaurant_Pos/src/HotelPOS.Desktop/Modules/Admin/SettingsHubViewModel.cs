@@ -42,19 +42,51 @@ public sealed partial class SettingsHubViewModel : ObservableObject, INavigation
 
     public bool IsTemplatesTab => SelectedTab == TemplatesTab;
 
+    /// <summary>
+    /// Deep links (Phase 21 A7): an <c>int</c> tab (<see cref="SettingsTab"/> / <see cref="TemplatesTab"/>), or a section name
+    /// (<see cref="SettingSections"/>) that opens the settings tab scrolled to that heading.
+    /// </summary>
     public Task OnNavigatedToAsync(object? parameter)
     {
-        if (parameter is int tab)
+        var tab = parameter switch
         {
-            SelectedTab = tab;
+            int index => index,
+            string section => SettingsTab,
+            _ => (int?)null,
+        };
+        if (parameter is string requested)
+        {
+            Settings.RequestedSection = requested;
+        }
+
+        if (tab is { } chosen && chosen != SelectedTab)
+        {
+            // Selecting a tab normally refreshes it; here RefreshAsync below does that once.
+            _suppressRefresh = true;
+            try
+            {
+                SelectedTab = chosen;
+            }
+            finally
+            {
+                _suppressRefresh = false;
+            }
         }
 
         return RefreshAsync();
     }
 
+    private bool _suppressRefresh;
+
     public void OnNavigatedFrom() => Templates.Unload();
 
     public Task RefreshAsync() => IsTemplatesTab ? Templates.LoadAsync() : Settings.RefreshAsync();
 
-    partial void OnSelectedTabChanged(int value) => _ = RefreshAsync();
+    partial void OnSelectedTabChanged(int value)
+    {
+        if (!_suppressRefresh)
+        {
+            _ = RefreshAsync();
+        }
+    }
 }

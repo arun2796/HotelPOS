@@ -9,12 +9,18 @@ public static class SettingSections
 {
     public const string Notifications = "Notifications";
 
+    // Section names a deep link can ask for (Phase 21 A7): NavigateToAsync(ModuleRegistry.Settings, SettingSections.Restaurant).
+    public const string Restaurant = "Restaurant";
+    public const string BusinessDay = "Business day";
+    public const string OrdersAndBilling = "Orders and billing";
+    public const string InvoicesAndPrinting = "Invoices and printing";
+
     private static readonly (string Section, string[] Keys)[] Layout =
     {
-        ("Restaurant", new[] { SettingKeys.RestaurantName, SettingKeys.Address, SettingKeys.Phone, SettingKeys.Gstin, SettingKeys.LogoFile, SettingKeys.CurrencySymbol, SettingKeys.DefaultSacCode }),
-        ("Business day", new[] { SettingKeys.BusinessDayStartTime, SettingKeys.DayEndReminderTime, SettingKeys.AutoCloseOnFullPayment }),
-        ("Orders and billing", new[] { SettingKeys.AllowAnyWaiterToEditOrders, SettingKeys.AllowBillBeforeReady, SettingKeys.MaxCashierDiscountPercent, SettingKeys.RoundOffTotals, SettingKeys.TaxSplitDisplay, SettingKeys.UpiVpa, SettingKeys.UpiPayeeName }),
-        ("Invoices and printing", new[] { SettingKeys.InvoicePrefix, SettingKeys.InvoiceResetPolicy, SettingKeys.PrintInvoiceCopies, SettingKeys.ReceiptFooter, SettingKeys.KotShowPrices, SettingKeys.PdfPaper }),
+        (Restaurant, new[] { SettingKeys.RestaurantName, SettingKeys.Address, SettingKeys.Phone, SettingKeys.Gstin, SettingKeys.LogoFile, SettingKeys.CurrencySymbol, SettingKeys.DefaultSacCode }),
+        (BusinessDay, new[] { SettingKeys.BusinessDayStartTime, SettingKeys.DayEndReminderTime, SettingKeys.AutoCloseOnFullPayment }),
+        (OrdersAndBilling, new[] { SettingKeys.AllowAnyWaiterToEditOrders, SettingKeys.AllowBillBeforeReady, SettingKeys.MaxCashierDiscountPercent, SettingKeys.RoundOffTotals, SettingKeys.TaxSplitDisplay, SettingKeys.UpiVpa, SettingKeys.UpiPayeeName }),
+        (InvoicesAndPrinting, new[] { SettingKeys.InvoicePrefix, SettingKeys.InvoiceResetPolicy, SettingKeys.PrintInvoiceCopies, SettingKeys.ReceiptFooter, SettingKeys.KotShowPrices, SettingKeys.PdfPaper }),
         ("Kitchen", new[] { SettingKeys.KitchenWarnMinutes, SettingKeys.KitchenLateMinutes }),
         ("Cash", new[] { SettingKeys.CashVarianceApprovalLimit, SettingKeys.CashPayOutApprovalLimit, SettingKeys.CashBlindCount }),
         ("Security", new[] { SettingKeys.LockoutThreshold, SettingKeys.LockoutMinutes, SettingKeys.PasswordMinLength, SettingKeys.PasswordRequireLetter, SettingKeys.PasswordRequireDigit, SettingKeys.PasswordRequireUpperAndLower, SettingKeys.PasswordRequireSymbol, SettingKeys.AuditRetentionDays }),

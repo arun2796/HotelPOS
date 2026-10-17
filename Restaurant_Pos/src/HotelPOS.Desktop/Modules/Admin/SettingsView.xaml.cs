@@ -14,13 +14,27 @@ public partial class SettingsView : UserControl
     // Scrolls the settings list to the heading with the chosen section's name (the headings carry it as Tag).
     private void OnSectionChosen(object sender, SelectionChangedEventArgs e)
     {
-        if (SectionNav.SelectedItem is not string section)
+        if (SectionNav.SelectedItem is string section)
         {
+            ScrollTo(section, retry: true);
+        }
+    }
+
+    // A deep link selects the section before the list has generated its headings: try again once the layout has run.
+    private void ScrollTo(string section, bool retry)
+    {
+        var heading = FindHeading(SettingsScroll, section);
+        if (heading is null)
+        {
+            if (retry)
+            {
+                Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, new Action(() => ScrollTo(section, retry: false)));
+            }
+
             return;
         }
 
-        var heading = FindHeading(SettingsScroll, section);
-        if (heading is null)
+        if (!heading.IsDescendantOf(SettingsScroll))
         {
             return;
         }
