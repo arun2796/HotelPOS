@@ -33,6 +33,8 @@
         <ResourceDictionary Source="Resources/Icons.xaml" />
         <ResourceDictionary Source="Themes/DesignSystem.xaml" />
         <ResourceDictionary Source="Themes/Controls.xaml" />
+        <ResourceDictionary Source="Themes/Cashier.xaml" />
+        <ResourceDictionary Source="Themes/Admin.xaml" />
       </ResourceDictionary.MergedDictionaries>
 
       <DataTemplate DataType="{x:Type config:ConfigurationViewModel}">
