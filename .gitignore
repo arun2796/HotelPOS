@@ -6,3 +6,6 @@ publish/
 *.pem
 license-private*
 *.hpkey
+
+# Claude Code agent worktrees (temporary checkouts, never committed)
+.claude/worktrees/
