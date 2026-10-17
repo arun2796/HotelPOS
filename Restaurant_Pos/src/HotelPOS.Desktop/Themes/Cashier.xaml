@@ -6,6 +6,11 @@
                     xmlns:contracts="clr-namespace:HotelPOS.Contracts.Billing;assembly=HotelPOS.Contracts"
                     xmlns:customers="clr-namespace:HotelPOS.Contracts.Customers;assembly=HotelPOS.Contracts">
 
+  <!-- The workspace page for the "billing" module (App.xaml maps the other pages; this one lives with its styles). -->
+  <DataTemplate DataType="{x:Type billing:CashierWorkspaceViewModel}">
+    <billing:CashierWorkspaceView />
+  </DataTemplate>
+
   <!-- ============================ Queue chips ============================ -->
   <!-- Filter chip: pill toggle; checked = primary fill with white text. The count sits in a small round badge. -->
   <Style x:Key="Cashier.FilterChip" TargetType="ToggleButton">
