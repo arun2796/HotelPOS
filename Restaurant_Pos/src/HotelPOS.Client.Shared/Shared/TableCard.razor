@@ -1,0 +1,39 @@
+@* Phase 21 W2: pastel table card (code, status badge, guests or seats, elapsed timer, active order number). The whole
+   card is one 48 px+ target; the tone comes from the table status through StatusPresentation (D8: Available soft
+   green, Ready solid green). *@
+@using HotelPOS.Contracts.Floor
+
+<button type="button" class="table-card st-@StatusLabels.TableClass(Table.Status)" data-testid="table-card" data-status="@Table.Status" @onclick="OnClick">
+    <div class="table-card-head">
+        <span class="table-code">@Table.Code</span>
+        @if (!string.IsNullOrEmpty(Elapsed))
+        {
+            <span class="table-elapsed num-tab"><Icon Name="clock" Size="14" /> @Elapsed</span>
+        }
+    </div>
+    <StatusBadge Display="StatusPresentation.For(Table.Status)" />
+    <div class="table-meta muted small">
+        <span>@Guests</span>
+        @if (Table.CurrentOrderNumber is { } number)
+        {
+            <span class="table-order num-tab" data-testid="table-order">#@number</span>
+        }
+    </div>
+    @if (HasDraft)
+    {
+        <span class="chip warning table-draft">Draft on this phone</span>
+    }
+</button>
+
+@code {
+    [Parameter, EditorRequired] public TableDto Table { get; set; } = new();
+
+    /// <summary>"1 h 30 min" since the table was occupied; null for free tables.</summary>
+    [Parameter] public string? Elapsed { get; set; }
+
+    [Parameter] public bool HasDraft { get; set; }
+
+    [Parameter] public EventCallback OnClick { get; set; }
+
+    private string Guests => Table.GuestCount is { } guests ? TextFormat.Count(guests, "guest") : TextFormat.Count(Table.Capacity, "seat");
+}

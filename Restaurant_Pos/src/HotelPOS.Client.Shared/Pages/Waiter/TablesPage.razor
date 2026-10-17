@@ -19,11 +19,14 @@
 }
 else
 {
-    <div class="chip-row" style="margin-bottom:4px">
-        <button class="chip-btn @(_sectionId is null ? "on" : null)" @onclick="() => _sectionId = null">All</button>
+    <OfflineBanner>Offline — table states may be out of date until the connection is back.</OfflineBanner>
+
+    <div class="chip-row" data-testid="section-chips">
+        <FilterChip Label="All" Count="@(_map is null ? null : AllTables.Count)" Selected="@(_sectionId is null)" OnClick="() => _sectionId = null" />
         @foreach (var sec in Sections)
         {
-            <button class="chip-btn @(_sectionId == sec.Id ? "on" : null)" @onclick="() => _sectionId = sec.Id">@sec.Name</button>
+            var zone = sec;
+            <FilterChip Label="@zone.Name" Count="@ActiveTables(zone).Count" Selected="@(_sectionId == zone.Id)" OnClick="() => _sectionId = zone.Id" />
         }
     </div>
 
@@ -37,63 +40,87 @@ else
     }
     else
     {
-        <div class="muted small" style="margin-bottom:8px">@Summary</div>
-        @foreach (var sec in VisibleSections)
+        <div class="tables-toolbar">
+            <span class="muted small" data-testid="tables-summary">@Summary</span>
+            <Segmented Items="SortItems" Selected="@_sort" SelectedChanged="s => _sort = s" />
+        </div>
+
+        @if (_sort == AvailableFirst)
         {
-            @if (_sectionId is null)
-            {
-                <h2 style="margin:12px 0 8px">@sec.Name</h2>
-            }
-            <div class="tiles">
-                @foreach (var table in sec.Tables.Where(t => t.IsActive))
+            <div class="table-grid" data-testid="table-grid">
+                @foreach (var table in VisibleSections.SelectMany(ActiveTables).OrderBy(SortRank).ThenBy(t => t.Code, StringComparer.OrdinalIgnoreCase))
                 {
-                    <button class="tile st-@table.Status.ToString().ToLowerInvariant()" @onclick="() => Open(table)">
-                        <div class="row between">
-                            <span class="tile-code">@table.Code</span>
-                            @if (Elapsed(table) is { } elapsed)
-                            {
-                                <span class="tile-time">@elapsed</span>
-                            }
-                        </div>
-                        <div class="tile-status">@StatusText(table)</div>
-                        <div class="tile-sub">@SubText(table)</div>
-                        @if (_draftTables.Contains(table.Id))
-                        {
-                            <span class="chip warning" style="margin-top:6px">Draft on this phone</span>
-                        }
-                    </button>
+                    var t = table;
+                    <TableCard Table="t" Elapsed="@Elapsed(t)" HasDraft="@_draftTables.Contains(t.Id)" OnClick="() => Open(t)" />
                 }
             </div>
         }
-        <div class="legend muted small">
-            <span class="dot st-available"></span>Available <span class="dot st-occupied"></span>Occupied <span class="dot st-ordering"></span>Ordering
-            <span class="dot st-preparing"></span>Preparing <span class="dot st-ready"></span>Ready <span class="dot st-billing"></span>Billing <span class="dot st-outofservice"></span>Out of service
-        </div>
+        else
+        {
+            @foreach (var sec in VisibleSections)
+            {
+                @if (_sectionId is null)
+                {
+                    <h2 class="section-head">@sec.Name</h2>
+                }
+                <div class="table-grid" data-testid="table-grid">
+                    @foreach (var table in ActiveTables(sec))
+                    {
+                        var t = table;
+                        <TableCard Table="t" Elapsed="@Elapsed(t)" HasDraft="@_draftTables.Contains(t.Id)" OnClick="() => Open(t)" />
+                    }
+                </div>
+            }
+        }
+
+        @if (AllTables.Count == 0)
+        {
+            <EmptyState Icon="table" Text="No active tables in this section." />
+        }
     }
 }
 
 @code {
+    private const string BySection = "section";
+    private const string AvailableFirst = "available";
+
+    private static readonly IReadOnlyList<TabItem> SortItems = new[] { new TabItem(BySection, "By section"), new TabItem(AvailableFirst, "Available first") };
+
     private TableMapDto? _map;
     private string? _error;
     private int? _sectionId;
+    private string _sort = BySection;
     private TimeSpan _clockOffset;
     private HashSet<int> _draftTables = new();
     private readonly List<IDisposable> _subscriptions = new();
     private CancellationTokenSource? _debounce;
+    private Timer? _tick;
 
     private IEnumerable<TableMapSectionDto> Sections => (_map?.Sections ?? Array.Empty<TableMapSectionDto>()).Where(s => s.IsActive).OrderBy(s => s.SortOrder);
     private IEnumerable<TableMapSectionDto> VisibleSections => Sections.Where(s => _sectionId is null || s.Id == _sectionId);
+    private static List<TableDto> ActiveTables(TableMapSectionDto section) => section.Tables.Where(t => t.IsActive).ToList();
+    private List<TableDto> AllTables => Sections.SelectMany(ActiveTables).ToList();
 
     private string Summary
     {
         get
         {
-            var tables = Sections.SelectMany(s => s.Tables).Where(t => t.IsActive).ToList();
+            var tables = AllTables;
             var free = tables.Count(t => t.Status == TableStatus.Available);
             var inUse = tables.Count(t => t.Status is not TableStatus.Available and not TableStatus.OutOfService);
-            return $"{free} available · {inUse} in use · {tables.Count} tables";
+            return $"{free} available · {inUse} in use · {TextFormat.Count(tables.Count, "table")}";
         }
     }
+
+    // Available first, then the tables that need a hand (ready, bill), then the rest; out of service last.
+    private static int SortRank(TableDto table) => table.Status switch
+    {
+        TableStatus.Available => 0,
+        TableStatus.Ready => 1,
+        TableStatus.Billing => 2,
+        TableStatus.OutOfService => 9,
+        _ => 3,
+    };
 
     protected override async Task OnInitializedAsync()
     {
@@ -106,6 +133,7 @@ else
         }
 
         Realtime.Reconnected += RefreshAsync;
+        _tick = new Timer(_ => _ = InvokeAsync(StateHasChanged), null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
         await RefreshAsync();
     }
 
@@ -152,20 +180,11 @@ else
         return span.TotalHours >= 1 ? $"{(int)span.TotalHours} h {span.Minutes} min" : $"{Math.Max(0, (int)span.TotalMinutes)} min";
     }
 
-    private static string StatusText(TableDto table) => table.Status switch
-    {
-        TableStatus.Available => "Available",
-        TableStatus.OutOfService => "Out of service",
-        var s => table.CurrentOrderNumber is { } n ? $"{s} · #{n}" : s.ToString(),
-    };
-
-    private static string SubText(TableDto table) =>
-        table.GuestCount is { } guests ? $"{guests} / {table.Capacity} guests" : $"{table.Capacity} seats";
-
     public void Dispose()
     {
         Realtime.Reconnected -= RefreshAsync;
         _debounce?.Cancel();
+        _tick?.Dispose();
         foreach (var subscription in _subscriptions)
         {
             subscription.Dispose();

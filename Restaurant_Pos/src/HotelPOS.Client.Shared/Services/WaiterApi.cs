@@ -1,5 +1,7 @@
 using HotelPOS.Contracts.Billing;
+using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Floor;
+using HotelPOS.Contracts.Kitchen;
 using HotelPOS.Contracts.Menu;
 using HotelPOS.Contracts.Orders;
 
@@ -72,4 +74,21 @@ public sealed class WaiterApi
 
     public Task<ApiResult<BillDetailDto>> RequestBillAsync(int orderId, Guid key, CancellationToken ct = default) =>
         _api.PostAsync<BillDetailDto>($"api/orders/{orderId}/request-bill", null, key, ct);
+
+    // ---- Phase 21.1 (W5/W6): existing endpoints the phone did not call before. Same routes and policies as the desktop OrdersApi.
+
+    /// <summary>The signed-in waiter's orders of one day (any status), newest first: the "Completed" tab. Single page, up to 200.</summary>
+    public Task<ApiResult<PagedResult<OrderSummaryDto>>> GetOrdersAsync(int waiterId, DateTime fromUtc, CancellationToken ct = default) =>
+        _api.GetAsync<PagedResult<OrderSummaryDto>>($"api/orders?waiterId={waiterId}&fromUtc={Uri.EscapeDataString(fromUtc.ToString("O"))}&pageSize={PagedQuery.MaxPageSize}", ct);
+
+    /// <summary>Guests and order notes; the caller sends the order's current <c>RowVersion</c> so a stale edit comes back as a conflict.</summary>
+    public Task<ApiResult<OrderDetailDto>> UpdateOrderAsync(int orderId, UpdateOrderRequest request, CancellationToken ct = default) =>
+        _api.PutAsync<OrderDetailDto>($"api/orders/{orderId}", request, null, ct);
+
+    public Task<ApiResult<OrderDetailDto>> CancelItemAsync(int orderId, int itemId, string? reason, CancellationToken ct = default) =>
+        _api.PostAsync<OrderDetailDto>($"api/orders/{orderId}/items/{itemId}/cancel", new CancelOrderItemRequest { Reason = reason }, null, ct);
+
+    /// <summary>One kitchen ticket with its stage times (accepted, started, ready, served); waiters may read it (controller role list).</summary>
+    public Task<ApiResult<KitchenTicketDto>> GetTicketAsync(int ticketId, CancellationToken ct = default) =>
+        _api.GetAsync<KitchenTicketDto>($"api/kitchen/orders/{ticketId}", ct);
 }
