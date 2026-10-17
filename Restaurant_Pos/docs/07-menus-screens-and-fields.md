@@ -2,7 +2,7 @@
 
 This is the map of the HotelPOS desktop application for the restaurant owner, testers and trainers. It lists every menu in the left-hand sidebar, every screen (sub-menu) under it, and the fields, columns and buttons on each screen, including the pop-up editors and dialogs reached from them. It also covers the screens that are not in the sidebar: first-run set-up, sign-in, change password, the top bar, the search box (Ctrl+K) and the keyboard shortcuts. Amounts are in rupees (₹) and tax is GST. Rules are taken from what the application actually checks; where the code does not say, this document says so.
 
-Last updated: 2026-10-15
+Last updated: 2026-10-17 (Phase 21: navy grouped sidebar, cashier workspace, Orders page, dashboard widgets, Menu tabs)
 
 How to read it:
 
@@ -15,42 +15,50 @@ How to read it:
 
 ## 1. Menu map
 
-The sidebar shows five groups in this order. A group header is only shown when the person can open at least one screen in it.
+Since Phase 21 the sidebar is the navy panel of the owner's mock-ups: a group label, then the screens of the group; the
+open screen is the green block. The groups come in this order (plan § 4 D7). A group is only shown when the person can
+open at least one screen in it. The sidebar collapses to an icon rail on its own when the window is narrower than 1440 px
+(the hamburger button expands or collapses it by hand; the choice is remembered on this terminal).
 
-| Menu | Sub-menu (screen) | Who sees it (default roles) | Purpose |
+| Group | Screen | Who sees it (default roles) | Purpose |
 |---|---|---|---|
-| Service | Dashboard | Admin, Manager, Waiter | Today's figures at a glance |
-| Service | Dashboard (cashier home) | Cashier | Pending bills, own shift, expected cash, business day |
-| Service | Tables | Admin, Manager, Waiter, Cashier | Live table map; occupy tables, take orders |
-| Service | My Orders | Admin, Manager, Waiter | Your active orders; ready ones highlighted |
-| Kitchen | Kitchen Display | Admin, Manager, Kitchen | New / preparing / ready tickets |
-| Kitchen | Completed Orders | Admin, Manager, Kitchen | Tickets completed today with timings |
-| Billing | Billing | Admin, Manager, Cashier | Pending bills; discount, tax, payments |
-| Billing | Closed Bills | Admin, Manager, Cashier | Settled and voided bills, reprint, refund |
-| Billing | Print Log | Admin, Manager, Cashier | Prints that failed on this terminal, with a Failed filter and Retry |
-| Billing | Customers | Admin, Manager, Cashier | Customer list used by the bill |
-| Billing | Cash Shifts | Admin, Manager | All cash shifts of a day; X/Z reports, force close |
-| Billing | Day End | Admin, Manager | Close the business day |
-| Billing | Day End History | Admin, Manager | Closed days; reopen a day |
-| Management | Reports | Admin, Manager | Sales, items, payments, taxes, staff, kitchen |
-| Management | Tax Returns | Admin, Manager | GSTR-1, GSTR-3B, HSN/SAC, validation |
-| Management | Period Close | Admin | Lock a GST month or financial year |
-| Management | Import | Admin, Manager | Bring menu or customers in from Excel/CSV |
-| Management | Sections & Tables | Admin, Manager | Set up sections and tables |
-| Management | Menu | Admin, Manager | Items, categories, modifiers, taxes, stations, preview |
-| Management | Discounts & Payments | Admin, Manager | Predefined discounts, payment methods, cash denominations |
-| Management | Audit Log | Admin, Manager | Who changed what, when, from which terminal |
-| Administration | Users | Admin | Staff accounts |
-| Administration | Roles & Permissions | Admin | Permissions per role |
-| Administration | Devices | Admin | Registered terminals |
-| Administration | Licence | Admin | Licence status and key |
-| Administration | Restaurant Settings | Admin | Shared settings and print templates |
-| Administration | Backup | Admin | Database backups |
-| Administration | Server | Admin | Notices to terminals; server log |
-| Administration | This Terminal | Admin, Manager | Server address and identity of this PC |
-| Administration | Printers | Admin, Manager | Printers attached to this PC |
+| Overview | Dashboard | Admin, Manager, Waiter | KPI cards, live order status, active orders, table status, recent activity (3.1) |
+| Overview | Cashier home | Cashier | Pending bills, own shift, expected cash, print failures, business day (3.1.1) |
+| Live Operations | Tables | Admin, Manager, Waiter, Cashier | Live table map; occupy tables, take orders |
+| Live Operations | Sections & Tables | Admin, Manager | Set up sections and tables |
+| Live Operations | My Orders | Admin, Manager, Waiter | Your active orders; ready ones highlighted |
+| Live Operations | Orders | Admin, Manager | Every active order: search, status chips, sort, open the table (3.4, new in Phase 21) |
+| Live Operations | Kitchen Display | Admin, Manager, Kitchen | New / preparing / ready tickets |
+| Live Operations | Completed Orders | Admin, Manager, Kitchen | Tickets completed today with timings |
+| Live Operations | Billing | Admin, Manager, Cashier | The cashier workspace: queue, bill and payment side by side (5.1) |
+| Live Operations | Closed Bills | Admin, Manager, Cashier | Settled and voided bills, reprint, refund |
+| Live Operations | Print Log | Admin, Manager, Cashier | Prints that failed on this terminal, with a Failed filter and Retry |
+| Menu Management | Menu | Admin, Manager | Tabs Categories, Items, Modifiers, Taxes*, Stations*, Preview (6.6) |
+| Finance | Payments & discounts | Admin, Manager | Predefined discounts, payment methods, cash denominations (6.7) |
+| Finance | Cash shifts | Admin, Manager | All cash shifts of a day; X/Z reports, force close |
+| Finance | Day End | Admin, Manager | Close the business day |
+| Finance | Day End History | Admin, Manager | Closed days; reopen a day |
+| Finance | Period Close | Admin | Lock a GST month or financial year |
+| Finance | Tax Returns | Admin, Manager | GSTR-1, GSTR-3B, HSN/SAC, validation |
+| Analytics & Reports | Reports | Admin, Manager | Sales, items, payments, taxes, staff, kitchen (one screen; the report type is chosen inside it) |
+| People | Users | Admin | Staff accounts |
+| People | Roles & Permissions | Admin | Permissions per role |
+| Devices | Devices | Admin | Registered terminals |
+| Devices | Printers | Admin, Manager | Printers attached to this PC |
+| Devices | Kitchen stations | Admin | Opens the Stations tab of Menu |
+| Settings | Restaurant Settings | Admin | Shared settings and print templates |
+| System | Licence | Admin | Licence status and key |
+| System | Backup | Admin | Database backups |
+| System | Server | Admin | Notices to terminals; server log |
+| System | This Terminal | Admin, Manager | Server address and identity of this PC |
+| System | Import | Admin, Manager | Bring menu or customers in from Excel/CSV |
+| System | Audit Log | Admin, Manager | Who changed what, when, from which terminal |
+| (not in the sidebar) | Customers | Admin, Manager, Cashier | Customer list used by the bill (5.3). Hidden from the menu in Phase 21 (D3); reached from the command palette or the bill's customer panel |
 
-That is 28 screens. Where a screen has tabs they are listed in its section below (Sections & Tables, Menu, Discounts & Payments, Restaurant Settings, Tax Returns).
+\* Administrators only. That is 29 screens in the sidebar plus Customers. Where a screen has tabs they are listed in its
+section below (Sections & Tables, Menu, Payments & discounts, Restaurant Settings, Tax Returns). Expenses, Profit & Loss,
+hourly sales, low stock and the floor-plan drawing of the mock-ups have no data behind them and are not screens
+(`docs/phases/phase-21-role-ui-ux-redesign.md` § 3 Out).
 
 After sign-in each person lands on a home screen: Admin and Manager on Dashboard, Kitchen on Kitchen Display, Cashier on the cashier home (shown as "Dashboard"), Waiter on Tables (in the browser and the Android app, on the waiter Home page at /home).
 
@@ -110,7 +118,7 @@ Source: `Modules/Auth/ChangePasswordView.xaml`
 
 | Item | What it does |
 |---|---|
-| Menu button (hamburger) | Collapse or expand the sidebar; remembered on this terminal. |
+| Menu button (hamburger) | Collapse or expand the sidebar; remembered on this terminal. Below 1440 px window width the sidebar collapses to the icon rail by itself (Phase 21) so the cashier's three panes fit at 1366 px. |
 | Restaurant name and logo block | Shows the restaurant name from settings. |
 | User block (initials, name, roles) with bell, key and sign-out icons | **Notifications…** (bell icon, every role: opens a dialog with the same Pop-up and Sound list as Restaurant Settings, saved at once for this terminal; Esc or **Done** closes it); Change my password; Sign out. |
 | Page title and description | Name and one-line purpose of the open screen. |
@@ -151,7 +159,7 @@ Source: `Modules/Cash/ShiftBarView.xaml`
 | Ctrl+B | Billing |
 | Ctrl+R | Reports |
 | F1 | Show the shortcut list |
-| F2 / F3 / F4 / F9 | On a bill: Cash / Card / UPI / Split payment |
+| F2, F3 … / F9 | On a bill: F2 is the cash payment method, F3 onwards the other active methods in their sort order (Payments & discounts), F9 split payment (Phase 21, D6) |
 | Esc | Close the open panel or palette; on a bill, back to the queue |
 | F11 | Full screen |
 
@@ -165,11 +173,15 @@ Ctrl+D/T/B/R only work if the person may open that screen.
 
 Purpose: today's figures at a glance, refreshed live. Opened by Admin, Manager, Waiter (a Cashier has their own home, 3.1.1). Managers and administrators see the restaurant figures; other roles see their own figures (the code uses the "own figures" view for every non-manager role; it was not checked whether a cashier's figures are meaningful).
 
-Tiles (manager view): Today's sales (and bills settled), Orders today (and still open), Active tables (x / total), Kitchen tickets (waiting or in preparation), Pending bills (requested or invoiced), Avg ticket time (minutes, order to ready). Click a tile to open the related screen.
-Tiles (own view): My orders today (and still open), My sales today (settled bills), Tables I am serving (and guests today).
-Manager view also shows: "Net sales - last 7 days" bar chart, "Payments today" split by method with ₹ and percent, "Top items today" (name, quantity sold, amount).
-Phase 20.6 adds three panels below the charts (manager view): **Kitchen performance today** (average preparation and late percentage, then one row per station with tickets, average prep and late %, late rows in red; from `api/reports/kitchen`), **Staff today** (up to six waiters by net sales with orders and sales; from `api/reports/staff/waiters`) and **Terminals** (administrators only, because `api/admin/devices` is administrator-only: "n online, m offline", then one row per active terminal, offline first, with last seen). An **Open audit log** button opens the Audit Log screen. A panel whose endpoint fails stays empty; the rest of the dashboard is unaffected.
-Buttons: refresh icon. The header shows the business day.
+Phase 21 (plan § 5 A2–A6) lays the manager view out like the owner's admin mock-up. Header: "Business day <date>", "Welcome back, <name> · Updated <time>", an **Online** pill (the realtime connection) and the refresh icon.
+KPI cards (manager view, one row): **Today's sales** (settled bills; red/green delta vs yesterday from the 7-day series), **Orders today** (and "n open now"), **Average order value** (sales ÷ bills settled, derived on the client) and **Occupied tables** (x / total with an occupancy bar). No sparklines and no Low stock card (no inventory data).
+**Live Order Status**: a donut of the active orders by status (from `api/orders/active`), with a legend of status badge, count and percent.
+**Active Orders**: every order not yet paid, search (order, table or waiter), status chips with counts, sort (Newest first / Oldest first / Highest amount), ten rows per page (#, TABLE, WAITER, ITEMS, TOTAL, STATUS, ELAPSED, **View** opens the table), **View all** opens the Orders screen (3.4).
+**Table status**: one card per table (code, status badge, guests and order number when occupied, seats) in status colour, **View floor plan** opens Tables.
+**Recent activity**: the last eight audit-log rows as sentences ("cashier1 settled bill INV-…"), with live notices prepended as they arrive; **View all** opens the Audit Log. Without the audit permission the widget falls back to the bell feed (D10).
+Then, as before: "Net sales - last 7 days" bars, "Payments today" donut by method with ₹ and percent, "Top items today" (picture or initials, name, quantity, amount), **Kitchen performance today**, **Staff today** and **Terminals** side by side (Terminals lists devices for administrators only, because `api/admin/devices` is administrator-only; a manager sees a placeholder). A panel whose endpoint fails stays empty; the rest of the dashboard is unaffected.
+Tiles (own view, waiter): My orders today (and still open), My sales today (settled bills), Tables I am serving (and guests today).
+Not on the dashboard (no data, plan § 3 Out): hourly sales, expenses, profit & loss, low stock, staff presence.
 
 Source: `Modules/Dashboard/DashboardView.xaml`
 
@@ -247,6 +259,14 @@ Each card shows order number and table, time elapsed, status, items / guests / w
 
 Source: `Modules/Orders/OrderListView.xaml`
 
+### 3.4 Orders (Phase 21)
+
+Purpose: every active order in the restaurant on one page (the dashboard's Active Orders widget in full). Opened by Admin, Manager (Live Operations group).
+Controls: search (order number, table or waiter), "n active orders", sort (Newest first / Oldest first / Highest amount), refresh; status chips with counts (**All**, then one per status present: Sent to kitchen, Preparing, Ready, Served, Bill requested …). The dashboard's **View all** opens this page with the chip it was on (deep link).
+Columns: #, TABLE, WAITER, ITEMS, TOTAL, STATUS (badge with icon and word), CREATED (time), ELAPSED ("20 h 39 min"), **View** (opens the table; double-click does the same). Refreshed live on order, table and bill events. Empty state "No active orders".
+
+Source: `Modules/Orders/ActiveOrdersView.xaml`, `Modules/Orders/ActiveOrderQueries.cs`
+
 ---
 
 ## 4. Kitchen
@@ -272,24 +292,21 @@ Source: `Modules/Kitchen/CompletedOrdersView.xaml`
 
 ## 5. Billing
 
-### 5.1 Billing (pending bills)
+### 5.1 Billing (cashier workspace, Phase 21)
 
-Purpose: the queue of bills waiting for payment. Opened by Admin, Manager, Cashier.
-Each card shows table, how long it has waited, order text, status, total and a claim badge (a bill is held by one cashier at a time; a claim lasts a few minutes). Cards turn amber while waiting. Button **OPEN** opens the bill. Header shows the count; refresh.
+Purpose: the cashier's one screen for taking payments, laid out like the owner's cashier mock-up: three panes side by side. Opened by Admin, Manager, Cashier. The cash shift bar (2.7) stays above it because cash payments need an open shift.
 
-Source: `Modules/Billing/BillingQueueView.xaml`
+**Left pane — Bills** (400 px): header "n bills waiting" and refresh; search (order, table or bill number); chips **All**, **Waiting** (count), **Invoiced**, **Partly paid**, **Paid** (today's settled bills, read-only; reprints and refunds stay under Closed Bills); sort **Oldest first** / **Highest amount**. One card per bill: table code, order number, status badge (Waiting / Invoiced / Partly paid / Paid, icon + word), waiter, minutes waited, total; the selected card has a green border. Clicking a card claims the bill (a bill is held by one cashier at a time; a claim lasts a few minutes; a bill held elsewhere opens read-only and shows who has it). Empty states: "No bills waiting" / "No matching bills" / "No bills paid today".
 
-#### 5.1.1 Bill screen
+**Centre pane — the order** (the former bill screen, 5.1.1): "Table T02 · Order #1015", invoice number or "Not invoiced yet", guests, waiter, requested time; the lines with picture or initials, quantity × name, options and per-line note ("Less oil" badge), unit price and amount; an order-notes banner when the order has notes; Subtotal, Discount with **Add discount** / the applied "Discount 5% · reason" and amount, the real tax rows (CGST/SGST or IGST), Round off, Total, payments made and Balance due; the customer line with **Customer...**; actions **Finalize & print** (open bill) or **Show invoice** (finalized), **Reopen**, **Void**; **Take over** (managers) when another cashier holds the bill; × / Esc clears the selection.
 
-Opened from OPEN, or from the search box with a bill number. Shows title, subtitle, invoice number, status, who holds it, and:
+**Right pane — Payment** (340 px, always visible): status pill (Waiting / Paid), "Amount due" hero, one button per active payment method from Payments & discounts in sort order with its hotkey (**F2** = the cash method, **F3**… the rest; a method that is inactive is not shown; without an active cash method the cash controls are hidden), **Split payment F9**, Amount to pay, quick amounts (Exact, then round-ups), Amount received and Change (cash only), Reference (methods that ask for one), **Complete payment**, and a hint line "F2 cash · F3–F8 other methods · F9 split · Esc back to the queue". After payment the pane shows the inline **Paid** state: invoice number, change to give back, the tenders, **Print receipt**, **Print invoice**, **Next bill** (clears the selection).
 
-- Item grid: ITEM, QTY, PRICE, AMOUNT (with options below the name).
-- Customer line with **Customer...** button.
-- Totals: Subtotal, discount line with **DISCOUNT** button, tax rows (CGST/SGST or IGST as configured), Round off, TOTAL, payments made, Balance due.
-- Payment buttons: **CASH F2**, **CARD F3**, **UPI F4**, **SPLIT F9**.
-- **FINALIZE & PRINT** (when the bill is open) or **SHOW INVOICE** (when finalized), **REOPEN**, **VOID**.
-- **Take over** (managers) when another cashier holds the bill.
-- Back arrow (Esc).
+Source: `Modules/Billing/CashierWorkspaceView.xaml`, `Modules/Billing/CashierWorkspaceViewModel.cs` (the queue), hosting `BillDetailView.xaml` / `BillDetailViewModel.cs` (bill, payment, idempotency and permission logic unchanged)
+
+#### 5.1.1 Bill (centre and right panes)
+
+Opened by selecting a card, or from the search box with a bill number (deep link into the workspace). Rules for the action buttons:
 
 Rules for the action buttons:
 - Editing and paying need the bill to be held by you.
@@ -321,8 +338,8 @@ Printed on the invoice. A GSTIN is needed for a business (B2B) invoice.
 
 Buttons: **SAVE**, **CLEAR CUSTOMER** (takes the customer off the bill; shown when the bill has one). If the typed details still match the picked customer, the bill stays linked to that customer record.
 
-##### Payment panel
-Opened by CASH, CARD, UPI or SPLIT.
+##### Payment pane
+Always open on the right (Phase 21). A method button (F2 = cash, F3… the others) or **Split payment** (F9) sets the mode.
 
 | Field | Type | Required | Rules / notes |
 |---|---|---|---|
@@ -331,7 +348,7 @@ Opened by CASH, CARD, UPI or SPLIT.
 | Reference / approval code | text | Yes for methods that ask for a reference (card, UPI by default) | Up to 100 characters. |
 | Split lines (Split only) | list: method, amount, reference | Yes | Add a line per method with the **Add:** buttons; each line needs an amount; lines must add up exactly to the balance (messages: "... is still unpaid", "lines are ... more than the balance"). |
 
-Also an on-screen number pad. Buttons: **CONFIRM**, **Close**. After payment: a "PAID" screen showing change to give back, with **PRINT RECEIPT**, **PRINT INVOICE**, **NEXT BILL**.
+Buttons: **Complete payment**. After payment the pane turns into the **Paid** state (invoice number, change to give back, the tenders) with **Print receipt**, **Print invoice**, **Next bill**.
 
 ##### Invoice preview
 **PRINT PREVIEW** and **PRINT** show the invoice as a TAX INVOICE: restaurant name, address, GSTIN, items, subtotal, discount, tax rows, round off, total, footer.
@@ -383,6 +400,7 @@ Source: `Modules/Printing/PrintLogView.xaml`
 ### 5.3 Customers
 
 Purpose: search, add, edit and deactivate customers; the bill's picker draws from this list. Opened by Admin, Manager, Cashier.
+Phase 21 (D3): the screen is no longer in the sidebar (module key `customers`, `ShowInNav = false`); it still opens from the command palette ("Customers") and from Find. The bill's customer panel keeps the picker and says "add the customer on the Customers screen" when nothing matches; the "Manage customers" link planned in D3 is **not implemented** on the desktop yet (checked 2026-10-17), so the palette is the way there.
 Controls: search (name, phone or GSTIN), Show inactive, refresh, **New customer**, paging (25 per page).
 Columns: NAME, PHONE, GSTIN, LEGAL NAME, STATUS.
 Buttons: **Edit**, **Deactivate / Activate** (deactivate asks to confirm), previous/next page.
@@ -606,7 +624,7 @@ Source: `Modules/Admin/FloorView.xaml`, `Modules/Admin/TablesView.xaml`, `Module
 
 ### 6.6 Menu
 
-Purpose: categories, items, prices, modifiers, taxes and preparation stations. Opened by Admin, Manager (permission "manage menu"). Tabs: **Items**, **Categories**, **Modifiers**, **Taxes** (administrators only), **Stations** (administrators only), **Preview**. Every change is sent to all terminals automatically.
+Purpose: categories, items, prices, modifiers, taxes and preparation stations. Opened by Admin, Manager (permission "manage menu"); the only screen of the Menu Management group. Tabs, in this order since Phase 21: **Categories**, **Items**, **Modifiers**, **Taxes** (administrators only), **Stations** (administrators only), **Preview**. The command palette and the Devices › Kitchen stations entry deep-link to a tab by its title (A7). Every change is sent to all terminals automatically.
 
 #### 6.6.1 Items tab
 Controls: search (name or code), category filter, Inactive (also show inactive items, in grey), refresh, **New item**.

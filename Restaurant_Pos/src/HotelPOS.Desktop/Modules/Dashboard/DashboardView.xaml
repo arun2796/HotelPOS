@@ -171,11 +171,11 @@
                 <DataGridTextColumn Header="#" Binding="{Binding Order.OrderNumber}" Width="64" ElementStyle="{StaticResource Text.GridNumber}" />
                 <DataGridTextColumn Header="TABLE" Binding="{Binding Order.TableCode}" Width="64" />
                 <DataGridTextColumn Header="WAITER" Binding="{Binding Order.WaiterName}" Width="1*" MinWidth="80" ElementStyle="{StaticResource Text.GridTrim}" />
-                <DataGridTextColumn Header="ITEMS" Binding="{Binding Order.ItemCount}" Width="62" ElementStyle="{StaticResource Text.GridNumber}" />
+                <DataGridTextColumn Header="ITEMS" Binding="{Binding Order.ItemCount}" Width="72" ElementStyle="{StaticResource Text.GridNumber}" />
                 <DataGridTextColumn Header="TOTAL" Binding="{Binding TotalText}" Width="88" ElementStyle="{StaticResource Text.GridNumber}" HeaderStyle="{StaticResource DataGrid.NumberHeader}" />
                 <controls:StatusBadgeColumn Header="STATUS" Binding="{Binding Display}" Width="1.4*" MinWidth="128" />
-                <DataGridTextColumn Header="ELAPSED" Binding="{Binding ElapsedText}" Width="82" />
-                <DataGridTemplateColumn Header="" Width="66">
+                <DataGridTextColumn Header="ELAPSED" Binding="{Binding ElapsedText}" Width="100" />
+                <DataGridTemplateColumn Header="" Width="80">
                   <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate DataType="{x:Type orders:OrderRow}">
                       <Button Content="View" Style="{StaticResource Button.Link}" CommandParameter="{Binding}"

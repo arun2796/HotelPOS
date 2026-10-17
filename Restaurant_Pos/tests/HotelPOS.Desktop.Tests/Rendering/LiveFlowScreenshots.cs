@@ -23,6 +23,7 @@ using HotelPOS.Desktop.Modules.Customers;
 using HotelPOS.Desktop.Modules.Gst;
 using HotelPOS.Desktop.Modules.Reports;
 using HotelPOS.Desktop.Modules.MenuAdmin;
+using HotelPOS.Desktop.Modules.Orders;
 using HotelPOS.Desktop.Modules.Printing;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Auth;
@@ -41,7 +42,7 @@ using Xunit.Abstractions;
 namespace HotelPOS.Desktop.Tests.Rendering;
 
 /// <summary>
-/// Opt-in: set HOTELPOS_LIVE_SCREENS=1 with a Development API running on HOTELPOS_LIVE_API (default http://localhost:5000).
+/// Opt-in: set HOTELPOS_LIVE_SCREENS=1 with a Development API running on HOTELPOS_LIVE_API (default http://localhost:5000; Phase 21.5 ran on 5100).
 /// </summary>
 public sealed class LiveScreensFactAttribute : FactAttribute
 {
@@ -212,20 +213,27 @@ public class LiveFlowScreenshots
             Note("03 not captured: the open-shift panel did not open.");
         }
 
-        // 04 billing queue.
+        // 04 the cashier workspace (Phase 21.3): queue with search, sort and chips on the left, nothing selected yet.
         await shell.NavigateToAsync(ModuleRegistry.Billing, null);
-        var queue = (BillingQueueViewModel)shell.CurrentPage!;
+        var workspace = shell.CurrentPage as CashierWorkspaceViewModel
+            ?? throw new InvalidOperationException("Billing did not open the cashier workspace.");
         await Dispatcher.Yield(DispatcherPriority.Background);
         notifications.Items.Clear();
-        await RenderAsync(terminal, "04-cashier-billing-queue");
+        await RenderAsync(terminal, "04-cashier-workspace-queue");
 
-        // 05 claim and open the bill.
-        var card = queue.Bills.FirstOrDefault(b => b.TableCode == TableCode) ?? queue.Bills.FirstOrDefault()
-            ?? throw new InvalidOperationException("No bill is waiting in the billing queue.");
-        await queue.OpenCommand.ExecuteAsync(card);
-        var bill = shell.CurrentPage as BillDetailViewModel ?? throw new InvalidOperationException("The bill did not open.");
+        // 05 select the bill: claimed and opened in the centre (order) and right (payment) columns.
+        var card = workspace.Bills.FirstOrDefault(b => b.TableCode == TableCode) ?? workspace.Bills.FirstOrDefault()
+            ?? throw new InvalidOperationException("No bill is waiting in the cashier workspace.");
+        await workspace.SelectAsync(card);
+        var bill = workspace.Detail ?? throw new InvalidOperationException("The bill did not open in the workspace.");
         await Dispatcher.Yield(DispatcherPriority.Background);
-        await RenderAsync(terminal, "05-cashier-bill-detail");
+        await RenderAsync(terminal, "05-cashier-workspace-bill");
+
+        // 05b the same at 1366 px with the sidebar collapsed (C5: the three panes need the room; the window auto-collapses
+        // below 1440 px, which the unshown test window never reports, so it is set here).
+        shell.IsSidebarCollapsed = true;
+        await RenderAsync(terminal, "05-cashier-workspace-collapsed");
+        shell.IsSidebarCollapsed = false;
 
         // 06 discount within the cashier limit (5 % < the default 10 %).
         await bill.ShowDiscountCommand.ExecuteAsync(null);
@@ -247,7 +255,20 @@ public class LiveFlowScreenshots
         await WaitUntilAsync(() => printQueue.FailedCount > 0, TimeSpan.FromSeconds(40), "invoice print failure", throwOnTimeout: false);
         Note($"Print queue: {printQueue.FailedCount} failed job(s).");
 
-        // 07 split payment: cash + card.
+        // 07a cash via the F2 hotkey (D6: F2 = the configured cash method) with a round tender, so the change shows.
+        bill.PayHotkeyCommand.Execute("F2");
+        if (bill.Payment is { IsCash: true } cash)
+        {
+            cash.TenderedText = Money.Format(Math.Ceiling(bill.Bill!.BalanceDue / 500m) * 500m);
+            notifications.Items.Clear();
+            await RenderAsync(terminal, "07-cashier-cash-payment");
+        }
+        else
+        {
+            Note("07 cash not captured: F2 did not open the cash payment (no active cash method?).");
+        }
+
+        // 07b split payment: cash + card.
         bill.PaySplitCommand.Execute(null);
         var payment = bill.Payment ?? throw new InvalidOperationException("The payment panel did not open.");
         var balance = bill.Bill!.BalanceDue;
@@ -260,9 +281,9 @@ public class LiveFlowScreenshots
         notifications.Items.Clear();
         await RenderAsync(terminal, "07-cashier-split-payment");
 
-        // 08 PAID.
+        // 08 PAID: the inline paid state of the payment column.
         await GuardedAsync(terminal, bill.ConfirmPaymentCommand.ExecuteAsync(null), "08-cashier-paid");
-        Note(bill.IsDonePanel ? "Bill settled (PAID)." : "Payment NOT completed: " + bill.PanelError);
+        Note(bill.IsPaid || bill.IsDonePanel ? "Bill settled (PAID)." : "Payment NOT completed: " + bill.PanelError);
         await Dispatcher.Yield(DispatcherPriority.Background);
         await RenderAsync(terminal, "08-cashier-paid");
 
@@ -271,6 +292,13 @@ public class LiveFlowScreenshots
         await bill.PrintReceiptCommand.ExecuteAsync(null);
         await Dispatcher.Yield(DispatcherPriority.Background);
         await RenderAsync(terminal, "09-cashier-print-receipt-warning");
+
+        // 09b the Paid chip: today's settled bills in the queue column (reprints and refunds stay under Closed Bills).
+        notifications.Items.Clear();
+        await workspace.SelectFilterCommand.ExecuteAsync(QueueFilter.Paid);
+        await Dispatcher.Yield(DispatcherPriority.Background);
+        await RenderAsync(terminal, "09-cashier-queue-paid-chip");
+        await workspace.SelectFilterCommand.ExecuteAsync(QueueFilter.All);
 
         // 10 print log, Failed filter when something failed.
         var filter = printQueue.FailedCount > 0 ? PrintLogFilter.Failed : PrintLogFilter.All;
@@ -526,6 +554,17 @@ public class LiveFlowScreenshots
         await RenderAsync(terminal, Name("17", "dashboard"));
         // The kitchen performance, staff and terminals panels sit below the fold at 800 px.
         await RenderAsync(terminal, Name("17", "dashboard-panels"), scrollToEnd: v => v.ViewportWidth > 400);
+        // A8: 1366 px with the collapsed sidebar (the unshown test window never reports a width, so it is set here).
+        shell.IsSidebarCollapsed = true;
+        await RenderAsync(terminal, Name("17", "dashboard-collapsed"));
+        shell.IsSidebarCollapsed = false;
+
+        // 18 the Orders page (A1: every active order, chips / search / sort, View opens the table).
+        if (await OpenAsync<ActiveOrdersViewModel>(ModuleRegistry.Orders, "18") is not null)
+        {
+            await Task.Delay(500);
+            await RenderAsync(terminal, Name("18", "orders"));
+        }
 
         // 18 tables & sections.
         if (await OpenAsync<FloorViewModel>(ModuleRegistry.Floor, "18") is { } floor)
@@ -539,9 +578,18 @@ public class LiveFlowScreenshots
             await RenderAsync(terminal, Name("18", "tables-sections"));
         }
 
-        // 19 menu items, 20 the editor of an item with modifier groups.
-        if (await OpenAsync<MenuAdminViewModel>(ModuleRegistry.Menu, "19") is { } menu)
+        // 19 menu tabs (A1/A7: deep link by tab title: Categories first, then Items), 20 the editor of an item with modifier groups.
+        if (await OpenAsync<MenuAdminViewModel>(ModuleRegistry.Menu, "19", "Categories") is { } menu)
         {
+            await Task.Delay(500);
+            await RenderAsync(terminal, Name("19", "menu-categories"));
+            if (menu.Tabs.FirstOrDefault(t => t.Title == "Items") is { } itemsTab)
+            {
+                menu.SelectedTab = itemsTab;
+                await Task.Delay(500);
+                await Dispatcher.Yield(DispatcherPriority.Background);
+            }
+
             await RenderAsync(terminal, Name("19", "menu-items"));
             menu.Items.SelectedItem = menu.Items.Items.FirstOrDefault(i => i.ModifierGroupIds.Count > 1) ?? menu.Items.Items.FirstOrDefault();
             if (menu.Items.SelectedItem is not null)

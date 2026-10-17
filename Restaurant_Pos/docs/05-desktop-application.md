@@ -193,10 +193,43 @@ Since Phase 9:
 
 ## 9. UX guidelines
 
+Phase 21 (`docs/phases/phase-21-role-ui-ux-redesign.md`) restyled the client to the owner's mock-ups
+(`docs/design/reference/cashier-workspace.png`, `admin-dashboard.png`); the gallery is `docs/ui-ux/desktop/README.md`.
+
+- **Design system** (`Themes/`): `Tokens.Light.xaml` / `Tokens.Dark.xaml` hold every colour as a `Brush.*` resource
+  (`Background`, `Surface`, `SurfaceAlt`, `Border*`, `Text{Primary,Secondary,Tertiary}`, `Primary` green `#15803D` and
+  `PrimarySoft`, `Info`, `Success`, `Warning` (+ `OnWarning #1F2937`, white fails AA), `Danger`, `Neutral`, six
+  `Brush.Chart.n`, the navy shell set `Brush.Sidebar`, `SidebarText`, `SidebarTextActive`, `SidebarTextMuted`,
+  `SidebarHover`, `SidebarSelected`, `SidebarAccent`, `SidebarDivider`, `SidebarBadge`, and `Brush.Status.*`);
+  `DesignSystem.xaml` and `Controls.xaml` style every control from them (no literal colours in views); `Admin.xaml`
+  and `Cashier.xaml` hold the role surfaces; `Density.Comfort/Compact.xaml` the sizes. Contract tests
+  (`tests/HotelPOS.Desktop.Tests/Rendering`) check both themes for every token and a 4.4:1 text floor
+  (`TextSecondary #64748B` is 4.42:1 on white, the owner's colour kept).
+- **Shared status map** (`StatusPresentation`, Client.Shared, same values in `tokens.css`): Available soft green with
+  outline, Occupied blue, Ordering purple, Preparing amber `#B45309`, Ready solid success green with a check (was red
+  until Phase 20), Billing / Bill requested warning orange `#F59E0B`, Served / Paid green, OutOfService grey. Every
+  status is icon + word + colour, never colour alone.
+- **Navy shell** (`Shell/ShellView.xaml`): 240 px sidebar with the restaurant name, grouped navigation
+  (`ModuleRegistry.GroupOrder`: Overview, Live Operations, Menu Management, Finance, Analytics & Reports, People,
+  Devices, Settings, System; `ShowInNav` hides a module such as `customers`; a group with nothing left after the
+  permission filter is hidden), the device card (Connected pill, terminal, version) and the user block (initials,
+  name, role, bell / password / sign-out). It collapses to a 64 px icon rail by itself below 1440 px
+  (`ShellViewModel.AutoCollapseBelowWidth`) and by the hamburger button (remembered in `settings.json`). Top bar: page
+  title and description, palette search, clock, theme, notices bell, help, connection pill; status bar below.
+- **Primitives** (`Controls/`): `PageHeader`, `KpiTile`, `StatusBadge` (+ `StatusBadgeColumn` for grids),
+  `OrderLine` (thumbnail or initials, qty × name, options, note, amount), `Panes` (the cashier's 400 / * / 340 px
+  three-pane grid), `Pager` (ten per page), `SearchBox`, `ReportFilterBar`, `EmptyState`, `BusyOverlay`,
+  `DeviceStatusCard`, `Icon` (Segoe Fluent glyphs), `ChartGeometry` (`RingSegment` for the donuts, bars),
+  `TransitioningContentControl` (page fade), `SelectorBehaviors.ScrollSelectedIntoView`. Pictures come from the item's
+  `ImageUrl` through `MenuCache` with an initials placeholder (D11).
+- **Role surfaces**: the cashier workspace (`Modules/Billing/CashierWorkspaceView`: queue with search, sort and
+  chips · order column · permanent payment column with one button per active method, F2 = cash, F3… in sort order,
+  F9 split, inline Paid state); the admin dashboard (`Modules/Dashboard`: header with business day and Online pill,
+  four KPI cards, Live Order Status donut, Active Orders table with chips and pager, Table status cards, Recent
+  activity from the audit log, then the Phase 20 panels); the Orders page (`Modules/Orders/ActiveOrdersView`); Menu
+  with tabs; deep links (Reports by key, Settings by section, Menu by tab, Orders by status).
 - Minimum touch target 48 x 48 px; primary action buttons at least 56 px tall.
-- Base font 15 px (Comfort) / 14 px (Compact), Segoe UI Variable (Inter fallback); kitchen cards 20-24 px; table tiles show code at 28 px.
-- Status colours (same on all screens): Available green, Occupied blue, Ordering purple,
-  Preparing amber, Ready red-accent (needs attention), Billing teal, OutOfService grey.
+- Base font 15 px (Comfort) / 14 px (Compact), Inter (bundled woff2) with Segoe UI Variable fallback; kitchen cards 20-24 px; table tiles show code at 28 px.
 - One primary action per screen, placed bottom-right. Destructive actions need confirmation.
 - No modal dialogs in the ordering flow except manager approval and cancellation reason.
 - Light and dark themes via swapped resource dictionaries; text contrast at least WCAG AA.
@@ -206,7 +239,7 @@ Since Phase 9:
 - Motion is limited to a 160 ms fade-and-slide when the page changes, skipped when Windows animation effects are
   off or the PC renders in software.
 - One culture on every terminal: Indian digit grouping (`1,23,456.00`), `dd-MM-yyyy` dates, 24-hour times.
-- Keyboard shortcuts for cashier (F2 cash, F3 card, F4 UPI, F9 split, Esc back).
+- Keyboard shortcuts for cashier (F2 the cash method, F3… the other active methods in sort order, F9 split, Esc back to the queue).
 - Every list that may exceed 200 rows is paged or virtualised.
 
 ## 10. Errors and notifications

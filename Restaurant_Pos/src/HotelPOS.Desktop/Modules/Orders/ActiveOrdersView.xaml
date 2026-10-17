@@ -72,9 +72,9 @@
           <DataGridTextColumn Header="TOTAL" Binding="{Binding TotalText}" Width="104" ElementStyle="{StaticResource Text.GridNumber}"
                               HeaderStyle="{StaticResource DataGrid.NumberHeader}" />
           <controls:StatusBadgeColumn Header="STATUS" Binding="{Binding Display}" Width="1.3*" MinWidth="140" />
-          <DataGridTextColumn Header="CREATED" Binding="{Binding CreatedText}" Width="80" />
-          <DataGridTextColumn Header="ELAPSED" Binding="{Binding ElapsedText}" Width="96" />
-          <DataGridTemplateColumn Header="" Width="64">
+          <DataGridTextColumn Header="CREATED" Binding="{Binding CreatedText}" Width="96" />
+          <DataGridTextColumn Header="ELAPSED" Binding="{Binding ElapsedText}" Width="112" />
+          <DataGridTemplateColumn Header="" Width="80">
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate DataType="{x:Type orders:OrderRow}">
                 <Button Content="View" Style="{StaticResource Button.Link}" CommandParameter="{Binding}"
