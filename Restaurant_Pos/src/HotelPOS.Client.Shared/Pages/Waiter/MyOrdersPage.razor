@@ -11,53 +11,94 @@
 
 <PageTitle>My orders · HotelPOS</PageTitle>
 
-@if (_error is not null)
+<OfflineBanner>Offline — order states may be out of date until the connection is back.</OfflineBanner>
+
+<Tabs Items="TabItems" Selected="@_tab" SelectedChanged="SelectTabAsync" />
+
+@if (_tab == ActiveTab)
 {
-    <ErrorState Message="@_error" OnRetry="RefreshAsync" />
-}
-else if (_orders is null)
-{
-    <Skeleton Variant="Skeleton.SkeletonVariant.Card" Count="3" Label="Loading" />
-}
-else if (_orders.Count == 0)
-{
-    <EmptyState Icon="☰" Text="No active orders." />
+    @if (_error is not null)
+    {
+        <ErrorState Message="@_error" OnRetry="RefreshAsync" />
+    }
+    else if (_orders is null)
+    {
+        <Skeleton Variant="Skeleton.SkeletonVariant.Card" Count="3" Label="Loading" />
+    }
+    else if (_orders.Count == 0)
+    {
+        <EmptyState Icon="receipt" Text="No active orders." />
+    }
+    else
+    {
+        <div class="page-sub" data-testid="orders-summary">@TextFormat.Count(_orders.Count, "active order") · ready ones first</div>
+        <div class="stack" data-testid="active-orders">
+            @foreach (var order in _orders)
+            {
+                var o = order;
+                <OrderCard Order="o" Elapsed="@Elapsed(o)" OnClick="() => Open(o)" />
+            }
+        </div>
+    }
 }
 else
 {
-    <div class="muted small" style="margin-bottom:8px">@TextFormat.Count(_orders.Count, "active order")</div>
-    <div class="stack">
-        @foreach (var order in _orders)
-        {
-            <button class="card order-card @(order.Status == OrderStatus.Ready ? "ready" : null)" @onclick="() => Open(order)">
-                <div class="row between">
-                    <b>#@order.OrderNumber · @order.TableCode</b>
-                    <span class="muted small">@Elapsed(order)</span>
-                </div>
-                <div style="margin:6px 0"><span class="chip @StatusLabels.OrderChip(order.Status)">@StatusLabels.Order(order.Status)</span></div>
-                <div class="muted small">@TextFormat.Count(order.ItemCount, "item") · @TextFormat.Count(order.GuestCount, "guest") · @order.WaiterName</div>
-                <div><b>approx. @order.ApproxTotal.ToString("N2")</b></div>
-            </button>
-        }
-    </div>
+    @if (_completedError is not null)
+    {
+        <ErrorState Message="@_completedError" OnRetry="LoadCompletedAsync" />
+    }
+    else if (_completed is null)
+    {
+        <Skeleton Variant="Skeleton.SkeletonVariant.Card" Count="3" Label="Loading" />
+    }
+    else if (_completed.Count == 0)
+    {
+        <EmptyState Icon="check" Text="No completed orders today." />
+    }
+    else
+    {
+        <div class="page-sub">@TextFormat.Count(_completed.Count, "order") today · newest first</div>
+        <div class="stack" data-testid="completed-orders">
+            @foreach (var order in _completed)
+            {
+                var o = order;
+                <OrderCard Order="o" Elapsed="@null" ShowProgress="false" OnClick="() => OpenCompleted(o)" />
+            }
+        </div>
+    }
 }
 
 @code {
+    private const string ActiveTab = "active";
+    private const string CompletedTab = "completed";
+
     private List<OrderSummaryDto>? _orders;
+    private List<OrderSummaryDto>? _completed;
     private string? _error;
+    private string? _completedError;
+    private string _tab = ActiveTab;
     private readonly List<IDisposable> _subscriptions = new();
+    private CancellationTokenSource? _debounce;
+    private Timer? _tick;
+
+    private IReadOnlyList<TabItem> TabItems => new[]
+    {
+        new TabItem(ActiveTab, "Active", _orders?.Count),
+        new TabItem(CompletedTab, "Completed", _completed?.Count),
+    };
 
     protected override async Task OnInitializedAsync()
     {
-        Shell.Set("My orders", "Ready ones first");
+        Shell.Set("My orders", "Live updates from the kitchen");
         await Realtime.StartAsync();
         foreach (var name in new[] { HubEvents.OrderCreated, HubEvents.OrderUpdated, HubEvents.OrderCancelled, HubEvents.TableStatusChanged,
-                                     HubEvents.OrderReady, HubEvents.OrderAccepted, HubEvents.OrderPreparing, HubEvents.OrderServed })
+                                     HubEvents.OrderReady, HubEvents.OrderAccepted, HubEvents.OrderPreparing, HubEvents.OrderServed, HubEvents.BillUpdated, HubEvents.PaymentCompleted })
         {
-            _subscriptions.Add(Realtime.Subscribe<System.Text.Json.JsonElement>(name, payload => _ = InvokeAsync(RefreshAsync)));
+            _subscriptions.Add(Realtime.Subscribe<System.Text.Json.JsonElement>(name, _ => ScheduleRefresh()));
         }
 
         Realtime.Reconnected += RefreshAsync;
+        _tick = new Timer(_ => _ = InvokeAsync(StateHasChanged), null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
         await RefreshAsync();
     }
 
@@ -75,10 +116,56 @@ else
             _error = result.Message;
         }
 
+        if (_tab == CompletedTab)
+        {
+            await LoadCompletedAsync();
+        }
+
         await InvokeAsync(StateHasChanged);
     }
 
+    // Today's orders of this waiter that are no longer active (paid, completed, cancelled); read only when the tab is open.
+    private async Task LoadCompletedAsync()
+    {
+        var me = Auth.User?.Id ?? 0;
+        var result = await Api.GetOrdersAsync(me, DateTime.Today.ToUniversalTime());
+        if (result.Success && result.Data is { } page)
+        {
+            _completed = page.Items
+                .Where(o => o.WaiterId == me && o.Status is OrderStatus.Paid or OrderStatus.Completed or OrderStatus.Cancelled)
+                .OrderByDescending(o => o.CreatedAtUtc)
+                .ToList();
+            _completedError = null;
+        }
+        else if (_completed is null)
+        {
+            _completedError = result.Message;
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SelectTabAsync(string tab)
+    {
+        _tab = tab;
+        if (tab == CompletedTab && _completed is null)
+        {
+            await LoadCompletedAsync();
+        }
+    }
+
+    // Several events arrive for one change; one refresh a quarter second later is enough (the other pages do the same).
+    private void ScheduleRefresh()
+    {
+        _debounce?.Cancel();
+        var cts = _debounce = new CancellationTokenSource();
+        _ = Task.Delay(250, cts.Token).ContinueWith(t => { if (!t.IsCanceled) { _ = InvokeAsync(RefreshAsync); } }, TaskScheduler.Default);
+    }
+
     private void Open(OrderSummaryDto order) => Navigation.NavigateTo($"tables/{order.TableId}");
+
+    // A finished order is no longer the table's current one, so it opens by its own id.
+    private void OpenCompleted(OrderSummaryDto order) => Navigation.NavigateTo($"orders/{order.Id}");
 
     private static string Elapsed(OrderSummaryDto order)
     {
@@ -89,6 +176,8 @@ else
     public void Dispose()
     {
         Realtime.Reconnected -= RefreshAsync;
+        _debounce?.Cancel();
+        _tick?.Dispose();
         foreach (var subscription in _subscriptions)
         {
             subscription.Dispose();

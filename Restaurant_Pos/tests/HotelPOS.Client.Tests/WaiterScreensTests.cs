@@ -381,4 +381,64 @@ public sealed class WaiterScreensTests : TestContext
         page.Find("[data-testid=send]").HasAttribute("disabled").Should().BeTrue("nothing to send");
         await StopRealtimeAsync();
     }
+
+    // ---- W5 my orders -------------------------------------------------------------------------------------------
+
+    private static OrderSummaryDto Summary(int id, string table, int waiter, OrderStatus status, int minutesAgo) => new()
+    {
+        Id = id, OrderNumber = 1000 + id, TableId = id, TableCode = table, WaiterId = waiter, WaiterName = "Arun", GuestCount = 2, ItemCount = 4,
+        Status = status, ApproxTotal = 420m, CreatedAtUtc = DateTime.UtcNow.AddMinutes(-minutesAgo), SubmittedAtUtc = DateTime.UtcNow.AddMinutes(-minutesAgo),
+    };
+
+    [Fact]
+    public async Task MyOrders_ActiveTab_ReadyFirstWithKitchenProgress_CompletedTab_LoadsTodaysFinishedOrdersOnDemand()
+    {
+        var handler = new RouteHandler
+        {
+            Respond = r => r.RequestUri!.AbsolutePath switch
+            {
+                "/api/orders/active" => new List<OrderSummaryDto>
+                {
+                    Summary(3, "T03", Me, OrderStatus.Preparing, 90),
+                    Summary(5, "T05", Me, OrderStatus.Ready, 115),
+                    Summary(6, "T06", 99, OrderStatus.Ready, 1),
+                },
+                "/api/orders" => new PagedResult<OrderSummaryDto>
+                {
+                    Items = new[] { Summary(1, "T01", Me, OrderStatus.Paid, 300), Summary(2, "T02", Me, OrderStatus.Cancelled, 200), Summary(4, "T04", Me, OrderStatus.Served, 20) },
+                    Page = 1, PageSize = 200, TotalCount = 3,
+                },
+                _ => null,
+            },
+        };
+        AddPageServices(await WaiterAsync(), handler);
+        var page = RenderComponent<MyOrdersPage>();
+        page.WaitForAssertion(() => page.FindAll("[data-testid=active-orders] [data-testid=order-card]").Should().HaveCount(2, "another waiter's order is not mine"));
+        await Task.Delay(300);
+
+        page.FindAll(".tabs .tab").Select(t => t.TextContent.Replace(" ", string.Empty)).Should().Equal("Active2", "Completed");
+        var cards = page.FindAll("[data-testid=active-orders] [data-testid=order-card]");
+        cards[0].QuerySelector(".order-card-title")!.TextContent.Should().Be("#1005 · T05", "ready first");
+        cards[0].QuerySelector("[data-testid=order-status]")!.TextContent.Should().Be("Ready");
+        cards[0].QuerySelector(".order-card-elapsed")!.TextContent.Should().Contain("1 h 55 min");
+        cards[0].QuerySelectorAll("[data-testid=kitchen-progress] .timeline-step").Select(s => s.GetAttribute("data-step")).Should().Equal("Received", "Preparing", "Ready", "Served");
+        cards[0].QuerySelectorAll("[data-testid=kitchen-progress] .timeline-step.done").Should().HaveCount(2);
+        cards[0].QuerySelector("[data-testid=kitchen-progress] .timeline-step.current")!.GetAttribute("data-step").Should().Be("Ready");
+        cards[1].QuerySelector("[data-testid=kitchen-progress] .timeline-step.current")!.GetAttribute("data-step").Should().Be("Preparing");
+        cards[0].TextContent.Should().Contain("4 items · 2 guests").And.Contain("approx. 420.00");
+        handler.Calls.Should().NotContain(c => c.StartsWith("GET /api/orders?", StringComparison.Ordinal), "the completed list is read only when its tab opens");
+
+        await page.InvokeAsync(() => page.FindAll(".tabs .tab").Single(t => t.TextContent.Contains("Completed")).Click());
+
+        page.WaitForAssertion(() => page.FindAll("[data-testid=completed-orders] [data-testid=order-card]").Should().HaveCount(2, "Served is still active"));
+        handler.Calls.Should().ContainSingle(c => c.StartsWith($"GET /api/orders?waiterId={Me}&fromUtc=", StringComparison.Ordinal) && c.Contains("pageSize=200"));
+        var done = page.FindAll("[data-testid=completed-orders] [data-testid=order-card]");
+        done.Select(c => c.QuerySelector(".order-card-title")!.TextContent).Should().Equal("#1002 · T02", "#1001 · T01");
+        done.Select(c => c.QuerySelector("[data-testid=order-status]")!.TextContent).Should().Equal("Cancelled", "Paid");
+        done.Should().OnlyContain(c => c.QuerySelector("[data-testid=kitchen-progress]") == null, "a finished order shows no kitchen progress");
+
+        await page.InvokeAsync(() => done[1].Click());
+        Services.GetRequiredService<NavigationManager>().Uri.Should().EndWith("orders/1", "a finished order opens by its own id");
+        await StopRealtimeAsync();
+    }
 }
