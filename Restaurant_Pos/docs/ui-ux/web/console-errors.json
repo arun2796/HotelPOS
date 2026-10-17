@@ -8,25 +8,5 @@
   "role": "kitchen",
   "url": "http://localhost:5100/app/signin",
   "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
- },
- {
-  "role": "waiter",
-  "url": "http://localhost:5100/app/tables/2/order",
-  "text": "Failed to load resource: net::ERR_INTERNET_DISCONNECTED"
- },
- {
-  "role": "waiter",
-  "url": "http://localhost:5100/app/my-orders",
-  "text": "Failed to load resource: net::ERR_INTERNET_DISCONNECTED"
- },
- {
-  "role": "waiter",
-  "url": "http://localhost:5100/app/my-orders",
-  "text": "Failed to load resource: net::ERR_INTERNET_DISCONNECTED"
- },
- {
-  "role": "waiter",
-  "url": "http://localhost:5100/app/my-orders",
-  "text": "Failed to load resource: net::ERR_INTERNET_DISCONNECTED"
  }
 ]

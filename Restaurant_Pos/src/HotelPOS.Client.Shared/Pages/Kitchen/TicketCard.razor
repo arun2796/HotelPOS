@@ -72,7 +72,7 @@
 
     // A Ready ticket shows how long it has been waiting for pick-up; every other ticket shows its age.
     private string ElapsedLabel => Ticket.Status == KitchenOrderStatus.Ready && Ticket.ReadyAtUtc is { } ready
-        ? "Ready " + KitchenRules.ElapsedText(ready, Now)
+        ? "Ready · waiting " + KitchenRules.ElapsedText(ready, Now)
         : KitchenRules.ElapsedText(Ticket.CreatedAtUtc, Now);
 
     private static string ButtonClass(string action, bool first) => action switch

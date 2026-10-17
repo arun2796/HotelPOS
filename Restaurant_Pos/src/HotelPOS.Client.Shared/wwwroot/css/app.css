@@ -121,7 +121,7 @@ label:has(> input[type="checkbox"]) { min-height: var(--touch); cursor: pointer;
 }
 
 /* Toasts */
-.toasts { position: fixed; left: 12px; right: 12px; bottom: calc(72px + var(--safe-bottom)); z-index: 60; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+.toasts { position: fixed; left: 12px; right: 12px; bottom: calc(var(--toast-offset, 72px) + var(--safe-bottom)); z-index: 60; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
 .toast { pointer-events: auto; padding: 10px 12px; border-radius: var(--radius-button); background: var(--surface); border: 1px solid var(--border);
   box-shadow: var(--shadow-popup); font-size: 14px; }
 .toast.success { border-left: 4px solid var(--success); }
@@ -288,15 +288,15 @@ svg.ic { flex: none; vertical-align: middle; }
 .tab.on .tab-count, .segment.on .tab-count { background: var(--primary-soft); color: var(--primary); }
 
 .segmented { display: inline-flex; background: var(--surface-subtle); border-radius: 999px; padding: 3px; gap: 3px; }
-.segment { min-height: 42px; padding: 0 16px; border: 0; border-radius: 999px; background: transparent; color: var(--text-2); font-weight: 600;
+.segment { min-height: var(--touch); padding: 0 16px; border: 0; border-radius: 999px; background: transparent; color: var(--text-2); font-weight: 600;
   cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
 .segment.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12); }
 
 .search-box { display: flex; align-items: center; gap: 8px; min-height: var(--touch); padding: 0 8px 0 12px; background: var(--input-bg);
   border: 1px solid var(--input-border); border-radius: var(--radius-input); color: var(--text-2); }
 .search-box:focus-within { border-color: var(--primary); background: var(--surface); }
-.search-input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text); min-height: 44px; }
-.search-clear { width: 36px; height: 36px; border: 0; border-radius: 50%; background: transparent; color: var(--text-2); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.search-input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text); min-height: var(--touch); }
+.search-clear { width: var(--touch); height: var(--touch); border: 0; border-radius: 50%; background: transparent; color: var(--text-2); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
 
 .filter-chip { min-height: var(--touch); padding: 0 16px; display: inline-flex; align-items: center; gap: 8px; border-radius: 999px; border: 1px solid var(--border);
   background: var(--surface); color: var(--text); font-weight: 600; white-space: nowrap; flex: none; cursor: pointer; }
@@ -394,3 +394,10 @@ svg.ic { flex: none; vertical-align: middle; }
 
 .toast-text { flex: 1; min-width: 0; }
 .toast-action { min-height: 40px; padding: 0 12px; border: 0; border-radius: var(--radius-button); background: transparent; color: var(--primary); font-weight: 700; cursor: pointer; }
+
+/* Phase 21.5: while the sticky cart bar is on screen the toast moves to the top, under the bar, so it never covers the total or the Review button. */
+body:has(.cart) .toasts { top: calc(60px + env(safe-area-inset-top, 0px)); bottom: auto; }
+/* Top bar: the subtitle is one ellipsis line and the title block keeps room for a few characters beside the back button. */
+.topbar .title { min-width: 48px; }
+@media (max-width: 420px) { .topbar .conn { gap: 4px; padding: 4px 6px; font-size: 11px; } .topbar .conn.ok { font-size: 0; gap: 0; padding: 8px; } /* connected = a green dot (the title attribute keeps the words); wait/off keep their text */ }
+.topbar .sub { display: block; -webkit-line-clamp: unset; white-space: nowrap; text-overflow: ellipsis; }

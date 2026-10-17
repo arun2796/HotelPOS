@@ -8,7 +8,7 @@
 /* ---- W2: tables. Three cards per row at 360 px (328 px of content: 3 x 100 + 2 x 8), more on wider screens. ---- */
 .tables-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 2px 0 10px; }
 .tables-toolbar .segmented { flex: none; }
-.tables-toolbar .segment { min-height: 36px; padding: 0 12px; font-size: var(--fs-caption); }
+.tables-toolbar .segment { min-height: var(--touch); padding: 0 12px; font-size: var(--fs-caption); }
 .table-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; margin-bottom: 8px; }
 .table-grid + .section-head { margin-top: 18px; }
 
@@ -25,7 +25,8 @@
 .table-code { font-size: 22px; font-weight: 700; line-height: 1; color: var(--text); }
 .table-elapsed { display: inline-flex; align-items: center; gap: 2px; font-size: var(--fs-caption); color: var(--tc); font-weight: 600; white-space: nowrap; }
 .table-card .status-badge { padding: 2px 8px 2px 6px; font-size: var(--fs-caption); max-width: 100%; }
-.table-card .status-badge span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.table-card .status-badge { align-items: flex-start; line-height: 1.2; }
+.table-card .status-badge span { min-width: 0; white-space: normal; overflow-wrap: anywhere; } /* the label wraps to two lines, never cut: status is never colour alone */
 .table-meta { display: flex; align-items: center; justify-content: space-between; gap: 4px; width: 100%; margin-top: auto; }
 .table-order { font-weight: 600; color: var(--text); }
 .table-draft { margin-top: 2px; font-size: 11px; padding: 1px 6px; }
@@ -55,8 +56,8 @@
 /* ---- W4: order builder. Picture cards (initials when no picture), sticky CartBar, review sheet, ItemOptionsSheet. ---- */
 .item-card { position: relative; }
 .item-initials { font-size: 26px; font-weight: 700; color: var(--text-3); letter-spacing: 0.02em; }
-.item-meta { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
-.item-options-hint { white-space: nowrap; }
+.item-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 2px 6px; padding-right: 40px; /* clear of the round + button */ }
+.item-options-hint { white-space: nowrap; font-size: var(--fs-caption); }
 .item-add { position: absolute; right: 8px; bottom: 8px; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px;
   border-radius: 50%; background: var(--primary); color: var(--on-primary); }
 .item-card:disabled .item-add { display: none; }
@@ -80,7 +81,7 @@
 .cart-line { display: block; padding: 0; }
 .cart-line .order-line { border-bottom: 0; padding-bottom: 4px; }
 .cart-line-controls { display: flex; align-items: center; gap: 4px; padding: 0 0 8px; border-bottom: 1px solid var(--border-subtle); }
-.cart-line-controls .btn.icon { min-width: 44px; min-height: 44px; }
+.cart-line-controls .btn.icon { min-width: var(--touch); min-height: var(--touch); }
 .danger-text { color: var(--danger-text); }
 .review-add { margin: 10px 0; }
 .review-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: var(--touch); font-weight: 600; }
@@ -90,9 +91,9 @@
 .options-price { font-size: var(--fs-section); font-weight: 600; color: var(--success-text); margin: -4px 0 8px; }
 .options-group { margin: 12px 0; }
 .options-head { margin-bottom: 6px; }
-.option-btn { min-height: 44px; padding: 0 14px; border-radius: 999px; }
+.option-btn { min-height: var(--touch); padding: 0 14px; border-radius: 999px; }
 .quick-notes { margin-bottom: 8px; }
-.quick-note { min-height: 40px; padding: 0 12px; border-radius: 999px; font-size: var(--fs-label); background: var(--surface-subtle); border-color: var(--surface-subtle); }
+.quick-note { min-height: var(--touch); padding: 0 12px; border-radius: 999px; font-size: var(--fs-label); background: var(--surface-subtle); border-color: var(--surface-subtle); }
 .options-group textarea { min-height: 64px; padding: 10px 12px; resize: vertical; }
 .options-foot { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
 .options-foot .grow { flex: 1; }
@@ -112,7 +113,7 @@
 .detail-item .order-line { border-bottom: 0; padding-bottom: 4px; }
 .detail-item-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 0 8px 64px; border-bottom: 1px solid var(--border-subtle); }
 .detail-item:last-child .detail-item-foot { border-bottom: 0; }
-.detail-item-foot .btn.ghost { min-height: 40px; padding: 0 8px; font-size: var(--fs-label); }
+.detail-item-foot .btn.ghost { min-height: var(--touch); padding: 0 8px; font-size: var(--fs-label); }
 .detail-timeline { margin-top: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card); padding: 14px 12px; }
 .event-list { list-style: none; margin: 16px 0 0; padding: 0; position: relative; }
 .event-list::before { content: ""; position: absolute; left: 61px; top: 8px; bottom: 8px; width: 2px; background: var(--border); }
