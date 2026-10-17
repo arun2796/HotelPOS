@@ -207,7 +207,7 @@ live gallery harness for both clients.
     via new `ModuleDefinition.DefaultParameter`), Menu Categories/Items tabs, `KpiCard`s with real deltas only,
     order-status donut, paged active orders, soft table tiles, Recent activity from `api/admin/audit-logs`
     (`AuditSentences`) with bell-feed fallback, deep links for Reports/Settings/Menu/Templates, 2-column layout
-    below 1280. D3 "Manage customers" link in the bill picker: **not yet added** (picker is in `BillDetailView`).
+    below 1280. D3 "Manage customers" link in the bill picker: **not yet added** at this point (picker is in `BillDetailView`; added in the polish entry below).
   - Rendering count 78 → 81. Full suite on the merged branch: Domain 365, Application 253, Api 197, Client 204,
     Desktop 421 (2 pre-existing skips) — 0 failures. `git diff main -- Application Domain Infrastructure Api` is
     empty; Contracts gains only `Presentation/StatusPresentation.cs`.
@@ -218,7 +218,7 @@ live gallery harness for both clients.
   390 px phone). Desktop: `LiveFlowScreenshots` now drives the cashier workspace and the new admin surfaces;
   19 cashier + 16 manager shots; 8/8 compared screens match; clipped grid columns fixed. The admin password is not
   the seed default, so admin-only screens were captured as `manager1`; the `functions*` live passes still target
-  the legacy bill pages and were not re-run. The gallery run registered three new browser terminals (WEB-*, PROBE);
+  the legacy bill pages and were not re-run at this point (rewritten and re-run in the polish entry below). The gallery run registered three new browser terminals (WEB-*, PROBE);
   the owner may deactivate them. Remaining per-screen issues are listed in `docs/ui-ux/web/README.md` and
   `docs/ui-ux/desktop/README.md`.
 - 2026-10-17 — Leftovers closed on `phase-21-polish`: waiter toasts anchored below the header on every waiter page
