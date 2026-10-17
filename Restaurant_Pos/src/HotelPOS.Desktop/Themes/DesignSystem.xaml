@@ -9,8 +9,8 @@
        views use; keep them stable. -->
 
   <!-- ============================ Typography ============================ -->
-  <!-- Phase 17: Segoe UI Variable first (enterprise look); the bundled Inter (Resources/Fonts, SIL OFL) is the fallback. -->
-  <FontFamily x:Key="Font.Body">Segoe UI Variable Text, Segoe UI, /HotelPOS.Desktop;component/Resources/Fonts/#Inter</FontFamily>
+  <!-- Phase 21: the bundled Inter (Resources/Fonts, SIL OFL) first, Segoe UI as the fallback. -->
+  <FontFamily x:Key="Font.Body">/HotelPOS.Desktop;component/Resources/Fonts/#Inter, Segoe UI</FontFamily>
   <FontFamily x:Key="Font.Icons">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
   <FontFamily x:Key="Font.Mono">Cascadia Mono, Consolas</FontFamily>
 

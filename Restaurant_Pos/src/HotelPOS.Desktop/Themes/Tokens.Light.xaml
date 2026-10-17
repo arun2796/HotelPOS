@@ -53,7 +53,7 @@
   <SolidColorBrush x:Key="Brush.WarningText" Color="#B45309" />
   <SolidColorBrush x:Key="Brush.Neutral" Color="#94A3B8" />
   <SolidColorBrush x:Key="Brush.NeutralSoft" Color="#F1F5F9" />
-  <SolidColorBrush x:Key="Brush.NeutralText" Color="#64748B" />
+  <SolidColorBrush x:Key="Brush.NeutralText" Color="#5B6B80" />
 
   <!-- Chart series, in order (payment split, future charts). -->
   <SolidColorBrush x:Key="Brush.Chart.0" Color="#078747" />

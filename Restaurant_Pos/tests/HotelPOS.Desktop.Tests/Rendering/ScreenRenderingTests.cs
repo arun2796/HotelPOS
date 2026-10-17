@@ -472,8 +472,8 @@ public class ScreenRenderingTests
 
         bindingErrors.Errors.Should().BeEmpty("every binding in the views must point at an existing property");
         rendered.Should().HaveCount(76);
-        // Phase 17: Segoe UI Variable first, Segoe UI next, bundled Inter as the fallback on older Windows.
-        bodyFontFiles.Should().HaveCount(4).And.OnlyContain(f => f.StartsWith("seguivar") || f.StartsWith("segoeui") || f.StartsWith("inter-"));
+        // Phase 21: the bundled Inter (Regular/Medium/SemiBold/Bold) is the body font on every Windows version.
+        bodyFontFiles.Should().HaveCount(4).And.OnlyContain(f => f.StartsWith("inter-"));
     }
 
     // Every light screen is also rendered in the dark theme ("-dark"), so both themes are checked for binding errors

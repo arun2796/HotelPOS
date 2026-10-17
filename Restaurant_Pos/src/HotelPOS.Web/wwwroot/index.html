@@ -12,6 +12,8 @@
     <!-- The shared library's files keep their own base path (_content/...), not this app's "app": the API serves them at
          /_content/... both under dotnet run and after publish (wwwroot/_content). /app/_content/... matches no file and the
          API's authorization fallback answers 401, which left the app unstyled. -->
+    <link rel="preload" href="../_content/HotelPOS.Client.Shared/fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="../_content/HotelPOS.Client.Shared/fonts/Inter-SemiBold.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="../_content/HotelPOS.Client.Shared/css/tokens.css" />
     <link rel="stylesheet" href="../_content/HotelPOS.Client.Shared/css/app.css" />
     <link rel="icon" type="image/png" href="favicon.png" />
