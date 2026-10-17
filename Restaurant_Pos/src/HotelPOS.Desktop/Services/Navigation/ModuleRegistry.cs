@@ -122,7 +122,8 @@ public static class ModuleRegistry
             "Registered terminals and which are online.", typeof(DevicesViewModel)),
         new(Printers, "Printers", "", "Devices", Management, 7,
             "Kitchen, invoice and receipt printers attached to this terminal.", typeof(PrinterSettingsViewModel)),
-        // The Stations tab of the Menu hub, reachable from the Devices group as the prompt lists it (Phase 21 A1).
+        // The Stations tab of the Menu hub, reachable from the Devices group as the prompt lists it (Phase 21 A1). Role-based like the
+        // tab itself (MenuAdminViewModel adds Stations for administrators only), so it is not in ModulePermissions.
         new(Stations, "Kitchen stations", "", "Devices", AdminOnly, 21,
             "Preparation stations the kitchen tickets are routed to.", typeof(MenuAdminViewModel), DefaultParameter: MenuAdminViewModel.StationsTab),
 
@@ -166,7 +167,6 @@ public static class ModuleRegistry
         [Reports] = Permissions.ReportsView,
         [Floor] = Permissions.TablesManage,
         [Menu] = Permissions.MenuManage,
-        [Stations] = Permissions.MenuManage,
         [Audit] = Permissions.AuditView,
         [Users] = Permissions.UsersManage,
         [RolesModule] = Permissions.RolesManage,
