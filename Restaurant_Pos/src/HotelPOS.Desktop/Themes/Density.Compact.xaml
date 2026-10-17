@@ -18,7 +18,7 @@
 
   <sys:Double x:Key="Size.Control">38</sys:Double>
   <sys:Double x:Key="Size.CheckBox">16</sys:Double>
-  <sys:Double x:Key="Size.GridRow">40</sys:Double>
+  <sys:Double x:Key="Size.GridRow">44</sys:Double>
   <sys:Double x:Key="Size.GridHeader">36</sys:Double>
   <sys:Double x:Key="Size.NavItem">38</sys:Double>
   <sys:Double x:Key="Size.ListItem">36</sys:Double>

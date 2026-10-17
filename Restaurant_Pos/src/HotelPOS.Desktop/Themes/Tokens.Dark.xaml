@@ -51,6 +51,7 @@
   <SolidColorBrush x:Key="Brush.InfoText" Color="#93C5FD" />
   <SolidColorBrush x:Key="Brush.SuccessText" Color="#4ADE80" />
   <SolidColorBrush x:Key="Brush.WarningText" Color="#FBBF24" />
+  <SolidColorBrush x:Key="Brush.OnWarning" Color="#1F2937" />
   <SolidColorBrush x:Key="Brush.Neutral" Color="#94A3B8" />
   <SolidColorBrush x:Key="Brush.NeutralSoft" Color="#1F2A3D" />
   <SolidColorBrush x:Key="Brush.NeutralText" Color="#A3ACBA" />

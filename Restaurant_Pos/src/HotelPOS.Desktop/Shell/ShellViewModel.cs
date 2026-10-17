@@ -78,6 +78,15 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
         ShiftBar = services.GetService<ShiftBarViewModel>() ?? ActivatorUtilities.CreateInstance<ShiftBarViewModel>(services);
         Banner = services.GetService<StatusBannerViewModel>() ?? ActivatorUtilities.CreateInstance<StatusBannerViewModel>(services);
         _isSidebarCollapsed = settings.Current.SidebarCollapsed;
+        StatusBar.PropertyChanged += OnStatusBarChanged;
+    }
+
+    private void OnStatusBarChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(StatusBarViewModel.FailedPrintCount))
+        {
+            UpdateBadges();
+        }
     }
 
     public ObservableCollection<NavItemViewModel> NavItems { get; } = new();
@@ -259,6 +268,43 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
         OnPropertyChanged(nameof(IsDarkTheme));
     }
 
+    /// <summary>Below this window width the sidebar collapses on its own (the cashier's three panes need the room at 1366 px).</summary>
+    public const double AutoCollapseBelowWidth = 1440;
+
+    public static bool IsNarrowWindow(double width) => width > 0 && width < AutoCollapseBelowWidth;
+
+    private bool? _narrowWindow;
+
+    /// <summary>
+    /// Called by the shell view when the window width changes. Crossing the threshold collapses the sidebar, or restores
+    /// the remembered choice when the window is wide again; the user can still expand it by hand (ToggleSidebar).
+    /// </summary>
+    public void ApplyWindowWidth(double width)
+    {
+        if (width <= 0)
+        {
+            return;
+        }
+
+        var narrow = IsNarrowWindow(width);
+        if (_narrowWindow == narrow)
+        {
+            return;
+        }
+
+        _narrowWindow = narrow;
+        IsSidebarCollapsed = narrow || _settings.Current.SidebarCollapsed;
+    }
+
+    private void UpdateBadges()
+    {
+        var printLog = NavItems.FirstOrDefault(n => n.Key == ModuleRegistry.PrintLog);
+        if (printLog is not null)
+        {
+            printLog.Badge = StatusBar.FailedPrintCount;
+        }
+    }
+
     [RelayCommand]
     private void ToggleSidebar()
     {
@@ -391,12 +437,28 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
         NavItems.Clear();
         var roles = _session.User?.Roles ?? Array.Empty<string>();
         var permissions = _session.User?.Permissions ?? Array.Empty<string>();
-        string? group = null;
-        foreach (var module in ModuleRegistry.ForUser(roles.ToList(), permissions.ToList()))
+        var roleList = roles.ToList();
+        var permissionList = permissions.ToList();
+
+        // Visible entries by group (empty groups never appear), then the modules that stay reachable without a sidebar entry
+        // (Customers): they remain in NavItems so navigation, the palette and "Find" keep working; the sidebar hides them.
+        var firstGroup = true;
+        foreach (var (_, modules) in ModuleRegistry.NavigationFor(roleList, permissionList))
         {
-            NavItems.Add(new NavItemViewModel(module, showGroupHeader: module.Group != group));
-            group = module.Group;
+            for (var i = 0; i < modules.Count; i++)
+            {
+                NavItems.Add(new NavItemViewModel(modules[i], showGroupHeader: i == 0, showGroupDivider: i == 0 && !firstGroup));
+            }
+
+            firstGroup = false;
         }
+
+        foreach (var module in ModuleRegistry.ForUser(roleList, permissionList).Where(m => !m.ShowInNav))
+        {
+            NavItems.Add(new NavItemViewModel(module, showGroupHeader: false));
+        }
+
+        UpdateBadges();
 
         var allowed = NavItems.Select(n => n.Key).ToHashSet();
         var actions = new List<PaletteEntry>
