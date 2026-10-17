@@ -1138,7 +1138,7 @@ public class LiveFlowScreenshots
             bill.ClosePanelCommand.Execute(null);
         }
 
-        bill.PayCardCommand.Execute(null);
+        bill.PayWithCommand.Execute(bill.Methods.Single(m => m.Code == PaymentMethodCodes.Card));
         bill.Payment!.Reference = "VISA 1188 · APPR 220914";
         notifications.Items.Clear();
         await RenderAsync(terminal, "43-bill-pay-card-before");
