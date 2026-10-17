@@ -1,133 +1,113 @@
-# Web client (waiter + kitchen) UI/UX gallery
+# Web client (waiter + kitchen) UI/UX gallery — Phase 21.5
 
-First captured 2026-10-16 against the API in Development mode (`http://localhost:5000/app`, demo seed). **Regenerated
-2026-10-16 after the Phase 20.11 fixes (commit 368605b)** against a worktree API on `http://localhost:5100/app` (same
-dev database), headless Microsoft Edge through Playwright, `deviceScaleFactor: 2`. Waiter: phone 390 x 844 (touch,
-mobile). Kitchen: tablet 1024 x 768 landscape. Accounts `waiter1` and `kitchen1`. Order #1009 on table **T06** was created
-by this run and left with the **bill requested** (the first run's #1005 on T05 is still open, so it appears on the boards).
+Captured **2026-10-17** on branch `phase-21-role-ui-ux` against the API in Development mode on
+`http://localhost:5100/app` (demo seed, same dev database as the Phase 20 runs, so the day-old orders #1003/#1005/#1009/#1014
+are still on the boards), headless Microsoft Edge through Playwright 1.58, `deviceScaleFactor: 2`. Waiter: phone 390 × 844
+(touch, mobile). Kitchen: tablet 1024 × 768 landscape. Accounts `waiter1` and `kitchen1`. Order **#1016 on T04** (Chicken
+Biryani with options and a note, 2 × Butter Naan, Masala Chai, order note "Birthday table — bring the dessert last") was
+created by this run, accepted → started → marked ready by the kitchen, marked served and left with the **bill requested**.
 
-Script: [`../tools/web-flow.mjs`](../tools/web-flow.mjs) (how to run it is in its header). This run used
-`HOTELPOS_NO_CSS_FIX=1` (no stylesheet rewrite) and no "tap again" nudge was needed: the stuck-page shots
-(07c, 09a, 22b, 24a) are taken only when the defect appears, and none was.
+Script: [`../tools/web-flow.mjs`](../tools/web-flow.mjs) (how to run it is in its header). Its selectors now follow the
+Phase 21 markup (`data-action`, `data-testid`, the five-tab shell, the sheets, the kitchen head nav). Besides the images it
+writes `small-targets.json` (visible controls under **48 px** in either dimension, the Phase 21 target), `console-errors.json`
+and `page-overflow.json` (any screen whose layout is wider than the phone — see issue 1).
+
+Mock-ups compared: `docs/design/reference/waiter-1-flow.png`, `waiter-2-flow.png`, `kitchen-1-board.png`,
+`kitchen-2-board-detail.png`. Plan: `docs/phases/phase-21-role-ui-ux-redesign.md` (§ 3 Out, § 4 decisions D1–D11).
 
 ## Screenshots
 
 | Image | What it shows | Viewport |
 |---|---|---|
-| `waiter/01-waiter-sign-in.png` | Sign in, Waiter selected, styled without any workaround (issue 3) | phone |
-| `waiter/02-waiter-home.png` | `/home`: My tables, Ready, Bill requests, status chips in the shared words | phone |
-| `waiter/03-waiter-tables.png` | Tables map, 44 px section chips with an edge fade, coloured tiles | phone |
-| `waiter/04-waiter-table-details.png` | T06 available, Seat guests stepper "2 guests", OCCUPY and NEW ORDER | phone |
-| `waiter/04b-waiter-table-occupied.png` | T06 after OCCUPY, refreshed by itself | phone |
-| `waiter/05-waiter-order-search.png` | Order builder, search "biry" (no category chip highlighted), two items pinned | phone |
-| `waiter/06-waiter-favourites.png` | ★ Favourites tab with the two pinned biryanis | phone |
-| `waiter/07-waiter-item-options.png` | Options sheet for Chicken Biryani: Add-ons (Extra raita) + Spice level (Mild) | phone |
-| `waiter/07b-waiter-kitchen-note.png` | Note sheet: quick notes + free text "Less oil, extra raita on the side" (was filed under `kitchen/` by a script bug) | phone |
-| `waiter/08-waiter-cart.png` | Cart "Order · 4 items" with Hide, lines scrolling inside a capped area, toast that goes away by itself | phone |
-| `waiter/08b-waiter-cart-fullpage.png` | Same, full page | phone |
-| `waiter/09-waiter-after-send.png` | Straight after SEND TO KITCHEN: T06 details, order "Sent to kitchen", lines "Sent to kitchen", empty draft | phone |
-| `waiter/09b-waiter-my-orders.png` | My orders after send | phone |
-| `waiter/10-waiter-bell-panel.png` | Notification panel open (empty before the kitchen acts) | phone |
-| `waiter/11-waiter-settings.png` | Settings: notification kinds with Pop-up / Sound, 22 px checkboxes | phone |
-| `waiter/12-waiter-tables-dark.png` | Tables in dark theme (toggle) | phone |
+| `waiter/01-waiter-sign-in.png` | Sign in (W7): hero mark, restaurant name, Waiter / Kitchen segmented control, eye toggle, terminal + server badge | phone |
+| `waiter/02-waiter-home.png` | Home (W1): four KPI tiles (My tables, Open orders, Ready to serve, Bills requested), quick actions, Needs attention, activity | phone |
+| `waiter/03-waiter-tables.png` | Tables (W2): section chips with counts, "12 available · 4 in use", By section / Available first, pastel `TableCard`s with timer, status badge, guests, order # | phone |
+| `waiter/03b-waiter-pick-table.png` | "New order" tab → pick-a-table sheet (D5): Available grid, then "Your active tables" | phone |
+| `waiter/04-waiter-table-details.png` | T04 available: Seat guests stepper "2 guests" + Occupy | phone |
+| `waiter/04b-waiter-table-occupied.png` | T04 after Occupy, reloaded by itself; `ActionList` with New order / Release table | phone |
+| `waiter/05-waiter-order-search.png` | Order builder (W4): search "biry", no chip highlighted, picture cards (initials placeholder, D11), two items pinned | phone |
+| `waiter/06-waiter-favourites.png` | ★ Favourites chip with the two pinned biryanis | phone |
+| `waiter/07-waiter-item-options.png` | `ItemOptionsSheet` (D2): Add-ons, Spice level, quick-note chips, special instructions, quantity stepper, Add to order — one sheet | phone |
+| `waiter/08-waiter-cart.png` | Sticky `CartBar`: "Order · 3 items", guests stepper, thumbnails with quantity badges, approx. total, Review order; toast "Masala Chai added." | phone |
+| `waiter/08b-waiter-review-sheet.png` | Review sheet (confirm-before-send): lines with − / + / edit / delete, Add more items, guests, order notes, Save draft / Send to kitchen | phone |
+| `waiter/09-waiter-after-send.png` | Straight after Send: Order #1016 "Sent to kitchen", Details tab, order notes in amber, Actions (Add items, Edit order, Cancel order last) | phone |
+| `waiter/09c-waiter-order-items.png` | Items tab: lines with options/note, per-line ticket status chip, Cancel line | phone |
+| `waiter/09d-waiter-order-timeline.png` | Timeline tab (W6): `OrderTimeline` steps + event list with kitchen times | phone |
+| `waiter/09b-waiter-my-orders.png` | My orders (W5): Active 5 / Completed tabs, "ready ones first", `OrderCard`s with the four-step progress | phone |
+| `waiter/09e-waiter-my-orders-completed.png` | Completed tab (today, newest first) | phone |
+| `waiter/10-waiter-bell-panel.png` | Bell drop-down (line icons per kind) | phone |
+| `waiter/10b-waiter-more-sheet.png` | More sheet (D5): profile + theme, device status card, notifications, Settings, Sign out | phone |
+| `waiter/11-waiter-settings.png` | Settings: profile, Appearance, This device, notification kinds with Pop-up / Sound | phone |
+| `waiter/12-waiter-tables-dark.png` | Tables in dark theme | phone |
 | `kitchen/13-kitchen-sign-in.png` | Sign in, Kitchen selected | tablet |
-| `kitchen/14-kitchen-board-new.png` | Kitchen Display with its bottom navigation; T06 tickets with a station chip; ACCEPT solid, START outlined | tablet |
-| `kitchen/14b-kitchen-board-new-scrolled.png` | Same, scrolled to the second T06 ticket | tablet |
-| `kitchen/15-kitchen-station.png` | Station page, reached through the bottom nav | tablet |
-| `kitchen/16a-kitchen-accepted.png` | Both T06 tickets accepted ("Accepted" chip) | tablet |
-| `kitchen/16-kitchen-preparing.png` | T06 in PREPARING; the note in bold amber with ✎; "Delayed 3" as a red chip | tablet |
-| `kitchen/17-kitchen-ready.png` | T06 in READY with DONE (solid) / RECALL (outlined) | tablet |
-| `kitchen/18-kitchen-completed.png` | Completed page through the nav, loaded | tablet |
+| `kitchen/14-kitchen-board-new.png` | Kitchen Display (K1–K3): station chips, search, KPI strip (New / Preparing / Ready / Delayed / Completed today), Delayed + Oldest first toggles, NEW · PREPARING · READY columns with "oldest" timers, red late border, T04 BAR ticket #1016 | tablet |
+| `kitchen/14b-kitchen-ticket-detail.png` | `TicketDetailPane` (K4) as a right drawer: status, station, elapsed, guests, order note, items, Progress timeline | tablet |
+| `kitchen/14c-kitchen-delayed-filter.png` | Delayed filter on (D4): the three columns narrowed to late tickets, no fourth column | tablet |
+| `kitchen/15-kitchen-station.png` | Station page through the head nav | tablet |
+| `kitchen/16a-kitchen-accepted.png` | T04 tickets accepted ("Accepted" chip, START solid) | tablet |
+| `kitchen/16-kitchen-preparing.png` | T04 in PREPARING with MARK READY; note in bold amber | tablet |
+| `kitchen/17-kitchen-ready.png` | T04 in READY with DONE (solid) / RECALL (outlined) | tablet |
+| `kitchen/18-kitchen-completed.png` | Completed page (back link instead of the station chips) | tablet |
 | `kitchen/19-kitchen-bell-panel.png` | Kitchen notification panel | tablet |
 | `kitchen/20-kitchen-dark.png` | Kitchen Display, dark theme | tablet |
-| `waiter/21-waiter-my-orders-ready.png` | My orders: #1009 first with a green "Ready" chip, "1 guest" plural on #1003 | phone |
-| `waiter/22a-waiter-table-ready.png` | T06 details with lines Ready, SERVED / REQUEST BILL | phone |
-| `waiter/22-waiter-bill-requested.png` | After REQUEST BILL, reloaded by itself: "Bill requested — the counter has it." | phone |
-| `waiter/23-waiter-bell-ready.png` | Bell: "TABLE T06 — ORDER READY", "being prepared", "kitchen accepted" (issue 5) | phone |
-| `waiter/24-waiter-offline-banner.png` | Network off: offline banner together with the "Reconnecting…" pill, no tap | phone |
-| `waiter/25-waiter-offline-my-orders.png` | Natural error state: My orders while offline, "The server cannot be reached… Retry" | phone |
-| `waiter/24b-waiter-back-online.png` | Back online: pill Connected, list reloaded by itself | phone |
+| `waiter/21-waiter-my-orders-ready.png` | My orders: #1016 first with the green Ready chip and three steps done | phone |
+| `waiter/22a-waiter-table-ready.png` | Order #1016 Ready: actions Add items, Edit order, Mark served, Request bill, Cancel order | phone |
+| `waiter/22b-waiter-table-served.png` | After Mark served (D9): status Served, Mark served gone | phone |
+| `waiter/22-waiter-bill-requested.png` | After Request bill, reloaded by itself: "Bill requested — the counter has it." | phone |
+| `waiter/23-waiter-bell-ready.png` | Bell: order ready / being prepared / kitchen accepted for T04 | phone |
+| `waiter/24-waiter-offline-banner.png` | Network off on an empty builder for T02: offline banner with the "Reconnecting…" pill (W7) | phone |
+| `waiter/25-waiter-offline-my-orders.png` | My orders while offline: "The server cannot be reached… Retry" | phone |
+| `waiter/24b-waiter-back-online.png` | Back online: pill Connected, "Back online." notice, list reloaded by itself | phone |
 
-Removed after the fixes (they showed defects that no longer occur): `00-dev-mode-unstyled-sign-in`,
-`07c-waiter-sheet-stuck-after-add`, `09a-waiter-send-stuck-on-builder`, `24a-waiter-offline-no-banner-yet`.
+Removed (the screen no longer exists): `07b-waiter-kitchen-note` (the note lives in the options sheet, D2),
+`08b-waiter-cart-fullpage` (the cart is a sticky bar; the lines are in the review sheet), `14b-kitchen-board-new-scrolled`
+(replaced by the detail pane and the Delayed filter).
+
+## Comparison with the mock-ups
+
+| Screen (image) | Mock-up | Matches | Differs | Gap by design |
+|---|---|---|---|---|
+| Tables (03, 12) | waiter-2 #3, waiter-1 #1 | Section chips with counts, pastel cards in a 3-column grid, code, timer, status, guests/seats, order #, green Ready, orange Billing, five-tab bar with the raised New order | Status words longer than the card ("Bill requested") are cut to "Bill requ…" (issue 2); the mock-up's "Reserved" tile has no data here; the mock-up draws free tables plain, the app badges them "Available" | Ready green / Billing orange per D8 |
+| Order builder (05–08) | waiter-2 #4, waiter-1 #2 | Search, Favourites + category chips, 2-column picture cards with ★ and +, price, sticky "Order · n items" bar with guests stepper, thumbnails with quantity badges, approx. total, one primary button | Initials stand in for the photos (the demo seed has no `ImageUrl`); the "+ options" hint is clipped by the + button (issue 3); a fresh toast covers the bar's total and button for 3 s (issue 4); the button says "Review order" (mock-up "View Order" / "Send to Kitchen" — the send is in the review sheet) | No stock photos, owner uploads pictures (D11); no barcode/scan button (not in scope) |
+| Item options (07) | waiter-2 #6 | Add-ons (optional, up to n), Spice level (choose 1), special instructions with quick chips and free text, quantity stepper, Add to order, price under the title | Quick-note chips are 40 px high (issue 6) | Modifier *management* is out (§ 3, D2) |
+| Review / cart (08b) | waiter-1 #3, waiter-2 #5 | Lines with − / + / edit / delete, options and note under each line, Add more items, Order notes (for the kitchen), approx. total, Send to kitchen | Presented as a bottom sheet instead of a page; no "Items (n) / Notes & Info" tabs | — |
+| Order details (09, 09c, 09d, 22a) | waiter-1 #5, waiter-2 #8 | Order # with status chip, Details / Items / Timeline tabs, detail list (table, guests, waiter, ordered at, items, approx. total, notes), outlined `ActionList` rows (Add items, Edit order, Mark served, Request bill, Cancel order last in red) | Top-bar title truncates to "Orde…" beside the back button on a 390 px phone — the card below repeats it (issue 5) | No Hold order, no Print KOT (D9) |
+| My orders (09b, 21) | waiter-1 #4, waiter-2 #7 | Active (count) / Completed tabs, "ready ones first", cards with # · table, status chip, elapsed, four-step Received → Preparing → Ready → Served, items · guests, approx. total; Ready first with a green chip | No clock values under the steps on the list (the list DTO carries no stage times; the details Timeline has them); no search icon; subtitle "Live updates from the…" truncates (issue 5) | No "Held" tab (Hold omitted, D9) |
+| Kitchen board (14, 14c, 16, 17, 20) | kitchen-1, kitchen-2 | Station chips (All stations with count), search, KPI strip with the red Delayed tile, Oldest first, NEW / PREPARING / READY with subtitles and oldest timers, tickets with table code, station chip, red elapsed chip and border when late, "n × item", options, amber note, ACCEPT solid / START outlined, MARK READY, DONE / RECALL, clock and connection pill in the bar | Navigation is four icons in the top bar at 1024 px (labels appear from 1100 px) instead of the mock-up's left sidebar; no item pictures on tickets; no per-column sort menu (one board-wide Oldest first toggle); the mock-up's "Analytics" and "Orders" entries do not exist | Delayed is a KPI + red border + filter, not a fourth column (D4); ticket pictures deferred (D11) |
+| Kitchen detail (14b) | kitchen-2 right pane | Right drawer with "T04 · order #1016", ticket number, waiter, status + station chips, elapsed, guests, order note in amber, Items with options/notes, Progress timeline with the received time | No action buttons in the pane (ACCEPT/START/MARK READY stay on the card); no picture per item | No prices, subtotal, tax or total in the kitchen (D9); Print ticket deferred (D9) |
+
+Summary: 8 screens compared — all 8 match the mock-up's structure and words; 6 have visible differences listed above
+(2 are cosmetic defects fixed or open below, the rest are smaller choices); 7 carry gaps that the plan decided (D2, D4, D8,
+D9, D11).
 
 ## Issues found while driving
 
-Paths are under `src/HotelPOS.Client.Shared/`. Contrast ratios and target sizes were measured in the page
-(WCAG 4.5:1 for normal text, 44 px targets per the project's own rule in `wwwroot/css/app.css`).
-"Fixed (368605b)" means fixed in that commit and seen in the named new screenshot.
+Paths are under `src/HotelPOS.Client.Shared/`. Target sizes from `small-targets.json` (48 px, the Phase 21 rule; the
+older 44 px rule in `wwwroot/css/app.css` is noted where it still passes).
 
-### Functional (fix first)
+| # | Severity | State | Where | Issue |
+|---|---|---|---|---|
+| 1 | **High** | **Fixed in this run** | `wwwroot/css/waiter.css:24` (`.table-card-head`) | A table occupied for more than ten hours shows "26 h 44 min"; the `white-space: nowrap` timer beside the 22 px code was wider than a 3-column card and overflowed it, making the whole Tables page 404 px wide on a 390 px phone. Mobile Chromium then zooms the page out and tap coordinates no longer line up: the first script run could not tap the "New order" tab at all (Playwright: "nav.bottomnav intercepts pointer events"). One line: `flex-wrap: wrap`, the timer drops under the code. The script now records any such overflow in `page-overflow.json` (empty after the fix). |
+| 2 | Medium | Open | `Shared/TableCard.razor` / `StatusBadge` | "Bill requested" is cut to "Bill requ…" in the 3-column table card (03). A shorter word for the card ("Billing", like the desktop legend) or a 2-column grid under 400 px would fix it. |
+| 3 | Low | Open | `wwwroot/css/waiter.css` (`.item-meta`, `.item-add`) | The "+ options" hint sits under the round + button and is clipped to "+ op" (05, 08). |
+| 4 | Low | Open (carried from Phase 20 issue 1) | `Shared/Toasts.razor`, `app.css:124` | A fresh toast sits over the cart bar's total and Review button for 3 s (08) and over the last action row (09). Top placement on phones would avoid it. |
+| 5 | Low | Open | `Layout/MainLayout.razor` (`.title-main`, `.sub`) | With the back button, pill, bell, theme and avatar in the bar, the title truncates to "Orde…" / "T04 · …" and the subtitle wraps to three lines ("Live updates from the…"). The pages repeat the title in their first card, so nothing is lost, but the bar reads badly. |
+| 6 | Low | Open | `Shared/Segmented.razor`, `Shared/SearchBox.razor`, `Shared/ItemOptionsSheet.razor` | Under 48 px: Segmented buttons 36 px (By section / Available first, 03), the search Clear button 36 × 36 (05, 14), quick-note chips 40 px (07), "Cancel line" 40 px (09c); option buttons, cart steppers and line buttons are exactly 44 px (pass the old rule, fail 48). The settings checkboxes are 20 px inside a 44 px label (known). |
+| 7 | Low | Open | `Services/StatusLabels` | A ticket in READY for a day reads "Ready 26 h 37 min" in red (14): the elapsed time is since ordered, not since ready; clear in the detail pane ("since ordered"), ambiguous on the card. |
+| 8 | Info | Open (Phase 20 issue 6) | — | Each new browser profile registers a terminal and uses a licence seat. This session registered 3 new terminals (waiter and kitchen browser identities — now kept in `%TEMP%\hotelpos-web-flow` for reruns — and one `PROBE` terminal from a curl check); the licence shows 10 of 25 in use. Deactivate the `WEB-*` / `PROBE` devices afterwards. |
 
-1. **Fixed (368605b)** — 07, 08, 09, 22, 04b. **Every toast threw in the browser build.** `ToastService.Add`
-   (`Services/ShellServices.cs`) called `TaskScheduler.FromCurrentSynchronizationContext()`; Blazor WebAssembly has no
-   SynchronizationContext, so it threw and the code after the toast never ran: the options sheet stayed open after
-   "Add to order", SEND TO KITCHEN sent the order but left the waiter on the builder with the old cart (double-send
-   risk), and Table details skipped its reload after Occupy / Request bill. Now a plain delayed task removes the toast;
-   no "Something went wrong" bar appeared in this run. Still: a fresh toast sits over the cart's buttons for its
-   3 s (08); top placement on phones would avoid that.
-2. **Fixed (368605b)** — 14–20. **The kitchen user had no bottom navigation.** `MainLayout` required *not* `TablesView`
-   for the kitchen nav, but the default Kitchen role has it. `Services/ShellModes.For` now decides the start page and
-   the nav for both: Kitchen role (with `KitchenOperate`) wins over `TablesView`.
-3. **Fixed (368605b)** — 01. **Unstyled app under `dotnet run`.** The shared library keeps its own static-web-asset base
-   path, so its CSS is served at `/_content/HotelPOS.Client.Shared/...` in Development *and* after publish (checked:
-   the published API has `wwwroot/_content/HotelPOS.Client.Shared/css/`). `/app/_content/...` matches no file and the
-   API's authorization fallback policy answers 401. Not an ordering issue in the API's `Program.cs`, so the API is
-   unchanged; `HotelPOS.Web/wwwroot/index.html` now links `../_content/...`. **Still open:** the published
-   `service-worker-assets.js` lists `app/_content/...` (401) and `service-worker.published.js` builds
-   `new Request(asset.url)` relative to `/app/` (giving `/app/app/...`), so the published PWA's offline install fails.
-4. **Fixed (368605b)** — 24. **The offline banner appeared only after the next tap.** New `Shared/OfflineBanner.razor`
-   re-renders on every connection status change.
-5. **Fixed (368605b)** — 23. **No "Order ready" notification reached the waiter.** Not the toast: SignalR binds a
-   message with the parameter types of the first handler registered for its name, and the pages subscribe with
-   `JsonElement` before the layout's router subscribes with `OrderProgressEvent`, so the router's handler failed its
-   cast silently. `WebRealtimeClient` now has one raw handler per event and deserializes per subscriber. The shared
-   `NotificationMapper` was not changed.
-6. **Open.** Each browser profile uses a licence seat (device identity per browser storage); no self-clean-up of
-   never-seen-again browser terminals. The script keeps the identity between runs (`STATE_DIR`); this run signed in
-   without hitting the limit.
-
-### Feedback, labels and consistency
-
-7. **Fixed (368605b)** — 02, 09, 21, 22. One set of status words in `Services/StatusLabels`: a submitted order and a ticket
-   the kitchen has not accepted are both "Sent to kitchen"; no raw "BillRequested". Table tiles keep the desktop
-   legend's words (the map can say "Preparing" while the order says "Sent to kitchen").
-8. **Fixed (368605b)** — 21. "Ready" is a green success chip.
-9. **Fixed (368605b)** — every screen. Avatar "A(" → "A": initials skip a bracketed role (`ShellModes.Initials`).
-10. **Fixed (368605b)** — 02, 09b, 21, 24. Top bar: shorter subtitles that may wrap to two lines; the title keeps one line.
-11. **Fixed (368605b)** — 04, 21. Plurals via `TextFormat.Count` ("1 guest", "Order · 1 item"); `Stepper` takes `Unit`.
-12. **Fixed (368605b)** — 05. While searching no chip is highlighted; tapping a chip clears the search.
-13. **Open.** The kitchen note still needs a second sheet (✎ on the cart line); "Add to order" can wrap; the sheet's
-    quantity stepper has only an aria label (07, 07b).
-14. **Partly fixed (368605b)** — 09, 22a. CANCEL ORDER is now an outlined danger button set apart from ADD ITEMS. Open:
-    OCCUPY and NEW ORDER together with no hint (04); ADD ITEMS / CANCEL ORDER still offered after the bill request
-    (the server's `CanModify` decides, same as the desktop).
-15. **Open.** Settings shows desktop-only notification kinds to a waiter and gives no "saved" feedback (11).
-16. **Open.** The notification panel has no backdrop and its empty state gives no hint (10, 19).
-17. **Fixed (368605b)** — 01. Sign-in fields bind on input, so the button enables while typing.
-
-### Layout, contrast and touch targets
-
-18. **Fixed (368605b)** — 08. The cart's lines scroll inside a 24vh area (about 40 % of the phone with the header and
-    buttons) and the header ("Order · 4 items · Hide") collapses it to one row.
-19. **Fixed (368605b)** — 14, 16, 17. Only the expected next step is solid (ACCEPT, READY, DONE); START and RECALL are
-    outlined. A station chip (MAIN / BAR) beside the table code tells one order's tickets apart. "Delayed n" is a red
-    chip when n > 0.
-20. **Partly fixed (368605b)** — 16, 21, 02. New tokens `--warning-text` (= `--st-preparing`, amber 700) and
-    `--success-text` (= `--st-available`) for text in light mode, the bright colours in dark: kitchen note 5.0:1 on white
-    (bold, not italic, ✎ prefix), "Bill requested" chip 4.7:1, success/primary chips 5.1:1, prices and the active nav
-    label. **Open:** white on the primary green buttons stays 4.39:1 (the brand token is shared with the desktop).
-21. **Fixed (368605b)** — 03, 05, 01, 11. `.chip-btn` and the sign-in Waiter/Kitchen toggle are 44 px high; checkboxes
-    are 22 px inside a 44 px label. The flow's target scan now reports only the checkboxes (11).
-22. **Fixed (368605b)** — 03, 05, 08. Chip rows fade out at the right edge instead of a hard cut.
+Console: one `401` per role on the sign-in page (a resource fetched before the token exists; no visible effect) and four
+`ERR_INTERNET_DISCONNECTED` during the offline drill (expected). No page errors, no "Something went wrong" bar.
 
 ### Worked well
 
-Offline error state with a plain message and Retry (25); automatic reload after reconnect (24b); kitchen tickets are
-large and readable at arm's length with 52 px buttons (16, 17); quick notes and the late (red) ticket border are clear;
-dark theme covers every element checked.
+Every step of the flow ran end to end without a "tap again" nudge (the Phase 20 toast exception is gone). Occupy, Send,
+Mark served and Request bill reload the page by themselves; the kitchen detail pane fetches guests and the order note; the
+Delayed filter narrows the columns; the offline banner, error state with Retry and "Back online." notice all appear
+without a tap; the dark theme covers every element seen.
 
 ## Not captured
 
-- **"Claimed" notice:** none arrived while the flow ran (no cashier claimed the bill).
-- A ticket pressed DONE: the flow leaves T06 Ready with the bill requested, so the Completed page (18) lists earlier tickets only.
+- "Claimed" notice: no cashier claimed the bill while the flow ran.
+- A ticket pressed DONE: the flow leaves T04 served with the bill requested, so the Completed page (18) lists earlier tickets only.
+- Item photos: the demo seed has no `ImageUrl`, so every card shows initials.

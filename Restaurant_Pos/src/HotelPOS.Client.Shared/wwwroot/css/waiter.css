@@ -21,7 +21,7 @@
 .table-card.st-preparing, .table-card.st-billing { --tc: var(--warning-text); --tb: var(--warning-soft); --tbd: var(--warning); }
 .table-card.st-ready { --tc: var(--success-text); --tb: var(--success-soft); --tbd: var(--success); box-shadow: inset 0 0 0 1px var(--success); }
 .table-card.st-outofservice { opacity: 0.75; }
-.table-card-head { display: flex; align-items: center; justify-content: space-between; gap: 4px; width: 100%; }
+.table-card-head { display: flex; align-items: center; justify-content: space-between; gap: 4px; width: 100%; flex-wrap: wrap; /* a long "26 h 40 min" timer wraps under the code instead of widening the page */ }
 .table-code { font-size: 22px; font-weight: 700; line-height: 1; color: var(--text); }
 .table-elapsed { display: inline-flex; align-items: center; gap: 2px; font-size: var(--fs-caption); color: var(--tc); font-weight: 600; white-space: nowrap; }
 .table-card .status-badge { padding: 2px 8px 2px 6px; font-size: var(--fs-caption); max-width: 100%; }
