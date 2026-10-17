@@ -104,5 +104,20 @@
   }
  ],
  "12-waiter-tables-dark": [],
- "13-kitchen-sign-in": []
+ "13-kitchen-sign-in": [],
+ "14-kitchen-board-new": [],
+ "14b-kitchen-ticket-detail": [],
+ "14c-kitchen-delayed-filter": [],
+ "15-kitchen-station": [],
+ "16a-kitchen-accepted": [],
+ "16-kitchen-preparing": [],
+ "17-kitchen-ready": [],
+ "18-kitchen-completed": [],
+ "19-kitchen-bell-panel": [],
+ "20-kitchen-dark": [],
+ "21-waiter-my-orders-ready": [],
+ "22a-waiter-table-ready": [],
+ "22b-waiter-table-served": [],
+ "22-waiter-bill-requested": [],
+ "23-waiter-bell-ready": []
 }
