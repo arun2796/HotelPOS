@@ -400,7 +400,7 @@ Source: `Modules/Printing/PrintLogView.xaml`
 ### 5.3 Customers
 
 Purpose: search, add, edit and deactivate customers; the bill's picker draws from this list. Opened by Admin, Manager, Cashier.
-Phase 21 (D3): the screen is no longer in the sidebar (module key `customers`, `ShowInNav = false`); it still opens from the command palette ("Customers") and from Find. The bill's customer panel keeps the picker and says "add the customer on the Customers screen" when nothing matches; the "Manage customers" link planned in D3 is **not implemented** on the desktop yet (checked 2026-10-17), so the palette is the way there.
+Phase 21 (D3): the screen is no longer in the sidebar (module key `customers`, `ShowInNav = false`); it still opens from the command palette ("Customers") and from Find. The bill's customer panel keeps the picker, says "add the customer under Manage customers" when nothing matches, and has a **Manage customers…** link (`BillDetailViewModel.ManageCustomersCommand`) that opens the screen.
 Controls: search (name, phone or GSTIN), Show inactive, refresh, **New customer**, paging (25 per page).
 Columns: NAME, PHONE, GSTIN, LEGAL NAME, STATUS.
 Buttons: **Edit**, **Deactivate / Activate** (deactivate asks to confirm), previous/next page.

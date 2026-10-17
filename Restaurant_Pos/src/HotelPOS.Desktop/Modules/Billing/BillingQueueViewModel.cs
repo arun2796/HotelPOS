@@ -72,7 +72,9 @@ public sealed partial class BillQueueItemViewModel : ObservableObject
     public void Tick(DateTime nowUtc)
     {
         var minutes = Math.Max(0, (int)(nowUtc - Bill.RequestedAtUtc).TotalMinutes);
-        WaitingText = minutes < 1 ? "just now" : string.Create(CultureInfo.CurrentCulture, $"{minutes} min");
+        WaitingText = minutes < 1 ? "just now" : minutes >= 2 * 24 * 60
+            ? string.Create(CultureInfo.CurrentCulture, $"{minutes / 1440} d {minutes % 1440 / 60} h")
+            : HotelPOS.Desktop.Modules.Orders.ActiveOrderQueries.Elapsed(Bill.RequestedAtUtc, nowUtc);
     }
 }
 

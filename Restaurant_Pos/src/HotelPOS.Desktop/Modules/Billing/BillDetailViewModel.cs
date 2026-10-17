@@ -292,6 +292,10 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
         ResetSearch();
     }
 
+    // D3: Customers is not in the sidebar; the picker links to it.
+    [RelayCommand]
+    private Task ManageCustomersAsync() => _navigation.NavigateToAsync(ModuleRegistry.Customers);
+
     // Takes the customer off the bill at once (the same save as emptying every field).
     [RelayCommand]
     private async Task ClearCustomerAsync()

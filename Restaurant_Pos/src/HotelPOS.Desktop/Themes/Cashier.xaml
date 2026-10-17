@@ -264,6 +264,7 @@
                 <TextBlock Text="{Binding DiscountLabel}" Style="{StaticResource Text.Body}" Foreground="{DynamicResource Brush.TextSecondary}"
                            VerticalAlignment="Center" MaxWidth="260" TextTrimming="CharacterEllipsis" />
                 <Button Content="Add discount" Command="{Binding ShowDiscountCommand}" Style="{StaticResource Button.Link}" Margin="8,0,0,0"
+                        Visibility="{Binding IsPaid, Converter={StaticResource InverseBoolToVisibility}}"
                         IsEnabled="{Binding CanEdit}" />
               </StackPanel>
               <TextBlock Text="{Binding DiscountText}" Style="{StaticResource Text.Numeric}" Foreground="{DynamicResource Brush.SuccessText}"
@@ -389,7 +390,7 @@
                   </ItemsControl.ItemsPanel>
                   <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="{x:Type billing:PaymentMethodButton}">
-                      <ToggleButton Style="{StaticResource PaymentPanel.Method}" IsChecked="{Binding IsSelected, Mode=OneWay}"
+                      <ToggleButton Style="{StaticResource PaymentPanel.Method}" MinHeight="44" Margin="0,0,8,6" IsChecked="{Binding IsSelected, Mode=OneWay}"
                                     Command="{Binding DataContext.PayWithCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                     CommandParameter="{Binding Method}" AutomationProperties.Name="{Binding Name}">
                         <StackPanel>
@@ -401,7 +402,7 @@
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
                 <ToggleButton Style="{StaticResource PaymentPanel.Method}" IsChecked="{Binding IsSplitSelected, Mode=OneWay}" Command="{Binding PaySplitCommand}"
-                              HorizontalAlignment="Stretch" Margin="0,0,0,8" MinHeight="44" AutomationProperties.Name="Split payment">
+                              HorizontalAlignment="Stretch" Margin="0,0,0,4" MinHeight="40" AutomationProperties.Name="Split payment">
                   <StackPanel Orientation="Horizontal">
                     <controls:Icon Kind="swap" Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,8,0" />
                     <TextBlock Text="Split payment" VerticalAlignment="Center" />
@@ -424,7 +425,7 @@
                                  Typography.NumeralAlignment="Tabular" AutomationProperties.Name="Amount to pay" />
                       </Grid>
                       <StackPanel Visibility="{Binding IsCash, Converter={StaticResource BoolToVisibility}}">
-                        <TextBlock Text="Quick amounts" Style="{StaticResource Text.Caption}" Margin="0,10,0,4" />
+                        <TextBlock Text="Quick amounts" Style="{StaticResource Text.Caption}" Margin="0,6,0,2" />
                         <ItemsControl ItemsSource="{Binding QuickTenders}" Focusable="False" Margin="0,0,-8,0">
                           <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
@@ -433,16 +434,16 @@
                           </ItemsControl.ItemsPanel>
                           <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type billing:QuickTenderOption}">
-                              <Button Content="{Binding Label}" Style="{StaticResource PaymentPanel.QuickAmount}"
+                              <Button Content="{Binding Label}" Style="{StaticResource PaymentPanel.QuickAmount}" MinHeight="38" Margin="0,0,8,6"
                                       Command="{Binding DataContext.QuickTenderCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                       CommandParameter="{Binding}" />
                             </DataTemplate>
                           </ItemsControl.ItemTemplate>
                         </ItemsControl>
                         <TextBlock Text="Amount received" Style="{StaticResource Text.Caption}" Margin="0,2,0,2" />
-                        <TextBox Text="{Binding TenderedText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource PaymentPanel.Received}" MaxLength="12"
+                        <TextBox Text="{Binding TenderedText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource PaymentPanel.Received}" MaxLength="12" MinHeight="46"
                                  AutomationProperties.Name="Amount received" />
-                        <Border Style="{StaticResource PaymentPanel.Change}" Margin="0,8,0,0">
+                        <Border Style="{StaticResource PaymentPanel.Change}" Margin="0,4,0,0" Padding="14,6">
                           <Grid>
                             <TextBlock Text="Change due" VerticalAlignment="Center" />
                             <TextBlock Text="{Binding ChangeText}" Style="{StaticResource PaymentPanel.ChangeAmount}" />

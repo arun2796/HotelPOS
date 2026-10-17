@@ -64,7 +64,37 @@
                  ItemsSource="{Binding NavItems}"
                  SelectedItem="{Binding SelectedNavItem}"
                  Style="{StaticResource NavList}"
-                 ItemContainerStyle="{StaticResource NavItem}" />
+                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                 ItemContainerStyle="{StaticResource NavItem}">
+        <ListBox.Resources>
+          <!-- Thin scrollbar on the navy: a light translucent thumb, no track. -->
+          <Style TargetType="ScrollBar">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Width" Value="6" />
+            <Setter Property="MinWidth" Value="6" />
+            <Setter Property="Template">
+              <Setter.Value>
+                <ControlTemplate TargetType="ScrollBar">
+                  <Track x:Name="PART_Track" IsDirectionReversed="True">
+                    <Track.Thumb>
+                      <Thumb>
+                        <Thumb.Template>
+                          <ControlTemplate TargetType="Thumb">
+                            <Border x:Name="Bd" Background="{DynamicResource Brush.SidebarTextMuted}" CornerRadius="3" Margin="1,0" />
+                            <ControlTemplate.Triggers>
+                              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush.SidebarText}" /></Trigger>
+                            </ControlTemplate.Triggers>
+                          </ControlTemplate>
+                        </Thumb.Template>
+                      </Thumb>
+                    </Track.Thumb>
+                  </Track>
+                </ControlTemplate>
+              </Setter.Value>
+            </Setter>
+          </Style>
+        </ListBox.Resources>
+        </ListBox>
 
         <!-- Footer: the terminal and connection card, then the signed-in user. Name and role get the full width; the three actions sit
              on their own row underneath. -->

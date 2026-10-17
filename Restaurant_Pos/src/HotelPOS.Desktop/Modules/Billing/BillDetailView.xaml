@@ -157,6 +157,7 @@
                 <TextBlock Text="{Binding DiscountLabel}" Style="{StaticResource Text.Body}" Foreground="{DynamicResource Brush.TextSecondary}"
                            VerticalAlignment="Center" MaxWidth="230" TextTrimming="CharacterEllipsis" />
                 <Button Content="DISCOUNT" Command="{Binding ShowDiscountCommand}" Style="{StaticResource Button.Link}" Margin="8,0,0,0"
+                        Visibility="{Binding IsPaid, Converter={StaticResource InverseBoolToVisibility}}"
                         IsEnabled="{Binding CanEdit}" />
               </StackPanel>
               <TextBlock Text="{Binding DiscountText}" Style="{StaticResource Text.Body}" HorizontalAlignment="Right" VerticalAlignment="Center"
@@ -305,9 +306,10 @@
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>
                   </ItemsControl>
-                  <TextBlock Text="No customer matches. Fill in the details below, or add the customer on the Customers screen."
+                  <TextBlock Text="No customer matches. Fill in the details below, or add the customer under Manage customers."
                              Style="{StaticResource Text.Caption}" TextWrapping="Wrap" Margin="0,6,0,0"
                              Visibility="{Binding HasNoCustomerMatches, Converter={StaticResource BoolToVisibility}}" />
+                  <Button Content="Manage customers…" Command="{Binding ManageCustomersCommand}" Style="{StaticResource Button.Link}" HorizontalAlignment="Left" Margin="0,6,0,0" />
                   <TextBlock Text="{Binding PickedCustomerName, StringFormat='Picked: {0}'}" Style="{StaticResource Text.Caption}" Margin="0,6,0,0"
                              Visibility="{Binding PickedCustomerName, Converter={StaticResource StringToVisibility}}" />
                   <Button Content="CLEAR CUSTOMER" Command="{Binding ClearCustomerCommand}" HorizontalAlignment="Left" MinHeight="44" Margin="0,8,0,0"

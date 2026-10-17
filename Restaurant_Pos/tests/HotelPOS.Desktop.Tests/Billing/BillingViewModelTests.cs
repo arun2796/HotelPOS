@@ -328,6 +328,18 @@ public sealed class BillingViewModelTests
     }
 
     [Fact]
+    public async Task ManageCustomers_OpensTheHiddenCustomersModule()
+    {
+        var nav = Substitute.For<INavigationService>();
+        var vm = DetailViewModel(nav: nav);
+
+        await vm.ManageCustomersCommand.ExecuteAsync(null);
+
+        await nav.Received(1).NavigateToAsync(ModuleRegistry.Customers, Arg.Any<object?>());
+        vm.Dispose();
+    }
+
+    [Fact]
     public async Task CustomerPanel_WithoutTheCustomerList_HidesThePicker()
     {
         var bill = Detail(BillStatus.Open, balance: 630m);
@@ -376,13 +388,13 @@ public sealed class BillingViewModelTests
         vm.Dispose();
     }
 
-    private BillDetailViewModel DetailViewModel(string role = "Cashier", IDialogService? dialogs = null, ICustomersApi? customers = null, IOrdersApi? orders = null)
+    private BillDetailViewModel DetailViewModel(string role = "Cashier", IDialogService? dialogs = null, ICustomersApi? customers = null, IOrdersApi? orders = null, INavigationService? nav = null)
     {
         var session = Substitute.For<IAuthSession>();
         session.User.Returns(TestData.Login("cashier1", roles: role).User);
         var system = Substitute.For<ISystemApi>();
         system.GetPublicSettingsAsync(Arg.Any<CancellationToken>()).Returns(ApiResult<List<Contracts.Admin.SettingDto>>.Ok(new List<Contracts.Admin.SettingDto>()));
-        return new BillDetailViewModel(_api, system, new FakeRealtimeClient(), Substitute.For<INavigationService>(),
+        return new BillDetailViewModel(_api, system, new FakeRealtimeClient(), nav ?? Substitute.For<INavigationService>(),
             dialogs ?? Substitute.For<IDialogService>(), Substitute.For<INotificationService>(), session, Substitute.For<HotelPOS.Desktop.Services.Printing.IDocumentPrinter>(), customers: customers, orders: orders);
     }
 

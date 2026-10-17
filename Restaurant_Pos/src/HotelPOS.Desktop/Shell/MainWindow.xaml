@@ -67,7 +67,7 @@
          pages' action rows (top-right and bottom) stay clear of them. -->
     <ItemsControl ItemsSource="{Binding Notifications.Items}"
                   HorizontalAlignment="Center" VerticalAlignment="Top"
-                  Margin="0,64,0,0" Width="420" Focusable="False">
+                  Margin="0,124,0,0" Width="420" Focusable="False">
       <ItemsControl.ItemTemplate>
         <DataTemplate DataType="{x:Type ui:ToastViewModel}">
           <Grid Margin="0,8,0,0">

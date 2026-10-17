@@ -102,7 +102,7 @@ and must be rewritten before it can be replayed.
 
 | Screen | Matches | Differs | Gap by design (plan § 3 Out / § 4) |
 |---|---|---|---|
-| Cashier workspace (`cashier/05`) | Three panes with the mock-up's proportions; navy grouped sidebar; bill cards with badge, waiter, wait, total; order column with thumbnails, options and notes, totals; payment column with due hero, method buttons, quick amounts, Amount received / Change, green Complete payment; the mock-up's Quick actions become the Finalize / Reopen / Void row | Thumbnails are initials (no pictures uploaded yet, D11); "Not invoiced yet" and real GST rows instead of "Tax (10 %)"; the sidebar has the HotelPOS groups, not the mock-up's Expenses / Customers / Sales Report items | No Dine In / Takeaway / Delivery chips (no order types); no Edit order / Add items / Send to kitchen / Cancel order for the cashier (waiter flow); no Wallet method unless configured (D6); Customers hidden (D3) |
+| Cashier workspace (`cashier/05`) | Three panes with the mock-up's proportions; navy grouped sidebar; bill cards with badge, waiter, wait, total; order column with thumbnails, options and notes, totals; payment column with due hero, method buttons, quick amounts, Amount received / Change, green Complete payment; the mock-up's Quick actions become the Finalize / Reopen / Void row | Thumbnails are initials (no pictures uploaded yet, D11); "Not invoiced yet" and real GST rows instead of "Tax (10 %)"; the sidebar has the HotelPOS groups, not the mock-up's Expenses / Customers / Sales Report items | No Dine In / Takeaway / Delivery chips (no order types); no Edit order / Add items / Send to kitchen / Cancel order for the cashier (waiter flow); no Wallet method unless configured (D6); Customers hidden (D3; reached by the "Manage customers…" link in the bill customer picker) |
 | Cashier paid (`cashier/08`) | Inline Paid state in the payment column, tenders listed, Print receipt / invoice / Next bill | The mock-up has no paid state; ours keeps the order visible and frees the table (toast) | — |
 | Paid chip (`cashier/09-cashier-queue-paid-chip`) | Chip row Waiting / Invoiced / Partly paid / Paid like the mock-up's Open / Partial / Ready / Paid | Status words follow the shared status map | — |
 | Dashboard light (`manager/17`) | Header with business day and Online pill; four KPI cards with delta and occupancy bar; Live Order Status donut with legend; Active Orders table with chips, View, pager, View all; Table status cards; Recent activity; Top items; Staff and Terminals | KPI icons are outline glyphs, not filled tiles; the table has no Customer column (bills carry the customer, orders do not); only statuses present appear in the legend | No Low stock card or table, Hourly sales, Expenses, Profit & Loss, Cash reconciliation, date-range or branch pickers, sparklines (§ 3 Out, A2); Terminals placeholder for managers (`api/admin/devices` is admin-only) |
@@ -120,22 +120,22 @@ and must be rewritten before it can be replayed.
    `src/HotelPOS.Desktop/Modules/Orders/ActiveOrdersView.xaml` and ITEMS 62→72, ELAPSED 82→100, View 66→80 in
    `src/HotelPOS.Desktop/Modules/Dashboard/DashboardView.xaml`; the manager run was repeated and `ScreenRenderingTests`
    is green.
-2. **Open (medium) — Payment column: Amount received is below the fold at 800 px.** `cashier/05`: the quick-amount grid
+2. **Mostly fixed (medium) — Payment column: Amount received is below the fold at 800 px.** Spacing tightened in `Themes/Cashier.xaml` (method, quick-amount, received, change); Amount received is now visible at 800 px, the Change box still needs a scroll of the column (its scrollbar stays) - `cashier/05`: the quick-amount grid
    takes two rows, so the received field sits under the Complete payment button and needs the column's scrollbar; at
    1366×768 it is further down. One row of quick amounts (or a smaller hero) would fit
    (`src/HotelPOS.Desktop/Modules/Billing/BillDetailView.xaml`, payment column).
-3. **Open (medium) — Sidebar navigation is cut at "Menu Management" at 800 px.** Every manager screen: the nav list
+3. **Fixed (medium) — Sidebar (`ShellView.xaml`: scrollbar Auto with a thin themed thumb; footer pinned; not re-shot, cashier nav is short) navigation is cut at "Menu Management" at 800 px.** Every manager screen: the nav list
    ends under the device card with a half-visible group label and no visible scrollbar, so Finance, Analytics,
    Devices and System are reachable only by wheel-scrolling or the palette (`src/HotelPOS.Desktop/Shell/ShellView.xaml:250`,
    the nav `ScrollViewer`; check whether its bar is styled invisible or the row grows past the window).
-4. **Open (low) — Wait time on bill cards is in raw minutes.** `cashier/04`: "1593 min", "1507 min" for the stale demo
+4. **Fixed (low, `BillingQueueViewModel.Tick`: "26 h 51 min", "2 d 2 h") — Wait time on bill cards is in raw minutes.** `cashier/04`: "1593 min", "1507 min" for the stale demo
    bills, while the Orders page says "26 h 41 min" (`src/HotelPOS.Desktop/Modules/Billing/CashierWorkspaceView.xaml`, card template).
-5. **Open (low) — Toasts cover the shift bar text.** `cashier/08`: the top-centre toast hides "Shift open since 17:21 ·
+5. **Fixed (low, toast host margin top 124 in `MainWindow.xaml`) — Toasts cover the shift bar text.** `cashier/08`: the top-centre toast hides "Shift open since 17:21 ·
    Priya (Cashier) · expected ..." (the buttons stay clear).
-6. **Open (low) — "Add discount" still rendered beside an applied discount on a paid bill.** `cashier/08`: the greyed
+6. **Fixed (low, hidden when IsPaid in `Themes/Cashier.xaml` and `BillDetailView.xaml`) — "Add discount" still rendered beside an applied discount on a paid bill.** `cashier/08`: the greyed
    link reads oddly next to "Discount 5% · Regular guest"; hide it once the bill is settled
    (`src/HotelPOS.Desktop/Modules/Billing/BillDetailView.xaml`, totals block).
-7. **Open (low) — D3's "Manage customers" link is missing.** The bill's customer picker says "add the customer on the
+7. **Fixed (low, "Manage customers…" link, `ManageCustomersCommand`) — D3's "Manage customers" link is missing.** The bill's customer picker says "add the customer on the
    Customers screen" (`src/HotelPOS.Desktop/Modules/Billing/BillDetailView.xaml:308`) but Customers is no longer in the
    sidebar; only the command palette reaches it.
 8. **Info — not regenerated.** Admin-only screens (password unknown) and the `functions/` pass (needs the workspace
