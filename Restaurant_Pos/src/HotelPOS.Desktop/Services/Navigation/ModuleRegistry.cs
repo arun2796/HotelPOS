@@ -81,7 +81,7 @@ public static class ModuleRegistry
         new(KitchenCompleted, "Completed Orders", "", "Live Operations", new[] { Roles.Admin, Roles.Manager, Roles.Kitchen }, 5,
             "Tickets completed today with preparation times.", typeof(CompletedOrdersViewModel)),
         new(Billing, "Billing", "", "Live Operations", new[] { Roles.Admin, Roles.Manager, Roles.Cashier }, 6,
-            "Pending bills, discounts, tax and split payments.", typeof(BillingQueueViewModel)),
+            "Pending bills, discounts, tax and split payments.", typeof(CashierWorkspaceViewModel)),
         new(ClosedBills, "Closed Bills", "", "Live Operations", new[] { Roles.Admin, Roles.Manager, Roles.Cashier }, 6,
             "Settled and voided bills, reprints and refunds.", typeof(ClosedBillsViewModel)),
         new(PrintLog, "Print Log", "", "Live Operations", new[] { Roles.Admin, Roles.Manager, Roles.Cashier }, 20,

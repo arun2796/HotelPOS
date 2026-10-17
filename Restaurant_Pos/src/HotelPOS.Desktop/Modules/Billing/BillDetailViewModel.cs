@@ -107,8 +107,18 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
     private BillDetailDto? _bill;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsPanelOpen), nameof(IsDiscountPanel), nameof(IsCustomerPanel), nameof(IsPaymentPanel), nameof(IsPreviewPanel), nameof(IsDonePanel))]
+    [NotifyPropertyChangedFor(nameof(IsPanelOpen), nameof(IsOverlayOpen), nameof(IsDiscountPanel), nameof(IsCustomerPanel), nameof(IsPaymentPanel), nameof(IsPreviewPanel), nameof(IsDonePanel))]
     private BillPanel _activePanel;
+
+    // Phase 21.3: the payment column is permanent, so a payment form exists whenever the bill can be paid. It is rebuilt
+    // only when the balance changes (a discount, another counter), so typed amounts and a pending retry survive refreshes.
+    partial void OnBillChanged(BillDetailDto? value)
+    {
+        if (!IsBusy)
+        {
+            SyncPayment();
+        }
+    }
 
     [ObservableProperty]
     private PaymentViewModel? _payment;
@@ -311,6 +321,9 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
 
     public bool IsPanelOpen => ActivePanel != BillPanel.None;
 
+    /// <summary>The overlays that are still overlays in the workspace (discount, customer, invoice preview); payment and paid are inline.</summary>
+    public bool IsOverlayOpen => ActivePanel is BillPanel.Discount or BillPanel.Customer or BillPanel.Preview;
+
     public bool IsDiscountPanel => ActivePanel == BillPanel.Discount;
 
     public bool IsCustomerPanel => ActivePanel == BillPanel.Customer;
@@ -512,7 +525,7 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
     {
         ActivePanel = BillPanel.None;
         PanelError = null;
-        Payment = null;
+        SyncPayment();
     }
 
     [RelayCommand]
@@ -766,7 +779,7 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
             IsBusy = false;
         }
 
-        Payment = null;
+        // Leaving IsBusy rebuilt the form for what is still due (SyncPayment); a settled bill has none.
         if (Bill.Status == BillStatus.Settled)
         {
             ChangeDueText = Money.Format(change);
@@ -847,6 +860,11 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
         {
             OnPropertyChanged(name);
         }
+
+        if (!IsBusy)
+        {
+            SyncPayment();
+        }
     }
 
     private void OpenPayment(PaymentMode mode)
@@ -858,7 +876,29 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
 
         Payment = new PaymentViewModel(mode, Bill.BalanceDue, _methods);
         PanelError = null;
-        ActivePanel = BillPanel.Payment;
+    }
+
+    private void SyncPayment()
+    {
+        if (!CanPay)
+        {
+            if (Payment is not null)
+            {
+                Payment = null;
+            }
+
+            return;
+        }
+
+        var current = Payment;
+        if (current is null)
+        {
+            Payment = new PaymentViewModel(PaymentMode.Cash, Bill!.BalanceDue, _methods);
+        }
+        else if (current.Balance != Bill!.BalanceDue)
+        {
+            Payment = new PaymentViewModel(current.Mode, Bill.BalanceDue, _methods);
+        }
     }
 
     private async Task ApplyDiscountAsync(Func<ManagerApprovalDto?, Task<ApiResult<BillDetailDto>>> call)
@@ -949,7 +989,8 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
 
     private void OnBillEvent(int billId)
     {
-        if (billId == _billId && !IsBusy && ActivePanel != BillPanel.Payment)
+        // A refresh keeps the typed payment unless the balance changed (SyncPayment), so it is safe while the form is open.
+        if (billId == _billId && !IsBusy)
         {
             _ = RefreshAsync();
         }

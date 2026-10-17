@@ -286,22 +286,22 @@ public class ScreenRenderingTests
             cashierShell.HandleShortcut(Key.R, ModifierKeys.Control).Should().BeFalse("a cashier has no Reports module");
             cashierShell.HandleShortcut(Key.B, ModifierKeys.Control).Should().BeTrue();
             env.Realtime.Raise(ConnectionStatus.Connected);
-            rendered.Add(await RenderScreenAsync(env, cashierShell, "28-billing-queue"));
+            // Phase 21.3: the cashier workspace (queue · bill · payment) replaces the queue page and the bill page.
+            var workspace = (CashierWorkspaceViewModel)cashierShell.CurrentPage!;
+            rendered.Add(await RenderScreenAsync(env, cashierShell, "28-cashier-workspace"));
 
-            var bill = env.Create<BillDetailViewModel>();
-            await cashierShell.ShowPageAsync(bill, 1);
-            rendered.Add(await RenderScreenAsync(env, cashierShell, "29-bill-detail"));
+            await workspace.SelectAsync(workspace.Bills.Single(b => b.Id == 1));
+            var bill = workspace.Detail ?? throw new InvalidOperationException("The bill did not open in the workspace.");
+            bill.Payment.Should().NotBeNull("the payment column is permanent: a payable bill opens with the cash form");
+            bill.Payment!.QuickTenderCommand.Execute(bill.Payment.QuickTenders[3]);
+            rendered.Add(await RenderScreenAsync(env, cashierShell, "29-cashier-bill-cash"));
             bill.PaySplitCommand.Execute(null);
             bill.Payment!.AddLineCommand.Execute(bill.Payment.Methods.Single(m => m.Code == "CASH"));
             bill.Payment.Lines[0].AmountText = Money.Format(400m);
             bill.Payment.AddLineCommand.Execute(bill.Payment.Methods.Single(m => m.Code == "UPI"));
             bill.Payment.Lines[1].Reference = "UPI 4021 7788";
-            rendered.Add(await RenderScreenAsync(env, cashierShell, "30-bill-split-payment"));
-            bill.ClosePanelCommand.Execute(null);
+            rendered.Add(await RenderScreenAsync(env, cashierShell, "30-cashier-split-payment"));
             bill.PayCashCommand.Execute(null);
-            bill.Payment!.QuickTenderCommand.Execute(bill.Payment.QuickTenders[3]);
-            rendered.Add(await RenderScreenAsync(env, cashierShell, "31-bill-cash-payment"));
-            bill.ClosePanelCommand.Execute(null);
             bill.ShowDiscountCommand.Execute(null);
             bill.ManualValue = "15";
             bill.ManualReason = "Regular guest";
@@ -321,11 +321,23 @@ public class ScreenRenderingTests
             env.Notifications.Items.Clear();
             rendered.Add(await RenderScreenAsync(env, cashierShell, "34-invoice-preview"));
             bill.ClosePanelCommand.Execute(null);
-            bill.PayCashCommand.Execute(null);
+            bill.Payment.Should().NotBeNull("finalizing keeps the balance, so the cash form survives");
             bill.Payment!.QuickTenderCommand.Execute(bill.Payment.QuickTenders[2]);
             await bill.ConfirmPaymentCommand.ExecuteAsync(null);
             env.Notifications.Items.Clear();
-            rendered.Add(await RenderScreenAsync(env, cashierShell, "35-bill-paid"));
+            bill.IsDonePanel.Should().BeTrue();
+            rendered.Add(await RenderScreenAsync(env, cashierShell, "35-cashier-paid"));
+
+            // Paid chip: today's closed bills from the closed-bills source, newest first.
+            await workspace.SelectFilterCommand.ExecuteAsync(QueueFilter.Paid);
+            workspace.Bills.Should().HaveCount(3);
+            rendered.Add(await RenderScreenAsync(env, cashierShell, "37-cashier-paid-filter"));
+            await workspace.SelectFilterCommand.ExecuteAsync(QueueFilter.All);
+
+            // 1366 px: the shell collapses the sidebar below 1440 px, which is what gives the three panes room.
+            cashierShell.IsSidebarCollapsed = true;
+            rendered.Add(await RenderScreenAsync(env, cashierShell, "38-cashier-workspace-1366-collapsed"));
+            cashierShell.IsSidebarCollapsed = false;
 
             await cashierShell.NavigateToAsync(ModuleRegistry.ClosedBills, null);
             var closed = (ClosedBillsViewModel)cashierShell.CurrentPage!;
@@ -477,7 +489,7 @@ public class ScreenRenderingTests
         }
 
         bindingErrors.Errors.Should().BeEmpty("every binding in the views must point at an existing property");
-        rendered.Should().HaveCount(78);
+        rendered.Should().HaveCount(79);
         // Phase 21: the bundled Inter (Regular/Medium/SemiBold/Bold) is the body font on every Windows version.
         bodyFontFiles.Should().HaveCount(4).And.OnlyContain(f => f.StartsWith("inter-"));
     }
@@ -1043,6 +1055,8 @@ public class ScreenRenderingTests
             }));
             api.GetAsync(1, Arg.Any<CancellationToken>()).Returns(ApiResult<BillDetailDto>.Ok(detail));
             api.GetAsync(7, Arg.Any<CancellationToken>()).Returns(ApiResult<BillDetailDto>.Ok(closedDetail));
+            api.ClaimAsync(Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(ApiResult<BillDetailDto>.Ok(detail));
+            api.ReleaseAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(ApiResult<BillDetailDto>.Ok(detail));
             api.FinalizeAsync(1, Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(ApiResult<BillDetailDto>.Ok(finalized));
             api.AddPaymentAsync(1, Arg.Any<AddPaymentRequest>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(ApiResult<BillDetailDto>.Ok(paid));
             api.GetClosedAsync(Arg.Any<DateOnly?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(ApiResult<List<BillSummaryDto>>.Ok(new List<BillSummaryDto>

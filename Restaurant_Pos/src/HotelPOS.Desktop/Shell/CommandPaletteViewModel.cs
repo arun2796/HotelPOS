@@ -279,11 +279,8 @@ public sealed partial class CommandPaletteViewModel : ObservableObject
     private PaletteEntry BillEntry(BillSummaryDto bill) =>
         new($"Bill {bill.BillNumber}{(bill.InvoiceNumber is null ? string.Empty : $" · {bill.InvoiceNumber}")}",
             $"Table {bill.TableCode} · ₹{Money.Format(bill.GrandTotal)} · {bill.Status}", "", FoundGroup,
-            async () =>
-            {
-                await _navigation.NavigateToAsync(ModuleRegistry.Billing);
-                await _navigation.NavigateToPageAsync<BillDetailViewModel>(bill.Id);
-            });
+            // Phase 21.3: the cashier workspace opens with the bill selected.
+            () => _navigation.NavigateToAsync(ModuleRegistry.Billing, bill.Id));
 
     // "t5", "T05" and "T 05" all mean table T05.
     private static string NormalizeCode(string code)

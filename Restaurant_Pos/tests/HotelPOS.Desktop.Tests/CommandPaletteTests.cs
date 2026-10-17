@@ -126,8 +126,7 @@ public class CommandPaletteTests
         palette.Selected!.Title.Should().StartWith("Bill 41");
         await palette.ExecuteCommand.ExecuteAsync(null);
 
-        await _navigation.Received(1).NavigateToAsync(ModuleRegistry.Billing);
-        await _navigation.Received(1).NavigateToPageAsync<BillDetailViewModel>(7);
+        await _navigation.Received(1).NavigateToAsync(ModuleRegistry.Billing, 7);
     }
 
     [Fact]
