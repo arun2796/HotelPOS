@@ -96,4 +96,21 @@ public class WebPolishTests
         cut.Find("button").GetAttribute("aria-label").Should().Contain("dark");
         ctx.JSInterop.Invocations.Should().Contain(i => i.Identifier == "hotelposTheme.set" && (string?)i.Arguments[0] == "dark");
     }
+
+    private static string SharedCss()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "src", "HotelPOS.Client.Shared", "wwwroot", "css", "app.css")))
+            dir = dir.Parent;
+        return File.ReadAllText(Path.Combine(dir!.FullName, "src", "HotelPOS.Client.Shared", "wwwroot", "css", "app.css"));
+    }
+
+    [Fact]
+    public void SharedCss_HasNoHasSelector_AndWaiterToastsSitAtTheTop()
+    {
+        var css = SharedCss();
+
+        System.Text.RegularExpressions.Regex.Replace(css, @"/\*.*?\*/", "", System.Text.RegularExpressions.RegexOptions.Singleline).Should().NotContain(":has(");
+        css.Should().Contain(".shell.waiter .toasts");
+    }
 }

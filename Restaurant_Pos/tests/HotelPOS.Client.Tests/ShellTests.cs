@@ -93,6 +93,16 @@ public sealed class ShellTests : TestContext
         RenderComponent<MainLayout>(p => p.Add(c => c.Body, (RenderFragment)(b => b.AddContent(0, "body"))));
 
     [Fact]
+    public async Task Waiter_ShellCarriesWaiterClass_TheToastRuleKeysOn()
+    {
+        await RenderShellAsync("Waiter", Permissions.TablesView);
+        var layout = Layout();
+
+        layout.Find(".shell").ClassList.Should().Contain("waiter");
+        layout.Find(".shell.waiter .toasts").Should().NotBeNull();
+    }
+
+    [Fact]
     public async Task Waiter_HasFiveBottomTabs_WithIconsAndLabels()
     {
         await RenderShellAsync("Waiter", Permissions.TablesView);
