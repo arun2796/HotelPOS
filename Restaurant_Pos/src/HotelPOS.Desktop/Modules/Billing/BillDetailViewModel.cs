@@ -9,6 +9,7 @@ using HotelPOS.Contracts.Customers;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Gst;
 using HotelPOS.Contracts.Orders;
+using HotelPOS.Contracts.Presentation;
 using HotelPOS.Contracts.Print;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Contracts.Security;
@@ -16,6 +17,7 @@ using HotelPOS.Desktop.Modules.Cash;
 using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Auth;
+using HotelPOS.Desktop.Services.Menu;
 using HotelPOS.Desktop.Services.Navigation;
 using HotelPOS.Desktop.Services.Printing;
 using HotelPOS.Desktop.Services.Realtime;
@@ -33,7 +35,10 @@ public enum BillPanel
     Done,
 }
 
-public sealed record BillLineRow(string Name, string Quantity, string Price, string Total, string? Detail)
+// Detail is the one-line summary ("Spicy, Extra raita (+30.00 each) · Note: less oil"); the workspace's OrderLine shows
+// Modifiers and Note apart, with the item's picture from the menu cache (initials when it has none).
+public sealed record BillLineRow(string Name, string Quantity, string Price, string Total, string? Detail,
+    int QuantityValue = 1, string Modifiers = "", string Note = "", string? ImageFile = null)
 {
     public bool HasDetail => !string.IsNullOrEmpty(Detail);
 }
@@ -56,10 +61,12 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
     private readonly ICustomersApi? _customers;
     private readonly IOrdersApi? _orders;
     private readonly INotificationRouter? _router;
+    private readonly IMenuCache? _menuCache;
     // The bill lines carry only the modifier amount; the chosen options and the note come from the order (keyed by
-    // order item id), reloaded when the bill points at a different order.
+    // order item id), reloaded when the bill points at a different order. Pictures are joined by menu item id.
     private int _orderItemsOf;
     private Dictionary<int, OrderItemDto> _orderItems = new();
+    private readonly Dictionary<int, string?> _imageFiles = new();
     private CustomerDto? _picked;
     private bool _settingSearch;
     private CancellationTokenSource? _searchPause;
@@ -81,11 +88,13 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
         ICashDrawer? cashDrawer = null,
         ICustomersApi? customers = null,
         IOrdersApi? orders = null,
-        INotificationRouter? router = null)
+        INotificationRouter? router = null,
+        IMenuCache? menuCache = null)
     {
         _customers = customers;
         _orders = orders;
         _router = router;
+        _menuCache = menuCache;
         _printer = printer;
         _cashDrawer = cashDrawer;
         _billingApi = billingApi;
@@ -103,12 +112,39 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
         nameof(DiscountText), nameof(TaxRows), nameof(HasRoundOff), nameof(RoundOffText), nameof(GrandTotalText), nameof(HasPayments),
         nameof(PaymentRows), nameof(PaidText), nameof(BalanceText), nameof(IsHeldByOther), nameof(HeldByText), nameof(CanEdit), nameof(CanPay),
         nameof(CanFinalize), nameof(FinalizeText), nameof(CanReopen), nameof(CanVoid), nameof(CanTakeOver), nameof(CustomerText), nameof(CanClearCustomer), nameof(StatusText),
-        nameof(InvoiceTitle))]
+        nameof(InvoiceTitle), nameof(Display), nameof(GuestsText), nameof(WaiterText), nameof(RequestedText), nameof(IsPaid), nameof(CanConfirmPayment))]
     private BillDetailDto? _bill;
 
+    // Phase 21.3 header pills.
+    public StatusDisplay Display => Bill is null ? default : BillQueueItemViewModel.DisplayFor(Bill.Status, Bill.PaidAmount);
+
+    public string GuestsText => Bill is null ? string.Empty : Plural.Count(Bill.GuestCount, "guest");
+
+    public string WaiterText => Bill?.WaiterName ?? string.Empty;
+
+    public string RequestedText => Bill is null ? string.Empty : "Requested " + Bill.RequestedAtUtc.ToLocalTime().ToString("HH:mm", CultureInfo.CurrentCulture);
+
+    /// <summary>The waiter's note for the whole order (from the order, loaded with the options and line notes).</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsPanelOpen), nameof(IsDiscountPanel), nameof(IsCustomerPanel), nameof(IsPaymentPanel), nameof(IsPreviewPanel), nameof(IsDonePanel))]
+    [NotifyPropertyChangedFor(nameof(HasOrderNotes))]
+    private string _orderNotes = string.Empty;
+
+    public bool HasOrderNotes => OrderNotes.Length > 0;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsPanelOpen), nameof(IsOverlayOpen), nameof(IsDiscountPanel), nameof(IsCustomerPanel), nameof(IsPaymentPanel), nameof(IsPreviewPanel), nameof(IsDonePanel),
+        nameof(PaymentError))]
     private BillPanel _activePanel;
+
+    // Phase 21.3: the payment column is permanent, so a payment form exists whenever the bill can be paid. It is rebuilt
+    // only when the balance changes (a discount, another counter), so typed amounts and a pending retry survive refreshes.
+    partial void OnBillChanged(BillDetailDto? value)
+    {
+        if (!IsBusy)
+        {
+            SyncPayment();
+        }
+    }
 
     [ObservableProperty]
     private PaymentViewModel? _payment;
@@ -256,6 +292,10 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
         ResetSearch();
     }
 
+    // D3: Customers is not in the sidebar; the picker links to it.
+    [RelayCommand]
+    private Task ManageCustomersAsync() => _navigation.NavigateToAsync(ModuleRegistry.Customers);
+
     // Takes the customer off the bill at once (the same save as emptying every field).
     [RelayCommand]
     private async Task ClearCustomerAsync()
@@ -311,6 +351,9 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
 
     public bool IsPanelOpen => ActivePanel != BillPanel.None;
 
+    /// <summary>The overlays that are still overlays in the workspace (discount, customer, invoice preview); payment and paid are inline.</summary>
+    public bool IsOverlayOpen => ActivePanel is BillPanel.Discount or BillPanel.Customer or BillPanel.Preview;
+
     public bool IsDiscountPanel => ActivePanel == BillPanel.Discount;
 
     public bool IsCustomerPanel => ActivePanel == BillPanel.Customer;
@@ -342,7 +385,33 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
         i.Quantity.ToString(CultureInfo.CurrentCulture),
         Money.Format(i.UnitPrice + i.ModifiersAmount),
         Money.Format(i.LineSubtotal),
-        LineDetail(i))).ToList() ?? new List<BillLineRow>();
+        LineDetail(i),
+        i.Quantity,
+        LineModifiers(i),
+        _orderItems.TryGetValue(i.OrderItemId, out var ordered) ? ordered.Notes?.Trim() ?? string.Empty : string.Empty,
+        ordered is not null && _imageFiles.TryGetValue(ordered.MenuItemId, out var file) ? file : null)).ToList() ?? new List<BillLineRow>();
+
+    // "Spicy, Extra raita (+30.00 each) · 280.00 each": the chosen options, then the unit price when there is more than one.
+    private string LineModifiers(BillItemDto item)
+    {
+        var parts = new List<string>();
+        if (_orderItems.TryGetValue(item.OrderItemId, out var ordered) && ordered.Modifiers.Count > 0)
+        {
+            var extras = item.ModifiersAmount != 0 ? $" (+{Money.Format(item.ModifiersAmount)} each)" : string.Empty;
+            parts.Add(string.Join(", ", ordered.Modifiers.Select(m => m.Name)) + extras);
+        }
+        else if (item.ModifiersAmount != 0)
+        {
+            parts.Add($"incl. extras {Money.Format(item.ModifiersAmount)} each");
+        }
+
+        if (item.Quantity > 1)
+        {
+            parts.Add($"{Money.Format(item.UnitPrice + item.ModifiersAmount)} each");
+        }
+
+        return string.Join(" · ", parts);
+    }
 
     // "Spicy, Extra raita (+30.00 each) · Note: less oil"; falls back to the amount alone when the order is not loaded.
     private string? LineDetail(BillItemDto item)
@@ -385,7 +454,31 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
 
         _orderItemsOf = Bill.OrderId;
         _orderItems = order.Data.Items.ToDictionary(i => i.Id);
+        OrderNotes = order.Data.Notes?.Trim() ?? string.Empty;
         OnPropertyChanged(nameof(Lines));
+        await LoadPicturesAsync(order.Data.Items);
+    }
+
+    // D11: pictures come from the menu cache's existing ImageUrl (downloaded once per item); no picture → initials.
+    private async Task LoadPicturesAsync(IReadOnlyList<OrderItemDto> items)
+    {
+        if (_menuCache?.Menu is not { } menu)
+        {
+            return;
+        }
+
+        var loaded = false;
+        foreach (var menuItemId in items.Select(i => i.MenuItemId).Distinct().Where(id => !_imageFiles.ContainsKey(id)))
+        {
+            var url = menu.Items.FirstOrDefault(m => m.Id == menuItemId)?.ImageUrl;
+            _imageFiles[menuItemId] = url is null ? null : await _menuCache.GetImageFileAsync(url);
+            loaded |= _imageFiles[menuItemId] is not null;
+        }
+
+        if (loaded)
+        {
+            OnPropertyChanged(nameof(Lines));
+        }
     }
 
     public string SubtotalText => Money.Format(Bill?.Subtotal ?? 0);
@@ -432,7 +525,7 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
 
     public bool CanFinalize => Bill is { IsClaimedByMe: true, Status: BillStatus.Open or BillStatus.Finalized } && !IsBusy;
 
-    public string FinalizeText => Bill?.Status == BillStatus.Open ? "FINALIZE & PRINT" : "SHOW INVOICE";
+    public string FinalizeText => Bill?.Status == BillStatus.Open ? "Finalize & print" : "Show invoice";
 
     public bool CanReopen => Bill is { IsClaimedByMe: true, Status: BillStatus.Open or BillStatus.Finalized, PaidAmount: 0 } && !IsBusy;
 
@@ -450,6 +543,7 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
 
         var methods = await _billingApi.GetPaymentMethodsAsync(includeInactive: false);
         _methods = methods.Data ?? new List<PaymentMethodDto>();
+        MethodButtons = PaymentMethodButton.Build(_methods);
         await LoadRestaurantAsync();
         await RefreshAsync();
 
@@ -512,7 +606,7 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
     {
         ActivePanel = BillPanel.None;
         PanelError = null;
-        Payment = null;
+        SyncPayment();
     }
 
     [RelayCommand]
@@ -688,17 +782,92 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
             ? _printer.PrintAsync(PrintDocumentType.Receipt, payment.Id)
             : Task.CompletedTask;
 
-    [RelayCommand]
-    private void PayCash() => OpenPayment(PaymentMode.Cash);
+    // D6: the method buttons come from the configured list (one per active method, in SortOrder; F2 = cash, F3… the rest).
+    public IReadOnlyList<PaymentMethodDto> Methods => _methods;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasMethods), nameof(HasCashMethod))]
+    private IReadOnlyList<PaymentMethodButton> _methodButtons = Array.Empty<PaymentMethodButton>();
+
+    public bool HasMethods => MethodButtons.Count > 0;
+
+    /// <summary>False when no cash method is active: the cash-only controls (quick amounts, received, change) are then hidden rather than inert.</summary>
+    public bool HasCashMethod => MethodButtons.Any(b => b.IsCash);
+
+    public bool IsSplitSelected => Payment?.IsSplit == true;
+
+    /// <summary>Complete payment is enabled only for a valid form while nothing is being submitted.</summary>
+    public bool CanConfirmPayment => Payment is { IsValid: true } && CanPay;
+
+    /// <summary>The payment failure, shown in the payment column while no overlay has it.</summary>
+    public string? PaymentError => IsOverlayOpen ? null : PanelError;
+
+    public bool IsPaid => Bill?.Status == BillStatus.Settled;
 
     [RelayCommand]
-    private void PayCard() => OpenPayment(PaymentMode.Card);
+    private void PayWith(PaymentMethodDto? method)
+    {
+        if (method is null || Bill is null || !CanPay)
+        {
+            return;
+        }
+
+        Payment = new PaymentViewModel(method, Bill.BalanceDue, _methods);
+        PanelError = null;
+    }
 
     [RelayCommand]
-    private void PayUpi() => OpenPayment(PaymentMode.Upi);
+    private void PaySplit()
+    {
+        if (Bill is null || !CanPay)
+        {
+            return;
+        }
 
+        Payment = PaymentViewModel.Split(Bill.BalanceDue, _methods);
+        PanelError = null;
+    }
+
+    /// <summary>"F2" picks the cash method, "F3"… the others in sort order (see <see cref="PaymentMethodButton.Build"/>).</summary>
     [RelayCommand]
-    private void PaySplit() => OpenPayment(PaymentMode.Split);
+    private void PayHotkey(string? key)
+    {
+        if (MethodButtons.FirstOrDefault(b => b.Hotkey == key) is { } button)
+        {
+            PayWith(button.Method);
+        }
+    }
+
+    partial void OnPaymentChanged(PaymentViewModel? oldValue, PaymentViewModel? newValue)
+    {
+        if (oldValue is not null)
+        {
+            oldValue.PropertyChanged -= OnPaymentPropertyChanged;
+        }
+
+        if (newValue is not null)
+        {
+            newValue.PropertyChanged += OnPaymentPropertyChanged;
+        }
+
+        foreach (var button in MethodButtons)
+        {
+            button.IsSelected = newValue is { IsSplit: false } && newValue.Method?.Id == button.Method.Id;
+        }
+
+        OnPropertyChanged(nameof(IsSplitSelected));
+        OnPropertyChanged(nameof(CanConfirmPayment));
+    }
+
+    private void OnPaymentPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(PaymentViewModel.IsValid))
+        {
+            OnPropertyChanged(nameof(CanConfirmPayment));
+        }
+    }
+
+    partial void OnPanelErrorChanged(string? value) => OnPropertyChanged(nameof(PaymentError));
 
     [RelayCommand]
     private async Task ConfirmPaymentAsync()
@@ -766,7 +935,7 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
             IsBusy = false;
         }
 
-        Payment = null;
+        // Leaving IsBusy rebuilt the form for what is still due (SyncPayment); a settled bill has none.
         if (Bill.Status == BillStatus.Settled)
         {
             ChangeDueText = Money.Format(change);
@@ -843,22 +1012,46 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
 
     protected override void OnBusyChanged()
     {
-        foreach (var name in new[] { nameof(CanEdit), nameof(CanPay), nameof(CanFinalize), nameof(CanReopen), nameof(CanVoid) })
+        foreach (var name in new[] { nameof(CanEdit), nameof(CanPay), nameof(CanFinalize), nameof(CanReopen), nameof(CanVoid), nameof(CanConfirmPayment) })
         {
             OnPropertyChanged(name);
         }
+
+        if (!IsBusy)
+        {
+            SyncPayment();
+        }
     }
 
-    private void OpenPayment(PaymentMode mode)
+    // The form opens on the first button (the cash method when one is active) and follows the balance; a form whose
+    // balance still matches is kept, so a pending retry keeps its key and request.
+    private void SyncPayment()
     {
-        if (Bill is null || !CanPay)
+        if (!CanPay)
         {
+            if (Payment is not null)
+            {
+                Payment = null;
+            }
+
             return;
         }
 
-        Payment = new PaymentViewModel(mode, Bill.BalanceDue, _methods);
-        PanelError = null;
-        ActivePanel = BillPanel.Payment;
+        var current = Payment;
+        var first = MethodButtons.FirstOrDefault()?.Method;
+        if (current is null)
+        {
+            if (first is not null)
+            {
+                Payment = new PaymentViewModel(first, Bill!.BalanceDue, _methods);
+            }
+        }
+        else if (current.Balance != Bill!.BalanceDue)
+        {
+            Payment = current.IsSplit
+                ? PaymentViewModel.Split(Bill.BalanceDue, _methods)
+                : (current.Method ?? first) is { } method ? new PaymentViewModel(method, Bill.BalanceDue, _methods) : null;
+        }
     }
 
     private async Task ApplyDiscountAsync(Func<ManagerApprovalDto?, Task<ApiResult<BillDetailDto>>> call)
@@ -949,7 +1142,8 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
 
     private void OnBillEvent(int billId)
     {
-        if (billId == _billId && !IsBusy && ActivePanel != BillPanel.Payment)
+        // A refresh keeps the typed payment unless the balance changed (SyncPayment), so it is safe while the form is open.
+        if (billId == _billId && !IsBusy)
         {
             _ = RefreshAsync();
         }

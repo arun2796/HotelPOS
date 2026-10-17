@@ -1,54 +1,89 @@
-/* HotelPOS web design tokens — the same values as the desktop Phase 17 palette
-   (src/HotelPOS.Desktop/Themes/Tokens.Light.xaml / Tokens.Dark.xaml) so every client looks like one product. */
+/* HotelPOS web design tokens: the same values as the desktop Phase 21 palette
+   (src/HotelPOS.Desktop/Themes/Tokens.Light.xaml / Tokens.Dark.xaml) so every client looks like one product.
+   WebTokenContractTests keeps the two in step. Add no hex literals to .razor files; use these variables. */
+
+/* Inter, self-hosted (SIL OFL, see wwwroot/fonts/Inter-OFL.txt): the app also runs offline on the LAN and in the Android WebView. */
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 400; font-display: swap; src: url("../fonts/Inter-Regular.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 500; font-display: swap; src: url("../fonts/Inter-Medium.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 600; font-display: swap; src: url("../fonts/Inter-SemiBold.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 700; font-display: swap; src: url("../fonts/Inter-Bold.woff2") format("woff2"); }
+
 :root {
-  --bg: #F4F7FA;
+  --bg: #F4F7FB;
   --surface: #FFFFFF;
   --surface-alt: #F8FAFC;
   --surface-subtle: #F1F5F9;
   --layer-hover: #F1F5F9;
-  --border: #E3E8EF;
+  --border: #E2E8F0;
   --border-subtle: #EEF2F6;
   --border-strong: #CBD5E1;
-  --text: #172033;
-  --text-2: #667085;
+  --text: #172B4D;
+  --text-2: #64748B;
   --text-3: #98A2B3;
   --input-bg: #F8FAFC;
   --input-border: #D5DCE5;
-  --primary: #078B45;
-  --primary-hover: #06763B;
+  --primary: #078747;
+  --primary-hover: #066B39;
   --primary-soft: #E9F8EF;
   --on-primary: #FFFFFF;
   --focus: #2563EB;
   --info: #2563EB;
   --info-soft: #EFF6FF;
+  --info-text: #1D4ED8;
   --success: #16A34A;
   --success-soft: #E9F8EF;
+  /* Text on white or the soft fills: the bright --success / --warning measure 2.0-3.3:1 there, so text uses the
+     darker variants (emerald 700, amber 700). */
+  --success-text: #15803D;
   --warning: #F59E0B;
   --warning-soft: #FFF7E6;
+  --warning-text: #B45309;
   --danger: #DC2626;
   --danger-text: #B91C1C;
   --danger-soft: #FEF2F2;
-  /* Text on white or the soft fills: the bright --warning / --success measure 2.0–3.0:1 there, so text uses the
-     darker state colours below (amber 700 4.7:1 on --warning-soft, emerald 700 5.1:1 on --success-soft). */
-  --warning-text: var(--st-preparing);
-  --success-text: var(--st-available);
-  /* Table and ticket states: identical on every terminal (desktop Brush.Status.*). */
-  --st-available: #047857;
+  --neutral: #94A3B8;
+  --neutral-soft: #F1F5F9;
+  --neutral-text: #5B6B80;
+  /* Sidebar / rail (navy in light, darker navy in dark). */
+  --sidebar: #142235;
+  --sidebar-text: #CBD5E1;
+  --sidebar-text-active: #FFFFFF;
+  --sidebar-text-muted: #8A9BB2;
+  --sidebar-hover: #1C2E45;
+  --sidebar-selected: #078747;
+  --sidebar-accent: #FFFFFF;
+  --sidebar-divider: #23354D;
+  --sidebar-badge: #2563EB;
+  /* Table and ticket states, one colour per tone and identical on every terminal (desktop Brush.Status.*).
+     Ready is drawn solid, Available as the soft fill with this colour as border (Phase 21 D8). */
+  --st-available: #16A34A;
   --st-occupied: #2563EB;
-  --st-ordering: #7C3AED;
+  --st-ordering: #2563EB;
   --st-preparing: #B45309;
-  --st-ready: #DC2626;
-  --st-billing: #0F766E;
-  --st-out: #71717A;
+  --st-ready: #16A34A;
+  --st-billing: #F59E0B;
+  --st-out: #94A3B8;
 
   --radius-input: 6px;
   --radius-button: 8px;
   --radius-card: 8px;
   --radius-dialog: 10px;
-  --touch: 44px;
-  --font: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  --touch: 48px;
+  --font: "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  --fs-title: 24px;
+  --fs-section: 18px;
+  --fs-body: 15px;
+  --fs-label: 13px;
+  --fs-caption: 12px;
+  --fs-amount: 24px;
+  --fs-amount-lg: 32px;
+  --fs-kpi: 28px;
   --shadow-popup: 0 6px 18px rgba(0, 0, 0, 0.10);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (max-width: 599px) {
+  :root { --fs-title: 22px; }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -66,21 +101,28 @@
     --text-3: #6F7A8C;
     --input-bg: #1B2537;
     --input-border: #33405A;
-    --primary: #22B45F;
-    --primary-hover: #1DA354;
+    --primary: #078747;
+    --primary-hover: #066B39;
     --primary-soft: #123A26;
     --focus: #93C5FD;
     --info: #60A5FA;
     --info-soft: #0B1E3F;
+    --info-text: #93C5FD;
     --success: #22C55E;
     --success-soft: #123A26;
+    --success-text: #4ADE80;
     --warning: #F59E0B;
     --warning-soft: #3A2A0A;
+    --warning-text: #FBBF24;
     --danger: #E11D48;
     --danger-text: #FB7185;
     --danger-soft: #2B0A10;
-    --warning-text: var(--warning);
-    --success-text: var(--success);
+    --neutral: #94A3B8;
+    --neutral-soft: #1F2A3D;
+    --neutral-text: #A3ACBA;
+    --sidebar: #0A111C;
+    --sidebar-hover: #141E2E;
+    --sidebar-divider: #273246;
     --shadow-popup: 0 8px 20px rgba(0, 0, 0, 0.45);
   }
 }
@@ -99,20 +141,27 @@
   --text-3: #6F7A8C;
   --input-bg: #1B2537;
   --input-border: #33405A;
-  --primary: #22B45F;
-  --primary-hover: #1DA354;
+  --primary: #078747;
+  --primary-hover: #066B39;
   --primary-soft: #123A26;
   --focus: #93C5FD;
   --info: #60A5FA;
   --info-soft: #0B1E3F;
+  --info-text: #93C5FD;
   --success: #22C55E;
   --success-soft: #123A26;
+  --success-text: #4ADE80;
   --warning: #F59E0B;
   --warning-soft: #3A2A0A;
+  --warning-text: #FBBF24;
   --danger: #E11D48;
   --danger-text: #FB7185;
   --danger-soft: #2B0A10;
-  --warning-text: var(--warning);
-  --success-text: var(--success);
+  --neutral: #94A3B8;
+  --neutral-soft: #1F2A3D;
+  --neutral-text: #A3ACBA;
+  --sidebar: #0A111C;
+  --sidebar-hover: #141E2E;
+  --sidebar-divider: #273246;
   --shadow-popup: 0 8px 20px rgba(0, 0, 0, 0.45);
 }

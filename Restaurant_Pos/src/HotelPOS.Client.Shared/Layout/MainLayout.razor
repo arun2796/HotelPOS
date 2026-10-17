@@ -7,8 +7,16 @@
 @inject NotificationRouter Notifications
 @inject NotificationCenter NotificationList
 
-<div class="shell">
+<div class="shell @(Mode == ShellMode.Kitchen ? "kitchen" : "waiter")">
     <header class="topbar">
+        @if (Mode == ShellMode.Waiter && Shell.BackHref is { } back)
+        {
+            <a class="btn icon ghost topbar-back" href="@back" aria-label="Back" data-testid="back"><Icon Name="chevron-left" Size="24" /></a>
+        }
+        else
+        {
+            <span class="brand" aria-hidden="true"><Icon Name="utensils" Size="22" /><b class="brand-name">HotelPOS</b></span>
+        }
         <div class="title">
             <span class="title-main">@Shell.Title</span>
             @if (!string.IsNullOrEmpty(Shell.Subtitle))
@@ -16,12 +24,28 @@
                 <span class="sub" title="@Shell.Subtitle">@Shell.Subtitle</span>
             }
         </div>
+        @if (Auth.IsSignedIn && Mode == ShellMode.Kitchen)
+        {
+            <nav class="headnav" aria-label="Primary">
+                <NavLink href="kitchen" Match="NavLinkMatch.All" aria-current="@Current("kitchen", true)" title="Kitchen" aria-label="Kitchen"><Icon Name="flame" Size="22" /><span class="hn-label">Kitchen</span></NavLink>
+                <NavLink href="kitchen/completed" aria-current="@Current("kitchen/completed")" title="Completed" aria-label="Completed"><Icon Name="check" Size="22" /><span class="hn-label">Completed</span></NavLink>
+                <NavLink href="kitchen/station" aria-current="@Current("kitchen/station")" title="Station" aria-label="Station"><Icon Name="table" Size="22" /><span class="hn-label">Station</span></NavLink>
+                <NavLink href="settings" aria-current="@Current("settings")" title="Settings" aria-label="Settings"><Icon Name="settings" Size="22" /><span class="hn-label">Settings</span></NavLink>
+            </nav>
+            <span class="clock num-tab" data-testid="clock" aria-label="Time"><Icon Name="clock" Size="16" /> @_now.ToString("HH:mm")</span>
+        }
         <ConnectionPill />
         <NotificationBell />
         <ThemeToggle />
-        @if (Auth.IsSignedIn)
+        @if (Auth.IsSignedIn && Mode == ShellMode.Kitchen)
         {
             <button class="btn icon ghost" title="@($"{Auth.User!.DisplayName} · Sign out")" @onclick="SignOutAsync" aria-label="Sign out">
+                <span class="avatar">@ShellModes.Initials(Auth.User!.DisplayName)</span>
+            </button>
+        }
+        else if (Auth.IsSignedIn)
+        {
+            <button class="btn icon ghost" title="@Auth.User!.DisplayName" @onclick="() => _more = true" aria-label="Profile">
                 <span class="avatar">@ShellModes.Initials(Auth.User!.DisplayName)</span>
             </button>
         }
@@ -34,26 +58,50 @@
     @if (Auth.IsSignedIn && Mode == ShellMode.Waiter)
     {
         <nav class="bottomnav" aria-label="Primary">
-            <NavLink href="home" aria-current="@Current("home")"><span class="ico" aria-hidden="true">⌂</span>Home</NavLink>
-            <NavLink href="tables" Match="NavLinkMatch.Prefix" aria-current="@Current("tables")"><span class="ico" aria-hidden="true">▦</span>Tables</NavLink>
-            <NavLink href="my-orders" aria-current="@Current("my-orders")"><span class="ico" aria-hidden="true">☰</span>My orders</NavLink>
-            <NavLink href="settings" aria-current="@Current("settings")"><span class="ico" aria-hidden="true">⚙</span>Settings</NavLink>
+            <NavLink href="home" aria-current="@Current("home")"><Icon Name="home" Size="24" /><span>Home</span></NavLink>
+            <NavLink href="tables" Match="NavLinkMatch.Prefix" aria-current="@Current("tables")"><Icon Name="table" Size="24" /><span>Tables</span></NavLink>
+            <NavLink href="my-orders" aria-current="@Current("my-orders")"><Icon Name="receipt" Size="24" /><span>Orders</span></NavLink>
+            <button type="button" class="tabbtn tab-new" aria-haspopup="dialog" @onclick="() => _pick = true"><Icon Name="plus" Size="24" /><span>New order</span></button>
+            <button type="button" class="tabbtn" aria-haspopup="dialog" @onclick="() => _more = true"><Icon Name="more" Size="24" /><span>More</span></button>
         </nav>
+
+        @if (_pick)
+        {
+            <TablePickerSheet Open="true" OnClose="() => _pick = false" />
+        }
     }
-    else if (Auth.IsSignedIn && Mode == ShellMode.Kitchen)
+
+    @if (Auth.IsSignedIn && Mode == ShellMode.Waiter)
     {
-        <nav class="bottomnav" aria-label="Primary">
-            <NavLink href="kitchen" Match="NavLinkMatch.All" aria-current="@Current("kitchen", true)"><span class="ico" aria-hidden="true">✓</span>Kitchen</NavLink>
-            <NavLink href="kitchen/completed" aria-current="@Current("kitchen/completed")"><span class="ico" aria-hidden="true">☑</span>Completed</NavLink>
-            <NavLink href="kitchen/station" aria-current="@Current("kitchen/station")"><span class="ico" aria-hidden="true">⚙</span>Station</NavLink>
-            <NavLink href="settings" aria-current="@Current("settings")"><span class="ico" aria-hidden="true">⚙</span>Settings</NavLink>
-        </nav>
+        <BottomSheet Open="_more" Title="More" OnClose="() => _more = false">
+            <section class="more-section" aria-label="Profile">
+                <div class="more-profile">
+                    <span class="avatar lg">@ShellModes.Initials(Auth.User!.DisplayName)</span>
+                    <div class="grow">
+                        <div class="more-name">@Auth.User!.DisplayName</div>
+                        <div class="muted small">@(Auth.User!.Roles.FirstOrDefault())</div>
+                    </div>
+                    <ThemeToggle />
+                </div>
+                <DeviceStatusCard Type="DeviceType.Waiter" />
+            </section>
+            <section class="more-section" aria-label="Notifications">
+                <NotificationPanel OnClose="() => _more = false" />
+            </section>
+            <NavLink class="btn block more-link" href="settings" @onclick="() => _more = false"><Icon Name="settings" /> Settings</NavLink>
+            <button type="button" class="btn block danger-outline more-link" @onclick="SignOutAsync"><Icon Name="logout" /> Sign out</button>
+        </BottomSheet>
     }
 
     <Toasts />
 </div>
 
 @code {
+    private bool _more;
+    private bool _pick;
+    private DateTime _now = DateTime.Now;
+    private Timer? _clock;
+
     private ShellMode Mode => ShellModes.For(Auth);
 
     private string? Current(string path, bool exact = false)
@@ -63,14 +111,19 @@
         return on ? "page" : null;
     }
 
+    private void OnMoreRequested() => _ = InvokeAsync(() => { _more = true; StateHasChanged(); });
+
     protected override async Task OnInitializedAsync()
     {
         Shell.Changed += StateHasChanged;
+        Shell.MoreRequested += OnMoreRequested;
+        _clock = new Timer(_ => _ = InvokeAsync(() => { _now = DateTime.Now; StateHasChanged(); }), null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
         await Notifications.StartAsync();
     }
 
     private async Task SignOutAsync()
     {
+        _more = false;
         Notifications.Stop();
         NotificationList.Clear();
         await Realtime.StopAsync();
@@ -80,7 +133,9 @@
 
     public void Dispose()
     {
+        _clock?.Dispose();
         Shell.Changed -= StateHasChanged;
+        Shell.MoreRequested -= OnMoreRequested;
         Notifications.Stop();
     }
 }

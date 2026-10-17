@@ -1,0 +1,29 @@
+@* Phase 21 W4: one cart line: OrderLine (picture, name, options, note, line total) plus quantity, edit and delete controls. *@
+
+<div class="cart-line" data-testid="cart-line">
+    <OrderLine Name="@Line.Name" Quantity="Line.Quantity" Modifiers="@string.Join(", ", Line.ModifierNames)" Note="@Line.Notes" Price="Line.LineTotal" ImageUrl="@ImageUrl" />
+    <div class="cart-line-controls">
+        <div class="stepper" role="group" aria-label="Quantity">
+            <button type="button" class="btn icon" @onclick="OnDecrease" aria-label="One less"><span aria-hidden="true">−</span></button>
+            <span class="stepper-value num-tab">@Line.Quantity</span>
+            <button type="button" class="btn icon" @onclick="OnIncrease" disabled="@(Line.Quantity >= HotelPOS.Contracts.Orders.OrderLimits.MaxQuantity)" aria-label="One more"><span aria-hidden="true">+</span></button>
+        </div>
+        <span class="grow"></span>
+        <button type="button" class="btn icon ghost" data-testid="cart-line-edit" @onclick="OnEdit" aria-label="@($"Edit {Line.Name}")"><Icon Name="pencil" /></button>
+        <button type="button" class="btn icon ghost danger-text" data-testid="cart-line-delete" @onclick="OnDelete" aria-label="@($"Remove {Line.Name}")"><Icon Name="trash" /></button>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public CartLine Line { get; set; } = new();
+
+    [Parameter] public string? ImageUrl { get; set; }
+
+    [Parameter] public EventCallback OnIncrease { get; set; }
+
+    [Parameter] public EventCallback OnDecrease { get; set; }
+
+    [Parameter] public EventCallback OnEdit { get; set; }
+
+    [Parameter] public EventCallback OnDelete { get; set; }
+}

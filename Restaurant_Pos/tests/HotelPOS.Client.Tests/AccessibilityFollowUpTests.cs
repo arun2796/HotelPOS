@@ -63,21 +63,28 @@ public sealed class AccessibilityFollowUpTests : TestContext
     }
 
     [Theory]
-    [InlineData("Waiter", "tables.view", "Home|Tables|My orders|Settings")]
-    [InlineData("Kitchen", "kitchen.operate", "Kitchen|Completed|Station|Settings")]
-    public async Task Nav_HasSettingsLink_AndCurrentPageIsMarked(string role, string permission, string labelList)
+    [InlineData("Waiter", "tables.view", "Home|Tables|Orders|New order|More", "nav.bottomnav > *", "my-orders")]
+    [InlineData("Kitchen", "kitchen.operate", "Kitchen|Completed|Station|Settings", "nav.headnav a", "settings")]
+    public async Task Nav_HasExpectedEntries_AndCurrentPageIsMarked(string role, string permission, string labelList, string selector, string markedPath)
     {
         await SignInAsync(role, permission);
         AddLayoutServices();
 
         var layout = RenderComponent<MainLayout>(p => p.Add(c => c.Body, (RenderFragment)(b => b.AddContent(0, "body"))));
 
-        var links = layout.FindAll("nav.bottomnav a");
-        links.Select(a => a.TextContent.Trim('⌂', '▦', '☰', '✓', '☑', '⚙', ' ')).Should().Equal(labelList.Split('|'));
-        links.Should().Contain(a => a.GetAttribute("href") == "settings");
+        var links = layout.FindAll(selector);
+        links.Select(a => a.TextContent.Trim()).Should().Equal(labelList.Split('|'));
+        if (role == "Waiter")
+        {
+            layout.FindAll("nav.bottomnav a").Select(a => a.GetAttribute("href")).Should().Equal("home", "tables", "my-orders");
+        }
+        else
+        {
+            layout.FindAll("nav.bottomnav").Should().BeEmpty("the kitchen has no bottom navigation");
+        }
 
-        Services.GetRequiredService<NavigationManager>().NavigateTo("settings");
-        layout.WaitForAssertion(() => layout.Find("nav.bottomnav a[href=settings]").GetAttribute("aria-current").Should().Be("page"));
+        Services.GetRequiredService<NavigationManager>().NavigateTo(markedPath);
+        layout.WaitForAssertion(() => layout.Find($"a[href={markedPath}]").GetAttribute("aria-current").Should().Be("page"));
         await Services.GetRequiredService<WebRealtimeClient>().StopAsync();
     }
 
@@ -131,14 +138,16 @@ public sealed class AccessibilityFollowUpTests : TestContext
         Services.AddSingleton<WaiterApi>();
         Services.AddSingleton<WebRealtimeClient>();
         Services.AddSingleton<ShellState>();
+        Services.AddSingleton<IBrowserStorage>(_storage);
+        Services.AddSingleton<NotificationCenter>();
 
         var page = RenderComponent<HomePage>();
-        page.Find(".skeleton-group").GetAttribute("aria-busy").Should().Be("true");
+        page.WaitForAssertion(() => page.Find(".skeleton-group").GetAttribute("aria-busy").Should().Be("true"));
         page.FindAll(".skeleton").Should().NotBeEmpty();
 
         handler.Gate.SetResult();
         page.WaitForAssertion(() => page.FindAll(".skeleton-group").Should().BeEmpty());
-        page.Markup.Should().Contain("Nothing ready to serve");
+        page.Markup.Should().Contain("No tables with an open order");
         await Services.GetRequiredService<WebRealtimeClient>().StopAsync();
     }
 }

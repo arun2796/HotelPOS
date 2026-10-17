@@ -6,17 +6,54 @@ using HotelPOS.Contracts.Billing;
 
 namespace HotelPOS.Desktop.Modules.Billing;
 
-public enum PaymentMode
-{
-    Cash,
-    Card,
-    Upi,
-    Split,
-}
-
 public sealed record QuickTenderOption(string Label, decimal Value);
 
 public sealed record PaymentToSend(PaymentLineViewModel Line, int MethodId, decimal Amount, decimal? Tendered, string? Reference);
+
+/// <summary>
+/// D6: one payment button per active configured method (GET /api/payment-methods), in SortOrder, instead of the old
+/// hard-wired Cash / Card / UPI. F2 is the cash method; F3, F4… are the rest in order. Split is a fixed button (F9).
+/// </summary>
+public sealed partial class PaymentMethodButton : ObservableObject
+{
+    public PaymentMethodButton(PaymentMethodDto method, string hotkey)
+    {
+        Method = method;
+        Hotkey = hotkey;
+    }
+
+    public PaymentMethodDto Method { get; }
+
+    /// <summary>"F2".."F8", or empty when the method has no key (more than seven methods).</summary>
+    public string Hotkey { get; }
+
+    public string Name => Method.Name;
+
+    public bool IsCash => Method.IsCash;
+
+    [ObservableProperty]
+    private bool _isSelected;
+
+    public static IReadOnlyList<PaymentMethodButton> Build(IEnumerable<PaymentMethodDto> methods)
+    {
+        var active = methods.Where(m => m.IsActive).OrderBy(m => m.SortOrder).ThenBy(m => m.Id).ToList();
+        var cash = active.FirstOrDefault(m => m.IsCash);
+        var buttons = new List<PaymentMethodButton>();
+        if (cash is not null)
+        {
+            buttons.Add(new PaymentMethodButton(cash, "F2"));
+        }
+
+        var key = 3;
+        foreach (var method in active.Where(m => !ReferenceEquals(m, cash)))
+        {
+            buttons.Add(new PaymentMethodButton(method, key <= 8 ? $"F{key}" : string.Empty));
+            key++;
+        }
+
+        return buttons;
+    }
+}
 
 public sealed partial class PaymentLineViewModel : ObservableObject
 {
@@ -59,21 +96,24 @@ public sealed partial class PaymentViewModel : ObservableObject
     private string _activeField = nameof(TenderedText);
     private PaymentLineViewModel? _singleLine;
 
-    public PaymentViewModel(PaymentMode mode, decimal balance, IReadOnlyList<PaymentMethodDto> methods)
+    /// <summary>One method for the whole balance (or a part of it). Cash controls key off <see cref="PaymentMethodDto.IsCash"/>, the reference off <see cref="PaymentMethodDto.RequiresReference"/>.</summary>
+    public PaymentViewModel(PaymentMethodDto method, decimal balance, IReadOnlyList<PaymentMethodDto> methods)
+        : this(false, method, balance, methods)
     {
-        Mode = mode;
+    }
+
+    /// <summary>Several methods, each with its own amount and reference, adding up to the balance.</summary>
+    public static PaymentViewModel Split(decimal balance, IReadOnlyList<PaymentMethodDto> methods) => new(true, null, balance, methods);
+
+    private PaymentViewModel(bool isSplit, PaymentMethodDto? method, decimal balance, IReadOnlyList<PaymentMethodDto> methods)
+    {
+        IsSplit = isSplit;
         Balance = balance;
         Methods = methods.Where(m => m.IsActive).ToList();
-        Method = mode switch
-        {
-            PaymentMode.Cash => Methods.FirstOrDefault(m => m.IsCash),
-            PaymentMode.Card => Methods.FirstOrDefault(m => m.Code == PaymentMethodCodes.Card),
-            PaymentMode.Upi => Methods.FirstOrDefault(m => m.Code == PaymentMethodCodes.Upi),
-            _ => null,
-        };
+        Method = isSplit ? null : method;
         _amountText = Money.Format(balance);
         _activeField = IsCash ? nameof(TenderedText) : nameof(AmountText);
-        if (mode == PaymentMode.Split)
+        if (isSplit)
         {
             Lines.CollectionChanged += (_, e) =>
             {
@@ -89,8 +129,6 @@ public sealed partial class PaymentViewModel : ObservableObject
         Revalidate();
     }
 
-    public PaymentMode Mode { get; }
-
     public decimal Balance { get; }
 
     public IReadOnlyList<PaymentMethodDto> Methods { get; }
@@ -99,7 +137,7 @@ public sealed partial class PaymentViewModel : ObservableObject
 
     public ObservableCollection<PaymentLineViewModel> Lines { get; } = new();
 
-    public bool IsSplit => Mode == PaymentMode.Split;
+    public bool IsSplit { get; }
 
     public bool IsSingle => !IsSplit;
 
@@ -107,13 +145,7 @@ public sealed partial class PaymentViewModel : ObservableObject
 
     public bool NeedsReference => IsSingle && Method?.RequiresReference == true;
 
-    public string Title => Mode switch
-    {
-        PaymentMode.Cash => "Cash payment",
-        PaymentMode.Card => "Card payment",
-        PaymentMode.Upi => "UPI payment",
-        _ => "Split payment",
-    };
+    public string Title => IsSplit ? "Split payment" : $"{Method?.Name ?? "Payment"}";
 
     public string BalanceText => Money.Format(Balance);
 

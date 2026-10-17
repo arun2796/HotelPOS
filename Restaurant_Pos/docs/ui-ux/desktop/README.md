@@ -1,236 +1,155 @@
-# Desktop client: screenshots of the real cashier, manager and admin flows
+# Desktop client: the Phase 21 cashier and manager screens against the real API
 
-Captured on 16 Oct 2026 from the **real WPF client against the running Development API** (`http://localhost:5000`,
-seeded demo data), 1366×800, light theme unless the name says `dark`. Regenerated the same day after the Phase 20.11
-fixes (second run: table T03, demo records suffixed `6` for the admin edits, i.e. `waiter96`, `Terrace6`, `X016`, `Chef specials6`,
-`Kothu Parotta6` (code C06), and `5` for the customer `Ravi Kumar5`; the API still ran the pre-fix server code, so the print-failed notice number
-comes from the client-side fallback). Nothing here is sample data: every screen is
-the real view bound to the real view-model, fed by the real `ApiClient`, `RealtimeClient` and session. Only the
-machine-bound services are replaced (settings and the secure store live in memory; file picker, app lifetime and sound
-player are stubs; the file picker returns `%TEMP%\hotelpos-live-exports\<suggested name>` for exports).
+Captured on **17 Oct 2026** on branch `phase-21-role-ui-ux` from the real WPF client against the running Development
+API on `http://localhost:5100` (demo seed), 1366×800, light theme unless the name says `dark`. Nothing here is sample
+data: every screen is the real view bound to the real view-model, fed by the real `ApiClient`, `RealtimeClient` and
+session; only the machine-bound services are replaced (settings and the secure store in memory; file picker, app
+lifetime and sound player are stubs). The run created order #1015 on T02 (3 lines, kitchen ready, served, bill
+requested), invoice INV-202610-000013, a shift with a 3,000 float, a 450 pay-out and a close count 50 short.
 
 How: the opt-in xUnit test `tests/HotelPOS.Desktop.Tests/Rendering/LiveFlowScreenshots.cs` builds the desktop
 composition root (`AppHost.ConfigureServices`), signs in through the real login screen, drives the flow through the
-view-models and renders each screen with the same `RenderTargetBitmap` method as `ScreenRenderingTests`. Dialogs that
-open on the way (reason prompts, confirmations, manager approvals) are answered by the test and captured as `-dialog`.
-The waiter/kitchen half (order on T02, kitchen accept/start/ready, serve, request bill) runs inside the test through
-the typed API clients as `waiter1` / `kitchen1`. The billing terminal's invoice printer points at `127.0.0.1:9100`
-(nothing listens) so the invoice print **fails for real**; no receipt printer is set up, so PRINT RECEIPT shows the
-real warning toast.
+view-models (`CashierWorkspaceViewModel.SelectAsync`, `PayHotkeyCommand("F2")`, `PaySplitCommand`,
+`SelectFilterCommand(Paid)`, `ShellViewModel.IsSidebarCollapsed`, `MenuAdminViewModel` tab deep link) and renders each
+screen with the same `RenderTargetBitmap` method as `ScreenRenderingTests`. The waiter/kitchen half runs inside the test
+through the typed API clients as `waiter1` / `kitchen1`. The billing terminal's invoice printer points at
+`127.0.0.1:9100` (nothing listens) so the invoice print **fails for real**; no receipt printer is set up.
 
-Regenerate (API running; the owner's desktop app may keep running: build to an OutDir inside the repo):
+Regenerate (API running; build to an OutDir inside the repo so a running desktop app does not lock `bin`):
 
 ```powershell
-$env:HOTELPOS_LIVE_SCREENS = "1"             # gate; the test is skipped otherwise
-$env:HOTELPOS_ADMIN_PASSWORD = "<admin pw>"   # admin is only tried when set
-$env:HOTELPOS_LIVE_SCREENS_ROLES = "cashier"  # cashier | admin | functions | functions-admin-edits |
-                                              # functions-admin-views | functions-manager | functions-cashier | functions-cashier-reopen
-dotnet test tests/HotelPOS.Desktop.Tests -c Debug -p:OutDir=C:\a-personal\Project\HotelPOS\Restaurant_Pos\tests\HotelPOS.Desktop.Tests\bin\live\ --filter "FullyQualifiedName~LiveFlowScreenshots"
+$env:HOTELPOS_LIVE_SCREENS = "1"                      # gate; the test is skipped otherwise
+$env:HOTELPOS_LIVE_API = "http://localhost:5100"      # default http://localhost:5000
+$env:HOTELPOS_LIVE_SCREENS_ROLES = "cashier"          # cashier | admin (falls back to manager1) | functions*
+$env:HOTELPOS_ADMIN_PASSWORD = "<admin pw>"           # admin is only tried when set
+dotnet test tests/HotelPOS.Desktop.Tests -c Debug -p:OutDir=C:\a-personal\Project\HotelPOS\Restaurant_Pos\tests\HotelPOS.Desktop.Tests\bin\p21live\ --filter "FullyQualifiedName~LiveFlowScreenshots"
 ```
 
-Device names must already be registered (the licence counts terminals): defaults `BILLING-01`, `ADMIN-01`,
-`VERIFY-01` (waiter), `APP-KITCHEN-B4134F` (kitchen); override with `HOTELPOS_LIVE_DEVICE_BILLING|WAITER|KITCHEN|ADMIN`.
-`cashier`, `functions-manager` and `functions-cashier*` create orders and bills on the table in `HOTELPOS_LIVE_TABLE`
-(default **T02**); `functions-admin-edits` creates user `waiter9`, section `Terrace`, table `X01`, category `Chef
-specials` and item `Kothu Parotta`, each with the `HOTELPOS_LIVE_RUN` suffix appended, so set a new suffix (and a free
-table) for every replay or the saves report duplicates. A capture log is written to `%TEMP%\hotelpos-live-screens.log`.
+Device names must already be registered: `BILLING-01`, `ADMIN-01`, `VERIFY-01` (waiter), `APP-KITCHEN-B4134F`
+(kitchen); override with `HOTELPOS_LIVE_DEVICE_BILLING|WAITER|KITCHEN|ADMIN`. The cashier flow uses the table in
+`HOTELPOS_LIVE_TABLE` (default T02). If WPF stops with `BG1002 ... baml`, delete `src/HotelPOS.Desktop/obj` and retry.
+A capture log is written to `%TEMP%\hotelpos-live-screens.log`.
 
-## `cashier/` — the cashier flow (cashier1 on BILLING-01), 16 screens
+**This run:** roles `cashier` and `admin`. `admin` with the guessed password `Admin@123` failed ("Invalid username or
+password"; tried once, nothing changed), so the management screens were captured as **manager1** and the admin-only
+screens (Users, Roles, Devices, Settings, Licence, Server) were not regenerated. The `functions*` passes were not run:
+they still cast `Billing` to the old `BillingQueueViewModel` and would need the same rewrite as the cashier flow.
 
-The descriptions below are from the first run; the regenerated pictures show the same steps on **T03** (order #1012,
-invoice INV-202610-000008 and later), with the fixes of 20.11 applied.
+## `cashier/` — the cashier flow (cashier1 on BILLING-01), 19 screens
 
 | File | What it shows |
 |---|---|
-| `01-cashier-sign-in.png` | Sign-in screen with the live "Server online" check, terminal `BILLING-01 · Billing`. |
-| `02-cashier-home.png` | Cashier home after the waiter asked for T02's bill: 2 pending bills (T05 from the browser agent, T02 "just now"), No shift, Expected cash —, Print failures 0, Business day Open. |
-| `03-cashier-open-shift.png` | Open shift dialog with a counted float of 3,000.00. Submitted for real afterwards. |
-| `04-cashier-billing-queue.png` | Billing queue with the shift bar ("Shift open since 14:53 · expected 3,000.00") and the T02 card (Order #1006, 1,019.00). |
-| `05-cashier-bill-detail.png` | T02 bill claimed and open: 3 lines (Chicken Biryani ×2 with extras, Paneer Tikka, Butter Naan ×3), GST rows, round-off, total 1,019.00; the "bill claimed by BILLING-01" toast. |
+| `01-cashier-sign-in.png` | Sign-in with the live "Server online" check, terminal `BILLING-01 · Billing`. |
+| `02-cashier-home.png` | Cashier home (Overview group) after the waiter asked for T02's bill: pending bills, No shift, Expected cash, Print failures, Business day. |
+| `03-cashier-open-shift.png` | Open-shift panel with a counted float of 3,000.00 (submitted afterwards). |
+| `04-cashier-workspace-queue.png` | **Cashier workspace**, nothing selected: Bills pane with search, chips All / Waiting 3 / Invoiced / Partly paid / Paid, sort Oldest first / Highest amount, three bill cards (table, order, Waiting badge, waiter, minutes, total); the centre and payment panes empty; shift bar above. |
+| `05-cashier-workspace-bill.png` | T02 selected (claimed): order column with initials thumbnails, options "Spicy, Extra raita (+30.00 each)", the "Less oil" note badge, real CGST/SGST rows, round-off, total 1,019.00, Customer..., Finalize & print / Reopen / Void; payment column with the Amount due hero, Cash F2 (selected), Card F3, UPI F4, Split payment F9, Amount to pay, quick amounts, Complete payment and the hotkey hint. |
+| `05-cashier-workspace-collapsed.png` | The same at 1366 px with the sidebar collapsed to the icon rail (C5). |
 | `06-cashier-discount.png` | Discount panel, manual 5 % "Regular guest" (inside the 10 % cashier limit; applied without approval). |
-| `07-cashier-split-payment.png` | After FINALIZE & PRINT (invoice INV-202610-000004, auto-print failed → "1 print failed" in the status bar): split payment cash + card with a card reference, Remaining 0.00. |
-| `08-cashier-paid.png` | PAID dialog with the two tenders, change 0.00, PRINT RECEIPT / PRINT INVOICE / NEXT BILL, plus the two "paid" toasts. |
-| `09-cashier-print-receipt-warning.png` | PRINT RECEIPT with no receipt printer: the warning toast "No receipt printer is set up on this terminal (Printers in the menu)". |
-| `10-cashier-print-log.png` | Print Log on the Failed filter: the invoice copy, printer 127.0.0.1:9100, the reason and Retry. |
-| `11-cashier-closed-bills.png` | Closed bills for today with the T02 invoice selected: lines, print history "(failed)", the two payments with Reprint / Refund…. |
-| `12-cashier-pay-out.png` | Pay in / pay out panel: Pay-out 450 "Vegetables from the market" (recorded for real). |
-| `13-cashier-x-report.png` | X report: float 3,000, cash sales 210, pay-outs 450, expected 2,760, payments on this terminal, cash movements. |
-| `14-cashier-close-shift.png` | Close shift with a count 50.00 short of the expected 2,760.00 and the reason; the pay-out toast overlapping the CLOSE SHIFT button. Closed for real afterwards. |
-| `15-cashier-notifications-bell.png` | Notices panel with the real events of the session: bill asked, bill claimed, invoice did not print (Critical), table paid. |
-| `16-cashier-notification-preferences.png` | Notifications… dialog (Pop-up / Sound per kind, saved on this terminal). |
+| `07-cashier-cash-payment.png` | After Finalize & print (INV-202610-000013; auto-print failed, "1 print failed" in the status bar): F2 cash with 1,500.00 received and the change shown. |
+| `07-cashier-split-payment.png` | Split payment cash 480 + card 488 with a card reference, Remaining 0.00. |
+| `08-cashier-paid.png` | **Inline Paid state**: Paid pill, invoice number, change 0.00, the two tenders, Print receipt / Print invoice / Next bill; the queue down to 2 bills; toast "Paid. Table T02 is free." |
+| `09-cashier-print-receipt-warning.png` | Print receipt with no receipt printer: the warning toast. |
+| `09-cashier-queue-paid-chip.png` | The **Paid** chip: today's settled bills in the queue pane, read-only. |
+| `10-cashier-print-log.png` | Print Log on the Failed filter: the invoice copy, printer 127.0.0.1:9100, the reason, Retry. |
+| `11-cashier-closed-bills.png` | Closed bills for today with the T02 invoice selected. |
+| `12-cashier-pay-out.png` | Pay in / pay out panel: Pay-out 450 "Vegetables from the market" (recorded). |
+| `13-cashier-x-report.png` | X report: float, cash sales, pay-outs, expected cash, payments on this terminal, movements. |
+| `14-cashier-close-shift.png` | Close shift with a count 50.00 short and the reason (closed afterwards). |
+| `15-cashier-notifications-bell.png` | Notices panel with the real events of the session. |
+| `16-cashier-notification-preferences.png` | Notifications... dialog (Pop-up / Sound per kind). |
 
-## `manager/` — the management screens as manager1 on ADMIN-01, 13 screens
-
-Captured during the first pass when the admin password was unavailable; kept because a manager sees a different
-dashboard (no terminals) and no Administration group.
+## `manager/` — the management screens as manager1 on ADMIN-01, 16 screens
 
 | File | What it shows |
 |---|---|
-| `17-manager-dashboard.png` | Dashboard, top of the page: 6 KPI tiles, net sales 7 days, payments donut, top items. |
-| `17-manager-dashboard-panels.png` | Dashboard scrolled to the end: Kitchen performance today, Staff today, Terminals (manager placeholder). |
-| `18-manager-tables-sections.png` | Sections & Tables, Tables tab with T02 selected in the editor. |
-| `19-manager-menu-items.png` | Menu, Items tab (no Taxes / Stations tabs for a manager). |
-| `20-manager-menu-item-editor.png` | Edit item "Chicken Biryani". |
-| `20-manager-menu-item-editor-modifiers.png` | The same editor scrolled to the end: HSN/SAC, sort order, Available / Active and the modifier groups. |
-| `24-manager-audit-log.png` | Audit log with the day's entries and the Auth.LoginSucceeded detail. |
-| `25-manager-reports-daily-sales.png` | Reports hub, Daily sales for today. |
-| `26-manager-gst-hub.png` | Tax Returns (GST hub), GSTR-1 B2B for September 2026: empty with the validation banner. |
+| `17-manager-dashboard.png` | **Dashboard**: navy grouped sidebar (Overview, Live Operations, Menu Management ...), "Business day Sat 17 Oct", Online pill, KPI cards Today's sales 968.00 (down 82.9 % vs 5,666.00 yesterday), Orders today 1 (4 open now), Average order value, Occupied tables 4 / 16 with the occupancy bar; Live Order Status donut (4 active: Sent to kitchen, Served, Bill requested); Active Orders with search, chips, Newest first, ten per page, View. |
+| `17-manager-dashboard-panels.png` | Scrolled to the end: Table status cards with View floor plan, Recent activity (audit-log sentences, View all), 7-day bars, Payments today donut, Top items, Kitchen performance, Staff today and the Terminals placeholder (manager). |
+| `17-manager-dashboard-collapsed.png` | The dashboard at 1366 px with the icon-rail sidebar (A8). |
+| `18-manager-orders.png` | **Orders** page: search, "5 active orders", Newest first, chips All (5) / Sent to kitchen (1) / Served (1) / Bill requested (3), grid #, TABLE, WAITER, ITEMS, TOTAL, STATUS badge, CREATED, ELAPSED, View (after the column fix below). |
+| `18-manager-tables-sections.png` | Sections & Tables (Live Operations), Tables tab with T02 in the editor. |
+| `19-manager-menu-categories.png` | **Menu, Categories tab** (deep link by title): ORDER, NAME, ACTIVE ITEMS, STATUS, New category. Tabs Categories, Items, Modifiers, Preview (no Taxes / Stations for a manager). |
+| `19-manager-menu-items.png` | Menu, Items tab. |
+| `20-manager-menu-item-editor.png`, `20-manager-menu-item-editor-modifiers.png` | Edit item "Chicken Biryani", and the end of the form with the modifier groups. |
+| `24-manager-audit-log.png` | Audit Log (System group) with the first entry selected. |
+| `25-manager-reports-daily-sales.png` | Reports hub (Analytics & Reports), Daily sales for today. |
+| `26-manager-gst-hub.png` | Tax Returns (Finance), current month. |
 | `27-manager-day-end-checks.png` | Day End step 1 with the real blocking items. Not run. |
-| `29-manager-printers.png` | Printers of terminal ADMIN-01 (nothing configured). |
+| `29-manager-printers.png` | Printers (Devices group) of ADMIN-01. |
 | `31-manager-command-palette.png` | Command palette (Ctrl+K) with the query "re". |
-| `32-manager-dashboard-dark.png` | The dashboard in the dark theme. |
+| `32-manager-dashboard-dark.png` | The dashboard in the dark theme (same tokens, same status colours). |
 
-## `admin/` — the same screens as admin on ADMIN-01 plus the Admin-only ones, 20 screens
+## `admin/` — 7 admin-only screens, **pre-Phase 21** (16 Oct 2026)
 
-| File | What it shows |
-|---|---|
-| `admin/17-admin-dashboard.png`, `admin/17-admin-dashboard-panels.png` | Admin dashboard (top, and scrolled to the Kitchen performance / Staff / Terminals panels; for an admin the Terminals panel lists the devices). |
-| `18-admin-tables-sections.png` | Sections & Tables with the table editor open. |
-| `19-admin-menu-items.png`, `20-admin-menu-item-editor.png`, `20-admin-menu-item-editor-modifiers.png` | Menu items (with the Taxes and Stations tabs an admin gets), the item editor and its modifier groups. |
-| `21-admin-users.png` | Users with cashier1 open in the editor (roles as checkboxes). |
-| `22-admin-roles-permissions.png` | Roles & Permissions matrix, Cashier selected (locked core permissions, "Force re-login"). |
-| `23-admin-devices.png` | Terminal & Device Management: live/offline, type, station, machine, version, status, last seen. |
-| `24-admin-audit-log.png` | Audit log with the first entry selected. |
-| `25-admin-reports-daily-sales.png` | Reports hub, Daily sales. |
-| `26-admin-gst-hub.png` | GST hub (September 2026 default). |
-| `27-admin-day-end-checks.png` | Day End precheck. Not run. |
-| `28-admin-settings.png`, `28-admin-settings-notifications.png` | Restaurant Settings (top of the list; and scrolled to the end where the Notifications section sits). |
-| `29-admin-printers.png` | Printers of ADMIN-01. |
-| `30-admin-licence.png` | Licence: Licensed, Standard, 5 registered of 25, machine id, apply a key. |
-| `30-admin-server.png` | Server: notice composer and the live server log. |
-| `31-admin-command-palette.png` | Command palette with "re". |
-| `admin/32-admin-dashboard-dark.png` | Dashboard in the dark theme. |
+`21-admin-users`, `22-admin-roles-permissions`, `23-admin-devices`, `28-admin-settings`, `28-admin-settings-notifications`,
+`30-admin-licence`, `30-admin-server`: kept because they are the only pictures of those screens, but they show the old
+shell; regenerate them with `HOTELPOS_ADMIN_PASSWORD` set. The admin pictures of screens a manager also has (dashboard,
+tables, menu, audit, reports, GST, day end, printers, palette, dark) were deleted; `manager/` has the Phase 21 ones.
 
-## `functions/` — function-by-function pass, before / after each action, 83 screens
+## `functions/` — function-by-function pass, **pre-Phase 21** (16 Oct 2026), 71 screens
 
-The regenerated pictures use the suffix-`6` records (`waiter96`, `Terrace6`, `X016`, `Chef specials6`,
-`Kothu Parotta6`, customer `Ravi Kumar5`) and table T03; the rows below keep the first run's names.
-Each row is one function: `NN-area-action-before.png` (state and filled-in form before the action),
-`-dialog[N].png` (every dialog the action opened, with the answer typed in) and `-after.png` (the result). All actions
-ran against the API; the records they created are still in the demo database (listed above).
+`NN-area-action-before.png` / `-dialog[N].png` / `-after.png` for: users create / edit / reset password / deactivate /
+unlock (01–05), roles edit and revert (06), sections add (07), tables add / rename / deactivate (08–10), category and
+item create, sold out, back in stock (11–14), palette table search (15), settings kitchen-warn edit and revert (16–17),
+printers test print (18), licence / server / backup pages (19–21), audit filter (22), day-end precheck (23), GST current
+month (24), the eight reports and their Excel / PDF exports and dark theme (25–28), cancel an order line as manager
+(30–31), customer create (40), refund of a card payment with manager approval (44) and Closed Bills dark (45). The
+`41-43` and `46` bill shots (attach customer, over-limit discount, pay by card, reopen) were deleted: they showed the
+legacy bill page, which the cashier workspace replaced. The pass still drives the old queue (`BillingQueueViewModel`)
+and must be rewritten before it can be replayed.
 
-| Role | Function | Files | Result |
+## Comparison with the mock-ups (`docs/design/reference/cashier-workspace.png`, `admin-dashboard.png`)
+
+| Screen | Matches | Differs | Gap by design (plan § 3 Out / § 4) |
 |---|---|---|---|
-| admin | Users: create `waiter9` (Kavya, Waiter) | `01-users-create-*` | Created; selected in the list with the success toast. |
-| admin | Users: edit the display name | `02-users-edit-*` | "Kavya R (Waiter)" saved. |
-| admin | Users: reset password | `03-users-reset-password-*` (dialog: temporary password) | Reset; must change at next sign-in. |
-| admin | Users: deactivate (then reactivated quietly) | `04-users-deactivate-*` (dialog: confirm) | Shown with "Show inactive" ticked. |
-| admin | Users: unlock after 5 wrong passwords | `05-users-unlock-*` | Locked by the API (ACCOUNT_LOCKED), unlocked from the screen; the "before" still shows LOCKOUT "Normal" (see issue 33). |
-| admin | Roles: grant "Configure sections and tables" to Cashier, save (then reverted) | `06-roles-edit-*`, `06-roles-revert-dialog` (dialog: Save permissions) | Saved without forcing re-login. |
-| admin | Sections: add "Terrace" | `07-sections-add-*` | Created. |
-| admin | Tables: add X01 "Terrace 1" (2 seats) in Terrace | `08-tables-add-*` | Created. |
-| admin | Tables: rename X01 to "Terrace window" | `09-tables-rename-*` | Updated. |
-| admin | Tables: deactivate X01 | `10-tables-deactivate-*` | Updated; listed only with "Show inactive". |
-| admin | Menu: create category "Chef specials" | `11-menu-category-create-*` | Created. |
-| admin | Menu: create item "Kothu Parotta" (C01, 180, GST 5 %, Main Kitchen, Spice level) | `12-menu-item-create-*` (before is scrolled to the modifier groups) | Created; the editor stays open for a picture. |
-| admin | Menu: mark sold out, then back in stock | `13-menu-sold-out-*`, `14-menu-back-in-stock-*` | Toasts "is sold out" / "is available"; button flips Mark sold out / Mark available. |
-| admin | Command palette: table search "t02" | `15-palette-menu-table-search` | Finds the table and the screens. |
-| admin | Settings: Kitchen warn minutes 10 → 15, save, revert | `16-settings-kitchen-warn-*`, `17-settings-revert-after` | Saved twice; back to 10. |
-| admin | Printers: test print of the Invoice profile to 127.0.0.1:9100 (not saved) | `18-printers-test-print-*` | "Printer 127.0.0.1:9100 did not answer…" under the button. |
-| admin | Licence, Server, Backup pages | `19-licence-page`, `20-server-page`, `21-backup-page` | Views only (no backup run). |
-| admin | Audit log: filter user cashier1 + action "Bill." | `22-audit-filter-*` | 0 records (see issue 36). |
-| admin | Day End precheck | `23-dayend-precheck` | Step 1 with the blocking items; not run. |
-| admin | GST hub for October 2026 | `24-gst-current-month-*` | Footer: 4 invoices, value 2,615.00; B2B section empty; validation banner. |
-| admin | Reports: daily, items, categories, waiters, kitchen, cancellations, discounts, taxes | `25-reports-01…08-*` | Each hub for today. |
-| admin | Reports: Excel export (daily sales), PDF (item sales) | `26-reports-export-excel-*`, `27-reports-save-pdf-*` | `%TEMP%\hotelpos-live-exports\sales-daily-2026-10-16-to-2026-10-16.xlsx`, `sales-items-2026-10-16-to-2026-10-16.pdf`. |
-| admin | Dark theme on Reports | `28-reports-dark` | |
-| manager | Tables: cancel an order line (2 × Chicken Biryani) on T02 order #1007 | `30-order-cancel-line-*` (dialog: reason) | Line struck through, total 970 → 390. A manager needs no approval (the API rule is ticket status + role), so no approval dialog appeared. |
-| manager | Dark theme on Tables | `31-tables-dark` | |
-| cashier | Customers: create "Ravi Kumar" | `40-customers-create-*` | Created. |
-| cashier | Bill: attach the customer (picker search "Ravi") | `41-bill-attach-customer-*` | Customer line shows Ravi Kumar. |
-| cashier | Bill: 25 % discount above the 10 % cashier limit | `42-bill-discount-approval-*` (dialog: Manager approval manager1) | Applied: "Discount 25% · Birthday party", 410 → 307. |
-| cashier | Bill: pay by card | `43-bill-pay-card-*` | PAID, INV-202610-000005. |
-| cashier | Closed bills: refund 100.00 of the card payment | `44-refund-partial-*` (dialogs: amount, reason, Manager approval) | "Paid · 100.00 back", refund row −100.00. |
-| cashier | Dark theme on Closed Bills | `45-closed-bills-dark` | |
-| cashier | Bill: finalize order #1008 (invoice issued) and REOPEN it | `46-bill-reopen-invoiced-*` (dialogs: reason, Manager approval; the first run's `-dialog3`, a retry prompt after the approver was rate-limited, did not recur) | Invoice cancelled, order back with the waiter. A **settled** bill cannot be reopened by design (REOPEN is offered only while nothing is paid; settled bills are refunded), so the invoiced-unpaid case was used. Order #1008 was settled through the API afterwards to free T02. |
+| Cashier workspace (`cashier/05`) | Three panes with the mock-up's proportions; navy grouped sidebar; bill cards with badge, waiter, wait, total; order column with thumbnails, options and notes, totals; payment column with due hero, method buttons, quick amounts, Amount received / Change, green Complete payment; the mock-up's Quick actions become the Finalize / Reopen / Void row | Thumbnails are initials (no pictures uploaded yet, D11); "Not invoiced yet" and real GST rows instead of "Tax (10 %)"; the sidebar has the HotelPOS groups, not the mock-up's Expenses / Customers / Sales Report items | No Dine In / Takeaway / Delivery chips (no order types); no Edit order / Add items / Send to kitchen / Cancel order for the cashier (waiter flow); no Wallet method unless configured (D6); Customers hidden (D3; reached by the "Manage customers…" link in the bill customer picker) |
+| Cashier paid (`cashier/08`) | Inline Paid state in the payment column, tenders listed, Print receipt / invoice / Next bill | The mock-up has no paid state; ours keeps the order visible and frees the table (toast) | — |
+| Paid chip (`cashier/09-cashier-queue-paid-chip`) | Chip row Waiting / Invoiced / Partly paid / Paid like the mock-up's Open / Partial / Ready / Paid | Status words follow the shared status map | — |
+| Dashboard light (`manager/17`) | Header with business day and Online pill; four KPI cards with delta and occupancy bar; Live Order Status donut with legend; Active Orders table with chips, View, pager, View all; Table status cards; Recent activity; Top items; Staff and Terminals | KPI icons are outline glyphs, not filled tiles; the table has no Customer column (bills carry the customer, orders do not); only statuses present appear in the legend | No Low stock card or table, Hourly sales, Expenses, Profit & Loss, Cash reconciliation, date-range or branch pickers, sparklines (§ 3 Out, A2); Terminals placeholder for managers (`api/admin/devices` is admin-only) |
+| Dashboard dark (`manager/32`) | Same layout; status colours and badges keep their meaning; AA contrast per the token tests | The mock-up has no dark variant | — |
+| Dashboard collapsed (`manager/17-manager-dashboard-collapsed`) | Icon rail like the mock-up's hamburger state; the content takes the width | No group labels on the rail (icons only; tooltips carry the names) | — |
+| Orders (`manager/18-manager-orders`) | The mock-up's Active Orders list as a page: chips, search, sort, status badges, View | Columns CREATED and ELAPSED instead of one Time column; no row "..." menu | — |
+| Sections & Tables (`manager/18-manager-tables-sections`) | Grid with status words, editor on the right, New table | The mock-up draws a floor plan ("Tables & Floor Plan") | No floor-plan geometry (§ 3 Out) |
+| Menu tabs (`manager/19`) | Categories and Items as the two Menu Management entries of the mock-up, here tabs of one screen (D7) | — | Modifier management stays as it was (D2 bans new modifier UI) |
 
-## UI/UX issues
+## UI/UX issues found in this pass (ordered by severity)
 
-Ordered roughly by how much they would bother a cashier or manager at the counter. 1–26 from the flow pass, 27 onwards
-from the function pass. **Fixed** entries were corrected in Phase 20.11 and the screenshot named is the regenerated one
-(second run: table T03, demo records with the suffixes `6` and `5`); the rest are still open.
+1. **Fixed (medium) — Right-hand grid columns clipped at 1366 px.** `manager/18-manager-orders.png` showed "Viev",
+   "CREATEC", "20 h 39 r" and the dashboard's Active Orders "ITEM≤" / "Viev": the fixed column widths were narrower
+   than the padded content. Widened CREATED 80→96, ELAPSED 96→112, View 64→80 in
+   `src/HotelPOS.Desktop/Modules/Orders/ActiveOrdersView.xaml` and ITEMS 62→72, ELAPSED 82→100, View 66→80 in
+   `src/HotelPOS.Desktop/Modules/Dashboard/DashboardView.xaml`; the manager run was repeated and `ScreenRenderingTests`
+   is green.
+2. **Mostly fixed (medium) — Payment column: Amount received is below the fold at 800 px.** Spacing tightened in `Themes/Cashier.xaml` (method, quick-amount, received, change); Amount received is now visible at 800 px, the Change box still needs a scroll of the column (its scrollbar stays) - `cashier/05`: the quick-amount grid
+   takes two rows, so the received field sits under the Complete payment button and needs the column's scrollbar; at
+   1366×768 it is further down. One row of quick amounts (or a smaller hero) would fit
+   (`src/HotelPOS.Desktop/Modules/Billing/BillDetailView.xaml`, payment column).
+3. **Fixed (medium) — Sidebar (`ShellView.xaml`: scrollbar Auto with a thin themed thumb; footer pinned; not re-shot, cashier nav is short) navigation is cut at "Menu Management" at 800 px.** Every manager screen: the nav list
+   ends under the device card with a half-visible group label and no visible scrollbar, so Finance, Analytics,
+   Devices and System are reachable only by wheel-scrolling or the palette (`src/HotelPOS.Desktop/Shell/ShellView.xaml:250`,
+   the nav `ScrollViewer`; check whether its bar is styled invisible or the row grows past the window).
+4. **Fixed (low, `BillingQueueViewModel.Tick`: "26 h 51 min", "2 d 2 h") — Wait time on bill cards is in raw minutes.** `cashier/04`: "1593 min", "1507 min" for the stale demo
+   bills, while the Orders page says "26 h 41 min" (`src/HotelPOS.Desktop/Modules/Billing/CashierWorkspaceView.xaml`, card template).
+5. **Fixed (low, toast host margin top 124 in `MainWindow.xaml`) — Toasts cover the shift bar text.** `cashier/08`: the top-centre toast hides "Shift open since 17:21 ·
+   Priya (Cashier) · expected ..." (the buttons stay clear).
+6. **Fixed (low, hidden when IsPaid in `Themes/Cashier.xaml` and `BillDetailView.xaml`) — "Add discount" still rendered beside an applied discount on a paid bill.** `cashier/08`: the greyed
+   link reads oddly next to "Discount 5% · Regular guest"; hide it once the bill is settled
+   (`src/HotelPOS.Desktop/Modules/Billing/BillDetailView.xaml`, totals block).
+7. **Fixed (low, "Manage customers…" link, `ManageCustomersCommand`) — D3's "Manage customers" link is missing.** The bill's customer picker says "add the customer on the
+   Customers screen" (`src/HotelPOS.Desktop/Modules/Billing/BillDetailView.xaml:308`) but Customers is no longer in the
+   sidebar; only the command palette reaches it.
+8. **Info — not regenerated.** Admin-only screens (password unknown) and the `functions/` pass (needs the workspace
+   rewrite); the Terminals panel is still a placeholder for managers (Phase 20 issue 11, by design of the API).
 
-1. **Fixed — Toasts cover modal and page buttons.** Toasts now appear top-centre under the top bar and are dismissed
-   when the page changes: `cashier/08-cashier-paid.png` (one toast, clear of NEXT BILL), `cashier/14-cashier-close-shift.png`
-   (the pay-out toast sits over the dialog title, not the buttons), `functions/06-roles-edit-before.png` (no Users
-   toast left over), `functions/12-menu-item-create-after.png`. Was: the bottom-right host sat above the dialog layer and
-   the page's action row.
-2. **Fixed — The terminal is notified about its own actions.** `cashier/05-cashier-bill-detail.png` has no "bill
-   claimed by BILLING-01" toast and `cashier/08-cashier-paid.png` shows only "Paid. Table T03 is free."; the bell
-   (`cashier/15-cashier-notifications-bell.png`) lists the bill request and the print failure only. The mapper drops a
-   claim by this device; the router drops the payment echo the bill screen announced.
-3. **Fixed — Bill lines hide the chosen options and notes.** `cashier/05-cashier-bill-detail.png`: "Spicy, Extra raita
-   (+30.00 each)" and "Medium · Note: Less oil" under the lines (loaded from the order).
-4. **Fixed — Print-failure notices use the internal bill id.** `cashier/15-cashier-notifications-bell.png`: "Invoice
-   INV-202610-000008 did not print on BILLING-01 …". The server now sends the number; the client falls back to the
-   queue's copy of it.
-5. **Fixed — Misleading help in the no-printer toast for cashiers.** `cashier/09-cashier-print-receipt-warning.png`:
-   "Ask a manager to set one up under Printers." for a cashier; managers and admins read "Set one up under Printers in
-   the menu."
-6. **Fixed — Print Log clips the two columns that matter.** `cashier/10-cashier-print-log.png`: DOCUMENT and WHY are
-   wider, end in an ellipsis and show the full text as a tooltip.
-7. **Fixed — Denomination sheet does not fit the dialog.** `cashier/03-cashier-open-shift.png`, `14`: 40 px rows, all
-   seven notes visible.
-8. **Fixed — Dashboard panels are below the fold.** `admin/17-admin-dashboard.png`: six tiles in one row and a shorter
-   chart; Kitchen performance, Staff and Terminals start on the first screen.
-9. **Fixed — Inconsistent currency formatting on the dashboard.** `admin/17-admin-dashboard.png`: "3,303.00" / "1,170.00"
-   in the payments legend.
-10. **Fixed — "Today in blue" / "0" labels.** `admin/17-admin-dashboard.png`: "Today is the solid bar; …" and empty days
-    have no label.
-11. **Terminals tile is dead for managers.** `manager/17-manager-dashboard-panels.png`: unchanged (the devices endpoint
-    is Admin-only).
-12. **Partly fixed — Audit log clips and mislabels.** `admin/24-admin-audit-log.png`: TIME is 150 px, ACTION trims with a
-    tooltip, the detail shows "On terminal: …" only when there is one, the action filter box is wider. Still open: the
-    preset says "Today" while the range reads a month.
-13. **Fixed — Three names for the cashier's home.** `cashier/02-cashier-home.png`: "Cashier home" in the sidebar, top bar
-    and heading; the My shift tile says "open one from the shift bar at the top".
-14. **"Discount DISCOUNT".** `cashier/05-cashier-bill-detail.png`: unchanged.
-15. **Fixed — Sidebar user block truncates name and role.** Every screen: "Priya (Cashier)" / "Cashier" in full; the
-    three buttons moved to their own row.
-16. **Fixed — Page descriptions are cut in the top bar.** `admin/26-admin-gst-hub.png`, `functions/19-licence-page.png`:
-    the description takes the whole title column and shows a tooltip when it still has to trim.
-17. **Fixed — Closed bills: unlabeled filters.** `cashier/11-cashier-closed-bills.png`: "Business day" and "Table, invoice
-    or order no." hints; the print history says "(did not print)".
-18. **Fixed — GST hub opens on an error.** `admin/26-admin-gst-hub.png`: opens on the current month; a month without
-    invoices shows no error banner. Still open: the lower-cased acronyms in the headers.
-19. **Fixed — Plurals.** `admin/27-admin-day-end-checks.png`: "1 unpaid bill", "1 open cash shift"; Reports "1 row";
-    bill subtitle "1 guest".
-20. **Fixed — Unstyled checkbox column.** `admin/19-admin-menu-items.png`: IN STOCK uses the themed CheckBox.
-21. **Opening the item editor squeezes the list.** `admin/20-admin-menu-item-editor.png`: unchanged.
-22. **Same filter, two labels.** Unchanged.
-23. **Printers page.** `admin/29-admin-printers.png`: unchanged apart from the test-print result (35).
-24. **Fixed — Login keeps "Retry" when online.** `cashier/01-cashier-sign-in.png`: Retry is hidden while the server is
-    reachable.
-25. **Notification preferences list is cut mid-row.** `cashier/16-cashier-notification-preferences.png`: unchanged.
-26. **Command palette groups are not visible as groups.** `admin/31-admin-command-palette.png`: unchanged.
-27. **Fixed in the app, not visible here — Lists do not scroll to the record just created or changed.** The Tables,
-    Sections, Users, Customers, Categories and Menu items grids now call `ScrollIntoView` on the selected row. The
-    harness renders a window that is never shown, and WPF defers a DataGrid's `ScrollIntoView` until the control is
-    loaded, so `functions/12-menu-item-create-after.png` and `13-menu-sold-out-after.png` still show the top of the
-    list; check it in the running app.
-28. **Fixed — "Cancel" next to "Cancel item".** `functions/30-order-cancel-line-dialog.png`: "Keep item" / "Cancel item".
-29. **Refund is three dialogs in a row.** `functions/44-refund-partial-dialog3.png`: still three (one input per dialog
-    and the API needs the reason), but the approval dialog now repeats the amount and the reason.
-30. **Fixed — Identical toasts stack.** `functions/09-tables-rename-after.png`, `10-tables-deactivate-after.png`: "Table
-    X016 renamed to "Terrace window6"." then "Table X016 deactivated." (and toasts no longer outlive the page).
-31. **Fixed in the app, not visible here — Item created: nothing marks the new row.** The new item is selected and
-    scrolled into view (same caveat as 27); the editor still stays open for the picture.
-32. **Fixed — Backup FILE column clips the extension.** `functions/21-backup-page.png`: wider, trims with a tooltip.
-33. **Fixed — LOCKOUT column says "Normal".** `functions/05-users-unlock-before.png`: "Not locked" / "Locked".
-34. **Reset-password dialog has no policy hint or show-password toggle.** Unchanged.
-35. **Fixed — Test print feedback is easy to miss.** `functions/18-printers-test-print-after.png`: a red (or green)
-    banner under the button plus a toast.
-36. **Audit action filter finds nothing for a prefix.** `functions/22-audit-filter-after.png`: unchanged (the server
-    matches the action exactly).
-37. **Fixed — GST hub: totals and grid disagree.** `functions/24-gst-current-month-after.png`: no error banner on a
-    month without invoices; the footer and the empty section are otherwise as before (B2C invoices live in another
-    section).
-38. **Fixed — Report percentages with two decimals.** `functions/25-reports-05-kitchen.png`: "20%", "6.9".
-39. **Fixed — Export toast has no "open" action.** `functions/26-reports-export-excel-after.png`: "Saved … · Open".
-40. **Fixed — Devices LIVE column clips "Online"/"Offline".** `admin/23-admin-devices.png`.
-41. **Fixed — Settings list has no section navigation.** `admin/28-admin-settings.png`: a section list on the left
-    (Restaurant … Backup, Notifications) scrolls the list to the heading.
+Binding errors: the live test installs no `PresentationTraceSources` listener; `ScreenRenderingTests` (which fails on
+any binding error, both themes) passed after the fix, so the rendered screens report **0**.
 
-What worked well: the shift bar, the X report and the count sheet are clear and consistent; the status-bar "1 print
-failed · Retry · Discard" and the Print failures tile close the loop on a dead printer; manager approval is one
-consistent dialog everywhere (discount, refund, reopen); the dark theme is complete on every screen captured.
+Phase 20 carry-overs still open after this pass (numbers from the 16 Oct list, kept in git history): 11 Terminals tile
+for managers, 12 audit preset "Today" vs month range, 18 lower-cased GST acronyms, 21 item editor squeezes the list,
+22 same filter two labels, 23 Printers page, 25 notification preferences list cut mid-row, 26 palette groups not
+visible, 29 refund is three dialogs, 34 reset-password dialog, 36 audit action filter exact match. Issue 14 ("Discount
+DISCOUNT") is gone with the new totals block.
+
+What worked well: the three panes make claim, discount, finalize and pay one uninterrupted path with no page change; the
+hotkeys are printed on the buttons and repeated in the hint line; the Paid state keeps the bill on screen for the
+receipt; the dashboard's chips and pager mirror the Orders page exactly; the dark theme is complete on every screen.

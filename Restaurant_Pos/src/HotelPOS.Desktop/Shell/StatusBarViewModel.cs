@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using HotelPOS.Contracts.Presentation;
 using HotelPOS.Desktop.Services.Configuration;
 using HotelPOS.Desktop.Services.Printing;
 using HotelPOS.Desktop.Services.Realtime;
@@ -23,7 +24,7 @@ public sealed partial class StatusBarViewModel : ObservableObject, IDisposable
     }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(StatusText), nameof(IsOnline))]
+    [NotifyPropertyChangedFor(nameof(StatusText), nameof(IsOnline), nameof(ConnectionDisplay))]
     private ConnectionStatus _status;
 
     [ObservableProperty]
@@ -38,6 +39,15 @@ public sealed partial class StatusBarViewModel : ObservableObject, IDisposable
     };
 
     public bool IsOnline => Status == ConnectionStatus.Connected;
+
+    /// <summary>The connection as a status badge (tone, icon, label), from the single status map.</summary>
+    public StatusDisplay ConnectionDisplay => Status switch
+    {
+        ConnectionStatus.Connected => StatusPresentation.Connected,
+        ConnectionStatus.Connecting => StatusPresentation.Connecting,
+        ConnectionStatus.Reconnecting => StatusPresentation.Reconnecting,
+        _ => StatusPresentation.Offline,
+    };
 
     public string ServerAddress => _settings.Current.ApiBaseUrl;
 

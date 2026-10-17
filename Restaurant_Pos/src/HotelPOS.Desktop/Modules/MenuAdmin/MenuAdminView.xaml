@@ -35,7 +35,7 @@
       <RowDefinition Height="*" />
     </Grid.RowDefinitions>
 
-    <ListBox Style="{StaticResource Hub.Tabs}" ItemsSource="{Binding Tabs}" SelectedItem="{Binding SelectedTab}" AutomationProperties.Name="Menu">
+    <ListBox Style="{StaticResource Tabs}" ItemContainerStyle="{StaticResource Tabs.Item}" ItemsSource="{Binding Tabs}" SelectedItem="{Binding SelectedTab}" AutomationProperties.Name="Menu">
       <ListBox.ItemTemplate>
         <DataTemplate>
           <TextBlock Text="{Binding Title}" />

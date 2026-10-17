@@ -1,0 +1,123 @@
+{
+ "01-waiter-sign-in": [],
+ "02-waiter-home": [],
+ "03-waiter-tables": [],
+ "03b-waiter-pick-table": [],
+ "04-waiter-table-details": [],
+ "04b-waiter-table-occupied": [],
+ "05-waiter-order-search": [],
+ "06-waiter-favourites": [],
+ "07-waiter-item-options": [],
+ "08-waiter-cart": [],
+ "08b-waiter-review-sheet": [],
+ "09-waiter-after-send": [],
+ "09c-waiter-order-items": [],
+ "09d-waiter-order-timeline": [],
+ "09b-waiter-my-orders": [],
+ "09e-waiter-my-orders-completed": [],
+ "10-waiter-bell-panel": [],
+ "10b-waiter-more-sheet": [],
+ "11-waiter-settings": [
+  {
+   "tag": "input",
+   "cls": "",
+   "text": "checkbox",
+   "w": 20,
+   "h": 20
+  },
+  {
+   "tag": "input",
+   "cls": "",
+   "text": "checkbox",
+   "w": 20,
+   "h": 20
+  },
+  {
+   "tag": "input",
+   "cls": "",
+   "text": "checkbox",
+   "w": 20,
+   "h": 20
+  },
+  {
+   "tag": "input",
+   "cls": "",
+   "text": "checkbox",
+   "w": 20,
+   "h": 20
+  },
+  {
+   "tag": "input",
+   "cls": "",
+   "text": "checkbox",
+   "w": 20,
+   "h": 20
+  },
+  {
+   "tag": "input",
+   "cls": "",
+   "text": "checkbox",
+   "w": 20,
+   "h": 20
+  },
+  {
+   "tag": "input",
+   "cls": "",
+   "text": "checkbox",
+   "w": 20,
+   "h": 20
+  },
+  {
+   "tag": "input",
+   "cls": "",
+   "text": "checkbox",
+   "w": 20,
+   "h": 20
+  },
+  {
+   "tag": "input",
+   "cls": "",
+   "text": "checkbox",
+   "w": 20,
+   "h": 20
+  },
+  {
+   "tag": "input",
+   "cls": "",
+   "text": "checkbox",
+   "w": 20,
+   "h": 20
+  },
+  {
+   "tag": "input",
+   "cls": "",
+   "text": "checkbox",
+   "w": 20,
+   "h": 20
+  },
+  {
+   "tag": "input",
+   "cls": "",
+   "text": "checkbox",
+   "w": 20,
+   "h": 20
+  }
+ ],
+ "12-waiter-tables-dark": [],
+ "13-kitchen-sign-in": [],
+ "14-kitchen-board-new": [],
+ "14b-kitchen-ticket-detail": [],
+ "14c-kitchen-delayed-filter": [],
+ "15-kitchen-station": [],
+ "16a-kitchen-accepted": [],
+ "16-kitchen-preparing": [],
+ "17-kitchen-ready": [],
+ "18-kitchen-completed": [],
+ "19-kitchen-bell-panel": [],
+ "20-kitchen-dark": [],
+ "21-waiter-my-orders-ready": [],
+ "22a-waiter-table-ready": [],
+ "22b-waiter-table-served": [],
+ "22-waiter-bill-requested": [],
+ "23-waiter-bell-ready": []
+}

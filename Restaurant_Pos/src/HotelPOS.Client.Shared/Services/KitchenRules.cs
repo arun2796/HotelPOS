@@ -86,6 +86,19 @@ public static class KitchenRules
         _ => action.ToUpperInvariant(),
     };
 
+    /// <summary>Search by table code, order number or ticket number (case-insensitive, a leading "#" ignored); empty matches everything.</summary>
+    public static bool Matches(KitchenTicketDto ticket, string? query)
+    {
+        var q = query?.Trim().TrimStart('#');
+        return string.IsNullOrEmpty(q)
+            || ticket.TableCode.Contains(q, StringComparison.OrdinalIgnoreCase)
+            || ticket.OrderNumber.ToString(System.Globalization.CultureInfo.InvariantCulture).Contains(q, StringComparison.Ordinal)
+            || ticket.TicketNumber.Contains(q, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>The words on the big button (the status badge keeps the short "READY").</summary>
+    public static string ButtonLabel(string action) => action == Ready ? "MARK READY" : Label(action);
+
     public static bool IsAddedItems(KitchenTicketDto ticket) => ticket.BatchNumber > 1;
 
     private static int ReadInt(IEnumerable<SettingDto>? settings, string key, int fallback) =>

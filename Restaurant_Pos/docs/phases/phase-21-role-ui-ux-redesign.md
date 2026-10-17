@@ -1,6 +1,6 @@
 # Phase 21 — Role-based UI/UX redesign (plan)
 
-Status: Approved — D1–D11 decided 2026-10-17 (§ 4), implementation not started · Depends on: Phases 17–20
+Status: Implemented on branch `phase-21-role-ui-ux` (2026-10-17; galleries regenerated, full suite green) — owner review of the galleries against the mock-ups pending · Depends on: Phases 17–20
 
 Source: the owner's master prompt (`docs/design/master-prompt-role-ui-ux.md`) and six mock-ups
 (`docs/design/reference/`). Three audits back this plan and hold the detail: `docs/design/design-system-plan.md`,
@@ -175,12 +175,49 @@ live gallery harness for both clients.
 
 ## 10. Acceptance criteria
 
-- [ ] Every screen in the six mock-ups has a counterpart, or an entry in § 3 "Out" with the missing data named.
-- [ ] One token set and one status map; contract tests green on both themes.
-- [ ] No change under `src/HotelPOS.Application`, `Domain`, `Infrastructure`, `Api` except presentation contracts.
-- [ ] Full suite green; galleries regenerated; device demo run on phone, tablet and cashier PC.
+- [x] Every screen in the six mock-ups has a counterpart, or an entry in § 3 "Out" with the missing data named (gallery READMEs hold the per-screen comparison tables).
+- [x] One token set and one status map; contract tests green on both themes.
+- [x] No change under `src/HotelPOS.Application`, `Domain`, `Infrastructure`, `Api` except presentation contracts.
+- [x] Full suite green; galleries regenerated.
+- [ ] Device demo run on phone, tablet and the cashier PC (owner; not done by the agents).
 - [x] D1–D11 decided (§ 4, 2026-10-17) before any step starts.
 
 ## 11. Changes during implementation
 
 - 2026-10-17 — D1–D11 decided after three read-only code audits; § 4 rewritten with evidence and amendments; § 3 Out gains kitchen ticket pictures and phone/browser Print KOT; steps 0.1, 0.2, W1, W6, K2, C4, A1, A6 sharpened accordingly. No code changed.
+- 2026-10-17 — Implementation on branch `phase-21-role-ui-ux` (from `main` d59a5ae), merged per track:
+  - 21.0 design system: tokens (f5f00d4), `StatusPresentation` (803085e), Inter + contract tests (2ecdd8e); web
+    primitives/shells (merge 3010d8a); desktop primitives, navy shell, `ShowInNav`, D7 regrouping (merge 97a0729).
+    Deviations: `TextSecondary #64748B` on the page is 4.42:1 — owner colours kept, floor pinned at 4.4;
+    `NeutralText` is `#5B6B80`; `Brush.OnWarning #1F2937` added (white on `#F59E0B` fails AA); Inter woff2 are the
+    full files (~112 KB each), not a Latin subset.
+  - 21.2 kitchen K1–K6 (merge 027d9ba): `KitchenHeader`, KPI strip, Delayed filter, `TicketCard`, `TicketDetailPane`
+    (no prices), Completed/Station. Completed tickets now read "Served" (status map). `GET api/orders/{id}` is open
+    to the Kitchen role, so the detail pane shows guests and notes.
+  - 21.1 waiter W1–W8 (merge 807f255): `TableCard`, home KPIs + attention list, `MenuItemCard`/`CartBar`/
+    `ItemOptionsSheet` (picker + note + qty in one sheet, D2), order-level notes now sent (`CreateOrderRequest.Notes`,
+    `WebDraft.Notes`), My orders tabs, order details with Details/Items/Timeline (ticket times via
+    `api/kitchen/orders/{ticketId}` — the Waiter role is allowed), `ActionList` (Edit sends `RowVersion`), route
+    `/orders/{id}` for completed orders, "Back online" banner. No Hold, no Print KOT (D9).
+  - 21.3 cashier C1–C5 (merge 1bdba79): `CashierWorkspaceViewModel/View` composes the existing `BillDetailViewModel`;
+    `PaymentMode` enum retired — `PaymentMethodButton.Build` from the configured list (F2 = cash, F3… sort order,
+    Split F9 fixed); Discount, Customer and Invoice preview stay overlays; split tender is inline; numpad dropped.
+    `billing` module now points at the workspace; legacy queue/detail views kept (App.xaml references).
+  - 21.4 admin A1–A8 (merge 253fc0b): `orders` module (Live Operations), `stations` deep link (Devices, admin-only,
+    via new `ModuleDefinition.DefaultParameter`), Menu Categories/Items tabs, `KpiCard`s with real deltas only,
+    order-status donut, paged active orders, soft table tiles, Recent activity from `api/admin/audit-logs`
+    (`AuditSentences`) with bell-feed fallback, deep links for Reports/Settings/Menu/Templates, 2-column layout
+    below 1280. D3 "Manage customers" link in the bill picker: **not yet added** (picker is in `BillDetailView`).
+  - Rendering count 78 → 81. Full suite on the merged branch: Domain 365, Application 253, Api 197, Client 204,
+    Desktop 421 (2 pre-existing skips) — 0 failures. `git diff main -- Application Domain Infrastructure Api` is
+    empty; Contracts gains only `Presentation/StatusPresentation.cs`.
+  - Housekeeping: `*.SdkResolver.*.proj.Backup.tmp` untracked and ignored (e463ed1).
+- 2026-10-17 — 21.5 galleries against the Development API on :5100 (commits 45c23b3 web, 7291c57 desktop).
+  Web: `web-flow.mjs` rewritten for the new markup; 28 waiter + 11 kitchen shots; 8/8 compared screens match the
+  mock-ups' structure; one high defect fixed (table-card timer overflow made the Tables page 404 px wide on a
+  390 px phone). Desktop: `LiveFlowScreenshots` now drives the cashier workspace and the new admin surfaces;
+  19 cashier + 16 manager shots; 8/8 compared screens match; clipped grid columns fixed. The admin password is not
+  the seed default, so admin-only screens were captured as `manager1`; the `functions*` live passes still target
+  the legacy bill pages and were not re-run. The gallery run registered three new browser terminals (WEB-*, PROBE);
+  the owner may deactivate them. Remaining per-screen issues are listed in `docs/ui-ux/web/README.md` and
+  `docs/ui-ux/desktop/README.md`.

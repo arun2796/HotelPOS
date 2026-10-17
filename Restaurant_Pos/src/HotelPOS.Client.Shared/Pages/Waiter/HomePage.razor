@@ -6,10 +6,13 @@
 @inject WebAuthState Auth
 @inject WaiterApi Api
 @inject WebRealtimeClient Realtime
+@inject NotificationCenter Notifications
 @inject ShellState Shell
 @inject NavigationManager Navigation
 
 <PageTitle>Home · HotelPOS</PageTitle>
+
+<OfflineBanner>Offline — counts may be out of date until the connection is back.</OfflineBanner>
 
 @if (_error is not null)
 {
@@ -21,67 +24,92 @@ else if (_mine is null)
 }
 else
 {
-    <div class="muted small" style="margin-bottom:8px">Hello @Auth.User?.DisplayName · @TextFormat.Count(MyTables.Count, "table") · @ReadyOrders.Count ready · @TextFormat.Count(BillRequests.Count, "bill request")</div>
+    @* Only counts the existing active-orders call can answer: no revenue, no section, no shift. *@
+    <div class="kpi-grid" data-testid="home-kpis">
+        <button type="button" class="kpi-link" id="home-my-tables" @onclick="@(() => Navigation.NavigateTo("tables"))">
+            <KpiTile Label="My tables" Value="@MyTables.Count.ToString()" Icon="table" Tone="StatusTone.Info" />
+        </button>
+        <button type="button" class="kpi-link" id="home-open-orders" @onclick="@(() => Navigation.NavigateTo("my-orders"))">
+            <KpiTile Label="Open orders" Value="@_mine.Count.ToString()" Icon="receipt" Tone="StatusTone.Neutral" />
+        </button>
+        <button type="button" class="kpi-link" id="home-ready" @onclick="@(() => Navigation.NavigateTo("my-orders"))">
+            <KpiTile Label="Ready to serve" Value="@ReadyOrders.Count.ToString()" Icon="check" Tone="StatusTone.Success" />
+        </button>
+        <button type="button" class="kpi-link" id="home-bills" @onclick="@(() => Navigation.NavigateTo("my-orders"))">
+            <KpiTile Label="Bills requested" Value="@BillRequests.Count.ToString()" Icon="receipt" Tone="StatusTone.Warning" />
+        </button>
+    </div>
 
-    <h2 class="kds-head" id="home-my-tables">MY TABLES · @MyTables.Count</h2>
-    @if (MyTables.Count == 0)
+    <h2 class="section-head">Quick actions</h2>
+    <div class="quick-actions" data-testid="quick-actions">
+        <button type="button" class="quick-action primary" data-testid="quick-new-order" aria-haspopup="dialog" @onclick="() => _pick = true"><Icon Name="plus" Size="22" /><span>New order</span></button>
+        <button type="button" class="quick-action" data-testid="quick-my-orders" @onclick="@(() => Navigation.NavigateTo("my-orders"))"><Icon Name="receipt" Size="22" /><span>My orders</span></button>
+        <button type="button" class="quick-action" data-testid="quick-tables" @onclick="@(() => Navigation.NavigateTo("tables"))"><Icon Name="table" Size="22" /><span>Tables</span></button>
+    </div>
+
+    @if (Attention.Count > 0)
     {
-        <EmptyState Small="true" Text="No tables with an open order. ">
+        <h2 class="section-head">Needs attention · @Attention.Count</h2>
+        <div class="stack" data-testid="attention">
+            @foreach (var order in Attention)
+            {
+                var o = order;
+                <OrderCard Order="o" ShowProgress="false" OnClick="() => Open(o)" />
+            }
+        </div>
+    }
+    else if (MyTables.Count == 0)
+    {
+        <EmptyState Small="true" Icon="table" Text="No tables with an open order. ">
             <button class="btn ghost" @onclick="@(() => Navigation.NavigateTo("tables"))">Open tables</button>
         </EmptyState>
     }
-    <div class="stack">
-        @foreach (var order in MyTables)
-        {
-            <button class="card order-card @(order.Status == OrderStatus.Ready ? "ready" : null)" style="min-height:var(--touch)" @onclick="() => Open(order)">
-                <div class="row between">
-                    <b>@order.TableCode · #@order.OrderNumber</b>
-                    <span class="chip @StatusLabels.OrderChip(order.Status)">@StatusLabels.Order(order.Status)</span>
-                </div>
-                <div class="muted small">@TextFormat.Count(order.ItemCount, "item") · @TextFormat.Count(order.GuestCount, "guest")</div>
-            </button>
-        }
-    </div>
-
-    <h2 class="kds-head" style="margin-top:16px" id="home-ready">READY · @ReadyOrders.Count</h2>
-    @if (ReadyOrders.Count == 0)
+    else
     {
-        <EmptyState Small="true" Text="Nothing ready to serve." />
+        <EmptyState Small="true" Text="Nothing ready to serve and no bills waiting." />
     }
-    <div class="stack">
-        @foreach (var order in ReadyOrders)
-        {
-            <button class="card order-card ready" style="min-height:var(--touch)" @onclick="() => Open(order)">
-                <div class="row between">
-                    <b>@order.TableCode · #@order.OrderNumber</b>
-                    <span class="muted small">@TextFormat.Count(order.ItemCount, "item")</span>
-                </div>
-            </button>
-        }
-    </div>
 
-    <h2 class="kds-head" style="margin-top:16px" id="home-bills">BILL REQUESTS · @BillRequests.Count</h2>
-    @if (BillRequests.Count == 0)
-    {
-        <EmptyState Small="true" Text="No bills waiting." />
-    }
-    <div class="stack">
-        @foreach (var order in BillRequests)
-        {
-            <button class="card order-card" style="min-height:var(--touch)" @onclick="() => Open(order)">
-                <div class="row between">
-                    <b>@order.TableCode · #@order.OrderNumber</b>
-                    <span class="chip @StatusLabels.OrderChip(order.Status)">@StatusLabels.Order(order.Status)</span>
-                </div>
-                <div class="muted small">approx. @order.ApproxTotal.ToString("N2")</div>
-            </button>
-        }
+    <div class="row between" style="margin-top:16px">
+        <h2 class="section-head" style="margin:0">Recent activity</h2>
+        <button type="button" class="btn ghost" data-testid="activity-all" @onclick="Shell.OpenMore">View all</button>
     </div>
+    @if (Recent.Count == 0)
+    {
+        <EmptyState Small="true" Text="No activity yet on this device." />
+    }
+    else
+    {
+        <ul class="activity" data-testid="activity">
+            @foreach (var entry in Recent)
+            {
+                var e = entry;
+                <li class="activity-item @(e.IsRead ? "read" : "unread")">
+                    <button type="button" class="activity-main" @onclick="() => OpenActivity(e)">
+                        <span class="activity-ico @e.Level.ToString().ToLowerInvariant()"><Icon Name="@NotificationIcons.For(e.Kind)" Size="18" /></span>
+                        <span class="activity-text">
+                            <span class="activity-title">@e.Title</span>
+                            @if (!string.IsNullOrWhiteSpace(e.Body))
+                            {
+                                <span class="muted small">@e.Body</span>
+                            }
+                        </span>
+                        <span class="muted small num-tab">@e.ReceivedAt.ToString("HH:mm")</span>
+                    </button>
+                </li>
+            }
+        </ul>
+    }
+}
+
+@if (_pick)
+{
+    <TablePickerSheet Open="true" OnClose="() => _pick = false" />
 }
 
 @code {
     private List<OrderSummaryDto>? _mine;
     private string? _error;
+    private bool _pick;
     private readonly List<IDisposable> _subscriptions = new();
     private CancellationTokenSource? _debounce;
 
@@ -92,9 +120,23 @@ else
 
     private List<OrderSummaryDto> BillRequests => _mine!.Where(o => o.Status is OrderStatus.BillRequested or OrderStatus.Billed).OrderBy(o => o.CreatedAtUtc).ToList();
 
+    private List<OrderSummaryDto> Attention => ReadyOrders.Concat(BillRequests).ToList();
+
+    private IReadOnlyList<NotificationEntry> Recent => Notifications.Items.Take(5).ToList();
+
+    private static string Greeting(string? name)
+    {
+        var hour = DateTime.Now.Hour;
+        var part = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
+        var first = (name ?? string.Empty).Split(' ', '(', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+        return string.IsNullOrEmpty(first) ? $"Good {part}" : $"Good {part}, {first}";
+    }
+
     protected override async Task OnInitializedAsync()
     {
-        Shell.Set("Home", "Tables, ready, bills");
+        Shell.Set(Greeting(Auth.User?.DisplayName), Auth.User?.Roles.FirstOrDefault());
+        Notifications.Changed += OnNotificationsChanged;
+        await Notifications.LoadAsync();
         await Realtime.StartAsync();
         foreach (var name in new[] { HubEvents.OrderCreated, HubEvents.OrderUpdated, HubEvents.OrderCancelled, HubEvents.TableStatusChanged, HubEvents.BillUpdated,
                                      HubEvents.OrderReady, HubEvents.OrderAccepted, HubEvents.OrderPreparing, HubEvents.OrderServed, HubEvents.PaymentCompleted })
@@ -131,10 +173,22 @@ else
         _ = Task.Delay(250, cts.Token).ContinueWith(t => { if (!t.IsCanceled) { _ = InvokeAsync(RefreshAsync); } }, TaskScheduler.Default);
     }
 
+    private void OnNotificationsChanged() => _ = InvokeAsync(StateHasChanged);
+
     private void Open(OrderSummaryDto order) => Navigation.NavigateTo($"tables/{order.TableId}");
+
+    private void OpenActivity(NotificationEntry entry)
+    {
+        Notifications.MarkRead(entry.Id);
+        if (NotificationRouter.UrlFor(entry.Target) is { } url)
+        {
+            Navigation.NavigateTo(url);
+        }
+    }
 
     public void Dispose()
     {
+        Notifications.Changed -= OnNotificationsChanged;
         Realtime.Reconnected -= RefreshAsync;
         _debounce?.Cancel();
         foreach (var subscription in _subscriptions)

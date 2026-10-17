@@ -1,0 +1,86 @@
+@using HotelPOS.Contracts.Enums
+@using HotelPOS.Contracts.Kitchen
+@using HotelPOS.Contracts.Orders
+@using HotelPOS.Contracts.Presentation
+@inject KitchenApi Api
+@* Phase 21.2 K4: ticket detail. Right drawer on a monitor (>= 1024 px), bottom sheet on a tablet. Guests and order notes come
+   from GET api/orders/{id}; when that is unavailable the pane shows the ticket alone. Prices are never shown (D9). *@
+<DetailPane Open="true" Title="@($"{Ticket.TableCode} · order #{Ticket.OrderNumber}")" Subtitle="@($"{Ticket.TicketNumber} · {Ticket.WaiterName}")" OnClose="OnClose">
+    <div class="kds-detail" data-testid="ticket-detail">
+        <div class="row">
+            <StatusBadge Display="StatusPresentation.For(Ticket.Status)" />
+            @if (Late)
+            {
+                <StatusBadge Display="StatusPresentation.Delayed" />
+            }
+            @if (!string.IsNullOrEmpty(Ticket.StationCode))
+            {
+                <span class="chip info">@Ticket.StationCode</span>
+            }
+            <span class="muted small">@KitchenRules.ElapsedText(Ticket.CreatedAtUtc, Now) since ordered</span>
+        </div>
+        @if (Late)
+        {
+            <div class="banner warning" data-testid="late-note"><Icon Name="alert" Size="18" /> Taking longer than usual</div>
+        }
+        @if (_order is { } order)
+        {
+            <div class="kds-guests" data-testid="guests"><Icon Name="users" Size="18" /> @order.GuestCount @(order.GuestCount == 1 ? "guest" : "guests")</div>
+            @if (!string.IsNullOrWhiteSpace(order.Notes))
+            {
+                <div class="ticket-note" data-testid="order-notes"><Icon Name="edit" Size="16" /> @order.Notes</div>
+            }
+        }
+        <h3 class="kds-detail-h">Items</h3>
+        <ul class="ticket-lines">
+            @foreach (var line in Ticket.Items)
+            {
+                <li class="@(line.IsCancelled ? "cancelled" : null)">
+                    <div class="ticket-line"><b class="ticket-qty">@line.Quantity ×</b> <span class="ticket-name">@line.Name</span></div>
+                    @if (line.Modifiers.Count > 0)
+                    {
+                        <div class="ticket-mods muted">@string.Join(", ", line.Modifiers)</div>
+                    }
+                    @if (!string.IsNullOrEmpty(line.Notes))
+                    {
+                        <div class="ticket-note"><Icon Name="edit" Size="16" /> @line.Notes</div>
+                    }
+                </li>
+            }
+        </ul>
+        <h3 class="kds-detail-h">Progress</h3>
+        <OrderTimeline Status="TimelineStatus" Delayed="Late" ReceivedAtUtc="Ticket.CreatedAtUtc" PreparingAtUtc="Ticket.StartedAtUtc"
+                       ReadyAtUtc="Ticket.ReadyAtUtc" ServedAtUtc="Ticket.CompletedAtUtc" />
+    </div>
+</DetailPane>
+
+@code {
+    private OrderDetailDto? _order;
+    private int _loadedFor;
+
+    [Parameter, EditorRequired] public KitchenTicketDto Ticket { get; set; } = default!;
+    [Parameter] public DateTime Now { get; set; } = DateTime.UtcNow;
+    [Parameter] public bool Late { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private OrderStatus TimelineStatus => Ticket.Status switch
+    {
+        KitchenOrderStatus.Preparing => OrderStatus.Preparing,
+        KitchenOrderStatus.Ready => OrderStatus.Ready,
+        KitchenOrderStatus.Completed => OrderStatus.Served,
+        _ => OrderStatus.Submitted,
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_loadedFor == Ticket.OrderId)
+        {
+            return;
+        }
+
+        _loadedFor = Ticket.OrderId;
+        _order = null;
+        var result = await Api.GetOrderAsync(Ticket.OrderId);
+        _order = result.Success ? result.Data : null;
+    }
+}

@@ -1,0 +1,37 @@
+@* Right drawer from 1024 px, bottom sheet below (pure CSS; same overlay as BottomSheet). *@
+@if (Open)
+{
+    <div class="overlay detail-overlay" @onclick="OnClose">
+        <aside class="sheet detail-pane" role="dialog" aria-modal="true" aria-label="@Title" @onclick:stopPropagation="true">
+            <header class="detail-head">
+                <div class="detail-title">
+                    <h2>@Title</h2>
+                    @if (!string.IsNullOrEmpty(Subtitle))
+                    {
+                        <div class="muted small">@Subtitle</div>
+                    }
+                </div>
+                <button type="button" class="btn icon ghost" aria-label="Close" @onclick="OnClose"><Icon Name="x" /></button>
+            </header>
+            <div class="detail-body">@ChildContent</div>
+            @if (Footer is not null)
+            {
+                <footer class="detail-foot">@Footer</footer>
+            }
+        </aside>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Open { get; set; }
+
+    [Parameter] public string Title { get; set; } = string.Empty;
+
+    [Parameter] public string? Subtitle { get; set; }
+
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    [Parameter] public RenderFragment? Footer { get; set; }
+}

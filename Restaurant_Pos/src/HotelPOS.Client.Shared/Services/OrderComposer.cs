@@ -44,6 +44,7 @@ public sealed class OrderComposer
 
     private readonly List<CartLine> _lines = new();
     private int _guests = 1;
+    private string? _notes;
 
     public IReadOnlyList<CartLine> Lines => _lines;
 
@@ -51,6 +52,13 @@ public sealed class OrderComposer
     {
         get => _guests;
         set => _guests = Math.Clamp(value, FloorLimits.MinGuests, FloorLimits.MaxGuests);
+    }
+
+    /// <summary>Order-level note for the kitchen (CreateOrderRequest.Notes, 500 characters); null when blank.</summary>
+    public string? Notes
+    {
+        get => _notes;
+        set => _notes = TrimNotes(value);
     }
 
     public int ItemCount => _lines.Sum(l => l.Quantity);
@@ -100,7 +108,13 @@ public sealed class OrderComposer
 
     public void SetNotes(CartLine line, string? notes) => line.Notes = TrimNotes(notes);
 
-    public void Clear() => _lines.Clear();
+    public void SetQuantity(CartLine line, int quantity) => line.Quantity = Math.Clamp(quantity, 1, OrderLimits.MaxQuantity);
+
+    public void Clear()
+    {
+        _lines.Clear();
+        _notes = null;
+    }
 
     public IReadOnlyList<OrderItemInput> ToInputs() =>
         _lines.Select(l => new OrderItemInput
@@ -116,6 +130,7 @@ public sealed class OrderComposer
         TableId = tableId,
         OrderId = orderId,
         Guests = Guests,
+        Notes = Notes,
         PendingKey = pendingKey,
         Lines = _lines.Select(l => new WebDraftLine
         {
@@ -133,6 +148,7 @@ public sealed class OrderComposer
     public void LoadDraft(WebDraft draft)
     {
         Guests = draft.Guests;
+        Notes = draft.Notes;
         _lines.Clear();
         _lines.AddRange(draft.Lines.Select(l => new CartLine
         {

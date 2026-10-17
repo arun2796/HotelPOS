@@ -1,0 +1,42 @@
+@implements IDisposable
+@inject WebRealtimeClient Realtime
+@inject IClientHost Host
+@inject DeviceIdentity Identity
+
+<div class="device-card" data-testid="device-card">
+    <span class="device-ico @OnlineCss"><Icon Name="@(Online ? "signal" : "wifi-off")" Size="20" /></span>
+    <div class="device-text">
+        <div class="device-state" data-testid="device-state">@StateText</div>
+        <div class="muted small" data-testid="device-name">@(_name ?? "This device")</div>
+    </div>
+    <span class="muted small" data-testid="device-version">@(string.IsNullOrEmpty(Host.AppVersion) ? null : "v" + Host.AppVersion)</span>
+</div>
+
+@code {
+    private string? _name;
+
+    /// <summary>Which terminal name to show (the browser/app keeps one per device type).</summary>
+    [Parameter] public DeviceType Type { get; set; } = DeviceType.Waiter;
+
+    private bool Online => Realtime.Status == WebConnectionStatus.Connected;
+
+    private string OnlineCss => Online ? "ok" : Realtime.Status is WebConnectionStatus.Connecting or WebConnectionStatus.Reconnecting ? "wait" : "off";
+
+    private string StateText => Realtime.Status switch
+    {
+        WebConnectionStatus.Connected => "Online",
+        WebConnectionStatus.Connecting => "Connecting…",
+        WebConnectionStatus.Reconnecting => "Reconnecting…",
+        _ => "Offline",
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        Realtime.StatusChanged += OnChanged;
+        _name = await Identity.GetOrCreateNameAsync(Type);
+    }
+
+    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Realtime.StatusChanged -= OnChanged;
+}

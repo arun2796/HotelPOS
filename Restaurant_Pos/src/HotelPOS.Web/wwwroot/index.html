@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#078B45" />
+    <meta name="theme-color" content="#078747" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <title>HotelPOS</title>
@@ -12,8 +12,12 @@
     <!-- The shared library's files keep their own base path (_content/...), not this app's "app": the API serves them at
          /_content/... both under dotnet run and after publish (wwwroot/_content). /app/_content/... matches no file and the
          API's authorization fallback answers 401, which left the app unstyled. -->
+    <link rel="preload" href="../_content/HotelPOS.Client.Shared/fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="../_content/HotelPOS.Client.Shared/fonts/Inter-SemiBold.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="../_content/HotelPOS.Client.Shared/css/tokens.css" />
     <link rel="stylesheet" href="../_content/HotelPOS.Client.Shared/css/app.css" />
+    <link rel="stylesheet" href="../_content/HotelPOS.Client.Shared/css/waiter.css" />
+    <link rel="stylesheet" href="../_content/HotelPOS.Client.Shared/css/kitchen.css" />
     <link rel="icon" type="image/png" href="favicon.png" />
     <link href="manifest.webmanifest" rel="manifest" />
     <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png" />

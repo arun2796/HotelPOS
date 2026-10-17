@@ -62,12 +62,16 @@ public class WaiterHomePageTests : TestContext
         await auth.SignInAsync("waiter1", "x", "WEB-1", DeviceType.Waiter);
         Services.AddSingleton<IClientHost>(host);
         Services.AddSingleton(auth);
+        Services.AddSingleton<IBrowserStorage>(new FakeBrowserStorage());
+        Services.AddSingleton<NotificationCenter>();
         Services.AddSingleton(new WebApiClient(new HttpClient(handler), host, auth));
         Services.AddSingleton<WaiterApi>();
         Services.AddSingleton<WebRealtimeClient>();
         Services.AddSingleton<ShellState>();
         return RenderComponent<HomePage>();
     }
+
+    private static string Kpi(IRenderedComponent<HomePage> page, string id) => page.Find($"#{id} .kpi-value").TextContent;
 
     [Fact]
     public async Task Home_CountsOnlyMyTables_Ready_AndBillRequests()
@@ -79,13 +83,16 @@ public class WaiterHomePageTests : TestContext
         handler.Orders.Add(Order(4, "T04", 99, OrderStatus.Ready));
 
         var page = await RenderHomeAsync(handler);
-        page.WaitForAssertion(() => page.Find("#home-my-tables").TextContent.Should().Contain("3"));
+        page.WaitForAssertion(() => Kpi(page, "home-my-tables").Should().Be("3"));
 
-        page.Find("#home-my-tables").TextContent.Should().Be("MY TABLES · 3");
-        page.Find("#home-ready").TextContent.Should().Be("READY · 1");
-        page.Find("#home-bills").TextContent.Should().Be("BILL REQUESTS · 1");
+        // Phase 21 W3: KPI tiles instead of three headed lists; only counts the active-orders call can answer.
+        Kpi(page, "home-open-orders").Should().Be("3");
+        Kpi(page, "home-ready").Should().Be("1");
+        Kpi(page, "home-bills").Should().Be("1");
+        page.Find("#home-my-tables .kpi-label").TextContent.Should().Be("My tables");
         page.Markup.Should().Contain("T02").And.NotContain("T04", "another waiter's table is not mine");
-        page.FindAll("button.order-card").Should().HaveCount(5, "three tables, one ready order and one bill request");
+        page.FindAll("[data-testid=attention] button.order-card").Should().HaveCount(2, "one ready order and one bill request need a hand");
+        page.FindAll("[data-testid=attention] [data-testid=order-status]").Select(s => s.TextContent).Should().Equal("Ready", "Bill requested");
         await Services.GetRequiredService<WebRealtimeClient>().StopAsync();
     }
 
@@ -95,8 +102,9 @@ public class WaiterHomePageTests : TestContext
         var page = await RenderHomeAsync(new OrdersHandler());
         page.WaitForAssertion(() => page.Markup.Should().Contain("No tables with an open order"));
 
-        page.Find("#home-ready").TextContent.Should().Be("READY · 0");
-        page.Markup.Should().Contain("Nothing ready to serve").And.Contain("No bills waiting");
+        Kpi(page, "home-ready").Should().Be("0");
+        page.FindAll("[data-testid=attention]").Should().BeEmpty();
+        page.Markup.Should().Contain("No activity yet on this device");
         await Services.GetRequiredService<WebRealtimeClient>().StopAsync();
     }
 }

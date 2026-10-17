@@ -28,6 +28,8 @@ public partial class ShellView : UserControl
         if (_window is not null)
         {
             _window.PreviewKeyDown += OnWindowPreviewKeyDown;
+            _window.SizeChanged += OnWindowSizeChanged;
+            ViewModel?.ApplyWindowWidth(_window.ActualWidth);
         }
     }
 
@@ -36,9 +38,14 @@ public partial class ShellView : UserControl
         if (_window is not null)
         {
             _window.PreviewKeyDown -= OnWindowPreviewKeyDown;
+            _window.SizeChanged -= OnWindowSizeChanged;
             _window = null;
         }
     }
+
+    // Phase 21: the sidebar collapses by itself below 1440 px (see ShellViewModel.ApplyWindowWidth); in a rendering test host there
+    // is no window, so nothing collapses there.
+    private void OnWindowSizeChanged(object sender, SizeChangedEventArgs e) => ViewModel?.ApplyWindowWidth(e.NewSize.Width);
 
     private void OnWindowPreviewKeyDown(object sender, KeyEventArgs e)
     {

@@ -1,4 +1,4 @@
-<UserControl x:Class="HotelPOS.Desktop.Shell.ShellView"
+﻿<UserControl x:Class="HotelPOS.Desktop.Shell.ShellView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -50,7 +50,7 @@
           <Button Style="{StaticResource Button.Icon}" Width="40" Height="40" MinWidth="40" MinHeight="40"
                   Foreground="{DynamicResource Brush.SidebarText}" Command="{Binding ToggleSidebarCommand}"
                   ToolTip="Collapse or expand the menu">
-            <TextBlock Text="&#xE700;" Style="{StaticResource Text.Icon}" FontSize="16" />
+            <controls:Icon Kind="menu" Width="18" Height="18" Foreground="{DynamicResource Brush.SidebarText}" />
           </Button>
           <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center"
                       Visibility="{Binding IsSidebarCollapsed, Converter={StaticResource InverseBoolToVisibility}}">
@@ -64,10 +64,45 @@
                  ItemsSource="{Binding NavItems}"
                  SelectedItem="{Binding SelectedNavItem}"
                  Style="{StaticResource NavList}"
-                 ItemContainerStyle="{StaticResource NavItem}" />
+                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                 ItemContainerStyle="{StaticResource NavItem}">
+        <ListBox.Resources>
+          <!-- Thin scrollbar on the navy: a light translucent thumb, no track. -->
+          <Style TargetType="ScrollBar">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Width" Value="6" />
+            <Setter Property="MinWidth" Value="6" />
+            <Setter Property="Template">
+              <Setter.Value>
+                <ControlTemplate TargetType="ScrollBar">
+                  <Track x:Name="PART_Track" IsDirectionReversed="True">
+                    <Track.Thumb>
+                      <Thumb>
+                        <Thumb.Template>
+                          <ControlTemplate TargetType="Thumb">
+                            <Border x:Name="Bd" Background="{DynamicResource Brush.SidebarTextMuted}" CornerRadius="3" Margin="1,0" />
+                            <ControlTemplate.Triggers>
+                              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush.SidebarText}" /></Trigger>
+                            </ControlTemplate.Triggers>
+                          </ControlTemplate>
+                        </Thumb.Template>
+                      </Thumb>
+                    </Track.Thumb>
+                  </Track>
+                </ControlTemplate>
+              </Setter.Value>
+            </Setter>
+          </Style>
+        </ListBox.Resources>
+        </ListBox>
 
-        <!-- Name and role get the full width; the three actions sit on their own row underneath. -->
-        <Border Grid.Row="2" BorderBrush="{DynamicResource Brush.SidebarDivider}" BorderThickness="0,1,0,0" Padding="16,12">
+        <!-- Footer: the terminal and connection card, then the signed-in user. Name and role get the full width; the three actions sit
+             on their own row underneath. -->
+        <StackPanel Grid.Row="2">
+        <controls:DeviceStatusCard Margin="12,0,12,10" Display="{Binding StatusBar.ConnectionDisplay}" TerminalName="{Binding StatusBar.DeviceName}"
+                                   Version="{Binding StatusBar.Version}" IsCompact="{Binding IsSidebarCollapsed}"
+                                   AutomationProperties.AutomationId="DeviceStatusCard" />
+        <Border BorderBrush="{DynamicResource Brush.SidebarDivider}" BorderThickness="0,1,0,0" Padding="16,12">
           <Grid>
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="Auto" />
@@ -93,26 +128,28 @@
               <Button Style="{StaticResource Button.Icon}" Width="36" Height="36" MinWidth="36" MinHeight="36"
                       Foreground="{DynamicResource Brush.SidebarText}" Command="{Binding OpenNotificationPreferencesCommand}"
                       ToolTip="Notifications…" AutomationProperties.Name="Notifications…" AutomationProperties.AutomationId="NotificationPreferencesButton">
-                <TextBlock Text="&#xEA8F;" Style="{StaticResource Text.Icon}" FontSize="15" />
+                <controls:Icon Kind="bell" Width="16" Height="16" Foreground="{DynamicResource Brush.SidebarText}" />
               </Button>
               <Button Style="{StaticResource Button.Icon}" Width="36" Height="36" MinWidth="36" MinHeight="36"
                       Foreground="{DynamicResource Brush.SidebarText}" Command="{Binding ChangePasswordCommand}" ToolTip="Change my password">
-                <TextBlock Text="&#xE8D7;" Style="{StaticResource Text.Icon}" FontSize="15" />
+                <controls:Icon Kind="lock" Width="16" Height="16" Foreground="{DynamicResource Brush.SidebarText}" />
               </Button>
               <Button Style="{StaticResource Button.Icon}" Width="36" Height="36" MinWidth="36" MinHeight="36"
-                      Foreground="{DynamicResource Brush.SidebarText}" Command="{Binding LogoutCommand}" ToolTip="Sign out">
-                <TextBlock Text="&#xE7E8;" Style="{StaticResource Text.Icon}" FontSize="15" />
+                      Foreground="{DynamicResource Brush.SidebarText}" Command="{Binding LogoutCommand}" ToolTip="Sign out"
+                      AutomationProperties.AutomationId="SignOutButton">
+                <controls:Icon Kind="logout" Width="16" Height="16" Foreground="{DynamicResource Brush.SidebarText}" />
               </Button>
             </StackPanel>
           </Grid>
         </Border>
+        </StackPanel>
       </Grid>
     </Border>
 
     <!-- ============================ Top bar and page ============================ -->
     <Grid Grid.Column="1" Background="{DynamicResource Brush.Background}">
       <Grid.RowDefinitions>
-        <RowDefinition Height="56" />
+        <RowDefinition Height="64" />
         <RowDefinition Height="Auto" />
         <RowDefinition Height="*" />
       </Grid.RowDefinitions>
@@ -153,75 +190,62 @@
         </Border>
       </StackPanel>
 
+      <!-- White top bar (64 px): page title and subtitle on the left; search (opens the Ctrl+K palette), the clock, theme, notices bell,
+           help and the connection pill on the right. -->
       <Border Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,0,0,1"
-              Padding="24,0,12,0">
+              Padding="24,0,16,0">
         <Grid>
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="Auto" />
           </Grid.ColumnDefinitions>
-          <Grid VerticalAlignment="Center">
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="Auto" />
-              <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-            <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource Brush.PrimarySoft}">
-              <TextBlock Text="{Binding SelectedNavItem.Glyph}" Style="{StaticResource Text.Icon}" FontSize="16"
-                         Foreground="{DynamicResource Brush.Primary}" HorizontalAlignment="Center" />
-            </Border>
-            <!-- The description takes whatever the title column has and trims with a tooltip, never a hard cut. -->
-            <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
-              <TextBlock Text="{Binding SelectedNavItem.Title}" FontSize="16" FontWeight="SemiBold" />
-              <TextBlock Text="{Binding PageDescription}" Style="{StaticResource Text.Caption}" TextWrapping="NoWrap"
-                         TextTrimming="CharacterEllipsis" ToolTip="{Binding PageDescription}" />
-            </StackPanel>
-          </Grid>
+          <!-- The subtitle takes whatever the title column has and trims with a tooltip, never a hard cut. -->
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock Text="{Binding SelectedNavItem.Title}" FontSize="{DynamicResource Font.Size.Section}" FontWeight="SemiBold"
+                       TextTrimming="CharacterEllipsis" />
+            <TextBlock Text="{Binding PageDescription}" Style="{StaticResource Text.Caption}" TextWrapping="NoWrap"
+                       TextTrimming="CharacterEllipsis" ToolTip="{Binding PageDescription}" />
+          </StackPanel>
 
-          <!-- Looks like a search field; opens the command palette. -->
-          <Button Grid.Column="1" Command="{Binding OpenPaletteCommand}" Width="320" Height="36" Margin="16,0" Padding="12,0" VerticalAlignment="Center"
-                  HorizontalContentAlignment="Stretch" Background="{DynamicResource Brush.InputBackground}"
-                  BorderBrush="{DynamicResource Brush.InputBorder}" FontWeight="Normal"
-                  AutomationProperties.Name="Search (Ctrl+K)">
-            <Grid>
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-              </Grid.ColumnDefinitions>
-              <TextBlock Text="&#xE721;" Style="{StaticResource Text.Icon}" FontSize="14" Foreground="{DynamicResource Brush.TextSecondary}" />
-              <TextBlock Grid.Column="1" Text="Search or jump to…" Margin="10,0,0,0" VerticalAlignment="Center"
-                         Foreground="{DynamicResource Brush.TextTertiary}" />
-              <Border Grid.Column="2" CornerRadius="4" Padding="6,1" Background="{DynamicResource Brush.Surface}"
-                      BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" VerticalAlignment="Center">
-                <TextBlock Text="Ctrl K" FontSize="11" Foreground="{DynamicResource Brush.TextSecondary}" />
-              </Border>
-            </Grid>
-          </Button>
+          <controls:SearchBox Grid.Column="1" Width="300" Margin="16,0" VerticalAlignment="Center" IsReadOnly="True"
+                              Command="{Binding OpenPaletteCommand}" Placeholder="Search or jump to…" ShortcutHint="Ctrl K"
+                              AutomationProperties.Name="Search (Ctrl+K)" AutomationProperties.AutomationId="TopBarSearch" />
 
           <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-            <TextBlock Text="{Binding Clock}" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,12,0" />
+            <TextBlock Text="{Binding Clock}" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,8,0" />
             <Button Style="{StaticResource Button.Icon}" Command="{Binding ToggleThemeCommand}" ToolTip="Switch light / dark theme">
-              <TextBlock Text="&#xE793;" Style="{StaticResource Text.Icon}" FontSize="16" />
+              <controls:Icon Width="18" Height="18" Foreground="{DynamicResource Brush.TextSecondary}">
+                <controls:Icon.Style>
+                  <Style TargetType="controls:Icon" BasedOn="{StaticResource {x:Type controls:Icon}}">
+                    <Setter Property="Kind" Value="moon" />
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding IsDarkTheme}" Value="True">
+                        <Setter Property="Kind" Value="sun" />
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </controls:Icon.Style>
+              </controls:Icon>
             </Button>
             <Button Style="{StaticResource Button.Icon}" Command="{Binding ToggleNoticesCommand}" ToolTip="Notices from the server">
               <Grid>
-                <TextBlock Text="&#xEA8F;" Style="{StaticResource Text.Icon}" FontSize="16" />
+                <controls:Icon Kind="bell" Width="18" Height="18" Foreground="{DynamicResource Brush.TextSecondary}" />
                 <Border CornerRadius="8" MinWidth="16" Height="16" Padding="4,0" Margin="0,-10,-12,0"
                         HorizontalAlignment="Right" VerticalAlignment="Top" Background="{DynamicResource Brush.Danger}"
                         Visibility="{Binding Notices.HasUnread, Converter={StaticResource BoolToVisibility}}">
-                  <TextBlock Text="{Binding Notices.UnreadCount}" FontSize="10" FontWeight="Bold" Foreground="White"
+                  <TextBlock Text="{Binding Notices.UnreadCount}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource Brush.PrimaryText}"
                              HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
               </Grid>
             </Button>
             <Button Style="{StaticResource Button.Icon}" Command="{Binding ShowHelpCommand}" ToolTip="Keyboard shortcuts (F1)">
-              <TextBlock Text="&#xE897;" Style="{StaticResource Text.Icon}" FontSize="16" />
+              <controls:Icon Kind="info" Width="18" Height="18" Foreground="{DynamicResource Brush.TextSecondary}" />
             </Button>
+            <controls:StatusBadge Display="{Binding StatusBar.ConnectionDisplay}" Margin="8,0,0,0" AutomationProperties.AutomationId="ConnectionPill" />
           </StackPanel>
         </Grid>
       </Border>
-
       <controls:TransitioningContentControl Grid.Row="2" Content="{Binding CurrentPage}" />
 
       <!-- Shift dialogs (open, count, pay in/out, X/Z report) over the bar and the page -->

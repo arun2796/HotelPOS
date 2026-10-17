@@ -12,9 +12,9 @@
              Focusable="True" Loaded="OnLoaded">
 
   <UserControl.InputBindings>
-    <KeyBinding Key="F2" Command="{Binding PayCashCommand}" />
-    <KeyBinding Key="F3" Command="{Binding PayCardCommand}" />
-    <KeyBinding Key="F4" Command="{Binding PayUpiCommand}" />
+    <KeyBinding Key="F2" Command="{Binding PayHotkeyCommand}" CommandParameter="F2" />
+    <KeyBinding Key="F3" Command="{Binding PayHotkeyCommand}" CommandParameter="F3" />
+    <KeyBinding Key="F4" Command="{Binding PayHotkeyCommand}" CommandParameter="F4" />
     <KeyBinding Key="F9" Command="{Binding PaySplitCommand}" />
     <KeyBinding Key="Escape" Command="{Binding BackCommand}" />
   </UserControl.InputBindings>
@@ -157,6 +157,7 @@
                 <TextBlock Text="{Binding DiscountLabel}" Style="{StaticResource Text.Body}" Foreground="{DynamicResource Brush.TextSecondary}"
                            VerticalAlignment="Center" MaxWidth="230" TextTrimming="CharacterEllipsis" />
                 <Button Content="DISCOUNT" Command="{Binding ShowDiscountCommand}" Style="{StaticResource Button.Link}" Margin="8,0,0,0"
+                        Visibility="{Binding IsPaid, Converter={StaticResource InverseBoolToVisibility}}"
                         IsEnabled="{Binding CanEdit}" />
               </StackPanel>
               <TextBlock Text="{Binding DiscountText}" Style="{StaticResource Text.Body}" HorizontalAlignment="Right" VerticalAlignment="Center"
@@ -187,12 +188,27 @@
       </Border>
 
       <StackPanel Grid.Row="1" Margin="0,16,0,0">
-        <UniformGrid Columns="2">
-          <Button Content="CASH  F2" Command="{Binding PayCashCommand}" Style="{StaticResource PayButton}" IsEnabled="{Binding CanPay}" />
-          <Button Content="CARD  F3" Command="{Binding PayCardCommand}" Style="{StaticResource PayButton}" IsEnabled="{Binding CanPay}" />
-          <Button Content="UPI  F4" Command="{Binding PayUpiCommand}" Style="{StaticResource PayButton}" IsEnabled="{Binding CanPay}" />
-          <Button Content="SPLIT  F9" Command="{Binding PaySplitCommand}" Style="{StaticResource PayButton}" IsEnabled="{Binding CanPay}" />
-        </UniformGrid>
+        <!-- D6: one button per active configured method (F2 = cash, F3… in sort order); Split is fixed. The cashier path is the
+             workspace (CashierWorkspaceView); this page remains for direct navigation. -->
+        <ItemsControl ItemsSource="{Binding MethodButtons}" Focusable="False">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <UniformGrid Columns="2" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="{x:Type billing:PaymentMethodButton}">
+              <Button Style="{StaticResource PayButton}" IsEnabled="{Binding DataContext.CanPay, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                      Command="{Binding DataContext.PayWithCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding Method}">
+                <TextBlock>
+                  <Run Text="{Binding Name, Mode=OneWay}" />
+                  <Run Text="{Binding Hotkey, Mode=OneWay}" />
+                </TextBlock>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <Button Content="SPLIT  F9" Command="{Binding PaySplitCommand}" Style="{StaticResource PayButton}" IsEnabled="{Binding CanPay}" />
         <Grid>
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="2*" />
@@ -290,9 +306,10 @@
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>
                   </ItemsControl>
-                  <TextBlock Text="No customer matches. Fill in the details below, or add the customer on the Customers screen."
+                  <TextBlock Text="No customer matches. Fill in the details below, or add the customer under Manage customers."
                              Style="{StaticResource Text.Caption}" TextWrapping="Wrap" Margin="0,6,0,0"
                              Visibility="{Binding HasNoCustomerMatches, Converter={StaticResource BoolToVisibility}}" />
+                  <Button Content="Manage customers…" Command="{Binding ManageCustomersCommand}" Style="{StaticResource Button.Link}" HorizontalAlignment="Left" Margin="0,6,0,0" />
                   <TextBlock Text="{Binding PickedCustomerName, StringFormat='Picked: {0}'}" Style="{StaticResource Text.Caption}" Margin="0,6,0,0"
                              Visibility="{Binding PickedCustomerName, Converter={StaticResource StringToVisibility}}" />
                   <Button Content="CLEAR CUSTOMER" Command="{Binding ClearCustomerCommand}" HorizontalAlignment="Left" MinHeight="44" Margin="0,8,0,0"

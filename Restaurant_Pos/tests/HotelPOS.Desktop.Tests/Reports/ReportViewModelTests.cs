@@ -1,11 +1,16 @@
 using HotelPOS.Contracts.Admin;
+using HotelPOS.Contracts.Common;
+using HotelPOS.Contracts.Floor;
+using HotelPOS.Contracts.Orders;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Contracts.Reports;
 using HotelPOS.Desktop.Modules.Dashboard;
 using HotelPOS.Desktop.Modules.Reports;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Auth;
+using HotelPOS.Desktop.Services.Menu;
 using HotelPOS.Desktop.Services.Navigation;
+using HotelPOS.Desktop.Services.Realtime;
 using HotelPOS.Desktop.Services.Ui;
 using HotelPOS.Desktop.Tests.Support;
 using NSubstitute;
@@ -80,7 +85,8 @@ public sealed class ReportViewModelTests
         var session = Substitute.For<IAuthSession>();
         session.User.Returns(TestData.Login("manager1", roles: "Manager").User);
         var realtime = new FakeRealtimeClient();
-        var vm = new DashboardViewModel(api, realtime, session, Substitute.For<INavigationService>(), Substitute.For<IDevicesApi>()) { DebounceDelay = TimeSpan.FromMilliseconds(100) };
+        var vm = BuildDashboard(api, realtime, session);
+        vm.DebounceDelay = TimeSpan.FromMilliseconds(100);
 
         await vm.OnNavigatedToAsync(null);
         realtime.Publish(HubEvents.PaymentCompleted, new PaymentCompletedEvent { BillId = 1 });
@@ -90,9 +96,9 @@ public sealed class ReportViewModelTests
 
         vm.RefreshCount.Should().Be(2, "the initial load plus one debounced reload for the burst");
         vm.IsManagerView.Should().BeTrue();
-        vm.Tiles.Should().HaveCount(6);
-        vm.Tiles[0].Value.Should().Be("12,345.00");
-        vm.Tiles[2].Value.Should().Be("4 / 15");
+        vm.Cards.Should().HaveCount(4, "Phase 21: sales, orders, average order value, occupied tables");
+        vm.Cards[0].Value.Should().Be("12,345.00");
+        vm.Cards[3].Value.Should().Be("4 / 15");
         vm.TopItems.Should().ContainSingle().Which.Name.Should().Be("Biryani");
         vm.DayBars.Should().HaveCount(7);
         vm.DayBars[^1].Height.Should().Be(1);
@@ -101,6 +107,19 @@ public sealed class ReportViewModelTests
         vm.PaymentSlices.Select(s => (s.Label, s.PercentText)).Should().Equal(("Cash", "75%"), ("Card", "25%"));
         vm.PaymentTotal.Should().Be("10K");
         vm.Dispose();
+    }
+
+    // Phase 21 widened the dashboard constructor; the optional panels get empty answers here.
+    private static DashboardViewModel BuildDashboard(IReportsApi api, IRealtimeClient realtime, IAuthSession session)
+    {
+        var orders = Substitute.For<IOrdersApi>();
+        orders.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ApiResult<List<OrderSummaryDto>>.Ok(new List<OrderSummaryDto>()));
+        var floor = Substitute.For<IFloorApi>();
+        floor.GetMapAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(ApiResult<TableMapDto>.Ok(new TableMapDto()));
+        var audit = Substitute.For<IAuditApi>();
+        audit.QueryAsync(Arg.Any<AuditLogQuery>(), Arg.Any<CancellationToken>()).Returns(ApiResult<PagedResult<AuditLogDto>>.Ok(new PagedResult<AuditLogDto>()));
+        return new DashboardViewModel(api, realtime, session, Substitute.For<INavigationService>(), Substitute.For<IDevicesApi>(), orders, floor, audit,
+            new NoticeCenter(new ImmediateDispatcher()), Substitute.For<IMenuCache>());
     }
 
     [Fact]
@@ -113,12 +132,12 @@ public sealed class ReportViewModelTests
         }));
         var session = Substitute.For<IAuthSession>();
         session.User.Returns(TestData.Login("waiter1", roles: "Waiter").User);
-        var vm = new DashboardViewModel(api, new FakeRealtimeClient(), session, Substitute.For<INavigationService>(), Substitute.For<IDevicesApi>());
+        var vm = BuildDashboard(api, new FakeRealtimeClient(), session);
 
         await vm.OnNavigatedToAsync(null);
 
         vm.IsManagerView.Should().BeFalse();
-        vm.Tiles.Select(t => t.Value).Should().Equal("6", "2,400.00", "2");
+        vm.Cards.Select(t => t.Value).Should().Equal("6", "2,400.00", "2");
         await api.DidNotReceive().GetDashboardAsync(Arg.Any<CancellationToken>());
         vm.Dispose();
     }

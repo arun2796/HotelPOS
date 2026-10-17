@@ -5,7 +5,7 @@
        Tokens.Dark.xaml; both define exactly the same keys. Views and styles use them only through DynamicResource. -->
 
   <!-- Surfaces and layers -->
-  <SolidColorBrush x:Key="Brush.Background" Color="#F4F7FA" />
+  <SolidColorBrush x:Key="Brush.Background" Color="#F4F7FB" />
   <SolidColorBrush x:Key="Brush.Surface" Color="#FFFFFF" />
   <SolidColorBrush x:Key="Brush.SurfaceAlt" Color="#F8FAFC" />
   <SolidColorBrush x:Key="Brush.SurfaceSubtle" Color="#F1F5F9" />
@@ -16,27 +16,27 @@
   <SolidColorBrush x:Key="Brush.Overlay" Color="#8009090B" />
 
   <!-- Borders -->
-  <SolidColorBrush x:Key="Brush.Border" Color="#E3E8EF" />
+  <SolidColorBrush x:Key="Brush.Border" Color="#E2E8F0" />
   <SolidColorBrush x:Key="Brush.BorderSubtle" Color="#EEF2F6" />
   <SolidColorBrush x:Key="Brush.BorderStrong" Color="#CBD5E1" />
 
   <!-- Text -->
-  <SolidColorBrush x:Key="Brush.TextPrimary" Color="#172033" />
-  <SolidColorBrush x:Key="Brush.TextSecondary" Color="#667085" />
+  <SolidColorBrush x:Key="Brush.TextPrimary" Color="#172B4D" />
+  <SolidColorBrush x:Key="Brush.TextSecondary" Color="#64748B" />
   <SolidColorBrush x:Key="Brush.TextTertiary" Color="#98A2B3" />
 
   <!-- Inputs -->
   <SolidColorBrush x:Key="Brush.InputBackground" Color="#F8FAFC" />
   <SolidColorBrush x:Key="Brush.InputBackgroundFocus" Color="#FFFFFF" />
   <SolidColorBrush x:Key="Brush.InputBorder" Color="#D5DCE5" />
-  <SolidColorBrush x:Key="Brush.Focus" Color="#078B45" />
+  <SolidColorBrush x:Key="Brush.Focus" Color="#2563EB" />
 
   <!-- Accent and semantic colours. "Soft" fills sit behind text of the matching colour. -->
-  <SolidColorBrush x:Key="Brush.Primary" Color="#078B45" />
-  <SolidColorBrush x:Key="Brush.PrimaryHover" Color="#06763B" />
+  <SolidColorBrush x:Key="Brush.Primary" Color="#078747" />
+  <SolidColorBrush x:Key="Brush.PrimaryHover" Color="#066B39" />
   <SolidColorBrush x:Key="Brush.PrimaryText" Color="#FFFFFF" />
   <SolidColorBrush x:Key="Brush.PrimarySoft" Color="#E9F8EF" />
-  <SolidColorBrush x:Key="Brush.Link" Color="#078B45" />
+  <SolidColorBrush x:Key="Brush.Link" Color="#078747" />
   <SolidColorBrush x:Key="Brush.Info" Color="#2563EB" />
   <SolidColorBrush x:Key="Brush.InfoSoft" Color="#EFF6FF" />
   <SolidColorBrush x:Key="Brush.Danger" Color="#DC2626" />
@@ -48,33 +48,46 @@
   <SolidColorBrush x:Key="Brush.WarningSoft" Color="#FFF7E6" />
   <SolidColorBrush x:Key="Brush.Purple" Color="#7C3AED" />
   <SolidColorBrush x:Key="Brush.Teal" Color="#0D9488" />
+  <SolidColorBrush x:Key="Brush.InfoText" Color="#1D4ED8" />
+  <SolidColorBrush x:Key="Brush.SuccessText" Color="#15803D" />
+  <SolidColorBrush x:Key="Brush.WarningText" Color="#B45309" />
+  <SolidColorBrush x:Key="Brush.OnWarning" Color="#1F2937" />
+  <SolidColorBrush x:Key="Brush.Neutral" Color="#94A3B8" />
+  <SolidColorBrush x:Key="Brush.NeutralSoft" Color="#F1F5F9" />
+  <SolidColorBrush x:Key="Brush.NeutralText" Color="#5B6B80" />
 
   <!-- Chart series, in order (payment split, future charts). -->
-  <SolidColorBrush x:Key="Brush.Chart.0" Color="#078B45" />
+  <SolidColorBrush x:Key="Brush.Chart.0" Color="#078747" />
   <SolidColorBrush x:Key="Brush.Chart.1" Color="#2563EB" />
   <SolidColorBrush x:Key="Brush.Chart.2" Color="#F59E0B" />
   <SolidColorBrush x:Key="Brush.Chart.3" Color="#7C3AED" />
   <SolidColorBrush x:Key="Brush.Chart.4" Color="#0D9488" />
   <SolidColorBrush x:Key="Brush.Chart.5" Color="#E11D48" />
 
-  <!-- Sidebar: near-black in both themes -->
-  <SolidColorBrush x:Key="Brush.Sidebar" Color="#FFFFFF" />
-  <SolidColorBrush x:Key="Brush.SidebarText" Color="#344054" />
-  <SolidColorBrush x:Key="Brush.SidebarTextActive" Color="#078B45" />
-  <SolidColorBrush x:Key="Brush.SidebarTextMuted" Color="#98A2B3" />
-  <SolidColorBrush x:Key="Brush.SidebarHover" Color="#F1F5F9" />
-  <SolidColorBrush x:Key="Brush.SidebarSelected" Color="#E9F8EF" />
-  <SolidColorBrush x:Key="Brush.SidebarAccent" Color="#078B45" />
-  <SolidColorBrush x:Key="Brush.SidebarDivider" Color="#E3E8EF" />
+  <!-- Sidebar: navy in the light theme (selected item is a filled primary pill), darker navy in the dark theme -->
+  <SolidColorBrush x:Key="Brush.Sidebar" Color="#142235" />
+  <SolidColorBrush x:Key="Brush.SidebarText" Color="#CBD5E1" />
+  <SolidColorBrush x:Key="Brush.SidebarTextActive" Color="#FFFFFF" />
+  <SolidColorBrush x:Key="Brush.SidebarTextMuted" Color="#8A9BB2" />
+  <SolidColorBrush x:Key="Brush.SidebarHover" Color="#1C2E45" />
+  <SolidColorBrush x:Key="Brush.SidebarSelected" Color="#078747" />
+  <SolidColorBrush x:Key="Brush.SidebarAccent" Color="#FFFFFF" />
+  <SolidColorBrush x:Key="Brush.SidebarDivider" Color="#23354D" />
+  <SolidColorBrush x:Key="Brush.SidebarBadge" Color="#2563EB" />
+
+  <!-- Table and ticket states (Phase 21 D8): colour = tone. Ready is the solid success fill, Available the soft one
+       (SuccessSoft + this colour as border); Preparing stays amber 700, Billing takes the warning orange. Identical in both themes. -->
+  <SolidColorBrush x:Key="Brush.Status.Available" Color="#16A34A" />
+  <SolidColorBrush x:Key="Brush.Status.Occupied" Color="#2563EB" />
+  <SolidColorBrush x:Key="Brush.Status.Ordering" Color="#2563EB" />
+  <SolidColorBrush x:Key="Brush.Status.Preparing" Color="#B45309" />
+  <SolidColorBrush x:Key="Brush.Status.Ready" Color="#16A34A" />
+  <SolidColorBrush x:Key="Brush.Status.Billing" Color="#F59E0B" />
+  <SolidColorBrush x:Key="Brush.Status.OutOfService" Color="#94A3B8" />
+
+  
 
   <!-- Table and ticket states. Same meaning as before; shades chosen so white text on them meets WCAG AA (4.5:1). -->
-  <SolidColorBrush x:Key="Brush.Status.Available" Color="#047857" />
-  <SolidColorBrush x:Key="Brush.Status.Occupied" Color="#2563EB" />
-  <SolidColorBrush x:Key="Brush.Status.Ordering" Color="#7C3AED" />
-  <SolidColorBrush x:Key="Brush.Status.Preparing" Color="#B45309" />
-  <SolidColorBrush x:Key="Brush.Status.Ready" Color="#DC2626" />
-  <SolidColorBrush x:Key="Brush.Status.Billing" Color="#0F766E" />
-  <SolidColorBrush x:Key="Brush.Status.OutOfService" Color="#71717A" />
 
   <!-- Elevation: only floating layers (dialogs, menus, toasts) cast a shadow; cards stay flat so busy screens
        (kitchen tickets, table map) render cheaply on low-end tablets. -->

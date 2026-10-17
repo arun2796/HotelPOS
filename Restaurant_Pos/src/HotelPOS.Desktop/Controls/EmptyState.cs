@@ -16,6 +16,16 @@ public sealed class EmptyState : ContentControl
     public static readonly DependencyProperty MessageProperty =
         DependencyProperty.Register(nameof(Message), typeof(string), typeof(EmptyState), new PropertyMetadata(string.Empty));
 
+    // Icon (a Controls/Icon kind, e.g. "receipt") wins over Glyph (a Segoe glyph) when both are set.
+    public static readonly DependencyProperty IconProperty =
+        DependencyProperty.Register(nameof(Icon), typeof(string), typeof(EmptyState), new PropertyMetadata(string.Empty));
+
+    public string Icon
+    {
+        get => (string)GetValue(IconProperty);
+        set => SetValue(IconProperty, value);
+    }
+
     public string Glyph
     {
         get => (string)GetValue(GlyphProperty);

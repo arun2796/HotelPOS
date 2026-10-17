@@ -13,6 +13,15 @@ public sealed class BusyOverlay : ContentControl
     public static readonly DependencyProperty MessageProperty =
         DependencyProperty.Register(nameof(Message), typeof(string), typeof(BusyOverlay), new PropertyMetadata("Loading…"));
 
+    public static readonly DependencyProperty IconProperty =
+        DependencyProperty.Register(nameof(Icon), typeof(string), typeof(BusyOverlay), new PropertyMetadata("refresh"));
+
+    public string Icon
+    {
+        get => (string)GetValue(IconProperty);
+        set => SetValue(IconProperty, value);
+    }
+
     public bool IsBusy
     {
         get => (bool)GetValue(IsBusyProperty);

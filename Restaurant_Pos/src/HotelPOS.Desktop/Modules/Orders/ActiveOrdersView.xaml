@@ -1,0 +1,133 @@
+<UserControl x:Class="HotelPOS.Desktop.Modules.Orders.ActiveOrdersView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:HotelPOS.Desktop.Controls"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:orders="clr-namespace:HotelPOS.Desktop.Modules.Orders"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance orders:ActiveOrdersViewModel}"
+             d:DesignWidth="1100" d:DesignHeight="700">
+
+  <!-- Phase 21 A1: all active orders. Toolbar (search, sort, refresh), status chips, the table and a detail pane. -->
+  <Grid Margin="24,16,24,24">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <Grid Margin="0,0,0,12">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="320" />
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+      <controls:SearchBox Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" Placeholder="Search order, table or waiter"
+                          AutomationProperties.Name="Search orders" />
+      <TextBlock Grid.Column="1" Text="{Binding SummaryText}" Style="{StaticResource Text.Caption}" FontSize="14" VerticalAlignment="Center" Margin="16,0" />
+      <ComboBox Grid.Column="2" ItemsSource="{Binding SortOptions}" SelectedItem="{Binding SelectedSort}" DisplayMemberPath="Label"
+                MinWidth="160" Margin="0,0,8,0" AutomationProperties.Name="Sort orders" />
+      <Button Grid.Column="3" Style="{StaticResource Button.Icon}" Command="{Binding RefreshListCommand}" ToolTip="Reload from the server">
+        <controls:Icon Kind="refresh" />
+      </Button>
+    </Grid>
+
+    <ListBox Grid.Row="1" Style="{StaticResource ChipList}" ItemsSource="{Binding Filters}" SelectedItem="{Binding SelectedFilter}"
+             AutomationProperties.Name="Order status">
+      <ListBox.ItemTemplate>
+        <DataTemplate DataType="{x:Type orders:OrderStatusFilter}">
+          <TextBlock Text="{Binding Text}" />
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+
+    <Border Grid.Row="2" Style="{StaticResource Banner.Error}" Margin="0,0,0,12"
+            Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibility}}">
+      <TextBlock Text="{Binding ErrorMessage}" Style="{StaticResource Text.Error}" />
+    </Border>
+
+    <Grid Grid.Row="3">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+
+      <controls:EmptyState Icon="utensils" Title="No active orders" Message="Orders appear here as soon as a waiter opens one. Try another status or clear the search."
+                           Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}" />
+
+      <DataGrid ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedRow}" controls:SelectorBehaviors.ScrollSelectedIntoView="True"
+                HorizontalScrollBarVisibility="Disabled" Visibility="{Binding IsEmpty, Converter={StaticResource InverseBoolToVisibility}}"
+                AutomationProperties.Name="Active orders">
+        <DataGrid.InputBindings>
+          <MouseBinding Gesture="LeftDoubleClick" Command="{Binding OpenSelectedTableCommand}" />
+        </DataGrid.InputBindings>
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="#" Binding="{Binding Order.OrderNumber}" Width="64" ElementStyle="{StaticResource Text.GridNumber}" />
+          <DataGridTextColumn Header="TABLE" Binding="{Binding Order.TableCode}" Width="72" />
+          <DataGridTextColumn Header="WAITER" Binding="{Binding Order.WaiterName}" Width="1.2*" MinWidth="100" ElementStyle="{StaticResource Text.GridTrim}" />
+          <DataGridTextColumn Header="ITEMS" Binding="{Binding Order.ItemCount}" Width="64" ElementStyle="{StaticResource Text.GridNumber}" />
+          <DataGridTextColumn Header="TOTAL" Binding="{Binding TotalText}" Width="104" ElementStyle="{StaticResource Text.GridNumber}"
+                              HeaderStyle="{StaticResource DataGrid.NumberHeader}" />
+          <controls:StatusBadgeColumn Header="STATUS" Binding="{Binding Display}" Width="1.3*" MinWidth="140" />
+          <DataGridTextColumn Header="CREATED" Binding="{Binding CreatedText}" Width="96" />
+          <DataGridTextColumn Header="ELAPSED" Binding="{Binding ElapsedText}" Width="112" />
+          <DataGridTemplateColumn Header="" Width="80">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate DataType="{x:Type orders:OrderRow}">
+                <Button Content="View" Style="{StaticResource Button.Link}" CommandParameter="{Binding}"
+                        Command="{Binding DataContext.OpenCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                        HorizontalAlignment="Center" VerticalAlignment="Center" />
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+        </DataGrid.Columns>
+      </DataGrid>
+
+      <controls:DetailPane Grid.Column="1" Margin="16,0,0,0" PaneWidth="340" Title="{Binding DetailTitle}" Subtitle="{Binding DetailSubtitle}"
+                           CloseCommand="{Binding CloseDetailCommand}"
+                           Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibility}}">
+        <Grid>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
+
+          <Border Style="{StaticResource Banner.Error}" Margin="0,0,0,12"
+                  Visibility="{Binding DetailError, Converter={StaticResource StringToVisibility}}">
+            <TextBlock Text="{Binding DetailError}" Style="{StaticResource Text.Error}" />
+          </Border>
+
+          <Border Grid.Row="1" Style="{StaticResource Banner.Warning}" Margin="0,0,0,12"
+                  Visibility="{Binding HasDetailNotes, Converter={StaticResource BoolToVisibility}}">
+            <TextBlock Text="{Binding DetailNotes}" TextWrapping="Wrap" />
+          </Border>
+
+          <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding DetailLines}" Focusable="False">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="{x:Type orders:OrderDetailLine}">
+                  <controls:OrderLine Style="{StaticResource Admin.OrderDetailLine}" Quantity="{Binding Quantity}" ItemName="{Binding Name}"
+                                      Modifiers="{Binding Modifiers}" Note="{Binding Note}" PriceText="{Binding PriceText}" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+
+          <StackPanel Grid.Row="3" Margin="0,12,0,0">
+            <Grid Margin="0,0,0,12">
+              <TextBlock Text="Approx. subtotal" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding DetailTotalText}" Style="{StaticResource Text.Amount}" HorizontalAlignment="Right" />
+            </Grid>
+            <Button Content="Open table" Style="{StaticResource Button.Primary}" Command="{Binding OpenSelectedTableCommand}"
+                    Visibility="{Binding CanOpenTables, Converter={StaticResource BoolToVisibility}}" />
+          </StackPanel>
+        </Grid>
+      </controls:DetailPane>
+    </Grid>
+  </Grid>
+</UserControl>

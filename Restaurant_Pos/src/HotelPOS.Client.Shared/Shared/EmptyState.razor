@@ -1,7 +1,17 @@
 <div class="empty @(Small ? "small" : null)">
     @if (!string.IsNullOrEmpty(Icon))
     {
-        <div class="empty-icon" aria-hidden="true">@Icon</div>
+        <div class="empty-icon" aria-hidden="true">
+            @* A Phase 21 icon name draws the line icon; any other text (legacy glyph) is shown as is. *@
+            @if (HotelPOS.Client.Shared.Icon.Paths.ContainsKey(Icon))
+            {
+                <Icon Name="@Icon" Size="32" />
+            }
+            else
+            {
+                @Icon
+            }
+        </div>
     }
     <div>@Text@ChildContent</div>
 </div>

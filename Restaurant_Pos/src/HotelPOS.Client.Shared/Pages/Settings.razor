@@ -1,48 +1,84 @@
 @page "/settings"
 @attribute [Authorize]
 @using HotelPOS.Contracts.Realtime
+@inject WebAuthState Auth
 @inject NotificationPreferences Preferences
 @inject IAlertSignal Signal
 @inject ShellState Shell
 
 <PageTitle>Settings · HotelPOS</PageTitle>
 
-<h2 style="margin:0 0 4px">Notifications on this device</h2>
-<p class="muted small" style="margin:0 0 12px">Saved on this device only. Pop-up shows a message; Sound beeps (and vibrates on a phone).</p>
+@* Phase 21 W7: profile, appearance, this device, then the per-device notification preferences. No language setting
+   exists (staff client is English-only), so none is drawn. *@
+<section class="settings-section" aria-label="Profile">
+    <div class="card settings-profile" data-testid="settings-profile">
+        <span class="avatar lg">@ShellModes.Initials(Auth.User?.DisplayName)</span>
+        <div class="grow">
+            <div class="more-name">@Auth.User?.DisplayName</div>
+            <div class="muted small">@string.Join(", ", Auth.User?.Roles ?? Array.Empty<string>())</div>
+        </div>
+    </div>
+</section>
 
-@if (_loaded)
-{
-    <div id="notification-settings">
-        @foreach (var kind in NotificationPreferenceDefaults.AllKinds)
-        {
-            var preference = Preferences.Get(kind);
-            var current = kind;
-            <div class="row between" style="padding:10px 0;border-bottom:1px solid var(--border, #ddd)" data-kind="@kind">
-                <span>@NotificationPreferenceDefaults.Label(kind)</span>
-                <span class="row" style="gap:16px">
-                    <label class="row" style="gap:6px">
-                        <input type="checkbox" data-testid="toast-@kind" checked="@preference.Toast"
-                               @onchange="e => SetAsync(current, toast: (bool)e.Value!, sound: preference.Sound)" /> Pop-up
-                    </label>
-                    <label class="row" style="gap:6px">
-                        <input type="checkbox" data-testid="sound-@kind" checked="@preference.Sound"
-                               @onchange="e => SetAsync(current, toast: preference.Toast, sound: (bool)e.Value!)" /> Sound
-                    </label>
-                </span>
-            </div>
-        }
+<section class="settings-section" aria-label="Appearance">
+    <h2 class="section-head">Appearance</h2>
+    <div class="card settings-row" data-testid="settings-appearance">
+        <span class="settings-ico"><Icon Name="sun" /></span>
+        <div class="grow">
+            <div>Theme</div>
+            <div class="muted small">Light, dark or follow the device.</div>
+        </div>
+        <ThemeToggle />
     </div>
-    <div style="margin-top:16px">
-        <button class="btn" data-testid="test-sound" @onclick="TestAsync">Test sound</button>
-    </div>
-}
+</section>
+
+<section class="settings-section" aria-label="This device">
+    <h2 class="section-head">This device</h2>
+    <DeviceStatusCard Type="@(Auth.IsInRole(Roles.Kitchen) ? DeviceType.Kitchen : DeviceType.Waiter)" />
+</section>
+
+<section class="settings-section" aria-label="Notifications on this device">
+    <h2 class="section-head">Notifications on this device</h2>
+    <p class="page-sub">Saved on this device only. Pop-up shows a message; Sound beeps (and vibrates on a phone).</p>
+
+    @if (_loaded)
+    {
+        <div class="card settings-list" id="notification-settings">
+            @foreach (var kind in NotificationPreferenceDefaults.AllKinds)
+            {
+                var preference = Preferences.Get(kind);
+                var current = kind;
+                <div class="settings-pref" data-kind="@kind">
+                    <span class="settings-pref-name">@NotificationPreferenceDefaults.Label(kind)</span>
+                    <span class="settings-pref-toggles">
+                        <label class="toggle">
+                            <input type="checkbox" data-testid="toast-@kind" checked="@preference.Toast"
+                                   @onchange="e => SetAsync(current, toast: (bool)e.Value!, sound: preference.Sound)" /> <span>Pop-up</span>
+                        </label>
+                        <label class="toggle">
+                            <input type="checkbox" data-testid="sound-@kind" checked="@preference.Sound"
+                                   @onchange="e => SetAsync(current, toast: preference.Toast, sound: (bool)e.Value!)" /> <span>Sound</span>
+                        </label>
+                    </span>
+                </div>
+            }
+        </div>
+        <div style="margin-top:12px">
+            <button class="btn" data-testid="test-sound" @onclick="TestAsync"><Icon Name="bell" /> Test sound</button>
+        </div>
+    }
+    else
+    {
+        <Skeleton Count="4" Label="Loading preferences" />
+    }
+</section>
 
 @code {
     private bool _loaded;
 
     protected override async Task OnInitializedAsync()
     {
-        Shell.Set("Settings", "This device");
+        Shell.Set("Settings", "This device", "home");
         await Preferences.LoadAsync();
         _loaded = true;
     }
