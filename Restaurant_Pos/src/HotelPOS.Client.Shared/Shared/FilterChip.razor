@@ -1,0 +1,17 @@
+<button type="button" class="filter-chip @(Selected ? "on" : null)" aria-pressed="@Selected.ToString().ToLowerInvariant()" @onclick="OnClick">
+    <span>@Label</span>
+    @if (Count is { } count)
+    {
+        <span class="filter-count">@count</span>
+    }
+</button>
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+
+    [Parameter] public int? Count { get; set; }
+
+    [Parameter] public bool Selected { get; set; }
+
+    [Parameter] public EventCallback OnClick { get; set; }
+}

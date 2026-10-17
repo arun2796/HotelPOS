@@ -1,0 +1,46 @@
+<ol class="timeline" aria-label="Order progress">
+    @for (var i = 0; i < Steps.Length; i++)
+    {
+        var step = Steps[i];
+        var state = i < Current ? "done" : i == Current ? (Delayed ? "delayed" : "current") : "todo";
+        var at = At(i);
+        <li class="timeline-step @state" aria-current="@(i == Current ? "step" : null)" data-step="@step">
+            <span class="timeline-dot"><Icon Name="@(i < Current ? "check" : i == Current && Delayed ? "alert" : "circle")" Size="16" /></span>
+            <span class="timeline-label">@step</span>
+            @if (at is { } time)
+            {
+                <span class="timeline-time">@time.ToLocalTime().ToString("HH:mm")</span>
+            }
+        </li>
+    }
+</ol>
+
+@code {
+    private static readonly string[] Steps = { "Received", "Preparing", "Ready", "Served" };
+
+    [Parameter] public OrderStatus Status { get; set; }
+
+    /// <summary>The current step is late (the kitchen target was missed): shown in the danger tone.</summary>
+    [Parameter] public bool Delayed { get; set; }
+
+    [Parameter] public DateTime? ReceivedAtUtc { get; set; }
+
+    [Parameter] public DateTime? PreparingAtUtc { get; set; }
+
+    [Parameter] public DateTime? ReadyAtUtc { get; set; }
+
+    [Parameter] public DateTime? ServedAtUtc { get; set; }
+
+    /// <summary>Index of the highlighted step; past Served every step is done.</summary>
+    private int Current => Status switch
+    {
+        OrderStatus.Draft or OrderStatus.Submitted or OrderStatus.Accepted => 0,
+        OrderStatus.Preparing => 1,
+        OrderStatus.Ready => 2,
+        OrderStatus.Served => 3,
+        OrderStatus.BillRequested or OrderStatus.Billed or OrderStatus.Paid or OrderStatus.Completed => 4,
+        _ => 0,
+    };
+
+    private DateTime? At(int i) => i switch { 0 => ReceivedAtUtc, 1 => PreparingAtUtc, 2 => ReadyAtUtc, _ => ServedAtUtc };
+}

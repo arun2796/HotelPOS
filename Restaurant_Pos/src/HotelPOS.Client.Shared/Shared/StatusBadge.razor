@@ -1,0 +1,7 @@
+<span class="status-badge @ToneClass @(Display.Fill == StatusFill.Solid ? "solid" : "soft")" data-testid="status-badge"><Icon Name="@Display.Icon" Size="14" /><span>@Display.Label</span></span>
+
+@code {
+    [Parameter, EditorRequired] public StatusDisplay Display { get; set; }
+
+    private string ToneClass => Display.Tone.ToString().ToLowerInvariant();
+}

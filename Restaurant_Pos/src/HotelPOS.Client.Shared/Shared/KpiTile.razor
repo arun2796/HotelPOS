@@ -1,0 +1,35 @@
+<div class="kpi @ToneClass @(Compact ? "compact" : null)" data-testid="kpi">
+    <span class="kpi-icon"><Icon Name="@Icon" Size="@(Compact ? 20 : 24)" /></span>
+    <div class="kpi-body">
+        <div class="kpi-value num-tab">@Value</div>
+        <div class="kpi-label">@Label</div>
+        @if (Delta is { } delta)
+        {
+            <div class="kpi-delta @(delta >= 0 ? "up" : "down")" data-testid="kpi-delta">@(delta >= 0 ? "▲" : "▼") @Math.Abs(delta).ToString("0.#")%@(string.IsNullOrEmpty(Caption) ? null : " " + Caption)</div>
+        }
+        else if (!string.IsNullOrEmpty(Caption))
+        {
+            <div class="kpi-caption">@Caption</div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired] public string Value { get; set; } = string.Empty;
+
+    [Parameter] public string Icon { get; set; } = "circle";
+
+    [Parameter] public StatusTone Tone { get; set; } = StatusTone.Info;
+
+    /// <summary>Change against the previous period in percent; positive shows ▲ (success), negative ▼ (danger).</summary>
+    [Parameter] public decimal? Delta { get; set; }
+
+    [Parameter] public string? Caption { get; set; }
+
+    /// <summary>Smaller tile for the kitchen's one-row strip.</summary>
+    [Parameter] public bool Compact { get; set; }
+
+    private string ToneClass => Tone.ToString().ToLowerInvariant();
+}
