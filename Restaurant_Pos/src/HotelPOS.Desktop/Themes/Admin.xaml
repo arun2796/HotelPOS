@@ -1,4 +1,18 @@
 <!-- Phase 21 Admin-track styles (merged after Controls.xaml). Keep track-specific styles here so parallel work does not collide. -->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:controls="clr-namespace:HotelPOS.Desktop.Controls"
+                    xmlns:orders="clr-namespace:HotelPOS.Desktop.Modules.Orders">
+
+  <!-- ============================ Views for the admin-track view models (A1) ============================ -->
+  <DataTemplate DataType="{x:Type orders:ActiveOrdersViewModel}">
+    <orders:ActiveOrdersView />
+  </DataTemplate>
+
+  <!-- ============================ Orders page (A1) ============================ -->
+  <!-- Detail pane line: a smaller initials square, no picture (the order detail carries no image). -->
+  <Style x:Key="Admin.OrderDetailLine" TargetType="controls:OrderLine" BasedOn="{StaticResource {x:Type controls:OrderLine}}">
+    <Setter Property="ImageSize" Value="36" />
+    <Setter Property="Padding" Value="0,8" />
+  </Style>
 </ResourceDictionary>

@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Orders;
+using HotelPOS.Contracts.Presentation;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Contracts.Security;
 using HotelPOS.Desktop.Modules.Common;
@@ -25,6 +26,15 @@ public sealed record OrderRow(OrderSummaryDto Order, string ElapsedText, string 
     public bool IsReady => Order.Status == OrderStatus.Ready;
 
     public string Detail => $"{Order.ItemCount} items · {Order.GuestCount} guests · {Order.WaiterName}";
+
+    /// <summary>Badge for a status column (Phase 21): label, tone and icon from the single status map.</summary>
+    public StatusDisplay Display => StatusPresentation.For(Order.Status);
+
+    public string CreatedText => Order.CreatedAtUtc.ToLocalTime().ToString("HH:mm", CultureInfo.CurrentCulture);
+
+    public string ItemCountText => Plural.Count(Order.ItemCount, "item");
+
+    public string GuestsText => Plural.Count(Order.GuestCount, "guest");
 }
 
 public abstract partial class OrderListViewModelBase : ViewModelBase, INavigationAware, IRefreshable, IDisposable
@@ -105,9 +115,7 @@ public abstract partial class OrderListViewModelBase : ViewModelBase, INavigatio
             Rows.Clear();
             foreach (var order in result.Data.Where(Include))
             {
-                var since = order.SubmittedAtUtc ?? order.CreatedAtUtc;
-                var minutes = Math.Max(0, (int)(now - since).TotalMinutes);
-                Rows.Add(new OrderRow(order, minutes < 60 ? $"{minutes} min" : $"{minutes / 60} h {minutes % 60:00} min",
+                Rows.Add(new OrderRow(order, ActiveOrderQueries.Elapsed(ActiveOrderQueries.Since(order), now),
                     order.ApproxTotal.ToString("N2", CultureInfo.CurrentCulture)));
             }
 
