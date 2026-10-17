@@ -1,6 +1,6 @@
 <div class="search-box">
     <Icon Name="search" Size="20" />
-    <input type="search" class="search-input" placeholder="@Placeholder" aria-label="@(AriaLabel ?? Placeholder)" value="@Value" @oninput="OnInputAsync" />
+    <input type="search" id="@Id" class="search-input" placeholder="@Placeholder" aria-label="@(AriaLabel ?? Placeholder)" value="@Value" autocomplete="off" @oninput="OnInputAsync" />
     @if (!string.IsNullOrEmpty(Value))
     {
         <button type="button" class="search-clear" aria-label="Clear search" @onclick="ClearAsync"><Icon Name="x" Size="18" /></button>
@@ -15,6 +15,9 @@
     [Parameter] public string Placeholder { get; set; } = "Search";
 
     [Parameter] public string? AriaLabel { get; set; }
+
+    /// <summary>Optional element id of the input (pages and tests address it, e.g. <c>menu-search</c>).</summary>
+    [Parameter] public string? Id { get; set; }
 
     private Task OnInputAsync(ChangeEventArgs e)
     {

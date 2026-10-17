@@ -85,9 +85,29 @@ public class OrderComposerTests
     }
 
     [Fact]
+    public void OrderNotes_AreTrimmedLikeLineNotes_AndClearedWithTheCart()
+    {
+        var cart = new OrderComposer { Notes = "  No onion for the table  " };
+        cart.Notes.Should().Be("No onion for the table");
+        cart.Notes = "   ";
+        cart.Notes.Should().BeNull();
+        cart.Notes = new string('x', 600);
+        cart.Notes!.Length.Should().Be(OrderLimits.NotesMaxLength);
+
+        cart.Add(Dosa, Array.Empty<MenuModifierOptionDto>(), 1, null);
+        cart.SetQuantity(cart.Lines[0], 150);
+        cart.Lines[0].Quantity.Should().Be(OrderLimits.MaxQuantity);
+        cart.SetQuantity(cart.Lines[0], 0);
+        cart.Lines[0].Quantity.Should().Be(1, "a line is removed through Decrease/Remove, never set to zero");
+
+        cart.Clear();
+        cart.Notes.Should().BeNull("a sent order leaves no note for the next one");
+    }
+
+    [Fact]
     public void Draft_RoundTrips_TheWholeCart()
     {
-        var cart = new OrderComposer { Guests = 4 };
+        var cart = new OrderComposer { Guests = 4, Notes = "Birthday table" };
         cart.Add(Biryani, new[] { Mild }, 3, "Parcel");
         var key = Guid.NewGuid();
 
@@ -96,7 +116,9 @@ public class OrderComposerTests
         restored.LoadDraft(draft);
 
         draft.PendingKey.Should().Be(key);
+        draft.Notes.Should().Be("Birthday table");
         restored.Guests.Should().Be(4);
+        restored.Notes.Should().Be("Birthday table");
         restored.Lines.Single().Should().BeEquivalentTo(cart.Lines.Single(), o => o.Excluding(l => l.MergeKey).Excluding(l => l.DetailText).Excluding(l => l.LineTotal));
         restored.ToInputs().Single().Should().BeEquivalentTo(new OrderItemInput { MenuItemId = 2, Quantity = 3, Notes = "Parcel", ModifierOptionIds = new[] { 101 } });
     }

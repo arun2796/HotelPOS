@@ -1,19 +1,63 @@
 @* Shown while the real-time connection is not up. Re-renders on every status change, so it appears together with
-   the "Reconnecting…" pill instead of waiting for the next tap on the page. *@
+   the "Reconnecting…" pill instead of waiting for the next tap on the page. Phase 21 W7: once the connection is back a
+   short "Back online" notice replaces it. There is no send queue, so it never claims to sync anything. *@
 @implements IDisposable
 @inject WebRealtimeClient Realtime
 
 @if (Realtime.Status is WebConnectionStatus.Reconnecting or WebConnectionStatus.Disconnected)
 {
-    <div class="banner warning" role="status" data-testid="offline-banner">@ChildContent</div>
+    <div class="banner warning offline-banner" role="status" data-testid="offline-banner"><Icon Name="wifi-off" Size="18" /><span>@ChildContent</span></div>
+}
+else if (_backOnline)
+{
+    <div class="banner success offline-banner" role="status" data-testid="online-banner"><Icon Name="check" Size="18" /><span>Back online.</span></div>
 }
 
 @code {
+    private bool _wasOffline;
+    private bool _backOnline;
+    private CancellationTokenSource? _hide;
+
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
-    protected override void OnInitialized() => Realtime.StatusChanged += OnChanged;
+    /// <summary>How long the "Back online" notice stays (milliseconds); 0 never shows it.</summary>
+    [Parameter] public int BackOnlineMs { get; set; } = 4000;
 
-    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+    protected override void OnInitialized()
+    {
+        _wasOffline = Realtime.Status is WebConnectionStatus.Reconnecting or WebConnectionStatus.Disconnected;
+        Realtime.StatusChanged += OnChanged;
+    }
 
-    public void Dispose() => Realtime.StatusChanged -= OnChanged;
+    private void OnChanged()
+    {
+        var offline = Realtime.Status is WebConnectionStatus.Reconnecting or WebConnectionStatus.Disconnected;
+        if (_wasOffline && Realtime.Status == WebConnectionStatus.Connected && BackOnlineMs > 0)
+        {
+            _backOnline = true;
+            _hide?.Cancel();
+            var cts = _hide = new CancellationTokenSource();
+            _ = Task.Delay(BackOnlineMs, cts.Token).ContinueWith(t =>
+            {
+                if (!t.IsCanceled)
+                {
+                    _backOnline = false;
+                    _ = InvokeAsync(StateHasChanged);
+                }
+            }, TaskScheduler.Default);
+        }
+        else if (offline)
+        {
+            _backOnline = false;
+        }
+
+        _wasOffline = offline;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        _hide?.Cancel();
+        Realtime.StatusChanged -= OnChanged;
+    }
 }

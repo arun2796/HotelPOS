@@ -42,6 +42,8 @@ else
         <div class="banner info">Unsent items from earlier were restored.</div>
     }
 
+    <SearchBox Id="menu-search" @bind-Value="SearchText" Placeholder="Search dishes (name or code)" AriaLabel="Search items" />
+
     @* While searching, the results span every category, so no chip is shown as selected. *@
     <div class="chip-row">
         @if (Favourites.Items(_menu).Count > 0)
@@ -50,145 +52,81 @@ else
         }
         @foreach (var category in _menu.Categories.OrderBy(c => c.SortOrder))
         {
-            <button class="chip-btn @(ChipOn(category.Id) ? "on" : null)" @onclick="() => SelectCategory(category.Id)">@category.Name</button>
+            var c = category;
+            <button class="chip-btn @(ChipOn(c.Id) ? "on" : null)" @onclick="() => SelectCategory(c.Id)">@c.Name</button>
         }
     </div>
-
-    <input id="menu-search" class="input" type="search" placeholder="Search name or code" aria-label="Search items" autocomplete="off"
-           style="margin:6px 0" @bind="SearchText" @bind:event="oninput" />
 
     <div class="items">
         @foreach (var item in VisibleItems())
         {
-            <div class="item-wrap">
-            <button class="item-card" disabled="@(!item.IsAvailable)" @onclick="() => Pick(item)">
-                <div class="item-img">
-                    @if (!string.IsNullOrEmpty(item.ImageUrl))
-                    {
-                        <img src="@Host.ImageUrl(item.ImageUrl)" alt="" loading="lazy" />
-                    }
-                    else
-                    {
-                        <span class="ph">🍽</span>
-                    }
-                    @if (!item.IsAvailable)
-                    {
-                        <span class="chip danger sold">SOLD OUT</span>
-                    }
-                </div>
-                <div class="item-body">
-                    <div class="item-name">@item.Name</div>
-                    <div class="row between"><span class="price">@item.Price.ToString("N2")</span>@if (item.ModifierGroupIds.Count > 0) { <span class="muted small">+ options</span> }</div>
-                </div>
-            </button>
-            <button type="button" class="item-star" aria-label="@PinLabel(item)" aria-pressed="@(Favourites.IsPinned(item.Id) ? "true" : "false")"
-                    @onclick="() => TogglePinAsync(item)">@(Favourites.IsPinned(item.Id) ? "★" : "☆")</button>
-            </div>
+            var i = item;
+            <MenuItemCard Item="i" ImageUrl="@Host.ImageUrl(i.ImageUrl)" Pinned="@Favourites.IsPinned(i.Id)" OnPick="() => Pick(i)" OnTogglePin="() => TogglePinAsync(i)" />
         }
     </div>
+    @if (!VisibleItems().Any())
+    {
+        <EmptyState Small="true" Icon="search" Text="@(IsSearching ? "No dish matches that." : "Nothing in this category.")" />
+    }
 
-    <div class="cart @(_cartCollapsed ? "collapsed" : null)">
-        <div class="row between">
-            <button type="button" class="cart-toggle" aria-expanded="@((!_cartCollapsed).ToString().ToLowerInvariant())" aria-controls="cart-lines"
-                    disabled="@_cart.IsEmpty" @onclick="() => _cartCollapsed = !_cartCollapsed">
-                <h2>Order · @TextFormat.Count(_cart.ItemCount, "item")</h2>
-                @if (!_cart.IsEmpty)
-                {
-                    <span class="muted small" aria-hidden="true">@(_cartCollapsed ? "Show ▴" : "Hide ▾")</span>
-                }
-            </button>
-            @if (!IsAppend)
-            {
-                <Stepper @bind-Value="Guests" Min="FloorLimits.MinGuests" Max="FloorLimits.MaxGuests" Label="Guests" Unit="guest" />
-            }
-        </div>
+    <CartBar Cart="_cart" ImageUrl="LineImage" ShowGuests="@(!IsAppend)" GuestsChanged="g => Guests = g" Busy="_sending"
+             ReviewLabel="@(IsAppend ? "Review added items" : "Review order")" OnReview="() => _review = true" />
+}
+
+@* Review = the confirm-before-send step: every line with its controls, order notes, then one Send button. *@
+@if (_review && _menu is not null)
+{
+    <BottomSheet Open="true" Title="@(IsAppend ? "Added items" : $"Order · {_tableCode ?? $"table {TableId}"}")" OnClose="() => _review = false">
         @if (_cart.IsEmpty)
         {
-            <div class="muted small" style="padding:8px 0">Tap an item to add it.</div>
+            <EmptyState Small="true" Text="Nothing in the order yet." />
         }
-        else if (!_cartCollapsed)
+        else
         {
-            <div class="cart-lines" id="cart-lines">
-            @foreach (var line in _cart.Lines)
-            {
-                <div class="cart-line">
-                    <div class="grow">
-                        <div>@line.Name</div>
-                        @if (!string.IsNullOrEmpty(line.DetailText))
-                        {
-                            <div class="muted small">@line.DetailText</div>
-                        }
-                    </div>
-                    <span class="num" style="min-width:64px">@line.LineTotal.ToString("N2")</span>
-                    <div class="row">
-                        <button class="btn icon" @onclick="() => Change(() => _cart.Decrease(line))" aria-label="One less">−</button>
-                        <span style="min-width:24px;text-align:center;font-weight:600">@line.Quantity</span>
-                        <button class="btn icon" @onclick="() => Change(() => _cart.Increase(line))" aria-label="One more">+</button>
-                        <button class="btn icon ghost" @onclick="() => OpenNote(line)" aria-label="Note for the kitchen">✎</button>
-                    </div>
-                </div>
-            }
-            </div>
-        }
-        <div class="row between" style="margin-top:8px">
-            <b>approx. @_cart.ApproxTotal.ToString("N2")</b>
-            <div class="row">
-                <button class="btn" @onclick="SaveDraftAndBackAsync" disabled="@_sending">SAVE DRAFT</button>
-                <button class="btn primary lg" @onclick="SendAsync" disabled="@(_sending || _cart.IsEmpty)">@(_sending ? "SENDING…" : IsAppend ? "SEND ADDED ITEMS" : "SEND TO KITCHEN")</button>
-            </div>
-        </div>
-    </div>
-}
-
-@if (_picker is { } picker)
-{
-    <div class="overlay" @onclick="ClosePicker">
-        <div class="sheet" @onclick:stopPropagation="true">
-            <h2>@picker.Item.Name <span class="muted" style="font-weight:400">@picker.Item.Price.ToString("N2")</span></h2>
-            @foreach (var group in picker.Groups)
-            {
-                var selected = picker.Selected[group.Id];
-                <div style="margin:10px 0 4px"><b>@group.Name</b> <span class="muted small">@OrderComposer.GroupRuleText(group)</span></div>
-                <div class="options">
-                    @foreach (var option in group.Options)
-                    {
-                        var on = selected.Contains(option.Id);
-                        <button type="button" class="btn @(on ? "primary" : null)" disabled="@(!on && !OrderComposer.CanSelectMore(group, selected.Count))" @onclick="() => Toggle(group, option)">
-                            @OptionText(option)
-                        </button>
-                    }
-                </div>
-            }
-            <div class="row between" style="margin-top:14px">
-                <Stepper @bind-Value="picker.Quantity" Min="1" Max="OrderLimits.MaxQuantity" />
-                <div class="row">
-                    <button class="btn" @onclick="ClosePicker">Cancel</button>
-                    <button class="btn primary" @onclick="AddFromPicker" disabled="@(!picker.AllSatisfied)">Add to order</button>
-                </div>
-            </div>
-        </div>
-    </div>
-}
-
-@if (_noteLine is { } noteLine)
-{
-    <div class="overlay" @onclick="() => _noteLine = null">
-        <div class="sheet" @onclick:stopPropagation="true">
-            <h2>Note for the kitchen</h2>
-            <div class="muted small" style="margin-bottom:8px">@noteLine.Name</div>
-            <div class="options" style="margin-bottom:8px">
-                @foreach (var quick in OrderComposer.QuickNotes)
+            <div class="cart-lines review-lines" id="cart-lines">
+                @foreach (var line in _cart.Lines)
                 {
-                    <button type="button" class="btn" @onclick="() => AppendQuickNote(quick)">@quick</button>
+                    var l = line;
+                    <CartLineRow Line="l" ImageUrl="@LineImage(l)" OnIncrease="() => Change(() => _cart.Increase(l))" OnDecrease="() => Change(() => _cart.Decrease(l))"
+                                 OnEdit="() => EditLine(l)" OnDelete="() => Change(() => _cart.Remove(l))" />
                 }
             </div>
-            <textarea class="input" @bind="_noteText" maxlength="@OrderLimits.NotesMaxLength" placeholder="e.g. less oil"></textarea>
-            <div class="actions">
-                <button class="btn" @onclick="() => _noteLine = null">Cancel</button>
-                <button class="btn primary" @onclick="SaveNote">Save note</button>
+        }
+        <button type="button" class="btn block review-add" @onclick="() => _review = false"><Icon Name="plus" /> Add more items</button>
+
+        @if (!IsAppend)
+        {
+            <div class="review-row">
+                <span>Guests</span>
+                <Stepper Value="_cart.Guests" ValueChanged="g => Guests = g" Min="FloorLimits.MinGuests" Max="FloorLimits.MaxGuests" Label="Guests" Unit="guest" />
+            </div>
+            <label class="field review-notes">
+                <span>Order notes <span class="muted">(for the kitchen)</span></span>
+                <textarea class="input" data-testid="order-notes" value="@_cart.Notes" @onchange="e => Change(() => _cart.Notes = e.Value?.ToString())"
+                          maxlength="@OrderLimits.NotesMaxLength" placeholder="e.g. no onion for the whole order"></textarea>
+            </label>
+        }
+
+        <div class="review-foot">
+            <div class="cart-total-wrap">
+                <span class="muted small">approx. total</span>
+                <b class="cart-total num-tab">@_cart.ApproxTotal.ToString("N2")</b>
+            </div>
+            <div class="row">
+                <button type="button" class="btn" data-testid="save-draft" @onclick="SaveDraftAndBackAsync" disabled="@_sending">Save draft</button>
+                <button type="button" class="btn primary lg" data-testid="send" @onclick="SendAsync" disabled="@(_sending || _cart.IsEmpty)">
+                    <Icon Name="send" /> @(_sending ? "Sending…" : IsAppend ? "Send added items" : "Send to kitchen")
+                </button>
             </div>
         </div>
-    </div>
+    </BottomSheet>
+}
+
+@if (_options is { } options)
+{
+    <ItemOptionsSheet Item="options.Item" Groups="options.Groups" InitialOptionIds="options.Line?.ModifierOptionIds" InitialQuantity="options.Line?.Quantity ?? 1"
+                      InitialNotes="@options.Line?.Notes" ConfirmLabel="@(options.Line is null ? "Add to order" : "Save changes")"
+                      OnConfirm="r => ConfirmOptions(options, r)" OnClose="() => _options = null" />
 }
 
 @code {
@@ -198,16 +136,14 @@ else
     private readonly OrderComposer _cart = new();
     private MenuDto? _menu;
     private string? _error;
+    private string? _tableCode;
     private int _categoryId;
     private bool _restoredDraft;
     private bool _sending;
+    private bool _review;
     private Guid? _pendingKey;
-    private PickerState? _picker;
-    private CartLine? _noteLine;
-    private string _noteText = string.Empty;
+    private OptionsRequest? _options;
     private IDisposable? _menuSubscription;
-
-    private bool _cartCollapsed;
 
     private string SearchText { get; set; } = string.Empty;
 
@@ -232,7 +168,7 @@ else
                 ? Favourites.Items(_menu!)
                 : _menu!.Items.Where(i => i.CategoryId == _categoryId).OrderBy(i => i.SortOrder);
 
-    private string PinLabel(MenuEntryDto item) => (Favourites.IsPinned(item.Id) ? "Unpin " : "Pin ") + item.Name;
+    private string? LineImage(CartLine line) => Host.ImageUrl(_menu?.Items.FirstOrDefault(i => i.Id == line.MenuItemId)?.ImageUrl);
 
     private async Task TogglePinAsync(MenuEntryDto item)
     {
@@ -246,12 +182,19 @@ else
     private int Guests
     {
         get => _cart.Guests;
-        set { _cart.Guests = value; _ = PersistAsync(); }
+        set { _cart.Guests = value; SetTitle(); _ = PersistAsync(); }
+    }
+
+    private void SetTitle()
+    {
+        var what = IsAppend ? "Add items" : "New order";
+        var title = _tableCode is null ? what : $"{_tableCode} · {what}";
+        Shell.Set(title, IsAppend ? null : TextFormat.Count(_cart.Guests, "guest"), $"tables/{TableId}");
     }
 
     protected override async Task OnInitializedAsync()
     {
-        Shell.Set(IsAppend ? "Add items" : "New order");
+        SetTitle();
         await Realtime.StartAsync();
         _menuSubscription = Realtime.Subscribe<MenuChangedEvent>(HubEvents.MenuChanged, changed => { Api.InvalidateMenu(); _ = InvokeAsync(LoadAsync); });
 
@@ -263,15 +206,18 @@ else
             _pendingKey = draft.PendingKey;
             _restoredDraft = !_cart.IsEmpty;
         }
-        else if (!IsAppend)
+
+        var table = await Api.GetTableAsync(TableId);
+        if (table.Success && table.Data is { } detail)
         {
-            var table = await Api.GetTableAsync(TableId);
-            if (table.Success && table.Data?.Table.GuestCount is { } guests)
+            _tableCode = detail.Table.Code;
+            if (!IsAppend && draft is null && detail.Table.GuestCount is { } guests)
             {
                 _cart.Guests = guests;
             }
         }
 
+        SetTitle();
         await LoadAsync();
     }
 
@@ -301,7 +247,7 @@ else
 
     private void Pick(MenuEntryDto item)
     {
-        var groups = _menu!.ModifierGroups.Where(g => item.ModifierGroupIds.Contains(g.Id)).ToList();
+        var groups = GroupsFor(item);
         if (groups.Count == 0)
         {
             Change(() => _cart.Add(item, Array.Empty<MenuModifierOptionDto>(), 1, null));
@@ -309,53 +255,45 @@ else
             return;
         }
 
-        _picker = new PickerState(item, groups);
+        _options = new OptionsRequest(item, groups, null);
     }
 
-    private void Toggle(MenuModifierGroupDto group, MenuModifierOptionDto option)
+    private List<MenuModifierGroupDto> GroupsFor(MenuEntryDto item) =>
+        _menu!.ModifierGroups.Where(g => item.ModifierGroupIds.Contains(g.Id)).ToList();
+
+    // Editing a line reopens the same sheet with its options, quantity and note filled in. An item the menu no longer
+    // lists keeps its options and only quantity and note can change.
+    private void EditLine(CartLine line)
     {
-        var selected = _picker!.Selected[group.Id];
-        if (!selected.Remove(option.Id))
+        var item = _menu!.Items.FirstOrDefault(i => i.Id == line.MenuItemId)
+                   ?? new MenuEntryDto { Id = line.MenuItemId, Name = line.Name, Price = line.UnitPrice, IsAvailable = true };
+        _options = new OptionsRequest(item, GroupsFor(item), line);
+    }
+
+    private void ConfirmOptions(OptionsRequest request, ItemOptionsResult result)
+    {
+        _options = null;
+        if (request.Line is not { } line)
         {
-            if (group.MaxSelections == 1)
-            {
-                selected.Clear();
-            }
-
-            if (OrderComposer.CanSelectMore(group, selected.Count))
-            {
-                selected.Add(option.Id);
-            }
+            Change(() => _cart.Add(request.Item, result.Options, result.Quantity, result.Notes));
+            Toasts.Success($"{request.Item.Name} added.");
+            return;
         }
-    }
 
-    private void AddFromPicker()
-    {
-        var picker = _picker!;
-        var options = picker.Groups.SelectMany(g => g.Options.Where(o => picker.Selected[g.Id].Contains(o.Id))).ToList();
-        Change(() => _cart.Add(picker.Item, options, picker.Quantity, null));
-        _picker = null;
-        Toasts.Success($"{picker.Item.Name} added.");
-    }
-
-    private void ClosePicker() => _picker = null;
-
-    private static string OptionText(MenuModifierOptionDto option) =>
-        option.PriceDelta == 0 ? option.Name : $"{option.Name} {(option.PriceDelta > 0 ? "+" : string.Empty)}{option.PriceDelta:N0}";
-
-    private void OpenNote(CartLine line)
-    {
-        _noteLine = line;
-        _noteText = line.Notes ?? string.Empty;
-    }
-
-    private void AppendQuickNote(string quick) =>
-        _noteText = string.IsNullOrEmpty(_noteText) ? quick : $"{_noteText}, {quick}";
-
-    private void SaveNote()
-    {
-        Change(() => _cart.SetNotes(_noteLine!, _noteText));
-        _noteLine = null;
+        var sameOptions = request.Groups.Count == 0 || result.Options.Select(o => o.Id).OrderBy(i => i).SequenceEqual(line.ModifierOptionIds.OrderBy(i => i));
+        Change(() =>
+        {
+            if (sameOptions)
+            {
+                _cart.SetQuantity(line, result.Quantity);
+                _cart.SetNotes(line, result.Notes);
+            }
+            else
+            {
+                _cart.Remove(line);
+                _cart.Add(request.Item, result.Options, result.Quantity, result.Notes);
+            }
+        });
     }
 
     private void Change(Action action)
@@ -391,15 +329,18 @@ else
                 {
                     TableId = TableId,
                     GuestCount = _cart.Guests,
+                    Notes = _cart.Notes,
                     Items = _cart.ToInputs(),
                     Submit = true,
                 }, k, ct));
 
             if (result.Success && result.Data is { } order)
             {
+                // Only now: the server confirmed the order exists exactly once.
                 _pendingKey = null;
                 await Favourites.RecordOrderedAsync(_cart.Lines.Select(l => l.MenuItemId));
                 _cart.Clear();
+                _review = false;
                 await Drafts.RemoveAsync(TableId);
                 Toasts.Success(IsAppend ? $"Added items sent for order #{order.OrderNumber}." : $"Order #{order.OrderNumber} sent to the kitchen.");
                 Navigation.NavigateTo($"tables/{TableId}");
@@ -439,23 +380,6 @@ else
 
     public void Dispose() => _menuSubscription?.Dispose();
 
-    private sealed class PickerState
-    {
-        public PickerState(MenuEntryDto item, IReadOnlyList<MenuModifierGroupDto> groups)
-        {
-            Item = item;
-            Groups = groups;
-            Selected = groups.ToDictionary(g => g.Id, _ => new HashSet<int>());
-        }
-
-        public MenuEntryDto Item { get; }
-
-        public IReadOnlyList<MenuModifierGroupDto> Groups { get; }
-
-        public Dictionary<int, HashSet<int>> Selected { get; }
-
-        public int Quantity { get; set; } = 1;
-
-        public bool AllSatisfied => OrderComposer.AllGroupsSatisfied(Groups, g => Selected[g.Id].Count);
-    }
+    /// <summary>What the options sheet is open for: a new pick (Line null) or an existing cart line being edited.</summary>
+    private sealed record OptionsRequest(MenuEntryDto Item, IReadOnlyList<MenuModifierGroupDto> Groups, CartLine? Line);
 }

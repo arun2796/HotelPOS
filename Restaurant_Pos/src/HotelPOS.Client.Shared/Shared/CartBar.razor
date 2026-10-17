@@ -1,0 +1,65 @@
+@* Phase 21 W4: the sticky cart summary under the menu: count, guests, thumbnails of what is in the cart, approximate total
+   and one button that opens the review sheet (the confirm-before-send step). *@
+@using HotelPOS.Contracts.Floor
+
+<div class="cart cart-bar" data-testid="cart-bar">
+    <div class="row between">
+        <h2>Order · @TextFormat.Count(Cart.ItemCount, "item")</h2>
+        @if (ShowGuests)
+        {
+            <Stepper Value="Cart.Guests" ValueChanged="GuestsChanged" Min="FloorLimits.MinGuests" Max="FloorLimits.MaxGuests" Label="Guests" Unit="guest" />
+        }
+    </div>
+    @if (Cart.IsEmpty)
+    {
+        <div class="muted small cart-hint">Tap an item to add it.</div>
+    }
+    else
+    {
+        <div class="cart-thumbs" aria-hidden="true">
+            @foreach (var line in Cart.Lines.Take(MaxThumbs))
+            {
+                <span class="thumb">
+                    @if (ImageUrl?.Invoke(line) is { } url)
+                    {
+                        <img src="@url" alt="" loading="lazy" />
+                    }
+                    else
+                    {
+                        <span class="thumb-initials">@TextFormat.Initials(line.Name)</span>
+                    }
+                    <span class="thumb-qty">@line.Quantity</span>
+                </span>
+            }
+            @if (Cart.Lines.Count > MaxThumbs)
+            {
+                <span class="thumb more">+@(Cart.Lines.Count - MaxThumbs)</span>
+            }
+        </div>
+    }
+    <div class="cart-bar-foot">
+        <div class="cart-total-wrap">
+            <span class="muted small">approx.</span>
+            <b class="cart-total num-tab">@Cart.ApproxTotal.ToString("N2")</b>
+        </div>
+        <button type="button" class="btn primary lg" data-testid="cart-review" disabled="@(Cart.IsEmpty || Busy)" @onclick="OnReview"><Icon Name="receipt" /> @ReviewLabel</button>
+    </div>
+</div>
+
+@code {
+    private const int MaxThumbs = 4;
+
+    [Parameter, EditorRequired] public OrderComposer Cart { get; set; } = new();
+
+    [Parameter] public Func<CartLine, string?>? ImageUrl { get; set; }
+
+    [Parameter] public bool ShowGuests { get; set; } = true;
+
+    [Parameter] public EventCallback<int> GuestsChanged { get; set; }
+
+    [Parameter] public string ReviewLabel { get; set; } = "Review order";
+
+    [Parameter] public bool Busy { get; set; }
+
+    [Parameter] public EventCallback OnReview { get; set; }
+}

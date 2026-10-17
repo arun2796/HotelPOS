@@ -1,3 +1,5 @@
+@* Notifications received on this device (NotificationCenter), newest first. Phase 21 W7: line icons per kind and tone
+   colours instead of glyphs; the same list serves the bell drop-down and the More sheet. *@
 @using HotelPOS.Contracts.Realtime
 @implements IDisposable
 @inject NotificationCenter Center
@@ -6,17 +8,21 @@
 <div class="notice-panel card" role="dialog" aria-labelledby="notice-title">
     <div class="notice-head">
         <b id="notice-title">Notifications</b>
+        @if (Center.UnreadCount > 0)
+        {
+            <span class="tab-count" data-testid="notice-unread">@Center.UnreadCount</span>
+        }
         <span class="spacer"></span>
         @if (Center.UnreadCount > 0)
         {
             <button class="btn ghost" type="button" @onclick="Center.MarkAllRead">Mark all read</button>
         }
-        <button class="btn ghost" type="button" aria-label="Close notifications" @onclick="OnClose"><span aria-hidden="true">✕</span></button>
+        <button class="btn icon ghost" type="button" aria-label="Close notifications" @onclick="OnClose"><Icon Name="x" /></button>
     </div>
 
     @if (Center.Items.Count == 0)
     {
-        <p class="muted small">No notifications.</p>
+        <EmptyState Small="true" Icon="bell" Text="No notifications on this device yet." />
     }
     else
     {
@@ -26,10 +32,14 @@
                 var entry = item;
                 <li class="notice @LevelCss(entry) @(entry.IsRead ? "read" : "unread")" data-testid="notice">
                     <button class="notice-main" type="button" @onclick="() => OpenAsync(entry)">
-                        <span class="notice-ico" aria-hidden="true">@Glyph(entry.Kind)</span>
+                        <span class="notice-ico @LevelCss(entry)"><Icon Name="@NotificationIcons.For(entry.Kind)" Size="18" /></span>
                         <span class="notice-text">
-                            <span class="notice-msg">@entry.Message</span>
-                            <span class="muted small">@entry.Level · @entry.ReceivedAt.ToString("HH:mm")</span>
+                            <span class="notice-msg">@entry.Title</span>
+                            @if (!string.IsNullOrWhiteSpace(entry.Body))
+                            {
+                                <span class="muted small">@entry.Body</span>
+                            }
+                            <span class="muted small num-tab">@entry.ReceivedAt.ToString("HH:mm")</span>
                         </span>
                     </button>
                     @if (!entry.IsAcknowledged)
@@ -59,20 +69,6 @@
     }
 
     private static string LevelCss(NotificationEntry entry) => entry.Level.ToString().ToLowerInvariant();
-
-    private static string Glyph(NotificationKind kind) => kind switch
-    {
-        NotificationKind.TicketCreated => "🧾",
-        NotificationKind.OrderAccepted => "✔",
-        NotificationKind.OrderPreparing or NotificationKind.TicketDelayed => "⏱",
-        NotificationKind.OrderReady => "🍽",
-        NotificationKind.BillRequested or NotificationKind.BillClaimed => "🧾",
-        NotificationKind.PaymentCompleted or NotificationKind.PaymentFailed => "₹",
-        NotificationKind.DeviceOnline or NotificationKind.DeviceOffline => "🖥",
-        NotificationKind.PrintFailed => "🖨",
-        NotificationKind.DayEndWarning or NotificationKind.PeriodChanged => "📅",
-        _ => "ℹ",
-    };
 
     private void OnChanged() => _ = InvokeAsync(StateHasChanged);
 

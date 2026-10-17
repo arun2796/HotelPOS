@@ -112,8 +112,15 @@ public sealed class NotificationPreferenceTests : TestContext
         Services.AddSingleton<IBrowserStorage>(_storage);
         Services.AddSingleton<NotificationPreferences>();
         Services.AddSingleton<ShellState>();
+        // Phase 21 W7: the page also shows the profile, theme toggle and DeviceStatusCard.
+        Services.AddSingleton<IClientHost>(new FakeClientHost());
+        Services.AddSingleton<WebRealtimeClient>();
+        Services.AddSingleton<DeviceIdentity>();
+        JSInterop.Mode = JSRuntimeMode.Loose;
 
         var page = RenderComponent<Settings>();
+        page.Find("[data-testid=settings-profile]").TextContent.Should().Contain("Kitchen");
+        page.Find("[data-testid=device-name]").TextContent.Should().StartWith("WEB-KITCHEN-");
 
         page.WaitForAssertion(() => page.FindAll("[data-kind]").Should().HaveCount(NotificationPreferenceDefaults.AllKinds.Count));
         page.Find("[data-testid=sound-TicketCreated]").HasAttribute("checked").Should().BeTrue();

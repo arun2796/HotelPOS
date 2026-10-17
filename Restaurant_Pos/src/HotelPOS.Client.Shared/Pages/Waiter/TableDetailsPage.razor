@@ -1,7 +1,9 @@
 @page "/tables/{Id:int}"
+@page "/orders/{OrderId:int}"
 @attribute [Authorize]
 @implements IDisposable
 @using HotelPOS.Contracts.Floor
+@using HotelPOS.Contracts.Kitchen
 @using HotelPOS.Contracts.Orders
 @using HotelPOS.Contracts.Realtime
 @inject WebAuthState Auth
@@ -12,13 +14,15 @@
 @inject ShellState Shell
 @inject ToastService Toasts
 @inject NavigationManager Navigation
+@inject IClientHost Host
 
-<PageTitle>Table · HotelPOS</PageTitle>
+<PageTitle>@(_order is { } o ? $"Order #{o.OrderNumber}" : "Table") · HotelPOS</PageTitle>
+
+<OfflineBanner>Offline — this page may be out of date until the connection is back.</OfflineBanner>
 
 @if (_error is not null)
 {
-    <div class="banner error">@_error</div>
-    <button class="btn block" @onclick="LoadAsync">Retry</button>
+    <ErrorState Message="@_error" OnRetry="LoadAsync" />
 }
 else if (_detail is null)
 {
@@ -27,123 +31,182 @@ else if (_detail is null)
 else
 {
     var table = _detail.Table;
-    <div class="card">
+    <div class="card detail-card">
         <div class="row between">
-            <div>
-                <h1>@table.Code <span class="muted" style="font-weight:400;font-size:15px">@table.Name</span></h1>
-                <div class="muted small">@table.SectionName · @table.Capacity seats</div>
+            <div class="grow">
+                <h1 class="detail-title">@(_order is { } head ? $"Order #{head.OrderNumber}" : table.Code)</h1>
+                <div class="muted small">@table.Code@(string.IsNullOrEmpty(table.Name) ? null : $" {table.Name}") · @table.SectionName · @TextFormat.Count(table.Capacity, "seat")</div>
             </div>
-            <span class="chip st-chip-@StatusLabels.TableClass(table.Status)">@StatusLabels.Table(table.Status)</span>
+            @if (_order is { } status)
+            {
+                <span class="order-status @StatusLabels.OrderChip(status.Status)" data-testid="order-status"><StatusBadge Display="StatusPresentation.For(status.Status)" /></span>
+            }
+            else
+            {
+                <StatusBadge Display="StatusPresentation.For(table.Status)" />
+            }
         </div>
         @if (table.GuestCount is { } guests)
         {
-            <div class="muted" style="margin-top:6px">@TextFormat.Count(guests, "guest")@(table.OccupiedAtUtc is { } since ? $" · since {since.ToLocalTime():HH:mm}" : null)</div>
+            <div class="muted detail-guests">@TextFormat.Count(guests, "guest")@(table.OccupiedAtUtc is { } since ? $" · since {since.ToLocalTime():HH:mm}" : null)</div>
         }
     </div>
 
-    @if (table.Status == TableStatus.Available && CanOperateTables)
+    @if (table.Status == TableStatus.Available && CanOperateTables && OrderId is null)
     {
         <div class="card" style="margin-top:10px">
             <h2>Seat guests</h2>
             <div class="row between" style="margin-top:8px">
                 <Stepper @bind-Value="_guests" Min="FloorLimits.MinGuests" Max="FloorLimits.MaxGuests" Label="Guests" Unit="guest" />
-                <button class="btn primary lg" @onclick="OccupyAsync" disabled="@_busy">OCCUPY</button>
+                <button class="btn primary lg" data-action="occupy" @onclick="OccupyAsync" disabled="@_busy">Occupy</button>
             </div>
         </div>
     }
 
     @if (_order is { } order)
     {
-        <div class="card" style="margin-top:10px">
-            <div class="row between">
-                <h2>Order #@order.OrderNumber</h2>
-                <span class="chip @StatusLabels.OrderChip(order.Status)" data-testid="order-status">@StatusLabels.Order(order.Status)</span>
-            </div>
-            <div class="muted small">@order.WaiterName · @TextFormat.Count(order.GuestCount, "guest") · approx. @order.ApproxSubtotal.ToString("N2")</div>
-            <div class="stack" style="margin-top:10px">
-                @foreach (var item in order.Items)
+        <Tabs Items="DetailTabs" Selected="@_tab" SelectedChanged="SelectTabAsync" />
+
+        @if (_tab == DetailsTab)
+        {
+            <dl class="detail-list" data-testid="order-details">
+                <div><dt>Table</dt><dd>@order.TableCode</dd></div>
+                <div><dt>Guests</dt><dd>@TextFormat.Count(order.GuestCount, "guest")</dd></div>
+                <div><dt>Waiter</dt><dd>@order.WaiterName</dd></div>
+                <div><dt>Ordered at</dt><dd class="num-tab">@((order.SubmittedAtUtc ?? order.CreatedAtUtc).ToLocalTime().ToString("HH:mm, d MMM yyyy"))</dd></div>
+                <div><dt>Items</dt><dd>@TextFormat.Count(order.Items.Count(i => i.Status != OrderItemStatus.Cancelled), "item")</dd></div>
+                <div class="total"><dt>Approx. total</dt><dd class="num-tab">@order.ApproxSubtotal.ToString("N2")</dd></div>
+                @if (!string.IsNullOrWhiteSpace(order.Notes))
                 {
-                    <div class="row between @(item.Status == OrderItemStatus.Cancelled ? "cancelled" : null)">
-                        <div class="grow">
-                            <div>@item.Quantity × @item.ItemName</div>
-                            @if (item.Modifiers.Count > 0 || !string.IsNullOrEmpty(item.Notes))
-                            {
-                                <div class="muted small">@string.Join(", ", item.Modifiers.Select(m => m.Name))@(string.IsNullOrEmpty(item.Notes) ? null : $" · “{item.Notes}”")</div>
-                            }
-                        </div>
-                        <span class="chip @(item.TicketStatus is { } ticket && item.Status != OrderItemStatus.Cancelled ? StatusLabels.TicketChip(ticket) : null)">@(item.TicketStatus is { } status && item.Status != OrderItemStatus.Cancelled ? StatusLabels.Ticket(status) : StatusLabels.Line(item.Status))</span>
-                        <span class="num" style="min-width:72px">@item.LineTotal.ToString("N2")</span>
-                    </div>
+                    <div class="notes"><dt>Order notes</dt><dd data-testid="order-notes-text"><Icon Name="pencil" Size="14" /> @order.Notes</dd></div>
                 }
-            </div>
+                @if (order.Status == OrderStatus.Cancelled && !string.IsNullOrWhiteSpace(order.CancelReason))
+                {
+                    <div><dt>Cancelled</dt><dd>@order.CancelReason</dd></div>
+                }
+            </dl>
             @if (order.Bill is not null)
             {
                 <div class="banner info" style="margin:10px 0 0">Bill requested — the counter has it.</div>
             }
-        </div>
+        }
+        else if (_tab == ItemsTab)
+        {
+            <div class="detail-items" data-testid="order-items">
+                @foreach (var item in order.Items)
+                {
+                    var line = item;
+                    var cancelled = line.Status == OrderItemStatus.Cancelled;
+                    <div class="detail-item">
+                        <OrderLine Name="@line.ItemName" Quantity="line.Quantity" Modifiers="@string.Join(", ", line.Modifiers.Select(m => m.Name))" Note="@line.Notes"
+                                   Price="line.LineTotal" Cancelled="cancelled" ImageUrl="@ItemImage(line)" />
+                        <div class="detail-item-foot">
+                            <span class="chip @(line.TicketStatus is { } ticket && !cancelled ? StatusLabels.TicketChip(ticket) : null)">@(line.TicketStatus is { } ts && !cancelled ? StatusLabels.Ticket(ts) : StatusLabels.Line(line.Status))</span>
+                            @if (CanCancelLine(line))
+                            {
+                                <button type="button" class="btn ghost danger-text" data-testid="cancel-line" aria-label="@($"Cancel {line.ItemName}")" @onclick="() => { _cancelLine = line; _cancelLineReason = string.Empty; }" disabled="@_busy"><Icon Name="x" Size="18" /> Cancel line</button>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="detail-timeline" data-testid="order-timeline">
+                <OrderTimeline Status="order.Status" ReceivedAtUtc="order.SubmittedAtUtc ?? order.CreatedAtUtc" PreparingAtUtc="_stages.PreparingAtUtc" ReadyAtUtc="_stages.ReadyAtUtc" ServedAtUtc="_stages.ServedAtUtc" />
+                @if (_ticketsLoading)
+                {
+                    <Skeleton Count="3" Label="Loading kitchen times" />
+                }
+                else
+                {
+                    @if (_ticketsNote is not null)
+                    {
+                        <p class="muted small" data-testid="timeline-note">@_ticketsNote</p>
+                    }
+                    <ol class="event-list" data-testid="order-events">
+                        @foreach (var e in Events(order))
+                        {
+                            <li class="event @e.Tone"><span class="event-time num-tab">@e.AtUtc.ToLocalTime().ToString("HH:mm")</span><span class="event-dot"></span><span class="event-text">@e.Text</span></li>
+                        }
+                    </ol>
+                }
+            </div>
+        }
     }
 
-    <div class="stack" style="margin-top:12px">
-        @if (ShowNewOrder)
-        {
-            <button class="btn primary block lg" @onclick="NewOrder">@(_hasDraft ? "RESUME ORDER" : "NEW ORDER")</button>
-        }
-        @if (ShowAddItems)
-        {
-            <button class="btn primary block lg" @onclick="AddItems">ADD ITEMS</button>
-        }
-        @if (ShowServe)
-        {
-            <button class="btn block lg" @onclick="ServeAsync" disabled="@_busy">SERVED</button>
-        }
-        @if (ShowRequestBill)
-        {
-            <button class="btn block lg" @onclick="RequestBillAsync" disabled="@_busy">REQUEST BILL</button>
-        }
-        @if (ShowRelease)
-        {
-            <button class="btn block" @onclick="() => _confirmRelease = true" disabled="@_busy">RELEASE TABLE</button>
-        }
-        @if (ShowCancelOrder)
-        {
-            @* Outlined and set apart: a destructive action must not look like the next step after ADD ITEMS. *@
-            <button class="btn block danger-outline" style="margin-top:20px" @onclick="() => _cancelOpen = true" disabled="@_busy">CANCEL ORDER</button>
-        }
-        <a class="btn block ghost" href="tables">Back to the tables</a>
-    </div>
+    @if (Actions.Count > 0)
+    {
+        <h2 class="section-head">Actions</h2>
+        <ActionList Items="Actions" Busy="_busy" OnAction="RunActionAsync" />
+    }
+    <a class="btn block ghost" style="margin-top:12px" href="@BackHref">@(OrderId is null ? "Back to the tables" : "Back to my orders")</a>
 }
 
 @if (_confirmRelease)
 {
-    <div class="overlay" @onclick="() => _confirmRelease = false">
-        <div class="sheet" @onclick:stopPropagation="true">
-            <h2>Release @_detail?.Table.Code?</h2>
-            <p class="muted">The table becomes available again.</p>
-            <div class="actions">
-                <button class="btn" @onclick="() => _confirmRelease = false">Cancel</button>
-                <button class="btn primary" @onclick="ReleaseAsync" disabled="@_busy">Release</button>
-            </div>
+    <BottomSheet Open="true" Title="@($"Release {_detail?.Table.Code}?")" OnClose="() => _confirmRelease = false">
+        <p class="muted">The table becomes available again.</p>
+        <div class="actions">
+            <button class="btn" @onclick="() => _confirmRelease = false">Keep</button>
+            <button class="btn primary" data-testid="confirm-release" @onclick="ReleaseAsync" disabled="@_busy">Release</button>
         </div>
-    </div>
+    </BottomSheet>
 }
 
 @if (_cancelOpen)
 {
-    <div class="overlay" @onclick="() => _cancelOpen = false">
-        <div class="sheet" @onclick:stopPropagation="true">
-            <h2>Cancel order #@_order?.OrderNumber</h2>
-            <label class="field"><span>Reason (required once the kitchen has started)</span>
-                <textarea class="input" @bind="_cancelReason" maxlength="@OrderLimits.ReasonMaxLength"></textarea></label>
-            <div class="actions">
-                <button class="btn" @onclick="() => _cancelOpen = false">Keep order</button>
-                <button class="btn danger" @onclick="CancelOrderAsync" disabled="@_busy">Cancel order</button>
-            </div>
+    <BottomSheet Open="true" Title="@($"Cancel order #{_order?.OrderNumber}")" OnClose="() => _cancelOpen = false">
+        <label class="field"><span>Reason (required once the kitchen has started)</span>
+            <textarea class="input" data-testid="cancel-reason" @bind="_cancelReason" maxlength="@OrderLimits.ReasonMaxLength"></textarea></label>
+        <div class="actions">
+            <button class="btn" @onclick="() => _cancelOpen = false">Keep order</button>
+            <button class="btn danger" data-testid="confirm-cancel" @onclick="CancelOrderAsync" disabled="@_busy">Cancel order</button>
         </div>
-    </div>
+    </BottomSheet>
+}
+
+@if (_cancelLine is { } cancelLine)
+{
+    <BottomSheet Open="true" Title="@($"Cancel {cancelLine.Quantity} × {cancelLine.ItemName}?")" OnClose="() => _cancelLine = null">
+        <label class="field"><span>Reason (required once the kitchen has started)</span>
+            <textarea class="input" data-testid="cancel-line-reason" @bind="_cancelLineReason" maxlength="@OrderLimits.ReasonMaxLength"></textarea></label>
+        <div class="actions">
+            <button class="btn" @onclick="() => _cancelLine = null">Keep line</button>
+            <button class="btn danger" data-testid="confirm-cancel-line" @onclick="CancelLineAsync" disabled="@_busy">Cancel line</button>
+        </div>
+    </BottomSheet>
+}
+
+@if (_editOpen && _order is { } editing)
+{
+    <BottomSheet Open="true" Title="@($"Edit order #{editing.OrderNumber}")" OnClose="() => _editOpen = false">
+        <div class="review-row">
+            <span>Guests</span>
+            <Stepper @bind-Value="_editGuests" Min="FloorLimits.MinGuests" Max="FloorLimits.MaxGuests" Label="Guests" Unit="guest" />
+        </div>
+        <label class="field review-notes">
+            <span>Order notes <span class="muted">(for the kitchen)</span></span>
+            <textarea class="input" data-testid="edit-notes" @bind="_editNotes" maxlength="@OrderLimits.NotesMaxLength" placeholder="e.g. no onion for the whole order"></textarea>
+        </label>
+        <p class="muted small">To change the dishes, use Add items or cancel a line under Items.</p>
+        <div class="actions">
+            <button class="btn" @onclick="() => _editOpen = false">Cancel</button>
+            <button class="btn primary" data-testid="edit-save" @onclick="SaveEditAsync" disabled="@_busy">Save</button>
+        </div>
+    </BottomSheet>
 }
 
 @code {
+    private const string DetailsTab = "details";
+    private const string ItemsTab = "items";
+    private const string TimelineTab = "timeline";
+
     [Parameter] public int Id { get; set; }
+
+    /// <summary>Set by the orders/{id} route (a finished order from My orders); the table is then read from the order.</summary>
+    [Parameter] public int? OrderId { get; set; }
 
     private TableDetailDto? _detail;
     private OrderDetailDto? _order;
@@ -152,24 +215,64 @@ else
     private bool _hasDraft;
     private bool _confirmRelease;
     private bool _cancelOpen;
+    private bool _editOpen;
     private string _cancelReason = string.Empty;
+    private OrderItemDto? _cancelLine;
+    private string _cancelLineReason = string.Empty;
+    private int _editGuests = 1;
+    private string _editNotes = string.Empty;
     private int _guests = 2;
+    private string _tab = DetailsTab;
     private readonly List<IDisposable> _subscriptions = new();
+
+    // Kitchen ticket stage times (Timeline tab): read from GET api/kitchen/orders/{ticketId}, which the Waiter role may call.
+    private List<KitchenTicketDto> _tickets = new();
+    private bool _ticketsLoading;
+    private string? _ticketsNote;
+    private (DateTime? PreparingAtUtc, DateTime? ReadyAtUtc, DateTime? ServedAtUtc) _stages;
 
     private bool CanTakeOrders => Auth.Has(Permissions.OrdersCreate);
     private bool CanOperateTables => Auth.Has(Permissions.TablesOperate);
 
-    // The same visibility rules as the desktop TableDetailsViewModel.
-    private bool ShowNewOrder => CanTakeOrders && _detail is { Table: { CurrentOrderId: null } t } && t.Status is TableStatus.Available or TableStatus.Occupied;
+    private string BackHref => OrderId is null ? "tables" : "my-orders";
+
+    private IReadOnlyList<TabItem> DetailTabs => new[]
+    {
+        new TabItem(DetailsTab, "Details"),
+        new TabItem(ItemsTab, "Items", _order?.Items.Count(i => i.Status != OrderItemStatus.Cancelled)),
+        new TabItem(TimelineTab, "Timeline"),
+    };
+
+    // The same visibility rules as the desktop TableDetailsViewModel; Edit follows the PUT policy (OrdersCreate) and CanModify.
+    private bool ShowNewOrder => OrderId is null && CanTakeOrders && _detail is { Table: { CurrentOrderId: null } t } && t.Status is TableStatus.Available or TableStatus.Occupied;
     private bool ShowAddItems => CanTakeOrders && _order is { CanModify: true, Status: not OrderStatus.Draft };
+    private bool ShowEdit => CanTakeOrders && _order is { CanModify: true, Status: not OrderStatus.Draft };
     private bool ShowServe => CanTakeOrders && _order is { } o && o.Tickets.Any(t => t.Status == KitchenOrderStatus.Ready);
     private bool ShowRequestBill => _order is { Bill: null, Status: OrderStatus.Served or OrderStatus.Ready };
-    private bool ShowRelease => CanOperateTables && _detail is { Table: { Status: TableStatus.Occupied, CurrentOrderId: null } };
+    private bool ShowRelease => OrderId is null && CanOperateTables && _detail is { Table: { Status: TableStatus.Occupied, CurrentOrderId: null } };
     private bool ShowCancelOrder => CanTakeOrders && _order is { CanModify: true };
+    private bool CanCancelLine(OrderItemDto item) => CanTakeOrders && _order is { CanModify: true } && item.Status != OrderItemStatus.Cancelled;
+
+    /// <summary>Only the actions valid now, destructive last (no Hold, no Print KOT: D9).</summary>
+    private IReadOnlyList<ActionItem> Actions
+    {
+        get
+        {
+            var list = new List<ActionItem>();
+            if (ShowNewOrder) { list.Add(new ActionItem("new-order", _hasDraft ? "Resume order" : "New order", "plus", ActionStyle.Primary)); }
+            if (ShowAddItems) { list.Add(new ActionItem("add-items", "Add items", "plus", ActionStyle.Primary)); }
+            if (ShowEdit) { list.Add(new ActionItem("edit", "Edit order", "pencil")); }
+            if (ShowServe) { list.Add(new ActionItem("serve", "Mark served", "utensils")); }
+            if (ShowRequestBill) { list.Add(new ActionItem("request-bill", "Request bill", "receipt")); }
+            if (ShowRelease) { list.Add(new ActionItem("release", "Release table", "table")); }
+            if (ShowCancelOrder) { list.Add(new ActionItem("cancel", "Cancel order", "ban", ActionStyle.Danger)); }
+            return list;
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
-        Shell.Set("Table", null);
+        Shell.Set("Table", null, BackHref);
         await Realtime.StartAsync();
         foreach (var name in new[] { HubEvents.TableStatusChanged, HubEvents.OrderUpdated, HubEvents.OrderCancelled, HubEvents.KitchenTicketUpdated,
                                      HubEvents.OrderReady, HubEvents.OrderAccepted, HubEvents.OrderPreparing, HubEvents.OrderServed, HubEvents.BillUpdated, HubEvents.PaymentCompleted })
@@ -184,7 +287,23 @@ else
 
     private async Task LoadAsync()
     {
-        var result = await Api.GetTableAsync(Id);
+        var tableId = Id;
+        OrderDetailDto? order = null;
+        if (OrderId is { } orderId)
+        {
+            var byId = await Api.GetOrderAsync(orderId);
+            if (!byId.Success || byId.Data is null)
+            {
+                _error = byId.Message;
+                await InvokeAsync(StateHasChanged);
+                return;
+            }
+
+            order = byId.Data;
+            tableId = order.TableId;
+        }
+
+        var result = await Api.GetTableAsync(tableId);
         if (!result.Success || result.Data is null)
         {
             _error = result.Message;
@@ -194,19 +313,125 @@ else
 
         _detail = result.Data;
         _error = null;
-        Shell.Set(_detail.Table.Code, _detail.Table.SectionName);
-        _hasDraft = await Drafts.LoadAsync(Id) is not null;
-        if (_detail.Table.CurrentOrderId is { } orderId)
+        _hasDraft = OrderId is null && await Drafts.LoadAsync(tableId) is not null;
+        if (order is null && _detail.Table.CurrentOrderId is { } currentId)
         {
-            var order = await Api.GetOrderAsync(orderId);
-            _order = order.Success ? order.Data : null;
+            var current = await Api.GetOrderAsync(currentId);
+            order = current.Success ? current.Data : null;
         }
-        else
+
+        if (_order?.Id != order?.Id)
         {
-            _order = null;
+            _tickets.Clear();
+            _ticketsNote = null;
+            _stages = default;
+        }
+
+        _order = order;
+        Shell.Set(_order is { } o ? $"Order #{o.OrderNumber}" : _detail.Table.Code,
+            _detail.Table.GuestCount is { } g ? $"{_detail.Table.Code} · {TextFormat.Count(g, "guest")}" : _detail.Table.SectionName, BackHref);
+        if (_tab == TimelineTab && _order is not null)
+        {
+            await LoadTicketsAsync();
         }
 
         await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SelectTabAsync(string tab)
+    {
+        _tab = tab;
+        if (tab == TimelineTab && _order is not null && _tickets.Count == 0)
+        {
+            await LoadTicketsAsync();
+        }
+    }
+
+    private async Task LoadTicketsAsync()
+    {
+        if (_order is not { } order)
+        {
+            return;
+        }
+
+        _ticketsLoading = _tickets.Count == 0;
+        await InvokeAsync(StateHasChanged);
+        var tickets = new List<KitchenTicketDto>();
+        var failed = false;
+        foreach (var ticket in order.Tickets)
+        {
+            var result = await Api.GetTicketAsync(ticket.Id);
+            if (result.Success && result.Data is { } dto)
+            {
+                tickets.Add(dto);
+            }
+            else
+            {
+                failed = true;
+            }
+        }
+
+        _tickets = tickets;
+        _ticketsNote = failed ? "Kitchen stage times are unavailable — showing the order's own times." : null;
+        var active = tickets.Where(t => t.Status != KitchenOrderStatus.Cancelled).ToList();
+        _stages = (
+            active.Where(t => t.StartedAtUtc is not null).Min(t => t.StartedAtUtc),
+            active.Count > 0 && active.All(t => t.ReadyAtUtc is not null) ? active.Max(t => t.ReadyAtUtc) : null,
+            active.Count > 0 && active.All(t => t.CompletedAtUtc is not null) ? active.Max(t => t.CompletedAtUtc) : null);
+        _ticketsLoading = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private sealed record TimelineEvent(DateTime AtUtc, string Text, string Tone);
+
+    private IEnumerable<TimelineEvent> Events(OrderDetailDto order)
+    {
+        var events = new List<TimelineEvent> { new(order.CreatedAtUtc, "Order created", "done") };
+        if (order.SubmittedAtUtc is { } sent) { events.Add(new(sent, "Sent to kitchen", "done")); }
+        foreach (var t in _tickets)
+        {
+            var station = string.IsNullOrEmpty(t.StationCode) ? "Kitchen" : t.StationCode;
+            if (t.AcceptedAtUtc is { } a) { events.Add(new(a, $"{station} accepted ticket {t.TicketNumber}", "done")); }
+            if (t.StartedAtUtc is { } s) { events.Add(new(s, $"{station} preparing", "warning")); }
+            if (t.ReadyAtUtc is { } r) { events.Add(new(r, $"{station} ready", "success")); }
+            if (t.CompletedAtUtc is { } c) { events.Add(new(c, $"{station} served", "done")); }
+            if (t.CancelledAtUtc is { } x) { events.Add(new(x, $"Ticket {t.TicketNumber} cancelled", "danger")); }
+        }
+
+        if (order.CancelledAtUtc is { } cancelled) { events.Add(new(cancelled, string.IsNullOrWhiteSpace(order.CancelReason) ? "Order cancelled" : $"Order cancelled — {order.CancelReason}", "danger")); }
+        return events.OrderBy(e => e.AtUtc);
+    }
+
+    private string? ItemImage(OrderItemDto item) => Host.ImageUrl(Api.CachedMenu?.Items.FirstOrDefault(i => i.Id == item.MenuItemId)?.ImageUrl);
+
+    private Task RunActionAsync(string key)
+    {
+        switch (key)
+        {
+            case "new-order":
+                Navigation.NavigateTo($"tables/{Id}/order");
+                break;
+            case "add-items":
+                Navigation.NavigateTo($"tables/{_order!.TableId}/order/{_order!.Id}/add");
+                break;
+            case "edit":
+                _editGuests = _order!.GuestCount;
+                _editNotes = _order.Notes ?? string.Empty;
+                _editOpen = true;
+                break;
+            case "serve":
+                return ServeAsync();
+            case "request-bill":
+                return RequestBillAsync();
+            case "release":
+                _confirmRelease = true;
+                break;
+            case "cancel":
+                _cancelOpen = true;
+                break;
+        }
+
+        return Task.CompletedTask;
     }
 
     private async Task OccupyAsync()
@@ -257,9 +482,37 @@ else
         });
     }
 
-    private void NewOrder() => Navigation.NavigateTo($"tables/{Id}/order");
+    private async Task CancelLineAsync()
+    {
+        var line = _cancelLine!;
+        _cancelLine = null;
+        await RunAsync(async () =>
+        {
+            var result = await Api.CancelItemAsync(_order!.Id, line.Id, OrderComposer.TrimNotes(_cancelLineReason));
+            return (result.Success, result.Message, result.Success ? $"{line.ItemName} cancelled." : null, result.IsConflict);
+        });
+    }
 
-    private void AddItems() => Navigation.NavigateTo($"tables/{Id}/order/{_order!.Id}/add");
+    // The order's current RowVersion travels with the edit, so a change made on another device comes back as a conflict.
+    private async Task SaveEditAsync()
+    {
+        var order = _order!;
+        await RunAsync(async () =>
+        {
+            var result = await Api.UpdateOrderAsync(order.Id, new UpdateOrderRequest
+            {
+                GuestCount = _editGuests,
+                Notes = OrderComposer.TrimNotes(_editNotes),
+                RowVersion = order.RowVersion,
+            });
+            if (result.Success)
+            {
+                _editOpen = false;
+            }
+
+            return (result.Success, result.Message, result.Success ? "Order updated." : null, result.IsConflict);
+        });
+    }
 
     private async Task RunAsync(Func<Task<(bool Ok, string Message, string? Success, bool Conflict)>> action)
     {

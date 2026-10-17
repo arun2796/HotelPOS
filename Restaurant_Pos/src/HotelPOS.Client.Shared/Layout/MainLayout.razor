@@ -9,7 +9,14 @@
 
 <div class="shell @(Mode == ShellMode.Kitchen ? "kitchen" : "waiter")">
     <header class="topbar">
-        <span class="brand" aria-hidden="true"><Icon Name="utensils" Size="22" /><b class="brand-name">HotelPOS</b></span>
+        @if (Mode == ShellMode.Waiter && Shell.BackHref is { } back)
+        {
+            <a class="btn icon ghost topbar-back" href="@back" aria-label="Back" data-testid="back"><Icon Name="chevron-left" Size="24" /></a>
+        }
+        else
+        {
+            <span class="brand" aria-hidden="true"><Icon Name="utensils" Size="22" /><b class="brand-name">HotelPOS</b></span>
+        }
         <div class="title">
             <span class="title-main">@Shell.Title</span>
             @if (!string.IsNullOrEmpty(Shell.Subtitle))
@@ -104,9 +111,12 @@
         return on ? "page" : null;
     }
 
+    private void OnMoreRequested() => _ = InvokeAsync(() => { _more = true; StateHasChanged(); });
+
     protected override async Task OnInitializedAsync()
     {
         Shell.Changed += StateHasChanged;
+        Shell.MoreRequested += OnMoreRequested;
         _clock = new Timer(_ => _ = InvokeAsync(() => { _now = DateTime.Now; StateHasChanged(); }), null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
         await Notifications.StartAsync();
     }
@@ -125,6 +135,7 @@
     {
         _clock?.Dispose();
         Shell.Changed -= StateHasChanged;
+        Shell.MoreRequested -= OnMoreRequested;
         Notifications.Stop();
     }
 }
