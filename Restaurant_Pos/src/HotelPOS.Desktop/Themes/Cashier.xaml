@@ -109,27 +109,47 @@
     </Setter>
   </Style>
 
-  <!-- Bill card content (C2 refines it). -->
+  <!-- Bill card: table + order number, status badge, waiter and wait time, what is due; "Held by" when another counter has it. -->
   <DataTemplate x:Key="Cashier.BillCard" DataType="{x:Type billing:BillQueueItemViewModel}">
-    <StackPanel>
+    <Grid>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+      </Grid.RowDefinitions>
       <Grid>
-        <StackPanel Orientation="Horizontal">
-          <TextBlock Text="{Binding TableCode}" Style="{StaticResource Text.Subtitle}" />
-          <TextBlock Text="{Binding OrderText}" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="8,0,0,0" TextTrimming="CharacterEllipsis" />
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <TextBlock Text="{Binding TableCode}" Style="{StaticResource Text.Subtitle}" VerticalAlignment="Center" />
+        <TextBlock Grid.Column="1" Text="{Binding OrderNumberText}" Style="{StaticResource Text.Body}" Foreground="{DynamicResource Brush.TextSecondary}"
+                   VerticalAlignment="Center" Margin="8,0,8,0" TextTrimming="CharacterEllipsis" />
+        <controls:StatusBadge Grid.Column="2" Display="{Binding Display}" />
+      </Grid>
+      <Grid Grid.Row="1" Margin="0,4,0,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <TextBlock Text="{Binding WaiterName}" Style="{StaticResource Text.Caption}" TextTrimming="CharacterEllipsis" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="8,0,0,0">
+          <controls:Icon Kind="clock" Width="12" Height="12" Foreground="{DynamicResource Brush.TextSecondary}" VerticalAlignment="Center" />
+          <TextBlock Text="{Binding WaitingText}" Style="{StaticResource Text.Caption}" Margin="4,0,0,0" />
         </StackPanel>
-        <Border Style="{StaticResource Chip.Info}" HorizontalAlignment="Right">
-          <TextBlock Text="{Binding StatusText}" />
+      </Grid>
+      <Grid Grid.Row="2" Margin="0,6,0,0">
+        <TextBlock Text="{Binding DueText}" FontSize="{DynamicResource Font.Size.Amount}" FontWeight="SemiBold" Typography.NumeralAlignment="Tabular" />
+        <Border Style="{StaticResource Chip.Warning}" HorizontalAlignment="Right" VerticalAlignment="Center"
+                Visibility="{Binding IsClaimedByOther, Converter={StaticResource BoolToVisibility}}">
+          <StackPanel Orientation="Horizontal">
+            <controls:Icon Kind="lock" Width="11" Height="11" VerticalAlignment="Center" Margin="0,0,4,0" />
+            <TextBlock Text="{Binding ClaimBadge, StringFormat='Held by {0}'}" />
+          </StackPanel>
         </Border>
       </Grid>
-      <Grid Margin="0,8,0,0">
-        <TextBlock Text="{Binding TotalText}" FontSize="{DynamicResource Font.Size.Amount}" FontWeight="SemiBold" Typography.NumeralAlignment="Tabular" />
-        <TextBlock Text="{Binding WaitingText}" Style="{StaticResource Text.Caption}" HorizontalAlignment="Right" VerticalAlignment="Center" />
-      </Grid>
-      <Border Style="{StaticResource Chip.Warning}" HorizontalAlignment="Left" Margin="0,6,0,0"
-              Visibility="{Binding IsClaimedByOther, Converter={StaticResource BoolToVisibility}}">
-        <TextBlock Text="{Binding ClaimBadge, StringFormat='Held by {0}'}" />
-      </Border>
-    </StackPanel>
+    </Grid>
   </DataTemplate>
 
   <!-- ============================ Shared rows ============================ -->
@@ -153,23 +173,45 @@
           <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- Header -->
+        <!-- Header: title, then pills (status, invoice, guests, waiter, requested time). -->
         <Grid Margin="20,16,20,0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
           <StackPanel>
             <StackPanel Orientation="Horizontal">
               <TextBlock Text="{Binding Title}" Style="{StaticResource Text.Title}" VerticalAlignment="Center" />
-              <Border Style="{StaticResource Chip.Info}" Margin="10,0,0,0">
-                <TextBlock Text="{Binding StatusText}" />
-              </Border>
+              <controls:StatusBadge Display="{Binding Display}" Margin="12,0,0,0" VerticalAlignment="Center" />
             </StackPanel>
-            <TextBlock Text="{Binding Subtitle}" Style="{StaticResource Text.Caption}" Margin="0,2,0,0" />
+            <WrapPanel Margin="0,8,0,0">
+              <Border Style="{StaticResource Chip.Neutral}" Margin="0,0,6,4">
+                <TextBlock Text="{Binding InvoiceTitle}" />
+              </Border>
+              <Border Style="{StaticResource Chip.Neutral}" Margin="0,0,6,4">
+                <StackPanel Orientation="Horizontal">
+                  <controls:Icon Kind="users" Width="11" Height="11" VerticalAlignment="Center" Margin="0,0,4,0" />
+                  <TextBlock Text="{Binding GuestsText}" />
+                </StackPanel>
+              </Border>
+              <Border Style="{StaticResource Chip.Neutral}" Margin="0,0,6,4">
+                <StackPanel Orientation="Horizontal">
+                  <controls:Icon Kind="user" Width="11" Height="11" VerticalAlignment="Center" Margin="0,0,4,0" />
+                  <TextBlock Text="{Binding WaiterText}" />
+                </StackPanel>
+              </Border>
+              <Border Style="{StaticResource Chip.Neutral}" Margin="0,0,6,4">
+                <StackPanel Orientation="Horizontal">
+                  <controls:Icon Kind="clock" Width="11" Height="11" VerticalAlignment="Center" Margin="0,0,4,0" />
+                  <TextBlock Text="{Binding RequestedText}" />
+                </StackPanel>
+              </Border>
+            </WrapPanel>
           </StackPanel>
-          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
-            <TextBlock Text="{Binding InvoiceTitle}" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,10,0" />
-            <Button Command="{Binding BackCommand}" Style="{StaticResource Button.Ghost}" ToolTip="Back to the queue (Esc)" AutomationProperties.Name="Back to the queue">
-              <controls:Icon Kind="x" Width="18" Height="18" />
-            </Button>
-          </StackPanel>
+          <Button Grid.Column="1" Command="{Binding BackCommand}" Style="{StaticResource Button.Ghost}" VerticalAlignment="Top" Margin="8,0,0,0"
+                  ToolTip="Back to the queue (Esc)" AutomationProperties.Name="Back to the queue">
+            <controls:Icon Kind="x" Width="18" Height="18" />
+          </Button>
         </Grid>
 
         <!-- Notices -->
@@ -185,32 +227,29 @@
                                Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibility}}" />
         </StackPanel>
 
-        <!-- Lines -->
+        <!-- Lines (OrderLine: picture or initials, options, note) and the order-notes banner -->
         <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" PanningMode="VerticalOnly" Margin="0,8,0,0">
-          <ItemsControl ItemsSource="{Binding Lines}" Focusable="False" Margin="20,0,20,8">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate DataType="{x:Type billing:BillLineRow}">
-                <Border BorderBrush="{DynamicResource Brush.BorderSubtle}" BorderThickness="0,0,0,1" Padding="0,8">
-                  <Grid>
-                    <Grid.ColumnDefinitions>
-                      <ColumnDefinition Width="*" />
-                      <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel>
-                      <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" TextWrapping="Wrap">
-                        <Run Text="{Binding Quantity, Mode=OneWay}" />
-                        <Run Text="×" />
-                        <Run Text="{Binding Name, Mode=OneWay}" />
-                      </TextBlock>
-                      <TextBlock Text="{Binding Detail}" Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
-                                 Visibility="{Binding HasDetail, Converter={StaticResource BoolToVisibility}}" />
-                    </StackPanel>
-                    <TextBlock Grid.Column="1" Text="{Binding Total}" Style="{StaticResource Text.Numeric}" FontWeight="SemiBold" Margin="12,0,0,0" />
-                  </Grid>
-                </Border>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
+          <StackPanel Margin="20,0,20,8">
+            <ItemsControl ItemsSource="{Binding Lines}" Focusable="False">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="{x:Type billing:BillLineRow}">
+                  <Border BorderBrush="{DynamicResource Brush.BorderSubtle}" BorderThickness="0,0,0,1">
+                    <controls:OrderLine Quantity="{Binding QuantityValue}" ItemName="{Binding Name}" Modifiers="{Binding Modifiers}" Note="{Binding Note}"
+                                        PriceText="{Binding Total}" Image="{Binding ImageFile, Converter={StaticResource ImageFile}}" ImageSize="48" />
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Border Style="{StaticResource Banner.Warning}" Margin="0,12,0,0" Visibility="{Binding HasOrderNotes, Converter={StaticResource BoolToVisibility}}">
+              <StackPanel Orientation="Horizontal">
+                <controls:Icon Kind="info" Width="18" Height="18" VerticalAlignment="Top" Margin="0,1,10,0" Foreground="{DynamicResource Brush.WarningText}" />
+                <StackPanel>
+                  <TextBlock Text="Order notes" FontWeight="SemiBold" Foreground="{DynamicResource Brush.WarningText}" />
+                  <TextBlock Text="{Binding OrderNotes}" Style="{StaticResource Text.Body}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+          </StackPanel>
         </ScrollViewer>
 
         <!-- Totals -->

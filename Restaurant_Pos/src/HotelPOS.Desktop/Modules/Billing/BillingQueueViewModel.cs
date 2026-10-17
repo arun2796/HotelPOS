@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 using HotelPOS.Contracts.Billing;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Enums;
+using HotelPOS.Contracts.Presentation;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
@@ -38,6 +39,26 @@ public sealed partial class BillQueueItemViewModel : ObservableObject
     public string StatusText => Bill.Status == BillStatus.Finalized
         ? Bill.PaidAmount > 0 ? $"Part paid · {Money.Format(Bill.GrandTotal - Bill.PaidAmount)} due" : $"Invoice {Bill.InvoiceNumber}"
         : "Waiting";
+
+    // Phase 21.3 card: badge, "#1019", waiter, what is still due (the total until something is paid).
+    public StatusDisplay Display => DisplayFor(Bill.Status, Bill.PaidAmount);
+
+    public string OrderNumberText => $"#{Bill.OrderNumber}";
+
+    public string WaiterName => Bill.WaiterName;
+
+    public string DueText => Bill.Status is BillStatus.Settled or BillStatus.Voided || Bill.PaidAmount <= 0
+        ? Money.Format(Bill.GrandTotal)
+        : $"{Money.Format(Bill.GrandTotal - Bill.PaidAmount)} due";
+
+    /// <summary>The queue's words for a bill: Waiting (open) · Invoiced · Partly paid · Paid · Voided; tones from the shared status map.</summary>
+    public static StatusDisplay DisplayFor(BillStatus status, decimal paidAmount) => status switch
+    {
+        BillStatus.Open => new StatusDisplay("Waiting", StatusTone.Info, "clock"),
+        BillStatus.Finalized when paidAmount > 0 => new StatusDisplay("Partly paid", StatusTone.Warning, "clock"),
+        BillStatus.Finalized => new StatusDisplay("Invoiced", StatusTone.Warning, "receipt"),
+        _ => StatusPresentation.For(status),
+    };
 
     public string? ClaimBadge => Bill.ClaimedByDevice ?? Bill.ClaimedByUser;
 

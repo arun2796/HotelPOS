@@ -8,9 +8,10 @@
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance billing:CashierWorkspaceViewModel}"
              d:DesignWidth="1300" d:DesignHeight="720"
-             Focusable="True" Loaded="OnLoaded">
+             Focusable="True" Loaded="OnLoaded" SizeChanged="OnSizeChanged">
 
-  <!-- Phase 21.3: queue 400 px · bill · payment 340 px. Below 1440 px the shell collapses the sidebar so the three panes fit at 1366. -->
+  <!-- Phase 21.3: queue 400 px · bill · payment 340 px. Below 1440 px the shell collapses the sidebar so the three panes fit at
+       1366; should the page still be narrower than 1180 px (sidebar expanded by hand) the queue drops to 340 px, never a horizontal scroll. -->
   <UserControl.InputBindings>
     <KeyBinding Key="F2" Command="{Binding Detail.PayCashCommand}" />
     <KeyBinding Key="F3" Command="{Binding Detail.PayCardCommand}" />
@@ -21,9 +22,9 @@
 
   <Grid Margin="16,12,16,12">
     <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="400" />
+      <ColumnDefinition x:Name="QueueColumn" Width="400" />
       <ColumnDefinition Width="16" />
-      <ColumnDefinition Width="*" MinWidth="420" />
+      <ColumnDefinition x:Name="BillColumn" Width="*" MinWidth="420" />
       <ColumnDefinition Width="16" />
       <ColumnDefinition Width="340" />
     </Grid.ColumnDefinitions>

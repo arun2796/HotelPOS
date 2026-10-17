@@ -836,6 +836,7 @@ public class ScreenRenderingTests
             OrderItemDto Item(int id, int batch, string name, decimal price, int quantity, string? notes = null, params string[] modifiers) => new()
             {
                 Id = id,
+                MenuItemId = id,
                 BatchNumber = batch,
                 ItemName = name,
                 UnitPrice = price,
@@ -856,6 +857,7 @@ public class ScreenRenderingTests
                 WaiterId = 7,
                 WaiterName = "Arun (Waiter)",
                 GuestCount = 4,
+                Notes = "Birthday table: bring the dessert with a candle.",
                 Status = OrderStatus.Preparing,
                 CanModify = true,
                 Items = new[]
@@ -980,6 +982,7 @@ public class ScreenRenderingTests
             BillItemDto Item(int id, string name, int quantity, decimal price, decimal extras = 0m) => new()
             {
                 Id = id,
+                OrderItemId = id,
                 ItemName = name,
                 Quantity = quantity,
                 UnitPrice = price,

@@ -9,6 +9,7 @@ using HotelPOS.Contracts.Customers;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Gst;
 using HotelPOS.Contracts.Orders;
+using HotelPOS.Contracts.Presentation;
 using HotelPOS.Contracts.Print;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Contracts.Security;
@@ -16,6 +17,7 @@ using HotelPOS.Desktop.Modules.Cash;
 using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Auth;
+using HotelPOS.Desktop.Services.Menu;
 using HotelPOS.Desktop.Services.Navigation;
 using HotelPOS.Desktop.Services.Printing;
 using HotelPOS.Desktop.Services.Realtime;
@@ -33,7 +35,10 @@ public enum BillPanel
     Done,
 }
 
-public sealed record BillLineRow(string Name, string Quantity, string Price, string Total, string? Detail)
+// Detail is the one-line summary ("Spicy, Extra raita (+30.00 each) · Note: less oil"); the workspace's OrderLine shows
+// Modifiers and Note apart, with the item's picture from the menu cache (initials when it has none).
+public sealed record BillLineRow(string Name, string Quantity, string Price, string Total, string? Detail,
+    int QuantityValue = 1, string Modifiers = "", string Note = "", string? ImageFile = null)
 {
     public bool HasDetail => !string.IsNullOrEmpty(Detail);
 }
@@ -56,10 +61,12 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
     private readonly ICustomersApi? _customers;
     private readonly IOrdersApi? _orders;
     private readonly INotificationRouter? _router;
+    private readonly IMenuCache? _menuCache;
     // The bill lines carry only the modifier amount; the chosen options and the note come from the order (keyed by
-    // order item id), reloaded when the bill points at a different order.
+    // order item id), reloaded when the bill points at a different order. Pictures are joined by menu item id.
     private int _orderItemsOf;
     private Dictionary<int, OrderItemDto> _orderItems = new();
+    private readonly Dictionary<int, string?> _imageFiles = new();
     private CustomerDto? _picked;
     private bool _settingSearch;
     private CancellationTokenSource? _searchPause;
@@ -81,11 +88,13 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
         ICashDrawer? cashDrawer = null,
         ICustomersApi? customers = null,
         IOrdersApi? orders = null,
-        INotificationRouter? router = null)
+        INotificationRouter? router = null,
+        IMenuCache? menuCache = null)
     {
         _customers = customers;
         _orders = orders;
         _router = router;
+        _menuCache = menuCache;
         _printer = printer;
         _cashDrawer = cashDrawer;
         _billingApi = billingApi;
@@ -103,8 +112,24 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
         nameof(DiscountText), nameof(TaxRows), nameof(HasRoundOff), nameof(RoundOffText), nameof(GrandTotalText), nameof(HasPayments),
         nameof(PaymentRows), nameof(PaidText), nameof(BalanceText), nameof(IsHeldByOther), nameof(HeldByText), nameof(CanEdit), nameof(CanPay),
         nameof(CanFinalize), nameof(FinalizeText), nameof(CanReopen), nameof(CanVoid), nameof(CanTakeOver), nameof(CustomerText), nameof(CanClearCustomer), nameof(StatusText),
-        nameof(InvoiceTitle))]
+        nameof(InvoiceTitle), nameof(Display), nameof(GuestsText), nameof(WaiterText), nameof(RequestedText))]
     private BillDetailDto? _bill;
+
+    // Phase 21.3 header pills.
+    public StatusDisplay Display => Bill is null ? default : BillQueueItemViewModel.DisplayFor(Bill.Status, Bill.PaidAmount);
+
+    public string GuestsText => Bill is null ? string.Empty : Plural.Count(Bill.GuestCount, "guest");
+
+    public string WaiterText => Bill?.WaiterName ?? string.Empty;
+
+    public string RequestedText => Bill is null ? string.Empty : "Requested " + Bill.RequestedAtUtc.ToLocalTime().ToString("HH:mm", CultureInfo.CurrentCulture);
+
+    /// <summary>The waiter's note for the whole order (from the order, loaded with the options and line notes).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasOrderNotes))]
+    private string _orderNotes = string.Empty;
+
+    public bool HasOrderNotes => OrderNotes.Length > 0;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsPanelOpen), nameof(IsOverlayOpen), nameof(IsDiscountPanel), nameof(IsCustomerPanel), nameof(IsPaymentPanel), nameof(IsPreviewPanel), nameof(IsDonePanel))]
@@ -355,7 +380,33 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
         i.Quantity.ToString(CultureInfo.CurrentCulture),
         Money.Format(i.UnitPrice + i.ModifiersAmount),
         Money.Format(i.LineSubtotal),
-        LineDetail(i))).ToList() ?? new List<BillLineRow>();
+        LineDetail(i),
+        i.Quantity,
+        LineModifiers(i),
+        _orderItems.TryGetValue(i.OrderItemId, out var ordered) ? ordered.Notes?.Trim() ?? string.Empty : string.Empty,
+        ordered is not null && _imageFiles.TryGetValue(ordered.MenuItemId, out var file) ? file : null)).ToList() ?? new List<BillLineRow>();
+
+    // "Spicy, Extra raita (+30.00 each) · 280.00 each": the chosen options, then the unit price when there is more than one.
+    private string LineModifiers(BillItemDto item)
+    {
+        var parts = new List<string>();
+        if (_orderItems.TryGetValue(item.OrderItemId, out var ordered) && ordered.Modifiers.Count > 0)
+        {
+            var extras = item.ModifiersAmount != 0 ? $" (+{Money.Format(item.ModifiersAmount)} each)" : string.Empty;
+            parts.Add(string.Join(", ", ordered.Modifiers.Select(m => m.Name)) + extras);
+        }
+        else if (item.ModifiersAmount != 0)
+        {
+            parts.Add($"incl. extras {Money.Format(item.ModifiersAmount)} each");
+        }
+
+        if (item.Quantity > 1)
+        {
+            parts.Add($"{Money.Format(item.UnitPrice + item.ModifiersAmount)} each");
+        }
+
+        return string.Join(" · ", parts);
+    }
 
     // "Spicy, Extra raita (+30.00 each) · Note: less oil"; falls back to the amount alone when the order is not loaded.
     private string? LineDetail(BillItemDto item)
@@ -398,7 +449,31 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
 
         _orderItemsOf = Bill.OrderId;
         _orderItems = order.Data.Items.ToDictionary(i => i.Id);
+        OrderNotes = order.Data.Notes?.Trim() ?? string.Empty;
         OnPropertyChanged(nameof(Lines));
+        await LoadPicturesAsync(order.Data.Items);
+    }
+
+    // D11: pictures come from the menu cache's existing ImageUrl (downloaded once per item); no picture → initials.
+    private async Task LoadPicturesAsync(IReadOnlyList<OrderItemDto> items)
+    {
+        if (_menuCache?.Menu is not { } menu)
+        {
+            return;
+        }
+
+        var loaded = false;
+        foreach (var menuItemId in items.Select(i => i.MenuItemId).Distinct().Where(id => !_imageFiles.ContainsKey(id)))
+        {
+            var url = menu.Items.FirstOrDefault(m => m.Id == menuItemId)?.ImageUrl;
+            _imageFiles[menuItemId] = url is null ? null : await _menuCache.GetImageFileAsync(url);
+            loaded |= _imageFiles[menuItemId] is not null;
+        }
+
+        if (loaded)
+        {
+            OnPropertyChanged(nameof(Lines));
+        }
     }
 
     public string SubtotalText => Money.Format(Bill?.Subtotal ?? 0);
