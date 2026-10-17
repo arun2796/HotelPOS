@@ -15,4 +15,76 @@
     <Setter Property="ImageSize" Value="36" />
     <Setter Property="Padding" Value="0,8" />
   </Style>
+
+  <!-- ============================ Dashboard (A2–A6) ============================ -->
+  <!-- A dashboard panel: the Card with the 16 px gutter to its right and below, so rows of panels line up with the KPI strip. -->
+  <Style x:Key="Admin.Panel" TargetType="Border" BasedOn="{StaticResource Card}">
+    <Setter Property="Padding" Value="20" />
+    <Setter Property="Margin" Value="0,0,16,16" />
+  </Style>
+
+  <Style x:Key="Admin.PanelTitle" TargetType="TextBlock" BasedOn="{StaticResource Text.Subtitle}" />
+
+  <!-- Small upper-case label over a column inside a panel (STAFF TODAY / TERMINALS). -->
+  <Style x:Key="Admin.ColumnLabel" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="{DynamicResource Font.Size.Caption}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.TextTertiary}" />
+  </Style>
+
+  <!-- KPI card of the admin dashboard: a little taller than the default so the occupancy bar has its own row. -->
+  <Style x:Key="Admin.Kpi" TargetType="controls:KpiTile" BasedOn="{StaticResource {x:Type controls:KpiTile}}">
+    <Setter Property="MinHeight" Value="136" />
+  </Style>
+
+  <!-- Occupancy bar drawn over the bottom of the Occupied tables card (inside its 16 px padding; 16 px gutter right and below). -->
+  <Style x:Key="Admin.OccupancyBar" TargetType="ProgressBar" BasedOn="{StaticResource Chart.ShareBar}">
+    <Setter Property="VerticalAlignment" Value="Bottom" />
+    <Setter Property="Margin" Value="16,0,32,30" />
+    <Setter Property="IsHitTestVisible" Value="False" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Warning}" />
+  </Style>
+
+  <!-- Round initials avatar for a staff row. -->
+  <Style x:Key="Admin.Avatar" TargetType="Border">
+    <Setter Property="Width" Value="32" />
+    <Setter Property="Height" Value="32" />
+    <Setter Property="CornerRadius" Value="16" />
+    <Setter Property="Background" Value="{DynamicResource Brush.PrimarySoft}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Primary}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <!-- Square picture frame for a top item (D11): the picture when the menu has one, initials otherwise. -->
+  <Style x:Key="Admin.Thumbnail" TargetType="Border">
+    <Setter Property="Width" Value="40" />
+    <Setter Property="Height" Value="40" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="ClipToBounds" Value="True" />
+    <Setter Property="Background" Value="{DynamicResource Brush.SurfaceSubtle}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <!-- Activity dot in the row's tone (text alongside carries the meaning; the dot only groups rows by kind). -->
+  <Style x:Key="Admin.ToneDot" TargetType="Ellipse">
+    <Setter Property="Width" Value="10" />
+    <Setter Property="Height" Value="10" />
+    <Setter Property="Margin" Value="0,4,10,0" />
+    <Setter Property="VerticalAlignment" Value="Top" />
+    <Setter Property="Fill" Value="{DynamicResource Brush.Neutral}" />
+    <Style.Triggers>
+      <DataTrigger Binding="{Binding Tone}" Value="Success">
+        <Setter Property="Fill" Value="{DynamicResource Brush.Success}" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Tone}" Value="Warning">
+        <Setter Property="Fill" Value="{DynamicResource Brush.Warning}" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Tone}" Value="Danger">
+        <Setter Property="Fill" Value="{DynamicResource Brush.Danger}" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Tone}" Value="Info">
+        <Setter Property="Fill" Value="{DynamicResource Brush.Info}" />
+      </DataTrigger>
+    </Style.Triggers>
+  </Style>
 </ResourceDictionary>
