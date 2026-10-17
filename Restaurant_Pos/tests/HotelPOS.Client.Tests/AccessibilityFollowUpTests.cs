@@ -138,14 +138,16 @@ public sealed class AccessibilityFollowUpTests : TestContext
         Services.AddSingleton<WaiterApi>();
         Services.AddSingleton<WebRealtimeClient>();
         Services.AddSingleton<ShellState>();
+        Services.AddSingleton<IBrowserStorage>(_storage);
+        Services.AddSingleton<NotificationCenter>();
 
         var page = RenderComponent<HomePage>();
-        page.Find(".skeleton-group").GetAttribute("aria-busy").Should().Be("true");
+        page.WaitForAssertion(() => page.Find(".skeleton-group").GetAttribute("aria-busy").Should().Be("true"));
         page.FindAll(".skeleton").Should().NotBeEmpty();
 
         handler.Gate.SetResult();
         page.WaitForAssertion(() => page.FindAll(".skeleton-group").Should().BeEmpty());
-        page.Markup.Should().Contain("Nothing ready to serve");
+        page.Markup.Should().Contain("No tables with an open order");
         await Services.GetRequiredService<WebRealtimeClient>().StopAsync();
     }
 }

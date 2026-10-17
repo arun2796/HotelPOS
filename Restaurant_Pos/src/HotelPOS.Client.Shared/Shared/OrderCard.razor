@@ -1,0 +1,34 @@
+@* Phase 21 W5: one order on the My orders / Home lists: number, table, StatusBadge, elapsed, items, guests, total and the
+   four-step kitchen progress derived from OrderStatus (OrderTimeline). The list DTO carries no stage times, so the steps
+   show no clock values here; the details page fetches them from the kitchen tickets. *@
+@using HotelPOS.Contracts.Orders
+
+<button type="button" class="card order-card @(Order.Status == OrderStatus.Ready ? "ready" : null)" data-testid="order-card" data-status="@Order.Status" @onclick="OnClick">
+    <div class="order-card-head">
+        <b class="order-card-title">#@Order.OrderNumber · @Order.TableCode</b>
+        @if (!string.IsNullOrEmpty(Elapsed))
+        {
+            <span class="order-card-elapsed muted small num-tab"><Icon Name="clock" Size="14" /> @Elapsed</span>
+        }
+    </div>
+    <span class="order-status @StatusLabels.OrderChip(Order.Status)" data-testid="order-status"><StatusBadge Display="StatusPresentation.For(Order.Status)" /></span>
+    @if (ShowProgress && Order.Status != OrderStatus.Cancelled)
+    {
+        <div class="kitchen-progress" data-testid="kitchen-progress"><OrderTimeline Status="Order.Status" /></div>
+    }
+    <div class="order-card-foot muted small">@TextFormat.Count(Order.ItemCount, "item") · @TextFormat.Count(Order.GuestCount, "guest")@(ShowWaiter && !string.IsNullOrEmpty(Order.WaiterName) ? $" · {Order.WaiterName}" : null)</div>
+    <div class="order-card-total num-tab">approx. @Order.ApproxTotal.ToString("N2")</div>
+</button>
+
+@code {
+    [Parameter, EditorRequired] public OrderSummaryDto Order { get; set; } = new();
+
+    /// <summary>"1 h 55 min" since the order was sent; null hides the clock.</summary>
+    [Parameter] public string? Elapsed { get; set; }
+
+    [Parameter] public bool ShowProgress { get; set; } = true;
+
+    [Parameter] public bool ShowWaiter { get; set; }
+
+    [Parameter] public EventCallback OnClick { get; set; }
+}

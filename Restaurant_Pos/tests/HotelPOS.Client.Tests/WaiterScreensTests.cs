@@ -7,6 +7,7 @@ using HotelPOS.Client.Pages.Waiter;
 using HotelPOS.Client.Services;
 using HotelPOS.Client.Shared;
 using HotelPOS.Client.Tests.Support;
+using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Auth;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Enums;
@@ -169,6 +170,61 @@ public sealed class WaiterScreensTests : TestContext
 
         page.FindAll(".section-head").Should().BeEmpty();
         page.FindAll("[data-testid=table-card] .table-code").Select(c => c.TextContent).Should().Equal("T02", "T11", "T03", "T01");
+        await StopRealtimeAsync();
+    }
+
+    // ---- W3 home -----------------------------------------------------------------------------------------------
+
+    [Fact]
+    public async Task Home_QuickNewOrder_OpensThePickATableSheet_AndTheHeaderGreets()
+    {
+        var handler = new RouteHandler
+        {
+            Respond = r => r.RequestUri!.AbsolutePath switch
+            {
+                "/api/orders/active" => new List<OrderSummaryDto>(),
+                "/api/tables" => Map(),
+                _ => null,
+            },
+        };
+        AddPageServices(await WaiterAsync(), handler);
+        var page = RenderComponent<HomePage>();
+        page.WaitForAssertion(() => page.Find("[data-testid=quick-new-order]").Should().NotBeNull());
+        await Task.Delay(300);
+        Services.GetRequiredService<ShellState>().Title.Should().StartWith("Good ").And.EndWith(", Arun");
+        page.FindAll("[data-testid=quick-actions] .quick-action").Select(b => b.TextContent.Trim()).Should().Equal("New order", "My orders", "Tables");
+
+        await page.InvokeAsync(() => page.Find("[data-testid=quick-new-order]").Click());
+
+        page.WaitForAssertion(() => page.Find("[aria-label='New order — pick a table'] [data-testid=picker-available] .picker-table").TextContent.Should().Contain("T02"));
+        await StopRealtimeAsync();
+    }
+
+    [Fact]
+    public async Task Home_RecentActivity_IsTheBellFeedLastFive_AndViewAllAsksTheShellForTheMoreSheet()
+    {
+        var handler = new RouteHandler { Respond = r => r.RequestUri!.AbsolutePath == "/api/orders/active" ? new List<OrderSummaryDto>() : null };
+        AddPageServices(await WaiterAsync(), handler);
+        var center = Services.GetRequiredService<NotificationCenter>();
+        for (var i = 1; i <= 7; i++)
+        {
+            center.Add(new NotificationDraft(NotificationKind.OrderReady, NoticeLevel.Warning, $"Order {i} ready", "T0" + i, $"k{i}", new NotificationTarget(NotificationTargetType.Table, i.ToString())));
+        }
+
+        var moreRequests = 0;
+        Services.GetRequiredService<ShellState>().MoreRequested += () => moreRequests++;
+        var page = RenderComponent<HomePage>();
+        page.WaitForAssertion(() => page.FindAll("[data-testid=activity] .activity-item").Should().HaveCount(5, "the home shows the last five"));
+        await Task.Delay(300);
+        page.FindAll("[data-testid=activity] .activity-title")[0].TextContent.Should().Be("Order 7 ready", "newest first");
+        page.FindAll("[data-testid=activity] svg[data-icon=utensils]").Should().HaveCount(5, "line icons, not glyphs");
+
+        await page.InvokeAsync(() => page.Find("[data-testid=activity-all]").Click());
+        moreRequests.Should().Be(1);
+
+        await page.InvokeAsync(() => page.FindAll("[data-testid=activity] .activity-main")[0].Click());
+        center.Items[0].IsRead.Should().BeTrue();
+        Services.GetRequiredService<NavigationManager>().Uri.Should().EndWith("tables/7");
         await StopRealtimeAsync();
     }
 }
