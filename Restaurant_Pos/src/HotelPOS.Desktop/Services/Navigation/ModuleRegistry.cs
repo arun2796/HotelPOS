@@ -79,7 +79,7 @@ public static class ModuleRegistry
             "Create sections and tables, capacity and service state.", typeof(FloorViewModel)),
         new(MyOrders, "My Orders", "", "Live Operations", new[] { Roles.Admin, Roles.Manager, Roles.Waiter }, 4,
             "Your active orders, with ready orders highlighted.", typeof(MyOrdersViewModel)),
-        new(Orders, "Orders", "", "Live Operations", Management, 21,
+        new(Orders, "Orders", "", "Live Operations", Management, 21,
             "Every active order in the restaurant: search, filter by status, sort and open the table.", typeof(ActiveOrdersViewModel)),
         new(KitchenDisplay, "Kitchen Display", "", "Live Operations", new[] { Roles.Admin, Roles.Manager, Roles.Kitchen }, 5,
             "New, preparing and ready tickets with large touch buttons.", typeof(KitchenDisplayViewModel)),
@@ -123,7 +123,7 @@ public static class ModuleRegistry
         new(Printers, "Printers", "", "Devices", Management, 7,
             "Kitchen, invoice and receipt printers attached to this terminal.", typeof(PrinterSettingsViewModel)),
         // The Stations tab of the Menu hub, reachable from the Devices group as the prompt lists it (Phase 21 A1).
-        new(Stations, "Kitchen stations", "", "Devices", AdminOnly, 21,
+        new(Stations, "Kitchen stations", "", "Devices", AdminOnly, 21,
             "Preparation stations the kitchen tickets are routed to.", typeof(MenuAdminViewModel), DefaultParameter: MenuAdminViewModel.StationsTab),
 
         new(Settings, "Restaurant Settings", "", "Settings", AdminOnly, 1,

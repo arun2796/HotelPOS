@@ -99,8 +99,23 @@ public sealed partial class ReportsViewModel : ViewModelBase, INavigationAware
 
     public ObservableCollection<string> Totals { get; } = new();
 
+    /// <summary>A report key (ReportKeys.*) as the parameter opens that report (Phase 21 A7 deep link from the dashboard).</summary>
     public async Task OnNavigatedToAsync(object? parameter)
     {
+        if (parameter is string key && Catalogue.FirstOrDefault(r => r.Key == key) is { } report && report != SelectedReport)
+        {
+            // RunAsync below runs the report once; the selection handler must not start a second run.
+            _suppressRun = true;
+            try
+            {
+                SelectedReport = report;
+            }
+            finally
+            {
+                _suppressRun = false;
+            }
+        }
+
         var settings = await _systemApi.GetPublicSettingsAsync();
         if (TimeOnly.TryParseExact(settings.Data?.FirstOrDefault(s => s.Key == SettingKeys.BusinessDayStartTime)?.Value, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var start))
         {
@@ -140,7 +155,15 @@ public sealed partial class ReportsViewModel : ViewModelBase, INavigationAware
         }
     }
 
-    partial void OnSelectedReportChanged(ReportDefinition value) => _ = RunAsync();
+    private bool _suppressRun;
+
+    partial void OnSelectedReportChanged(ReportDefinition value)
+    {
+        if (!_suppressRun)
+        {
+            _ = RunAsync();
+        }
+    }
 
     partial void OnYearChanged(int value) => _ = RunAsync();
 

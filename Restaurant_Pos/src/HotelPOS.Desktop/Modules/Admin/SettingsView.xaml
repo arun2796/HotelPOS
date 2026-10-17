@@ -86,7 +86,7 @@
       <!-- Section navigation: a click scrolls the list to that heading (code-behind), so Notifications at the end is
            one click away instead of a long scroll. -->
       <Border Style="{StaticResource Card}" Padding="8" VerticalAlignment="Top">
-        <ListBox x:Name="SectionNav" ItemsSource="{Binding Sections}" SelectionChanged="OnSectionChosen"
+        <ListBox x:Name="SectionNav" ItemsSource="{Binding Sections}" SelectedItem="{Binding SelectedSection}" SelectionChanged="OnSectionChosen"
                  BorderThickness="0" Background="Transparent" AutomationProperties.Name="Settings sections">
           <ListBox.ItemTemplate>
             <DataTemplate>
