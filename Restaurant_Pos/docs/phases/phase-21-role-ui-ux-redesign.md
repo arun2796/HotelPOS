@@ -1,12 +1,12 @@
 # Phase 21 — Role-based UI/UX redesign (plan)
 
-Status: Planned — audit and plan only, nothing implemented (2026-10-17 on `main` a3f2676) · Depends on: Phases 17–20
+Status: Approved — D1–D11 decided 2026-10-17 (§ 4), implementation not started · Depends on: Phases 17–20
 
 Source: the owner's master prompt (`docs/design/master-prompt-role-ui-ux.md`) and six mock-ups
 (`docs/design/reference/`). Three audits back this plan and hold the detail: `docs/design/design-system-plan.md`,
 `docs/design/audit-web-waiter-kitchen.md`, `docs/design/audit-desktop-cashier-admin.md`. This document is the
-summary, the decisions, and the ordered step list. The owner asked for the plan first; implementation starts only on
-approval of § 4.
+summary, the decisions, and the ordered step list. The owner asked for the plan first and then delegated the § 4
+decisions; implementation can start.
 
 ## 1. Goal
 
@@ -46,23 +46,27 @@ workspace; admin navy shell, regrouped navigation and dashboard widgets; deep li
 **Out (prompt § 3 or no data):** modifier *management*, recipes, inventory and low-stock, customers & loyalty as a
 module, branch management; order types, wallet, item-level bill split, reservations/"Reserved", "Held" orders,
 hourly sales, expenses, profit & loss, floor-plan geometry, staff presence, language switching, kitchen prices,
-printing from Android WebView. Each is recorded in the audits with the exact missing field or endpoint.
+kitchen ticket pictures (`KitchenTicketItemDto` has no image field), Print KOT from the phone or browser (no web print
+code exists; desktop KOT print stays the path). Each is recorded in the audits with the exact missing field or endpoint.
 
-## 4. Decisions needed from the owner
+## 4. Decisions (taken 2026-10-17)
 
-| # | Decision | Recommendation |
-|---|---|---|
-| D1 | **Where Admin/Manager lives.** The prompt says browser; today it is WPF. A) restyle WPF (17–22 agent-days, one code base); B) new Blazor admin (12–16 days for dashboard + reports only; 45–60 for parity, then two admin code bases); C) hybrid (24–28, two shells) | **A.** If a browser admin is still wanted later, do A first; its widgets and gap list carry over |
-| D2 | **Modifier choice sheet on the phone.** Mock-up 6 shows add-ons/spice/instructions; the prompt forbids a "Modifiers & Add-ons interface". The app already lets waiters *choose* existing modifier groups | Keep and restyle the existing choice sheet; add no management screens (prompt § 2 preserve) |
-| D3 | **Customers.** The desktop has a Customers screen and bill picker (B2B invoices need a GSTIN); the prompt excludes Customers & Loyalty | Hide the nav item; keep the bill-level customer panel; no web customer code exists |
-| D4 | **Kitchen "Delayed".** Mock-up 2 shows it as a fourth column, duplicating tickets; no such status exists | KPI tile + red border + a "Delayed" filter that narrows the three columns; no fourth column |
-| D5 | **Waiter bottom navigation.** Prompt: Tables / My Orders / New Order / Notifications / Profile. Mock-ups: Home / Tables / Orders / Menu / More. Today: Home / Tables / My orders / Settings. "New Order" has no table context | Home / Tables / Orders / New order (opens a pick-a-table sheet) / More (notifications, settings, profile) |
-| D6 | **Payment method buttons** from the configured list (`/api/payment-methods`) instead of hard-wired Cash/Card/UPI | Yes — behaviour, not calculation, and matches "only configured methods" |
-| D7 | **Pages the prompt's navigation omits** (Licence, Backup, Server, This terminal, Import, Audit, Day end, Period close, GST returns) cannot be dropped | New "System" group; Finance → GST Returns; Analytics → Tax Reports |
-| D8 | **Ready turns green** (was red since Phase 17); Billing orange per the rule although the admin mock-up draws it blue | Green Ready; orange Billing; note in release notes |
-| D9 | **"Edit order" / "Hold order" / "Print KOT" on the phone** | Edit = guests, notes, cancel a line (existing endpoints); Hold omitted; Print KOT only on desktop browsers, never Android |
-| D10 | **"Shifts" under People** are cash shifts, not rotas; "Recent activity" = this session's bell feed or the audit log | Relabel "Cash shifts"; bell feed with "View all" to Audit |
-| D11 | **Pictures.** Item and ticket pictures appear only once the owner uploads them; no stock photos | Owner uploads a demo set before the galleries are regenerated |
+The owner delegated D1–D11. Each recommendation was fact-checked against the code by three read-only audits (web,
+desktop, shared) before being adopted; the amendments below come from that check. Paths are under `src/`.
+
+| # | Decision | Decided | Evidence and amendments |
+|---|---|---|---|
+| D1 | **Where Admin/Manager lives.** The prompt says browser; today it is WPF. A) restyle WPF (17–22 agent-days, one code base); B) new Blazor admin (12–16 days for dashboard + reports + GST only; 45–60 for parity, then two admin code bases); C) hybrid (24–28, two shells) | **A — restyle WPF.** | `ModuleRegistry` holds 30 modules (Admin sees 29, Manager 21); `HotelPOS.Web`/`Client.Shared` have no report, dashboard, chart, sidebar or admin API client code. Effort figures are the audit's (`audit-desktop-cashier-admin.md` lines 17–19). **Deliberate deviation from the prompt's "desktop or laptop browser" target**: the admin runs in the WPF window. A browser admin later starts from A's widgets and gap list. |
+| D2 | **Modifier choice sheet on the phone.** Mock-up 6 shows add-ons/spice/instructions; prompt § 3 bans modifier *management*, § 8 says "do not add a Modifiers & Add-ons interface" | **Restyle the existing picker only; nothing new.** | `OrderBuilderPage.razor` already has the picker (groups, min/max via `OrderComposer.CanSelectMore`, quantity stepper) and a per-line "Note for the kitchen" sheet writing `OrderItemInput.Notes` (500 chars). § 2 forbids removing a working feature. Mock-up "spice" = the seeded *Spice level* modifier group; "instructions" = the line note. No new route, nav item, spice field or editing; the merged `ItemOptionsSheet` (W4) is the picker plus the note sheet in one surface. |
+| D3 | **Customers.** Desktop has a Customers screen and bill picker; the prompt excludes Customers & Loyalty | **Drop the nav item; keep the module key and the bill-level picker/panel; add a "Manage customers" link inside the bill picker.** | `customers` (`ModuleRegistry.cs:85`, Billing group, `BillingOperate`). `BillDetailViewModel` uses `ICustomersApi`; `SetBillCustomer` snapshots name/phone/GSTIN onto the bill; `GstData.cs:182` makes an invoice B2B when the GSTIN is valid, else B2C — the GSTIN is optional and can be typed directly. `ModuleDefinition` has no hidden flag: add `ShowInNav` (default true), false for `customers`, filtered in `ShellViewModel`'s nav build, so `Find`, the palette, the Import wizard's customer destination and `ShellTests` keep working. The picker link keeps repeat B2B buyers from re-typing GSTINs without a dedicated nav entry. No web customer code exists. |
+| D4 | **Kitchen "Delayed".** Mock-up 2 shows a fourth column duplicating tickets; no such status exists | **KPI tile + red border (both exist) + a "Delayed" toggle that narrows the three columns; no fourth column, no new status.** | `KitchenPage.razor:43` already renders `Delayed @DelayedCount`; cards get `late`/`warn` from `KitchenRules.Timing`. Thresholds are the settings `kitchen.warn_minutes` / `kitchen.late_minutes` (defaults 10 / 20, `KitchenRules.cs:28-29`), matching prompt § 9 "per existing thresholds". `KitchenOrderStatus` has no Delayed value. Only the filter toggle is new (client-side `_delayedOnly` on the column `.Where`). Desktop KDS duplicates the defaults — point it at the same `KitchenRules`. |
+| D5 | **Waiter bottom navigation.** Prompt: Tables / My Orders / New Order / Notifications / Profile. Mock-ups: Home / Tables / Orders / Menu / More. Today: Home / Tables / My orders / Settings | **Home / Tables / Orders / New order / More.** | An order cannot exist without a table (`CreateOrderRequest.TableId` is a non-nullable int; builder route needs `{TableId:int}`), so **New order** opens a pick-a-table sheet (available tables first, then the waiter's active tables) and navigates to `tables/{id}/order`. **More** is a new sheet holding Notifications (the existing `NotificationPanel` shown as a sheet — there is no notifications route, which satisfies § 8 "only supported routes"), Settings (`/settings`: device notification and sound preferences), Profile (name, role, sign-out, theme — moved from the topbar avatar). Bell stays in the header. |
+| D6 | **Payment method buttons** from the configured list instead of hard-wired Cash/Card/UPI | **Yes: one button per active method from `GET /api/payment-methods`, in `SortOrder`.** | API and desktop client exist (`BillingControllers.cs:144`, `BillingApi.cs:41`); `BillingSetupViewModel` already manages methods; `BillDetailViewModel.cs:451` already loads `_methods`; the split overlay already iterates them. Only `BillDetailView.xaml:191-193` (literal CASH/CARD/UPI buttons, F2–F4) and the `PaymentMode` enum in `PaymentViewModel.cs:68-73` change. Rules: the command keeps sending `PaymentMethodId`; tendered/change/shift attach key off `dto.IsCash` (server: `Bill.cs:229-236`, `AddPayment.cs:96`), reference field off `RequiresReference`; **F2 = the cash method, F3… = the rest in sort order**; Split stays a fixed button; if no cash method is active the cash controls are hidden rather than silently inert. |
+| D7 | **Pages the prompt's navigation omits** cannot be dropped | **New "System" group = Licence, Backup, Server, This terminal, Import, Audit. Day end (+ history), Period close, Cash shifts and GST Returns go under Finance, not System.** | Full mapping of the 30 modules: Overview → dashboard · Live Operations → tables, floor, my-orders + new Orders page, kitchen-display, kitchen-completed, billing, closed-bills, print-log · Menu Management → menu (Categories / Menu items tabs) · Finance → discounts (as "Payments & discounts"), shifts, day-end, day-end-history, period-close, gst · Analytics & Reports → reports (Sales, Popular items, Tax breakdown, Staff performance are report types inside it; no second nav item points at it) · People → users, roles · Devices → devices, printers · Settings → settings · System → license, backup, server, this-device, import, audit · not in nav → customers (D3); cashier-home is Cashier-only. Expenses and Profit & Loss have no module and are not fabricated. Groups left empty by `ForUser` permission filtering are hidden. |
+| D8 | **Ready turns green** (red since Phase 17); Billing orange per the rule although the admin mock-up draws it blue | **Ready → success green; Billing → warning orange; release note.** | Today `Status.Ready = #DC2626`, `Status.Billing = #0F766E` in `Tokens.Light/Dark.xaml:71-77` and `tokens.css:40-41`. Prompt § 4: "green = completed/ready/available; orange = preparing/pending/bill requested". Two collisions to resolve in 0.1/0.2: **Available vs Ready** are both green — Available uses the soft fill with outline, Ready the solid fill with a check icon and the word "Ready"; **Preparing vs Billing** are both orange — Preparing keeps amber `#B45309`, Billing takes warning `#F59E0B`, and both carry icon + label (prompt: never colour alone). Mapping sites to collapse into `StatusPresentation`: two `StatusLabels.cs`, `DesignSystem.xaml:1046-1125`, `TableMapView` legend, `TableDetailsView`, `app.css:152-164`, `KitchenRules.cs`. |
+| D9 | **"Edit order" / "Hold order" / "Print KOT" on the phone** | **Edit = guests + notes, cancel a line, add items (all existing endpoints). Hold omitted. Print KOT deferred out of Phase 21.** | Edit uses `PUT api/orders/{id}` (`UpdateOrderRequest` with `GuestCount`, `Notes`, **`RowVersion`** — the client must send the current one), `POST {id}/items/{itemId}/cancel`, and the existing `tables/{t}/order/{o}/add` flow. `OrderStatus` has no Hold/Parked value (Draft is pre-submit), so Hold is out. Print KOT is *not* existing client capability: the web has no print code at all; it would be new browser-only JS interop over `GET api/print/kot/{ticketId}` plus the `POST kot/{ticketId}/copies` print-log reservation, and the Android host is MAUI BlazorWebView without `window.print`. It breaks the "existing endpoints only, presentation only" rule, so it is listed in § 3 Out as a gap and the desktop KOT print remains the supported path. |
+| D10 | **"Shifts" under People** are cash shifts; "Recent activity" source | **Nav label "Cash shifts" under Finance. Recent activity reads the audit log, merged live with the bell feed.** | `CashShift` is one cashier's stint at one drawer (float, counts, variance, X/Z; `Domain/Cash/CashShift.cs`); the module is already titled "Cash Shifts" (`ModuleRegistry.cs:87`). `NoticeCenter` is in-memory, 50 items, cleared on sign-out (`AppNavigator.cs:84`), so a bell-only widget is **empty at every launch**. A2/A6 therefore read the last 8 rows of `GET api/admin/audit-logs` (needs `AuditView`; actions mapped to readable sentences), prepend live `NoticeCenter` items as they arrive, "View all" → Audit. Without `AuditView` the widget falls back to the bell feed. The bell itself stays a live-alert surface, not a history. |
+| D11 | **Pictures.** No stock photos | **Item pictures render from the existing `ImageUrl` with an initials placeholder; kitchen ticket pictures deferred; the owner uploads pictures through the desktop Menu editor; galleries are not blocked on them.** | `MenuItem.ImagePath` → `MenuItemDto.ImageUrl` (`/images/menu/…`), upload `POST api/menu-items/{id}/image` (JPEG/PNG, ≤ 2 MB, re-encoded to 512 px JPEG, `MenuManage`; only after the item is first saved — `CanEditPicture => !IsNew`). Desktop editor and order builder already show them; the web shows them only in `OrderBuilderPage.razor:66`. `KitchenTicketItemDto` carries no image, so ticket pictures would need a DTO change — out of scope, recorded in § 3. There is no bulk upload: the demo set is uploaded one item at a time (or via a dev-only seed helper if the owner wants one, as a separate small task). |
 
 ## 5. Deliverables by step (files in the audits; sizes S/M/L; 1 agent-day ≈ one Sonnet/Opus agent run)
 
@@ -70,8 +74,8 @@ printing from Android WebView. Each is recorded in the audits with the exact mis
 
 | # | Step | Size |
 |---|---|---|
-| 0.1 | Tokens on both sides: palette, navy sidebar set, `*Soft/*Text` tones, neutral, font-size keys; `Status.*` re-pointed (Ready → success); stray literals (`App.xaml` MaterialDesign blue, `index.html` theme-color, Android `App.xaml`) | M |
-| 0.2 | `Contracts/Presentation/StatusPresentation.cs`: every status enum → label + tone + icon; both `StatusLabels.cs` delegate | S |
+| 0.1 | Tokens on both sides: palette, navy sidebar set, `*Soft/*Text` tones, neutral, font-size keys; `Status.*` re-pointed (Ready → solid success, Available → soft success, Billing → warning `#F59E0B`, Preparing keeps `#B45309`; D8); stray literals (`App.xaml` MaterialDesign blue, `index.html` theme-color, Android `App.xaml`) | M |
+| 0.2 | `Contracts/Presentation/StatusPresentation.cs`: every status enum → label + tone + icon (+ fill: soft/solid); both `StatusLabels.cs`, `DesignSystem.xaml` tile setters, `TableMapView` legend and `app.css .st-*` delegate; desktop KDS thresholds read the same `kitchen.warn_minutes` / `kitchen.late_minutes` settings as `KitchenRules` (D4) | S |
 | 0.3 | Inter: desktop `Font.Body` order; web self-hosted woff2 (offline LAN, Android) | S |
 | 0.4 | Web primitives: `StatusBadge`, `KpiTile`, `Tabs`, `Segmented`, `SearchBox`, `FilterChip`, `OrderTimeline`, `DetailPane`, `OrderLine`, `Icon` (inline SVG replacing Unicode glyphs), `BottomSheet` | M |
 | 0.5 | Desktop primitives: `StatusBadge`, `Pager`, `DetailPane`, `KpiTile` restyle, `Button.Warning/PrimaryOutline/Large`, soft `TableTile`, `Tabs`, `Segmented`, `SearchBox`, `OrderLine`, `PaymentPanel` styles, `StatusToneToBrush` | L |
@@ -83,12 +87,12 @@ printing from Android WebView. Each is recorded in the audits with the exact mis
 
 | # | Step | Size |
 |---|---|---|
-| W1 | Shell: header, five-tab nav, pick-a-table sheet for New order | M |
+| W1 | Shell: header, five-tab nav (D5), pick-a-table sheet for New order, "More" sheet (NotificationPanel, Settings, Profile/sign-out/theme) | M |
 | W2 | Tables: pastel `TableCard` (code, status, guests, timer, order no.), section chips | M |
 | W3 | Home: KPI tiles + quick actions + recent activity (bell feed) | S |
 | W4 | Order builder: picture `MenuItemCard`, star, sticky `CartBar`, `CartLine` with edit/delete, merged `ItemOptionsSheet` (D2), order-level notes wired to the existing field | L |
 | W5 | My orders: Active / Completed tabs, `OrderCard` with four-step `KitchenProgress` derived from `OrderStatus` | M |
-| W6 | Order details: Details / Items / Timeline tabs (ticket times via `GET api/kitchen/orders/{ticketId}`), `ActionList` (Add items, Edit = guests/notes/cancel line, Request bill, Served, Release, Cancel) | L |
+| W6 | Order details: Details / Items / Timeline tabs (ticket times via `GET api/kitchen/orders/{ticketId}`), `ActionList` (Add items, Edit = guests/notes via `PUT api/orders/{id}` with `RowVersion` + cancel line, Request bill, Served, Release, Cancel; no Hold, no Print KOT — D9) | L |
 | W7 | Notifications page, Settings/profile, Sign-in restyle, offline / error / back-online states (no "syncing" claim — there is no send queue) | M |
 | W8 | bUnit tests, `web-flow.mjs`, gallery | M |
 
@@ -97,7 +101,7 @@ printing from Android WebView. Each is recorded in the audits with the exact mis
 | # | Step | Size |
 |---|---|---|
 | K1 | `KitchenHeader`: brand, station chips with counts (All stations only; per-station counts go stale by design), search, clock, connection, bell, theme, menu (Completed, Station, Settings), user/device | M |
-| K2 | KPI strip (New, Preparing, Ready, Delayed, Completed today), column subtitles, "Oldest first" sort, per-column timers (Ready shows time since ready; late still counts from created), Delayed filter (D4) | M |
+| K2 | KPI strip (New, Preparing, Ready, Delayed, Completed today — all existing counts restyled), column subtitles, "Oldest first" sort, per-column timers (Ready shows time since ready; late still counts from created), Delayed chip becomes a filter toggle (D4) | M |
 | K3 | `TicketCard`: big table code, station chip, order · waiter · items, elapsed pill, items with modifiers and notes, big ACCEPT / START / MARK READY / DONE / RECALL | M |
 | K4 | `TicketDetailPane` (monitor ≥ 1440): items, guests, notes via `GET api/orders/{id}`, timeline with "Taking longer than usual"; no prices (D9 / `KotShowPrices`) | M |
 | K5 | Completed and Station pages restyle | S |
@@ -110,19 +114,19 @@ printing from Android WebView. Each is recorded in the audits with the exact mis
 | C1 | `CashierWorkspaceView`: queue 400 px · bill · payment 340 px; `billing` module points at it; queue gains search, sort, chips Waiting / Invoiced / Partly paid (+ Paid → Closed bills) | L |
 | C2 | Bill cards: status pill, waiter, wait time, total | M |
 | C3 | Order column: pills, item thumbnails via `MenuCache`, options and notes, order-notes banner, real tax rows, actions (Print bill, Reopen for waiter, Void) | M |
-| C4 | Payment column permanent: due hero, quick amounts, configured methods (D6), received, change, Complete, inline Paid state; keep `IdempotencyKey`/`PendingRequest`; shift bar stays (cash needs an open shift) | M |
+| C4 | Payment column permanent: due hero, quick amounts, one button per active configured method in `SortOrder` (D6: F2 = cash, F3… in order, Split fixed, cash controls keyed off `IsCash`, reference off `RequiresReference`, `PaymentMode` enum retired), received, change, Complete, inline Paid state; keep `IdempotencyKey`/`PendingRequest`; shift bar stays (cash needs an open shift) | M |
 | C5 | Quick actions, 1366×768 pass with the collapsed sidebar, `BillingViewModelTests` still guard duplicate submits, rendering + live gallery | S |
 
 ### 21.4 Admin / Manager (WPF, option A)
 
 | # | Step | Size |
 |---|---|---|
-| A1 | Regroup `ModuleRegistry` to the prompt's groups + "System" (D7); new keys Categories, Menu items, Kitchen stations, Orders (all, over `GetActiveAsync`); relabels (D10) | M |
+| A1 | Regroup `ModuleRegistry` to the prompt's groups + "System" per the D7 mapping; `ShowInNav` flag, false for `customers`, "Manage customers" link in the bill picker (D3); hide permission-empty groups; new key Orders (all, over `GetActiveAsync`); Menu gets Categories / Menu items tabs; relabels "Cash shifts", "Payments & discounts" (D10, D7) | M |
 | A2 | Dashboard header (business day, Online pill) and KPI cards: Today's sales (+ delta vs yesterday from `LastDays`), Orders, Average order value (derived), Occupied tables with occupancy bar; no sparklines, no low stock | M |
 | A3 | Live Order Status donut from `/api/orders/active` (`ChartGeometry.RingSegment`) | M |
 | A4 | Active orders table: chips, sort, 10 per page (`Pager`), View → table | M |
 | A5 | Table status cards via `TableTileViewModel`, "View floor plan" → Tables | M |
-| A6 | Recent activity from `NoticeCenter` (last 8) + "View all" → Audit; Staff today + Terminals side by side; keep 7-day bars, payments donut, top items with thumbnails | M |
+| A6 | Recent activity = last 8 rows of `GET api/admin/audit-logs` mapped to sentences, live `NoticeCenter` items prepended, "View all" → Audit, bell-feed fallback without `AuditView` (D10); Staff today + Terminals side by side; keep 7-day bars, payments donut, top items with thumbnails from `ImageUrl` + initials placeholder (D11) | M |
 | A7 | Deep links: Reports by key, Settings by section, Menu by tab, Templates | M |
 | A8 | 1366×768 pass, render/token tests, admin live gallery, `docs/07` | S |
 
@@ -175,8 +179,8 @@ live gallery harness for both clients.
 - [ ] One token set and one status map; contract tests green on both themes.
 - [ ] No change under `src/HotelPOS.Application`, `Domain`, `Infrastructure`, `Api` except presentation contracts.
 - [ ] Full suite green; galleries regenerated; device demo run on phone, tablet and cashier PC.
-- [ ] Owner has signed off D1–D11 before the related step starts.
+- [x] D1–D11 decided (§ 4, 2026-10-17) before any step starts.
 
 ## 11. Changes during implementation
 
-(filled while building)
+- 2026-10-17 — D1–D11 decided after three read-only code audits; § 4 rewritten with evidence and amendments; § 3 Out gains kitchen ticket pictures and phone/browser Print KOT; steps 0.1, 0.2, W1, W6, K2, C4, A1, A6 sharpened accordingly. No code changed.
