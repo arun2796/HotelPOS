@@ -1,0 +1,100 @@
+@using HotelPOS.Contracts.Floor
+@inject WaiterApi Api
+@inject WebAuthState Auth
+@inject NavigationManager Navigation
+
+<BottomSheet Open="Open" Title="New order — pick a table" OnClose="OnClose">
+    @if (_loading)
+    {
+        <Skeleton Variant="Skeleton.SkeletonVariant.Card" Count="3" Label="Loading tables" />
+    }
+    else if (_error is not null)
+    {
+        <div class="banner error">@_error</div>
+    }
+    else
+    {
+        <div class="picker-group" data-testid="picker-available">
+            <div class="picker-head">Available</div>
+            @if (_available.Count == 0)
+            {
+                <p class="muted small">No free tables right now.</p>
+            }
+            <div class="picker-grid">
+                @foreach (var table in _available)
+                {
+                    var t = table;
+                    <button type="button" class="picker-table st-@StatusLabels.TableClass(t.Status)" @onclick="() => Pick(t)">
+                        <b>@t.Code</b><span class="small">@t.SectionName</span>
+                    </button>
+                }
+            </div>
+        </div>
+        @if (_mine.Count > 0)
+        {
+            <div class="picker-group" data-testid="picker-mine">
+                <div class="picker-head">Your active tables</div>
+                <div class="picker-grid">
+                    @foreach (var table in _mine)
+                    {
+                        var t = table;
+                        <button type="button" class="picker-table st-@StatusLabels.TableClass(t.Status)" @onclick="() => Pick(t)">
+                            <b>@t.Code</b><span class="small">@t.SectionName</span>
+                        </button>
+                    }
+                </div>
+            </div>
+        }
+    }
+</BottomSheet>
+
+@code {
+    private List<TableDto> _available = new();
+    private List<TableDto> _mine = new();
+    private bool _loading;
+    private string? _error;
+    private bool _wasOpen;
+
+    [Parameter] public bool Open { get; set; }
+
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Open && !_wasOpen)
+        {
+            await LoadAsync();
+        }
+
+        _wasOpen = Open;
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+        var map = await Api.GetTableMapAsync();
+        if (!map.Success || map.Data is null)
+        {
+            _error = map.Message;
+            _loading = false;
+            return;
+        }
+
+        var tables = map.Data.Sections.Where(s => s.IsActive).OrderBy(s => s.SortOrder).SelectMany(s => s.Tables).Where(t => t.IsActive).ToList();
+        _available = tables.Where(t => t.Status == TableStatus.Available).ToList();
+
+        var orders = await Api.GetActiveOrdersAsync();
+        var myTableIds = orders.Success && orders.Data is { } list
+            ? list.Where(o => o.WaiterId == Auth.User?.Id).Select(o => o.TableId).ToHashSet()
+            : new HashSet<int>();
+        _mine = tables.Where(t => t.Status != TableStatus.Available && myTableIds.Contains(t.Id)).ToList();
+        _loading = false;
+    }
+
+    private async Task Pick(TableDto table)
+    {
+        await OnClose.InvokeAsync();
+        Navigation.NavigateTo($"tables/{table.Id}/order");
+    }
+}

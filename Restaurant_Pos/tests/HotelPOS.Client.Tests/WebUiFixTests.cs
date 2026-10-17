@@ -236,7 +236,8 @@ public sealed class WebUiFixTests : TestContext
 
         var layout = RenderComponent<MainLayout>(p => p.Add(c => c.Body, (RenderFragment)(b => b.AddContent(0, "body"))));
 
-        layout.FindAll("nav.bottomnav a").Select(a => a.GetAttribute("href")).Should().Equal("kitchen", "kitchen/completed", "kitchen/station", "settings");
+        layout.FindAll("nav.headnav a").Select(a => a.GetAttribute("href")).Should().Equal("kitchen", "kitchen/completed", "kitchen/station", "settings");
+        layout.FindAll("nav.bottomnav").Should().BeEmpty("the kitchen has no bottom navigation");
         layout.Find("button[aria-label='Sign out'] .avatar").TextContent.Should().Be("A", "a bracketed role is not a surname");
         await Services.GetRequiredService<WebRealtimeClient>().StopAsync();
     }

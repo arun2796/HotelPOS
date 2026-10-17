@@ -351,5 +351,46 @@ svg.ic { flex: none; vertical-align: middle; }
 .toast.error .toast-icon { color: var(--danger-text); }
 .toast.warning .toast-icon { color: var(--warning-text); }
 .toast.info .toast-icon { color: var(--info-text); }
+/* ---- Phase 21 0.7: web shells. Waiter = header + five bottom tabs; kitchen = compact header, no bottom nav. ---- */
+.brand { display: inline-flex; align-items: center; gap: 6px; color: var(--primary); flex: none; }
+.brand-name { display: none; font-size: var(--fs-body); }
+@media (min-width: 480px) { .brand-name { display: inline; } }
+.topbar .avatar, .avatar.lg { display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--primary-soft); color: var(--primary); font-weight: 700; }
+.topbar .avatar { width: 36px; height: 36px; font-size: var(--fs-label); }
+.avatar.lg { width: 48px; height: 48px; flex: none; }
+
+.bottomnav a, .bottomnav .tabbtn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 56px; min-width: var(--touch);
+  padding: 4px 0; border: 0; background: transparent; font-size: 11px; color: var(--text-2); cursor: pointer; }
+.bottomnav a.active { color: var(--primary); font-weight: 600; }
+.bottomnav .tab-new svg { color: var(--on-primary); background: var(--primary); border-radius: 50%; padding: 5px; width: 32px; height: 32px; }
+.bottomnav .tab-new { color: var(--primary); font-weight: 600; }
+
+.shell.kitchen .toasts { bottom: calc(16px + var(--safe-bottom)); }
+.shell.kitchen .page { padding-bottom: 16px; }
+.headnav { display: flex; align-items: center; gap: 2px; }
+.headnav a { display: inline-flex; align-items: center; gap: 6px; min-height: var(--touch); min-width: var(--touch); justify-content: center; padding: 0 10px; border-radius: var(--radius-button);
+  color: var(--text-2); font-weight: 600; }
+.headnav a.active { color: var(--primary); background: var(--primary-soft); }
+.hn-label { display: none; }
+@media (min-width: 1100px) { .hn-label { display: inline; } }
+.clock { display: inline-flex; align-items: center; gap: 4px; color: var(--text-2); font-weight: 600; white-space: nowrap; }
+
+.more-section { margin-bottom: 12px; }
+.more-profile { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.more-name { font-weight: 600; }
+.more-link { margin-top: 8px; }
+.bsheet .notice-panel { position: static; max-width: none; max-height: 40vh; box-shadow: none; }
+.device-card { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface-alt); }
+.device-ico { display: inline-flex; width: 36px; height: 36px; align-items: center; justify-content: center; border-radius: var(--radius-button); background: var(--surface-subtle); }
+.device-ico.ok { background: var(--success-soft); color: var(--success-text); }
+.device-ico.wait { background: var(--warning-soft); color: var(--warning-text); }
+.device-ico.off { background: var(--danger-soft); color: var(--danger-text); }
+.device-text { flex: 1; min-width: 0; }
+.device-state { font-weight: 600; }
+.picker-group + .picker-group { margin-top: 12px; }
+.picker-head { font-size: var(--fs-label); font-weight: 600; color: var(--text-2); margin-bottom: 6px; }
+.picker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.picker-table { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; min-height: 64px; padding: 8px 12px; border: 0; border-radius: var(--radius-card); color: #fff; cursor: pointer; }
+
 .toast-text { flex: 1; min-width: 0; }
 .toast-action { min-height: 40px; padding: 0 12px; border: 0; border-radius: var(--radius-button); background: transparent; color: var(--primary); font-weight: 700; cursor: pointer; }
