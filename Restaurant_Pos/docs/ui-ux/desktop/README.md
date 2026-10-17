@@ -32,8 +32,7 @@ A capture log is written to `%TEMP%\hotelpos-live-screens.log`.
 
 **This run:** roles `cashier` and `admin`. `admin` with the guessed password `Admin@123` failed ("Invalid username or
 password"; tried once, nothing changed), so the management screens were captured as **manager1** and the admin-only
-screens (Users, Roles, Devices, Settings, Licence, Server) were not regenerated. The `functions*` passes were not run:
-they still cast `Billing` to the old `BillingQueueViewModel` and would need the same rewrite as the cashier flow.
+screens (Users, Roles, Devices, Settings, Licence, Server) were not regenerated. The `functions-cashier`, `functions-cashier-reopen` and `functions-manager` passes were re-run against the workspace.
 
 ## `cashier/` — the cashier flow (cashier1 on BILLING-01), 19 screens
 
@@ -86,17 +85,14 @@ they still cast `Billing` to the old `BillingQueueViewModel` and would need the 
 shell; regenerate them with `HOTELPOS_ADMIN_PASSWORD` set. The admin pictures of screens a manager also has (dashboard,
 tables, menu, audit, reports, GST, day end, printers, palette, dark) were deleted; `manager/` has the Phase 21 ones.
 
-## `functions/` — function-by-function pass, **pre-Phase 21** (16 Oct 2026), 71 screens
+## `functions/` — function-by-function pass (16–17 Oct 2026; bill functions 41–43 and 46 re-shot 17 Oct against the cashier workspace), 82 screens
 
 `NN-area-action-before.png` / `-dialog[N].png` / `-after.png` for: users create / edit / reset password / deactivate /
 unlock (01–05), roles edit and revert (06), sections add (07), tables add / rename / deactivate (08–10), category and
 item create, sold out, back in stock (11–14), palette table search (15), settings kitchen-warn edit and revert (16–17),
 printers test print (18), licence / server / backup pages (19–21), audit filter (22), day-end precheck (23), GST current
 month (24), the eight reports and their Excel / PDF exports and dark theme (25–28), cancel an order line as manager
-(30–31), customer create (40), refund of a card payment with manager approval (44) and Closed Bills dark (45). The
-`41-43` and `46` bill shots (attach customer, over-limit discount, pay by card, reopen) were deleted: they showed the
-legacy bill page, which the cashier workspace replaced. The pass still drives the old queue (`BillingQueueViewModel`)
-and must be rewritten before it can be replayed.
+(30–31), customer create (40), refund of a card payment with manager approval (44) and Closed Bills dark (45). Thebill functions `41–43` and `46` (attach customer, over-limit discount with manager approval, pay by card, reopen aninvoiced bill) are captured on the **cashier workspace** (select bill, then the composed bill-detail commands; 41 and 43before/after, 42 before/dialog/after, 46 before/dialog/dialog2/after). The other functions are the 16 Oct captures except30/31 and 40/44/45 (re-shot 17 Oct). Replay: `HOTELPOS_LIVE_SCREENS_ROLES=functions-manager,functions-cashier,functions-cashier-reopen` (the manager part prepares the T02 bill).
 
 ## Comparison with the mock-ups (`docs/design/reference/cashier-workspace.png`, `admin-dashboard.png`)
 
@@ -120,10 +116,7 @@ and must be rewritten before it can be replayed.
    `src/HotelPOS.Desktop/Modules/Orders/ActiveOrdersView.xaml` and ITEMS 62→72, ELAPSED 82→100, View 66→80 in
    `src/HotelPOS.Desktop/Modules/Dashboard/DashboardView.xaml`; the manager run was repeated and `ScreenRenderingTests`
    is green.
-2. **Mostly fixed (medium) — Payment column: Amount received is below the fold at 800 px.** Spacing tightened in `Themes/Cashier.xaml` (method, quick-amount, received, change); Amount received is now visible at 800 px, the Change box still needs a scroll of the column (its scrollbar stays) - `cashier/05`: the quick-amount grid
-   takes two rows, so the received field sits under the Complete payment button and needs the column's scrollbar; at
-   1366×768 it is further down. One row of quick amounts (or a smaller hero) would fit
-   (`src/HotelPOS.Desktop/Modules/Billing/BillDetailView.xaml`, payment column).
+2. **Fixed (medium) — Payment column: the Change box needed a scroll at 800 px.** `Themes/Cashier.xaml` payment template: method toggles in three columns, quick amounts in one row of four (44 px, smaller padding so "2,000.00" is whole), the "Quick amounts" caption dropped, tighter margins and footer padding; due hero, methods, split, amount to pay, quick amounts, received, Change due and Complete payment now all fit in the 1366×800 window with no scrollbar (`cashier/07`).
 3. **Fixed (medium) — Sidebar (`ShellView.xaml`: scrollbar Auto with a thin themed thumb; footer pinned; not re-shot, cashier nav is short) navigation is cut at "Menu Management" at 800 px.** Every manager screen: the nav list
    ends under the device card with a half-visible group label and no visible scrollbar, so Finance, Analytics,
    Devices and System are reachable only by wheel-scrolling or the palette (`src/HotelPOS.Desktop/Shell/ShellView.xaml:250`,
@@ -138,7 +131,7 @@ and must be rewritten before it can be replayed.
 7. **Fixed (low, "Manage customers…" link, `ManageCustomersCommand`) — D3's "Manage customers" link is missing.** The bill's customer picker says "add the customer on the
    Customers screen" (`src/HotelPOS.Desktop/Modules/Billing/BillDetailView.xaml:308`) but Customers is no longer in the
    sidebar; only the command palette reaches it.
-8. **Info — not regenerated.** Admin-only screens (password unknown) and the `functions/` pass (needs the workspace
+8. **Info — not regenerated.** Admin-only screens (password unknown); the `functions/` pass was rewritten for the workspace (see its section)
    rewrite); the Terminals panel is still a placeholder for managers (Phase 20 issue 11, by design of the API).
 
 Binding errors: the live test installs no `PresentationTraceSources` listener; `ScreenRenderingTests` (which fails on
