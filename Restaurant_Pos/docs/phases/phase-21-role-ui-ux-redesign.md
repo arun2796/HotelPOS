@@ -1,6 +1,6 @@
 # Phase 21 — Role-based UI/UX redesign (plan)
 
-Status: Approved — D1–D11 decided 2026-10-17 (§ 4), implementation not started · Depends on: Phases 17–20
+Status: Implemented on branch `phase-21-role-ui-ux` (2026-10-17; galleries regenerated, full suite green) — owner review of the galleries against the mock-ups pending · Depends on: Phases 17–20
 
 Source: the owner's master prompt (`docs/design/master-prompt-role-ui-ux.md`) and six mock-ups
 (`docs/design/reference/`). Three audits back this plan and hold the detail: `docs/design/design-system-plan.md`,
@@ -175,10 +175,11 @@ live gallery harness for both clients.
 
 ## 10. Acceptance criteria
 
-- [ ] Every screen in the six mock-ups has a counterpart, or an entry in § 3 "Out" with the missing data named.
-- [ ] One token set and one status map; contract tests green on both themes.
-- [ ] No change under `src/HotelPOS.Application`, `Domain`, `Infrastructure`, `Api` except presentation contracts.
-- [ ] Full suite green; galleries regenerated; device demo run on phone, tablet and cashier PC.
+- [x] Every screen in the six mock-ups has a counterpart, or an entry in § 3 "Out" with the missing data named (gallery READMEs hold the per-screen comparison tables).
+- [x] One token set and one status map; contract tests green on both themes.
+- [x] No change under `src/HotelPOS.Application`, `Domain`, `Infrastructure`, `Api` except presentation contracts.
+- [x] Full suite green; galleries regenerated.
+- [ ] Device demo run on phone, tablet and the cashier PC (owner; not done by the agents).
 - [x] D1–D11 decided (§ 4, 2026-10-17) before any step starts.
 
 ## 11. Changes during implementation
@@ -211,3 +212,12 @@ live gallery harness for both clients.
     Desktop 421 (2 pre-existing skips) — 0 failures. `git diff main -- Application Domain Infrastructure Api` is
     empty; Contracts gains only `Presentation/StatusPresentation.cs`.
   - Housekeeping: `*.SdkResolver.*.proj.Backup.tmp` untracked and ignored (e463ed1).
+- 2026-10-17 — 21.5 galleries against the Development API on :5100 (commits 45c23b3 web, 7291c57 desktop).
+  Web: `web-flow.mjs` rewritten for the new markup; 28 waiter + 11 kitchen shots; 8/8 compared screens match the
+  mock-ups' structure; one high defect fixed (table-card timer overflow made the Tables page 404 px wide on a
+  390 px phone). Desktop: `LiveFlowScreenshots` now drives the cashier workspace and the new admin surfaces;
+  19 cashier + 16 manager shots; 8/8 compared screens match; clipped grid columns fixed. The admin password is not
+  the seed default, so admin-only screens were captured as `manager1`; the `functions*` live passes still target
+  the legacy bill pages and were not re-run. The gallery run registered three new browser terminals (WEB-*, PROBE);
+  the owner may deactivate them. Remaining per-screen issues are listed in `docs/ui-ux/web/README.md` and
+  `docs/ui-ux/desktop/README.md`.
