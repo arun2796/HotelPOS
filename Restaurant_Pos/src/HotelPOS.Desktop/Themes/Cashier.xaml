@@ -343,12 +343,12 @@
         </Grid.RowDefinitions>
 
         <ScrollViewer VerticalScrollBarVisibility="Auto" PanningMode="VerticalOnly">
-          <StackPanel Margin="16,14,16,8">
+          <StackPanel Margin="16,10,16,4">
             <Grid>
               <TextBlock Text="Payment" Style="{StaticResource Text.Subtitle}" />
               <controls:StatusBadge Display="{Binding Display}" HorizontalAlignment="Right" />
             </Grid>
-            <TextBlock Text="Amount due" Style="{StaticResource Text.Caption}" Margin="0,6,0,0" />
+            <TextBlock Text="Amount due" Style="{StaticResource Text.Caption}" Margin="0,2,0,0" />
             <TextBlock Text="{Binding BalanceText}" Style="{StaticResource PaymentPanel.Due}" />
 
             <!-- Held elsewhere: look, do not change -->
@@ -375,22 +375,22 @@
             </StackPanel>
 
             <!-- Form -->
-            <StackPanel Visibility="{Binding CanPay, Converter={StaticResource BoolToVisibility}}" Margin="0,10,0,0">
+            <StackPanel Visibility="{Binding CanPay, Converter={StaticResource BoolToVisibility}}" Margin="0,4,0,0">
               <Border Style="{StaticResource Banner.Warning}" Visibility="{Binding HasMethods, Converter={StaticResource InverseBoolToVisibility}}">
                 <TextBlock Text="No payment method is set up. Ask an administrator to add one under Billing setup." Style="{StaticResource Text.Body}" TextWrapping="Wrap" />
               </Border>
               <StackPanel Visibility="{Binding HasMethods, Converter={StaticResource BoolToVisibility}}">
                 <TextBlock Text="Payment method" Style="{StaticResource Text.Label}" />
                 <!-- D6: one toggle per active configured method in sort order; the hotkey is the caption. Split is fixed (F9). -->
-                <ItemsControl ItemsSource="{Binding MethodButtons}" Focusable="False" Margin="0,6,-8,0">
+                <ItemsControl ItemsSource="{Binding MethodButtons}" Focusable="False" Margin="0,2,-8,0">
                   <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                      <UniformGrid Columns="2" />
+                      <UniformGrid Columns="3" />
                     </ItemsPanelTemplate>
                   </ItemsControl.ItemsPanel>
                   <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="{x:Type billing:PaymentMethodButton}">
-                      <ToggleButton Style="{StaticResource PaymentPanel.Method}" MinHeight="44" Margin="0,0,8,6" IsChecked="{Binding IsSelected, Mode=OneWay}"
+                      <ToggleButton Style="{StaticResource PaymentPanel.Method}" MinHeight="44" Margin="0,0,8,4" IsChecked="{Binding IsSelected, Mode=OneWay}"
                                     Command="{Binding DataContext.PayWithCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                     CommandParameter="{Binding Method}" AutomationProperties.Name="{Binding Name}">
                         <StackPanel>
@@ -402,7 +402,7 @@
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
                 <ToggleButton Style="{StaticResource PaymentPanel.Method}" IsChecked="{Binding IsSplitSelected, Mode=OneWay}" Command="{Binding PaySplitCommand}"
-                              HorizontalAlignment="Stretch" Margin="0,0,0,4" MinHeight="40" AutomationProperties.Name="Split payment">
+                              HorizontalAlignment="Stretch" Margin="0,0,0,2" MinHeight="44" AutomationProperties.Name="Split payment">
                   <StackPanel Orientation="Horizontal">
                     <controls:Icon Kind="swap" Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,8,0" />
                     <TextBlock Text="Split payment" VerticalAlignment="Center" />
@@ -415,33 +415,32 @@
                 <DataTemplate DataType="{x:Type billing:PaymentViewModel}">
                   <StackPanel>
                     <StackPanel Visibility="{Binding IsSingle, Converter={StaticResource BoolToVisibility}}">
-                      <Grid Margin="0,4,0,0">
+                      <Grid Margin="0,2,0,0">
                         <Grid.ColumnDefinitions>
                           <ColumnDefinition Width="*" />
                           <ColumnDefinition Width="140" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="Amount to pay" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
-                        <TextBox Grid.Column="1" Text="{Binding AmountText, UpdateSourceTrigger=PropertyChanged}" MaxLength="12" MinHeight="40" TextAlignment="Right"
+                        <TextBox Grid.Column="1" Text="{Binding AmountText, UpdateSourceTrigger=PropertyChanged}" MaxLength="12" MinHeight="36" TextAlignment="Right"
                                  Typography.NumeralAlignment="Tabular" AutomationProperties.Name="Amount to pay" />
                       </Grid>
                       <StackPanel Visibility="{Binding IsCash, Converter={StaticResource BoolToVisibility}}">
-                        <TextBlock Text="Quick amounts" Style="{StaticResource Text.Caption}" Margin="0,6,0,2" />
-                        <ItemsControl ItemsSource="{Binding QuickTenders}" Focusable="False" Margin="0,0,-8,0">
+                        <ItemsControl ItemsSource="{Binding QuickTenders}" Focusable="False" Margin="0,6,-8,0">
                           <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
-                              <UniformGrid Columns="3" />
+                              <UniformGrid Rows="1" />
                             </ItemsPanelTemplate>
                           </ItemsControl.ItemsPanel>
                           <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type billing:QuickTenderOption}">
-                              <Button Content="{Binding Label}" Style="{StaticResource PaymentPanel.QuickAmount}" MinHeight="38" Margin="0,0,8,6"
+                              <Button Content="{Binding Label}" Style="{StaticResource PaymentPanel.QuickAmount}" MinHeight="44" Margin="0,0,8,4" Padding="4,0" FontSize="14"
                                       Command="{Binding DataContext.QuickTenderCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                       CommandParameter="{Binding}" />
                             </DataTemplate>
                           </ItemsControl.ItemTemplate>
                         </ItemsControl>
                         <TextBlock Text="Amount received" Style="{StaticResource Text.Caption}" Margin="0,2,0,2" />
-                        <TextBox Text="{Binding TenderedText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource PaymentPanel.Received}" MaxLength="12" MinHeight="46"
+                        <TextBox Text="{Binding TenderedText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource PaymentPanel.Received}" MaxLength="12" MinHeight="44"
                                  AutomationProperties.Name="Amount received" />
                         <Border Style="{StaticResource PaymentPanel.Change}" Margin="0,4,0,0" Padding="14,6">
                           <Grid>
@@ -518,7 +517,7 @@
         </ScrollViewer>
 
         <!-- Footer, always in view: the failure (inline, actionable), Complete payment, or the paid actions. -->
-        <Border Grid.Row="1" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,1,0,0" Padding="16,12,16,14">
+        <Border Grid.Row="1" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,1,0,0" Padding="16,8,16,10">
           <StackPanel>
             <controls:ErrorState Icon="alert" Title="Payment not taken" Message="{Binding PaymentError}" Margin="0,0,0,10"
                                  Visibility="{Binding PaymentError, Converter={StaticResource StringToVisibility}}" />
@@ -532,7 +531,7 @@
               <Button Content="Next bill" Command="{Binding NextBillCommand}" Style="{StaticResource Button.Large}" Margin="0,8,0,0" />
             </StackPanel>
             <!-- Quick actions: the keyboard legend (the method buttons carry their own key). -->
-            <TextBlock Style="{StaticResource Text.Caption}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,10,0,0">
+            <TextBlock Style="{StaticResource Text.Caption}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,6,0,0">
               <Run Text="F2" FontWeight="SemiBold" /><Run Text=" cash  ·  " /><Run Text="F3–F8" FontWeight="SemiBold" /><Run Text=" other methods  ·  " /><Run Text="F9" FontWeight="SemiBold" /><Run Text=" split  ·  " /><Run Text="Esc" FontWeight="SemiBold" /><Run Text=" back to the queue" />
             </TextBlock>
           </StackPanel>

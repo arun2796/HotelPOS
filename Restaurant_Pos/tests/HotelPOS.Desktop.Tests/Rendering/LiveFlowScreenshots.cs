@@ -1145,10 +1145,10 @@ public class LiveFlowScreenshots
         }
 
         // Bill of order 1: attach the customer, discount above the cashier limit (approval), pay by card.
-        var queue = await NavigateAsync<BillingQueueViewModel>(shell, ModuleRegistry.Billing);
-        var card = queue.Bills.FirstOrDefault(b => b.TableCode == TableCode) ?? throw new InvalidOperationException("No T02 bill in the queue.");
-        await queue.OpenCommand.ExecuteAsync(card);
-        var bill = (BillDetailViewModel)shell.CurrentPage!;
+        var workspace = await NavigateAsync<CashierWorkspaceViewModel>(shell, ModuleRegistry.Billing);
+        var card = workspace.Bills.FirstOrDefault(b => b.TableCode == TableCode) ?? throw new InvalidOperationException("No T02 bill in the workspace.");
+        await workspace.SelectAsync(card);
+        var bill = workspace.Detail ?? throw new InvalidOperationException("The bill did not open in the workspace.");
         notifications.Items.Clear();
 
         bill.ShowCustomerCommand.Execute(null);
@@ -1230,10 +1230,10 @@ public class LiveFlowScreenshots
         var navigator = terminal.Get<IAppNavigator>();
         var notifications = terminal.Get<NotificationService>();
         var shell = await SignInShellAsync(terminal, "cashier1", "Pass@123");
-        var queue = await NavigateAsync<BillingQueueViewModel>(shell, ModuleRegistry.Billing);
-        var card = queue.Bills.FirstOrDefault(b => b.TableCode == TableCode) ?? throw new InvalidOperationException("No second T02 bill in the queue.");
-        await queue.OpenCommand.ExecuteAsync(card);
-        var bill = (BillDetailViewModel)shell.CurrentPage!;
+        var workspace = await NavigateAsync<CashierWorkspaceViewModel>(shell, ModuleRegistry.Billing);
+        var card = workspace.Bills.FirstOrDefault(b => b.TableCode == TableCode) ?? throw new InvalidOperationException("No second T02 bill in the workspace.");
+        await workspace.SelectAsync(card);
+        var bill = workspace.Detail ?? throw new InvalidOperationException("The bill did not open in the workspace.");
         await bill.FinalizeCommand.ExecuteAsync(null);
         bill.ClosePanelCommand.Execute(null);
         notifications.Items.Clear();
@@ -1241,7 +1241,7 @@ public class LiveFlowScreenshots
         await DriveAsync(terminal, bill.ReopenCommand.ExecuteAsync(null), "46-bill-reopen-invoiced", new DialogAnswer("Guest wants to add dessert"), ManagerApproval);
         await Dispatcher.Yield(DispatcherPriority.Background);
         await RenderAsync(terminal, "46-bill-reopen-invoiced-after");
-        Note(shell.CurrentPage is BillingQueueViewModel ? $"Bill of order {order2} reopened (invoice cancelled)." : "Reopen NOT completed: " + bill.ErrorMessage);
+        Note(workspace.Detail is null ? $"Bill of order {order2} reopened (invoice cancelled)." : "Reopen NOT completed: " + bill.ErrorMessage);
 
         await navigator.LogoutAsync();
         await terminal.DisposeAsync();

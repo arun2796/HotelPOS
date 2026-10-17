@@ -221,3 +221,8 @@ live gallery harness for both clients.
   the legacy bill pages and were not re-run. The gallery run registered three new browser terminals (WEB-*, PROBE);
   the owner may deactivate them. Remaining per-screen issues are listed in `docs/ui-ux/web/README.md` and
   `docs/ui-ux/desktop/README.md`.
+- 2026-10-17 — Leftovers closed on `phase-21-polish`: waiter toasts anchored below the header on every waiter page
+  (never over actions); `:has()` removed from the client CSS (older Android WebViews); the payment column fits a
+  1366×800 window at Compact density without scrolling (3-column method toggles, one row of quick amounts); the
+  `functions*` live passes drive the cashier workspace and the functions gallery was refreshed (82 shots). Desktop
+  422 / Client 206 tests green.
