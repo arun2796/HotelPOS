@@ -13,9 +13,14 @@
   <!-- Phase 21.3: queue 400 px · bill · payment 340 px. Below 1440 px the shell collapses the sidebar so the three panes fit at
        1366; should the page still be narrower than 1180 px (sidebar expanded by hand) the queue drops to 340 px, never a horizontal scroll. -->
   <UserControl.InputBindings>
-    <KeyBinding Key="F2" Command="{Binding Detail.PayCashCommand}" />
-    <KeyBinding Key="F3" Command="{Binding Detail.PayCardCommand}" />
-    <KeyBinding Key="F4" Command="{Binding Detail.PayUpiCommand}" />
+    <!-- D6: F2 = the cash method, F3… the other configured methods in sort order (PaymentMethodButton.Build), F9 = split. -->
+    <KeyBinding Key="F2" Command="{Binding Detail.PayHotkeyCommand}" CommandParameter="F2" />
+    <KeyBinding Key="F3" Command="{Binding Detail.PayHotkeyCommand}" CommandParameter="F3" />
+    <KeyBinding Key="F4" Command="{Binding Detail.PayHotkeyCommand}" CommandParameter="F4" />
+    <KeyBinding Key="F5" Command="{Binding Detail.PayHotkeyCommand}" CommandParameter="F5" />
+    <KeyBinding Key="F6" Command="{Binding Detail.PayHotkeyCommand}" CommandParameter="F6" />
+    <KeyBinding Key="F7" Command="{Binding Detail.PayHotkeyCommand}" CommandParameter="F7" />
+    <KeyBinding Key="F8" Command="{Binding Detail.PayHotkeyCommand}" CommandParameter="F8" />
     <KeyBinding Key="F9" Command="{Binding Detail.PaySplitCommand}" />
     <KeyBinding Key="Escape" Command="{Binding Detail.BackCommand}" />
   </UserControl.InputBindings>

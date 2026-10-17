@@ -301,7 +301,8 @@ public class ScreenRenderingTests
             bill.Payment.AddLineCommand.Execute(bill.Payment.Methods.Single(m => m.Code == "UPI"));
             bill.Payment.Lines[1].Reference = "UPI 4021 7788";
             rendered.Add(await RenderScreenAsync(env, cashierShell, "30-cashier-split-payment"));
-            bill.PayCashCommand.Execute(null);
+            bill.PayHotkeyCommand.Execute("F2");
+            bill.Payment!.IsCash.Should().BeTrue("F2 is the cash method");
             bill.ShowDiscountCommand.Execute(null);
             bill.ManualValue = "15";
             bill.ManualReason = "Regular guest";

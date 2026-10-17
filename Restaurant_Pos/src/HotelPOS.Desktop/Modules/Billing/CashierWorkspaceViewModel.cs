@@ -399,12 +399,14 @@ public sealed partial class CashierWorkspaceViewModel : ViewModelBase, INavigati
             return true;
         }
 
+        // "t5" → T05: only when the search names a table (starts with T), so "000002" cannot hit T02.
+        var namesTable = compact[0] is 'T' or 't';
         var table = bill.TableCode.TrimStart('T', 't').TrimStart('0');
         var wanted = compact.TrimStart('T', 't').TrimStart('0');
         return bill.OrderNumber.ToString(System.Globalization.CultureInfo.InvariantCulture).Contains(compact, StringComparison.OrdinalIgnoreCase)
             || bill.BillNumber.ToString(System.Globalization.CultureInfo.InvariantCulture).Contains(compact, StringComparison.OrdinalIgnoreCase)
             || bill.TableCode.Contains(compact, StringComparison.OrdinalIgnoreCase)
-            || (wanted.Length > 0 && table.Equals(wanted, StringComparison.OrdinalIgnoreCase))
+            || (namesTable && wanted.Length > 0 && table.Equals(wanted, StringComparison.OrdinalIgnoreCase))
             || (bill.InvoiceNumber?.Contains(compact, StringComparison.OrdinalIgnoreCase) ?? false)
             || bill.WaiterName.Contains(search, StringComparison.OrdinalIgnoreCase);
     }

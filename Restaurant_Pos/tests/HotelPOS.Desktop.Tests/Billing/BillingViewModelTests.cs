@@ -32,7 +32,7 @@ public sealed class BillingViewModelTests
     [Fact]
     public void Split_IsValidOnlyWhenTheLinesAddUpToTheBalance_WithReferences()
     {
-        var split = new PaymentViewModel(PaymentMode.Split, 756m, Methods);
+        var split = PaymentViewModel.Split(756m, Methods);
         split.IsValid.Should().BeFalse();
 
         split.AddLineCommand.Execute(Cash);
@@ -61,7 +61,7 @@ public sealed class BillingViewModelTests
     [Fact]
     public void Cash_ComputesChange_AndOffersQuickNotes()
     {
-        var cash = new PaymentViewModel(PaymentMode.Cash, 630m, Methods);
+        var cash = new PaymentViewModel(Cash, 630m, Methods);
 
         cash.QuickTenders.Select(q => q.Value).Should().Equal(630m, 650m, 700m, 1000m, 2000m);
         cash.QuickTenderCommand.Execute(cash.QuickTenders[2]);
@@ -86,7 +86,7 @@ public sealed class BillingViewModelTests
     [Fact]
     public void Card_CannotExceedTheBalance_AndNeedsAReference()
     {
-        var card = new PaymentViewModel(PaymentMode.Card, 630m, Methods);
+        var card = new PaymentViewModel(Card, 630m, Methods);
         card.ValidationMessage.Should().Contain("Card reference");
 
         card.Reference = "AUTH 1234";
@@ -161,7 +161,9 @@ public sealed class BillingViewModelTests
         var vm = DetailViewModel();
         await vm.OnNavigatedToAsync(9);
 
-        vm.PayCashCommand.Execute(null);
+        // Phase 21.3: the payment column is permanent, so the cash form is already open; F2 is the cash method (D6).
+        vm.Payment.Should().NotBeNull().And.Match<PaymentViewModel>(p => p.IsCash);
+        vm.PayHotkeyCommand.Execute("F2");
         vm.Payment!.TenderedText = Money.Format(700m);
         await vm.ConfirmPaymentCommand.ExecuteAsync(null);
         vm.PanelError.Should().Contain("will not be taken twice");

@@ -112,7 +112,7 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
         nameof(DiscountText), nameof(TaxRows), nameof(HasRoundOff), nameof(RoundOffText), nameof(GrandTotalText), nameof(HasPayments),
         nameof(PaymentRows), nameof(PaidText), nameof(BalanceText), nameof(IsHeldByOther), nameof(HeldByText), nameof(CanEdit), nameof(CanPay),
         nameof(CanFinalize), nameof(FinalizeText), nameof(CanReopen), nameof(CanVoid), nameof(CanTakeOver), nameof(CustomerText), nameof(CanClearCustomer), nameof(StatusText),
-        nameof(InvoiceTitle), nameof(Display), nameof(GuestsText), nameof(WaiterText), nameof(RequestedText))]
+        nameof(InvoiceTitle), nameof(Display), nameof(GuestsText), nameof(WaiterText), nameof(RequestedText), nameof(IsPaid), nameof(CanConfirmPayment))]
     private BillDetailDto? _bill;
 
     // Phase 21.3 header pills.
@@ -132,7 +132,8 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
     public bool HasOrderNotes => OrderNotes.Length > 0;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsPanelOpen), nameof(IsOverlayOpen), nameof(IsDiscountPanel), nameof(IsCustomerPanel), nameof(IsPaymentPanel), nameof(IsPreviewPanel), nameof(IsDonePanel))]
+    [NotifyPropertyChangedFor(nameof(IsPanelOpen), nameof(IsOverlayOpen), nameof(IsDiscountPanel), nameof(IsCustomerPanel), nameof(IsPaymentPanel), nameof(IsPreviewPanel), nameof(IsDonePanel),
+        nameof(PaymentError))]
     private BillPanel _activePanel;
 
     // Phase 21.3: the payment column is permanent, so a payment form exists whenever the bill can be paid. It is rebuilt
@@ -520,7 +521,7 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
 
     public bool CanFinalize => Bill is { IsClaimedByMe: true, Status: BillStatus.Open or BillStatus.Finalized } && !IsBusy;
 
-    public string FinalizeText => Bill?.Status == BillStatus.Open ? "FINALIZE & PRINT" : "SHOW INVOICE";
+    public string FinalizeText => Bill?.Status == BillStatus.Open ? "Finalize & print" : "Show invoice";
 
     public bool CanReopen => Bill is { IsClaimedByMe: true, Status: BillStatus.Open or BillStatus.Finalized, PaidAmount: 0 } && !IsBusy;
 
@@ -538,6 +539,7 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
 
         var methods = await _billingApi.GetPaymentMethodsAsync(includeInactive: false);
         _methods = methods.Data ?? new List<PaymentMethodDto>();
+        MethodButtons = PaymentMethodButton.Build(_methods);
         await LoadRestaurantAsync();
         await RefreshAsync();
 
@@ -776,17 +778,92 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
             ? _printer.PrintAsync(PrintDocumentType.Receipt, payment.Id)
             : Task.CompletedTask;
 
-    [RelayCommand]
-    private void PayCash() => OpenPayment(PaymentMode.Cash);
+    // D6: the method buttons come from the configured list (one per active method, in SortOrder; F2 = cash, F3… the rest).
+    public IReadOnlyList<PaymentMethodDto> Methods => _methods;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasMethods), nameof(HasCashMethod))]
+    private IReadOnlyList<PaymentMethodButton> _methodButtons = Array.Empty<PaymentMethodButton>();
+
+    public bool HasMethods => MethodButtons.Count > 0;
+
+    /// <summary>False when no cash method is active: the cash-only controls (quick amounts, received, change) are then hidden rather than inert.</summary>
+    public bool HasCashMethod => MethodButtons.Any(b => b.IsCash);
+
+    public bool IsSplitSelected => Payment?.IsSplit == true;
+
+    /// <summary>Complete payment is enabled only for a valid form while nothing is being submitted.</summary>
+    public bool CanConfirmPayment => Payment is { IsValid: true } && CanPay;
+
+    /// <summary>The payment failure, shown in the payment column while no overlay has it.</summary>
+    public string? PaymentError => IsOverlayOpen ? null : PanelError;
+
+    public bool IsPaid => Bill?.Status == BillStatus.Settled;
 
     [RelayCommand]
-    private void PayCard() => OpenPayment(PaymentMode.Card);
+    private void PayWith(PaymentMethodDto? method)
+    {
+        if (method is null || Bill is null || !CanPay)
+        {
+            return;
+        }
+
+        Payment = new PaymentViewModel(method, Bill.BalanceDue, _methods);
+        PanelError = null;
+    }
 
     [RelayCommand]
-    private void PayUpi() => OpenPayment(PaymentMode.Upi);
+    private void PaySplit()
+    {
+        if (Bill is null || !CanPay)
+        {
+            return;
+        }
 
+        Payment = PaymentViewModel.Split(Bill.BalanceDue, _methods);
+        PanelError = null;
+    }
+
+    /// <summary>"F2" picks the cash method, "F3"… the others in sort order (see <see cref="PaymentMethodButton.Build"/>).</summary>
     [RelayCommand]
-    private void PaySplit() => OpenPayment(PaymentMode.Split);
+    private void PayHotkey(string? key)
+    {
+        if (MethodButtons.FirstOrDefault(b => b.Hotkey == key) is { } button)
+        {
+            PayWith(button.Method);
+        }
+    }
+
+    partial void OnPaymentChanged(PaymentViewModel? oldValue, PaymentViewModel? newValue)
+    {
+        if (oldValue is not null)
+        {
+            oldValue.PropertyChanged -= OnPaymentPropertyChanged;
+        }
+
+        if (newValue is not null)
+        {
+            newValue.PropertyChanged += OnPaymentPropertyChanged;
+        }
+
+        foreach (var button in MethodButtons)
+        {
+            button.IsSelected = newValue is { IsSplit: false } && newValue.Method?.Id == button.Method.Id;
+        }
+
+        OnPropertyChanged(nameof(IsSplitSelected));
+        OnPropertyChanged(nameof(CanConfirmPayment));
+    }
+
+    private void OnPaymentPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(PaymentViewModel.IsValid))
+        {
+            OnPropertyChanged(nameof(CanConfirmPayment));
+        }
+    }
+
+    partial void OnPanelErrorChanged(string? value) => OnPropertyChanged(nameof(PaymentError));
 
     [RelayCommand]
     private async Task ConfirmPaymentAsync()
@@ -931,7 +1008,7 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
 
     protected override void OnBusyChanged()
     {
-        foreach (var name in new[] { nameof(CanEdit), nameof(CanPay), nameof(CanFinalize), nameof(CanReopen), nameof(CanVoid) })
+        foreach (var name in new[] { nameof(CanEdit), nameof(CanPay), nameof(CanFinalize), nameof(CanReopen), nameof(CanVoid), nameof(CanConfirmPayment) })
         {
             OnPropertyChanged(name);
         }
@@ -942,17 +1019,8 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
         }
     }
 
-    private void OpenPayment(PaymentMode mode)
-    {
-        if (Bill is null || !CanPay)
-        {
-            return;
-        }
-
-        Payment = new PaymentViewModel(mode, Bill.BalanceDue, _methods);
-        PanelError = null;
-    }
-
+    // The form opens on the first button (the cash method when one is active) and follows the balance; a form whose
+    // balance still matches is kept, so a pending retry keeps its key and request.
     private void SyncPayment()
     {
         if (!CanPay)
@@ -966,13 +1034,19 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
         }
 
         var current = Payment;
+        var first = MethodButtons.FirstOrDefault()?.Method;
         if (current is null)
         {
-            Payment = new PaymentViewModel(PaymentMode.Cash, Bill!.BalanceDue, _methods);
+            if (first is not null)
+            {
+                Payment = new PaymentViewModel(first, Bill!.BalanceDue, _methods);
+            }
         }
         else if (current.Balance != Bill!.BalanceDue)
         {
-            Payment = new PaymentViewModel(current.Mode, Bill.BalanceDue, _methods);
+            Payment = current.IsSplit
+                ? PaymentViewModel.Split(Bill.BalanceDue, _methods)
+                : (current.Method ?? first) is { } method ? new PaymentViewModel(method, Bill.BalanceDue, _methods) : null;
         }
     }
 
