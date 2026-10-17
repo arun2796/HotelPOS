@@ -4,11 +4,33 @@
 <div class="toasts" role="status" aria-live="polite" aria-atomic="false">
     @foreach (var toast in Service.Items)
     {
-        <div class="toast @toast.Kind.ToString().ToLowerInvariant()" @onclick="() => Service.Dismiss(toast.Id)">@toast.Text</div>
+        var item = toast;
+        <div class="toast @item.Kind.ToString().ToLowerInvariant()" @onclick="() => Service.Dismiss(item.Id)">
+            <Icon Name="@IconFor(item.Kind)" Size="20" Class="toast-icon" />
+            <span class="toast-text">@item.Text</span>
+            @if (item.ActionLabel is { } label)
+            {
+                <button type="button" class="toast-action" @onclick="() => RunAction(item)" @onclick:stopPropagation="true">@label</button>
+            }
+        </div>
     }
 </div>
 
 @code {
+    private static string IconFor(ToastKind kind) => kind switch
+    {
+        ToastKind.Success => "check",
+        ToastKind.Warning => "alert",
+        ToastKind.Error => "ban",
+        _ => "bell",
+    };
+
+    private void RunAction(ToastItem item)
+    {
+        item.Action?.Invoke();
+        Service.Dismiss(item.Id);
+    }
+
     protected override void OnInitialized() => Service.Changed += OnChanged;
 
     private void OnChanged() => _ = InvokeAsync(StateHasChanged);

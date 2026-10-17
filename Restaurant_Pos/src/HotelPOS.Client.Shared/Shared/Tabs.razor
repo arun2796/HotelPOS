@@ -1,0 +1,28 @@
+<div class="tabs" role="tablist">
+    @foreach (var item in Items)
+    {
+        var entry = item;
+        var on = entry.Key == Selected;
+        <button type="button" role="tab" class="tab @(on ? "on" : null)" aria-selected="@on.ToString().ToLowerInvariant()" @onclick="() => SelectAsync(entry.Key)">
+            @entry.Label
+            @if (entry.Count is { } count)
+            {
+                <span class="tab-count">@count</span>
+            }
+        </button>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<TabItem> Items { get; set; } = Array.Empty<TabItem>();
+
+    [Parameter] public string? Selected { get; set; }
+
+    [Parameter] public EventCallback<string> SelectedChanged { get; set; }
+
+    private Task SelectAsync(string key)
+    {
+        Selected = key;
+        return SelectedChanged.InvokeAsync(key);
+    }
+}

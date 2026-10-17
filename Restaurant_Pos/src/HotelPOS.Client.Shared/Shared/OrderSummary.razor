@@ -1,0 +1,29 @@
+<dl class="order-summary" data-testid="order-summary">
+    <div class="os-row"><dt>Subtotal</dt><dd class="num-tab">@Subtotal.ToString("N2")</dd></div>
+    @if (Discount > 0)
+    {
+        <div class="os-row discount"><dt>Discount</dt><dd class="num-tab">−@Discount.ToString("N2")</dd></div>
+    }
+    @if (Tax > 0)
+    {
+        <div class="os-row"><dt>@TaxLabel</dt><dd class="num-tab">@Tax.ToString("N2")</dd></div>
+    }
+    <div class="os-row total"><dt>@TotalLabel</dt><dd class="num-tab">@Total.ToString("N2")</dd></div>
+</dl>
+
+@code {
+    [Parameter] public decimal Subtotal { get; set; }
+
+    [Parameter] public decimal Discount { get; set; }
+
+    [Parameter] public decimal Tax { get; set; }
+
+    [Parameter] public string TaxLabel { get; set; } = "Tax";
+
+    [Parameter] public string TotalLabel { get; set; } = "Total";
+
+    /// <summary>Defaults to subtotal − discount + tax.</summary>
+    [Parameter] public decimal? GrandTotal { get; set; }
+
+    private decimal Total => GrandTotal ?? Subtotal - Discount + Tax;
+}

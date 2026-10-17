@@ -1,0 +1,58 @@
+<div class="order-line @(Cancelled ? "cancelled" : null)" data-testid="order-line">
+    <span class="order-line-img">
+        @if (!string.IsNullOrEmpty(ImageUrl))
+        {
+            <img src="@ImageUrl" alt="" loading="lazy" />
+        }
+        else
+        {
+            <span class="order-line-initials" aria-hidden="true">@Initials</span>
+        }
+    </span>
+    <div class="order-line-main">
+        <div class="order-line-name">@Quantity × @Name</div>
+        @if (!string.IsNullOrEmpty(Modifiers))
+        {
+            <div class="order-line-mods muted small">@Modifiers</div>
+        }
+        @if (!string.IsNullOrEmpty(Note))
+        {
+            <div class="order-line-note"><Icon Name="pencil" Size="14" /> <span>@Note</span></div>
+        }
+    </div>
+    @if (Price is { } price)
+    {
+        <div class="order-line-price num-tab">@price.ToString("N2")</div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Name { get; set; } = string.Empty;
+
+    [Parameter] public int Quantity { get; set; } = 1;
+
+    [Parameter] public string? Modifiers { get; set; }
+
+    [Parameter] public string? Note { get; set; }
+
+    [Parameter] public decimal? Price { get; set; }
+
+    /// <summary>Absolute image URL (use IClientHost.ImageUrl); null shows the initials placeholder.</summary>
+    [Parameter] public string? ImageUrl { get; set; }
+
+    [Parameter] public bool Cancelled { get; set; }
+
+    private string Initials
+    {
+        get
+        {
+            var words = Name.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            return words.Length switch
+            {
+                0 => "?",
+                1 => words[0][..1].ToUpperInvariant(),
+                _ => (words[0][..1] + words[1][..1]).ToUpperInvariant(),
+            };
+        }
+    }
+}

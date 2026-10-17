@@ -25,7 +25,7 @@ public enum ToastKind
     Error,
 }
 
-public sealed record ToastItem(int Id, ToastKind Kind, string Text);
+public sealed record ToastItem(int Id, ToastKind Kind, string Text, string? ActionLabel = null, Action? Action = null);
 
 /// <summary>
 /// Short notices at the bottom of the screen; they go away by themselves. Expiry is a plain delayed task, never a
@@ -77,12 +77,15 @@ public sealed class ToastService
         }
     }
 
-    private void Add(ToastKind kind, string text, TimeSpan lifetime)
+    /// <summary>A notice with one action button (e.g. Undo); pressing it runs the action and dismisses the toast.</summary>
+    public void WithAction(ToastKind kind, string text, string actionLabel, Action action) => Add(kind, text, TimeSpan.FromSeconds(6), actionLabel, action);
+
+    private void Add(ToastKind kind, string text, TimeSpan lifetime, string? actionLabel = null, Action? action = null)
     {
         ToastItem item;
         lock (_gate)
         {
-            item = new ToastItem(++_nextId, kind, text);
+            item = new ToastItem(++_nextId, kind, text, actionLabel, action);
             _items.Add(item);
         }
 
