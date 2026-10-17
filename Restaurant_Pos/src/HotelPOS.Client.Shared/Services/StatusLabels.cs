@@ -1,73 +1,43 @@
 using HotelPOS.Contracts.Enums;
+using HotelPOS.Contracts.Presentation;
 
 namespace HotelPOS.Client.Services;
 
 /// <summary>
-/// The one set of words and chip colours for order, kitchen-ticket and line states on the waiter screens, so an order
-/// never reads "Submitted" in one place, "New" in another and "BillRequested" in a third. A ticket the kitchen has not
-/// accepted yet and a submitted order are both "Sent to kitchen". Ready is good news (green), never the error red.
-/// Table states keep the desktop legend's words (Available … Billing) because the map's colours carry the same meaning.
+/// Waiter-screen words and chip classes for order, kitchen-ticket, line and table states. A thin delegate to
+/// <see cref="StatusPresentation"/> (the single status map, Phase 21): a ticket the kitchen has not accepted yet and a
+/// submitted order both read "Sent to kitchen" on the waiter side; Ready is good news (green), never the error red.
 /// </summary>
 public static class StatusLabels
 {
-    public const string SentToKitchen = "Sent to kitchen";
+    public const string SentToKitchen = StatusPresentation.SentToKitchen;
 
-    public static string Order(OrderStatus status) => status switch
-    {
-        OrderStatus.Draft => "Draft",
-        OrderStatus.Submitted => SentToKitchen,
-        OrderStatus.Accepted => "Accepted",
-        OrderStatus.Preparing => "Preparing",
-        OrderStatus.Ready => "Ready",
-        OrderStatus.Served => "Served",
-        OrderStatus.BillRequested => "Bill requested",
-        OrderStatus.Billed => "Billed",
-        OrderStatus.Paid => "Paid",
-        OrderStatus.Completed => "Completed",
-        OrderStatus.Cancelled => "Cancelled",
-        _ => status.ToString(),
-    };
+    public static string Order(OrderStatus status) => StatusPresentation.For(status).Label;
 
-    public static string OrderChip(OrderStatus status) => status switch
-    {
-        OrderStatus.Ready or OrderStatus.Paid or OrderStatus.Completed => "success",
-        OrderStatus.Preparing or OrderStatus.BillRequested or OrderStatus.Billed => "warning",
-        OrderStatus.Cancelled => "danger",
-        OrderStatus.Draft or OrderStatus.Served => string.Empty,
-        _ => "info",
-    };
+    public static string OrderChip(OrderStatus status) => Chip(StatusPresentation.For(status));
 
-    public static string Ticket(KitchenOrderStatus status) => status switch
-    {
-        KitchenOrderStatus.New => SentToKitchen,
-        KitchenOrderStatus.Accepted => "Accepted",
-        KitchenOrderStatus.Preparing => "Preparing",
-        KitchenOrderStatus.Ready => "Ready",
-        KitchenOrderStatus.Completed => "Served",
-        KitchenOrderStatus.Cancelled => "Cancelled",
-        _ => status.ToString(),
-    };
+    public static string Ticket(KitchenOrderStatus status) =>
+        status == KitchenOrderStatus.New ? SentToKitchen : StatusPresentation.For(status).Label;
 
-    public static string TicketChip(KitchenOrderStatus status) => status switch
-    {
-        KitchenOrderStatus.Ready or KitchenOrderStatus.Completed => "success",
-        KitchenOrderStatus.Preparing => "warning",
-        KitchenOrderStatus.Cancelled => "danger",
-        _ => "info",
-    };
+    public static string TicketChip(KitchenOrderStatus status) => Chip(StatusPresentation.For(status));
 
     /// <summary>A line before it has a ticket (not sent yet) or after it was cancelled.</summary>
-    public static string Line(OrderItemStatus status) => status switch
-    {
-        OrderItemStatus.Draft => "Not sent",
-        OrderItemStatus.Sent => SentToKitchen,
-        OrderItemStatus.Cancelled => "Cancelled",
-        _ => status.ToString(),
-    };
+    public static string Line(OrderItemStatus status) => StatusPresentation.For(status).Label;
 
-    public static string Table(TableStatus status) => status switch
+    public static string Table(TableStatus status) => StatusPresentation.For(status).Label;
+
+    /// <summary>The <c>st-*</c> suffix of a table state (<c>st-available</c>, <c>st-outofservice</c>, ...).</summary>
+    public static string TableClass(TableStatus status) => status.ToString().ToLowerInvariant();
+
+    /// <summary>The <c>chip</c> modifier class for a tone: <c>success</c>, <c>warning</c>, <c>danger</c>, <c>info</c>; neutral has none.</summary>
+    public static string Chip(StatusDisplay display) => Tone(display.Tone);
+
+    public static string Tone(StatusTone tone) => tone switch
     {
-        TableStatus.OutOfService => "Out of service",
-        _ => status.ToString(),
+        StatusTone.Success => "success",
+        StatusTone.Warning => "warning",
+        StatusTone.Danger => "danger",
+        StatusTone.Info => "info",
+        _ => string.Empty,
     };
 }

@@ -33,7 +33,7 @@ else
                 <h1>@table.Code <span class="muted" style="font-weight:400;font-size:15px">@table.Name</span></h1>
                 <div class="muted small">@table.SectionName · @table.Capacity seats</div>
             </div>
-            <span class="chip st-chip-@table.Status.ToString().ToLowerInvariant()">@StatusLabels.Table(table.Status)</span>
+            <span class="chip st-chip-@StatusLabels.TableClass(table.Status)">@StatusLabels.Table(table.Status)</span>
         </div>
         @if (table.GuestCount is { } guests)
         {
