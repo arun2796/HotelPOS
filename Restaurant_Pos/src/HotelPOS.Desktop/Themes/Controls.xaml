@@ -49,14 +49,14 @@
       <Setter.Value>
         <ControlTemplate TargetType="controls:KpiTile">
           <Border x:Name="Root" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
-                  CornerRadius="{StaticResource Radius.Card}" Padding="18" MinHeight="116" SnapsToDevicePixels="True">
+                  CornerRadius="{StaticResource Radius.Card}" Padding="16" MinHeight="116" SnapsToDevicePixels="True">
             <Grid>
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
               </Grid.ColumnDefinitions>
               <!-- Coloured icon square: the tone says what kind of figure it is; the icon, not the colour, says which. -->
-              <Border Width="44" Height="44" CornerRadius="10" VerticalAlignment="Top" Margin="0,0,14,0"
+              <Border Width="40" Height="40" CornerRadius="10" VerticalAlignment="Top" Margin="0,0,12,0"
                       Background="{TemplateBinding IconBackground}">
                 <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
                   <controls:Icon x:Name="PartIcon" Kind="{TemplateBinding Icon}" Width="22" Height="22" Foreground="{TemplateBinding IconForeground}" />
@@ -66,7 +66,7 @@
               </Border>
               <StackPanel Grid.Column="1">
                 <TextBlock Text="{TemplateBinding Title}" FontSize="{DynamicResource Font.Size.Label}" FontWeight="SemiBold"
-                           Foreground="{DynamicResource Brush.TextSecondary}" TextTrimming="CharacterEllipsis" />
+                           Foreground="{DynamicResource Brush.TextSecondary}" TextTrimming="CharacterEllipsis" ToolTip="{TemplateBinding Title}" />
                 <!-- DownOnly: the value keeps its size and only shrinks when the tile is too narrow (five tiles at 1366 px). -->
                 <Viewbox StretchDirection="DownOnly" HorizontalAlignment="Left" Margin="0,4,0,2">
                   <TextBlock Text="{TemplateBinding Value}" FontSize="{DynamicResource Font.Size.Kpi}" FontWeight="Bold"
@@ -799,4 +799,37 @@
   </Style>
 
 
+
+  <!-- ============================ DeviceStatusCard (sidebar footer) ============================ -->
+  <Style TargetType="controls:DeviceStatusCard">
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="controls:DeviceStatusCard">
+          <Grid>
+            <Border x:Name="Card" CornerRadius="10" Padding="12,8" Background="{DynamicResource Brush.SidebarHover}">
+              <StackPanel>
+                <DockPanel>
+                  <TextBlock DockPanel.Dock="Right" Text="{TemplateBinding Version}" FontSize="11" VerticalAlignment="Center"
+                             Foreground="{DynamicResource Brush.SidebarTextMuted}" />
+                  <controls:StatusBadge Display="{Binding Display, RelativeSource={RelativeSource TemplatedParent}}" />
+                </DockPanel>
+                <TextBlock Text="{TemplateBinding TerminalName}" Margin="2,6,0,0" FontSize="13" FontWeight="SemiBold"
+                           Foreground="{DynamicResource Brush.SidebarTextActive}" TextTrimming="CharacterEllipsis"
+                           ToolTip="{TemplateBinding TerminalName}" />
+              </StackPanel>
+            </Border>
+            <controls:Icon x:Name="Dot" Kind="{Binding Display.Icon, RelativeSource={RelativeSource TemplatedParent}}" Width="18" Height="18"
+                           HorizontalAlignment="Center" Foreground="{TemplateBinding ToneBrush}" Visibility="Collapsed"
+                           ToolTip="{Binding Display.Label, RelativeSource={RelativeSource TemplatedParent}}" />
+          </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsCompact" Value="True">
+              <Setter TargetName="Card" Property="Visibility" Value="Collapsed" />
+              <Setter TargetName="Dot" Property="Visibility" Value="Visible" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
 </ResourceDictionary>
