@@ -530,6 +530,10 @@
               </UniformGrid>
               <Button Content="Next bill" Command="{Binding NextBillCommand}" Style="{StaticResource Button.Large}" Margin="0,8,0,0" />
             </StackPanel>
+            <!-- Quick actions: the keyboard legend (the method buttons carry their own key). -->
+            <TextBlock Style="{StaticResource Text.Caption}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,10,0,0">
+              <Run Text="F2" FontWeight="SemiBold" /><Run Text=" cash  ·  " /><Run Text="F3–F8" FontWeight="SemiBold" /><Run Text=" other methods  ·  " /><Run Text="F9" FontWeight="SemiBold" /><Run Text=" split  ·  " /><Run Text="Esc" FontWeight="SemiBold" /><Run Text=" back to the queue" />
+            </TextBlock>
           </StackPanel>
         </Border>
       </Grid>
