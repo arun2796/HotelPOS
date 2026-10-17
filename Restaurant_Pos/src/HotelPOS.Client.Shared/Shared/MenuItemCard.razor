@@ -1,0 +1,52 @@
+@* Phase 21 W4: picture card of the order builder. The picture is the item's own ImageUrl (resolved by the host); without one
+   the initials stand in (D11: no stock photos). The whole card adds the item; the star pins it to Favourites. *@
+@using HotelPOS.Contracts.Menu
+
+<div class="item-wrap">
+    <button type="button" class="item-card" data-testid="menu-item" disabled="@(!Item.IsAvailable)" @onclick="OnPick">
+        <div class="item-img">
+            @if (!string.IsNullOrEmpty(ImageUrl))
+            {
+                <img src="@ImageUrl" alt="" loading="lazy" />
+            }
+            else
+            {
+                <span class="item-initials" aria-hidden="true">@TextFormat.Initials(Item.Name)</span>
+            }
+            @if (!Item.IsAvailable)
+            {
+                <span class="chip danger sold">SOLD OUT</span>
+            }
+        </div>
+        <div class="item-body">
+            <div class="item-name">@Item.Name</div>
+            <div class="item-meta">
+                <span class="price num-tab">@Item.Price.ToString("N2")</span>
+                @if (Item.ModifierGroupIds.Count > 0)
+                {
+                    <span class="muted small item-options-hint">+ options</span>
+                }
+            </div>
+        </div>
+        @if (Item.IsAvailable)
+        {
+            <span class="item-add" aria-hidden="true"><Icon Name="plus" Size="18" /></span>
+        }
+    </button>
+    <button type="button" class="item-star @(Pinned ? "on" : null)" aria-label="@((Pinned ? "Unpin " : "Pin ") + Item.Name)" aria-pressed="@(Pinned ? "true" : "false")" @onclick="OnTogglePin">
+        <Icon Name="star" Size="20" />
+    </button>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public MenuEntryDto Item { get; set; } = new();
+
+    /// <summary>Absolute picture URL (IClientHost.ImageUrl); null draws the initials placeholder.</summary>
+    [Parameter] public string? ImageUrl { get; set; }
+
+    [Parameter] public bool Pinned { get; set; }
+
+    [Parameter] public EventCallback OnPick { get; set; }
+
+    [Parameter] public EventCallback OnTogglePin { get; set; }
+}

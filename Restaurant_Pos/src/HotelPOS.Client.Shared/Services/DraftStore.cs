@@ -31,6 +31,9 @@ public sealed record WebDraft
 
     public int Guests { get; init; } = 1;
 
+    /// <summary>Order-level kitchen note (Phase 21 W4). Optional, so drafts saved before it exist still load.</summary>
+    public string? Notes { get; init; }
+
     public IReadOnlyList<WebDraftLine> Lines { get; init; } = Array.Empty<WebDraftLine>();
 
     /// <summary>The Idempotency-Key of the pending send, kept so a retry after a reload reuses it.</summary>

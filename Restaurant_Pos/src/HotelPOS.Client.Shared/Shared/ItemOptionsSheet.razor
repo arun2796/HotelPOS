@@ -1,0 +1,108 @@
+@* Phase 21 W4 / D2: the existing option picker and the per-line kitchen-note sheet in one surface. Option groups keep
+   their Min/Max rules (OrderComposer), the note keeps its quick chips and 500-character limit, the quantity its 1-99
+   stepper. Restyle only: no new modifier behaviour, no management. *@
+@using HotelPOS.Contracts.Menu
+@using HotelPOS.Contracts.Orders
+
+<BottomSheet Open="true" Title="@Item.Name" OnClose="OnClose">
+    <div class="options-price num-tab" data-testid="options-price">@Item.Price.ToString("N2")</div>
+
+    @foreach (var group in Groups)
+    {
+        var g = group;
+        var selected = _selected[g.Id];
+        <section class="options-group" aria-label="@g.Name">
+            <div class="options-head"><b>@g.Name</b> <span class="muted small">@OrderComposer.GroupRuleText(g)</span></div>
+            <div class="options">
+                @foreach (var option in g.Options)
+                {
+                    var o = option;
+                    var on = selected.Contains(o.Id);
+                    <button type="button" class="btn option-btn @(on ? "primary" : null)" aria-pressed="@(on ? "true" : "false")"
+                            disabled="@(!on && !OrderComposer.CanSelectMore(g, selected.Count))" @onclick="() => Toggle(g, o)">
+                        @OptionText(o)
+                    </button>
+                }
+            </div>
+        </section>
+    }
+
+    <section class="options-group" aria-label="Special instructions">
+        <div class="options-head"><b>Special instructions</b> <span class="muted small">optional</span></div>
+        <div class="options quick-notes">
+            @foreach (var quick in OrderComposer.QuickNotes)
+            {
+                var q = quick;
+                <button type="button" class="btn quick-note" @onclick="() => AppendQuickNote(q)">@q</button>
+            }
+        </div>
+        <textarea class="input" data-testid="item-note" @bind="_notes" maxlength="@OrderLimits.NotesMaxLength" placeholder="e.g. less oil, extra raita on the side" aria-label="Special instructions"></textarea>
+    </section>
+
+    <div class="options-foot">
+        <Stepper @bind-Value="_quantity" Min="1" Max="OrderLimits.MaxQuantity" />
+        <button type="button" class="btn primary lg grow" data-testid="options-confirm" disabled="@(!AllSatisfied)" @onclick="ConfirmAsync">@ConfirmLabel</button>
+    </div>
+</BottomSheet>
+
+@code {
+    private Dictionary<int, HashSet<int>> _selected = new();
+    private int _quantity = 1;
+    private string _notes = string.Empty;
+
+    [Parameter, EditorRequired] public MenuEntryDto Item { get; set; } = new();
+
+    [Parameter] public IReadOnlyList<MenuModifierGroupDto> Groups { get; set; } = Array.Empty<MenuModifierGroupDto>();
+
+    /// <summary>Pre-selected option ids when editing a cart line.</summary>
+    [Parameter] public IReadOnlyList<int>? InitialOptionIds { get; set; }
+
+    [Parameter] public int InitialQuantity { get; set; } = 1;
+
+    [Parameter] public string? InitialNotes { get; set; }
+
+    [Parameter] public string ConfirmLabel { get; set; } = "Add to order";
+
+    [Parameter] public EventCallback<ItemOptionsResult> OnConfirm { get; set; }
+
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private bool AllSatisfied => OrderComposer.AllGroupsSatisfied(Groups, g => _selected[g.Id].Count);
+
+    protected override void OnInitialized()
+    {
+        var initial = InitialOptionIds ?? Array.Empty<int>();
+        _selected = Groups.ToDictionary(g => g.Id, g => g.Options.Where(o => initial.Contains(o.Id)).Select(o => o.Id).ToHashSet());
+        _quantity = Math.Clamp(InitialQuantity, 1, OrderLimits.MaxQuantity);
+        _notes = InitialNotes ?? string.Empty;
+    }
+
+    private void Toggle(MenuModifierGroupDto group, MenuModifierOptionDto option)
+    {
+        var selected = _selected[group.Id];
+        if (!selected.Remove(option.Id))
+        {
+            if (group.MaxSelections == 1)
+            {
+                selected.Clear();
+            }
+
+            if (OrderComposer.CanSelectMore(group, selected.Count))
+            {
+                selected.Add(option.Id);
+            }
+        }
+    }
+
+    private void AppendQuickNote(string quick) =>
+        _notes = string.IsNullOrEmpty(_notes) ? quick : $"{_notes}, {quick}";
+
+    private static string OptionText(MenuModifierOptionDto option) =>
+        option.PriceDelta == 0 ? option.Name : $"{option.Name} {(option.PriceDelta > 0 ? "+" : string.Empty)}{option.PriceDelta:N0}";
+
+    private Task ConfirmAsync()
+    {
+        var options = Groups.SelectMany(g => g.Options.Where(o => _selected[g.Id].Contains(o.Id))).ToList();
+        return OnConfirm.InvokeAsync(new ItemOptionsResult(options, _quantity, OrderComposer.TrimNotes(_notes)));
+    }
+}

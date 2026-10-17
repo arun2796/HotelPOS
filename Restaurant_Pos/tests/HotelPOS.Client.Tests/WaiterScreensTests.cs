@@ -227,4 +227,158 @@ public sealed class WaiterScreensTests : TestContext
         Services.GetRequiredService<NavigationManager>().Uri.Should().EndWith("tables/7");
         await StopRealtimeAsync();
     }
+
+    // ---- W4 order builder ---------------------------------------------------------------------------------------
+
+    private static readonly MenuDto Menu = new()
+    {
+        Version = 1,
+        Categories = new[] { new MenuCategoryDto(1, "Mains", 1), new MenuCategoryDto(2, "Breads", 2) },
+        Items = new[]
+        {
+            new MenuEntryDto { Id = 10, CategoryId = 1, Name = "Chicken Biryani", Code = "CB1", Price = 260m, IsAvailable = true, SortOrder = 1, ModifierGroupIds = new[] { 1, 2 }, ImageUrl = "/images/menu/cb1.jpg" },
+            new MenuEntryDto { Id = 20, CategoryId = 2, Name = "Butter Naan", Code = "BN1", Price = 50m, IsAvailable = true, SortOrder = 1 },
+            new MenuEntryDto { Id = 21, CategoryId = 2, Name = "Garlic Naan", Code = "GN1", Price = 60m, IsAvailable = false, SortOrder = 2 },
+        },
+        ModifierGroups = new[]
+        {
+            new MenuModifierGroupDto { Id = 1, Name = "Spice level", MinSelections = 1, MaxSelections = 1, Options = new[] { new MenuModifierOptionDto(100, "Mild", 0m), new MenuModifierOptionDto(101, "Hot", 0m) } },
+            new MenuModifierGroupDto { Id = 2, Name = "Add-ons", MinSelections = 0, MaxSelections = 2, Options = new[] { new MenuModifierOptionDto(200, "Extra raita", 30m), new MenuModifierOptionDto(201, "Boiled egg", 20m), new MenuModifierOptionDto(202, "Extra gravy", 40m) } },
+        },
+    };
+
+    private async Task<IRenderedComponent<OrderBuilderPage>> RenderBuilderAsync(RouteHandler handler, int? orderId = null)
+    {
+        AddPageServices(await WaiterAsync(), handler);
+        var page = RenderComponent<OrderBuilderPage>(p => { p.Add(x => x.TableId, 5); if (orderId is { } id) { p.Add(x => x.OrderId, id); } });
+        page.WaitForAssertion(() => page.FindAll("button.item-card").Should().NotBeEmpty());
+        // Let the start-up work (connect attempt, draft and table reads) settle before the first click.
+        await Task.Delay(500);
+        return page;
+    }
+
+    private static RouteHandler MenuHandler() => new()
+    {
+        Respond = r => (r.Method.Method, r.RequestUri!.AbsolutePath) switch
+        {
+            ("GET", "/api/menu") => Menu,
+            ("GET", "/api/tables/5") => new TableDetailDto { Table = new TableDto { Id = 5, Code = "T05", Status = TableStatus.Occupied, GuestCount = 4 } },
+            ("POST", "/api/orders") => new OrderDetailDto { Id = 1, OrderNumber = 1005, TableId = 5, Status = OrderStatus.Submitted },
+            _ => null,
+        },
+    };
+
+    [Fact]
+    public async Task Builder_MenuCards_ShowPictureOrInitials_PriceAndOptionsHint_AndTheHeaderNamesTheTable()
+    {
+        var page = await RenderBuilderAsync(MenuHandler());
+        var shell = Services.GetRequiredService<ShellState>();
+        shell.Title.Should().Be("T05 · New order");
+        shell.Subtitle.Should().Be("4 guests");
+        shell.BackHref.Should().Be("tables/5");
+
+        page.Find("#menu-search").Should().NotBeNull("the search keeps its id for the Favourites tests");
+        page.Find(".item-card img").GetAttribute("src").Should().Be("http://127.0.0.1:1/images/menu/cb1.jpg", "pictures come from the host-resolved ImageUrl");
+        page.Find(".item-options-hint").TextContent.Should().Be("+ options");
+
+        await page.InvokeAsync(() => page.FindAll("button.chip-btn").Single(c => c.TextContent == "Breads").Click());
+        page.FindAll(".item-initials").Select(i => i.TextContent).Should().Equal("BN", "GN");
+        page.FindAll("button.item-card")[1].HasAttribute("disabled").Should().BeTrue("sold out");
+        page.FindAll(".item-star svg[data-icon=star]").Should().HaveCount(2);
+        await StopRealtimeAsync();
+    }
+
+    [Fact]
+    public async Task Builder_ItemOptionsSheet_MergesOptionsNoteAndQuantity_AndEnforcesTheGroupRules()
+    {
+        var page = await RenderBuilderAsync(MenuHandler());
+
+        await page.InvokeAsync(() => page.FindAll("button.item-card")[0].Click());
+
+        var sheet = page.Find(".sheet");
+        sheet.GetAttribute("aria-label").Should().Be("Chicken Biryani");
+        page.Find("[data-testid=options-price]").TextContent.Should().Be("260.00");
+        page.FindAll(".options-group").Select(g => g.GetAttribute("aria-label")).Should().Equal("Spice level", "Add-ons", "Special instructions");
+        page.FindAll(".options-head").Select(h => h.TextContent.Trim()).Should().Equal("Spice level Choose 1", "Add-ons Optional · up to 2", "Special instructions optional");
+        page.Find("[data-testid=options-confirm]").HasAttribute("disabled").Should().BeTrue("Spice level is required");
+
+        page.FindAll(".options-group")[0].QuerySelectorAll("button")[1].Click(); // Hot
+        page.FindAll(".options-group")[1].QuerySelectorAll("button")[0].Click(); // Extra raita +30
+        page.FindAll(".options-group")[1].QuerySelectorAll("button")[1].Click(); // Boiled egg +20
+        page.FindAll(".options-group")[1].QuerySelectorAll("button")[2].HasAttribute("disabled").Should().BeTrue("up to 2 add-ons");
+        page.FindAll(".quick-notes button").Single(b => b.TextContent == "Less oil").Click();
+        page.Find("[data-testid=item-note]").Change("Less oil, extra raita on the side");
+        page.Find(".options-foot .stepper button[aria-label='Quantity: one more']").Click();
+        page.Find("[data-testid=options-confirm]").HasAttribute("disabled").Should().BeFalse();
+
+        page.Find("[data-testid=options-confirm]").Click();
+
+        page.FindAll(".overlay").Should().BeEmpty();
+        page.Find(".cart h2").TextContent.Should().Be("Order · 2 items");
+        page.Find(".cart-total").TextContent.Should().Be("620.00", "(260 + 30 + 20) × 2");
+        page.Find("[data-testid=cart-review]").Click();
+        var line = page.Find(".cart-line");
+        line.QuerySelector(".order-line-name")!.TextContent.Should().Be("2 × Chicken Biryani");
+        line.QuerySelector(".order-line-mods")!.TextContent.Should().Be("Hot, Extra raita, Boiled egg");
+        line.QuerySelector(".order-line-note")!.TextContent.Should().Contain("Less oil, extra raita on the side");
+        await StopRealtimeAsync();
+    }
+
+    [Fact]
+    public async Task Builder_SendsOrderLevelNotes_AndGuests_OnTheCreateOrderRequest()
+    {
+        var handler = MenuHandler();
+        var page = await RenderBuilderAsync(handler);
+        await page.InvokeAsync(() => page.FindAll("button.chip-btn").Single(c => c.TextContent == "Breads").Click());
+        await page.InvokeAsync(() => page.FindAll("button.item-card")[0].Click());
+
+        page.Find("[data-testid=cart-review]").Click();
+        page.Find("[data-testid=order-notes]").Change("No onion for biryani");
+        page.Find(".review-row .stepper button[aria-label='Guests: one less']").Click();
+        await page.Find("[data-testid=send]").ClickAsync(new MouseEventArgs());
+
+        page.WaitForAssertion(() => Services.GetRequiredService<NavigationManager>().Uri.Should().EndWith("tables/5"));
+        var index = handler.Calls.FindIndex(c => c == "POST /api/orders");
+        index.Should().BeGreaterThanOrEqualTo(0);
+        handler.Calls.Count(c => c == "POST /api/orders").Should().Be(1, "one logical send, one key");
+        var request = JsonSerializer.Deserialize<CreateOrderRequest>(handler.Bodies[index], PosJson.Options)!;
+        request.Notes.Should().Be("No onion for biryani", "the existing Notes field is finally sent");
+        request.GuestCount.Should().Be(3);
+        request.Submit.Should().BeTrue();
+        request.Items.Should().ContainSingle().Which.MenuItemId.Should().Be(20);
+        _storage.Items.Keys.Should().NotContain(k => k.StartsWith("hotelpos.draft.", StringComparison.Ordinal), "a confirmed send removes the draft");
+        await StopRealtimeAsync();
+    }
+
+    [Fact]
+    public async Task Builder_DraftKeepsOrderNotes_AndEditDeleteWorkFromTheReviewSheet()
+    {
+        var handler = MenuHandler();
+        var page = await RenderBuilderAsync(handler);
+        await page.InvokeAsync(() => page.FindAll("button.chip-btn").Single(c => c.TextContent == "Breads").Click());
+        await page.InvokeAsync(() => page.FindAll("button.item-card")[0].Click());
+        page.Find("[data-testid=cart-review]").Click();
+        page.Find("[data-testid=order-notes]").Change("Birthday table");
+
+        var draft = JsonSerializer.Deserialize<WebDraft>(_storage.Items["hotelpos.draft.5"], PosJson.Options)!;
+        draft.Notes.Should().Be("Birthday table");
+        draft.Lines.Should().ContainSingle();
+
+        // Edit: an item without option groups still gets the note and quantity controls of the same sheet.
+        page.Find("[data-testid=cart-line-edit]").Click();
+        page.FindAll(".options-group").Select(g => g.GetAttribute("aria-label")).Should().Equal("Special instructions");
+        page.Find("[data-testid=options-confirm]").TextContent.Trim().Should().Be("Save changes");
+        page.Find("[data-testid=item-note]").Change("Extra butter");
+        page.Find(".options-foot .stepper button[aria-label='Quantity: one more']").Click();
+        page.Find("[data-testid=options-confirm]").Click();
+
+        page.Find(".cart-line .order-line-name").TextContent.Should().Be("2 × Butter Naan");
+        page.Find(".cart-line .order-line-note").TextContent.Should().Contain("Extra butter");
+        page.Find(".cart h2").TextContent.Should().Be("Order · 2 items");
+
+        page.Find("[data-testid=cart-line-delete]").Click();
+        page.FindAll(".cart-line").Should().BeEmpty();
+        page.Find("[data-testid=send]").HasAttribute("disabled").Should().BeTrue("nothing to send");
+        await StopRealtimeAsync();
+    }
 }

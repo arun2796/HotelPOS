@@ -143,9 +143,12 @@ public sealed class WebUiFixTests : TestContext
         page.FindAll(".sheet button").Single(b => b.TextContent.Trim() == "Add to order").Click();
 
         page.FindAll(".overlay").Should().BeEmpty("the sheet closes once the item is added");
-        page.Find(".cart-line").TextContent.Should().Contain("Chicken Biryani").And.Contain("Mild");
         page.Find(".cart h2").TextContent.Should().Be("Order · 1 item");
         Services.GetRequiredService<ToastService>().Items.Should().ContainSingle(t => t.Text == "Chicken Biryani added.");
+
+        // Phase 21 W4: the lines live in the review sheet, opened from the sticky cart bar.
+        page.Find("[data-testid=cart-review]").Click();
+        page.Find(".cart-line").TextContent.Should().Contain("Chicken Biryani").And.Contain("Mild");
         await Services.GetRequiredService<WebRealtimeClient>().StopAsync();
     }
 
@@ -169,11 +172,14 @@ public sealed class WebUiFixTests : TestContext
         // As in FavouritesTests: let the start-up work (connect attempt, draft and table reads) settle first.
         await Task.Delay(500);
         page.FindAll("button.item-card")[1].Click();
+        page.Find(".cart h2").TextContent.Should().Be("Order · 1 item");
+        page.Find("[data-testid=cart-review]").Click();
         page.FindAll(".cart-line").Should().ContainSingle();
-        await page.FindAll(".cart button").Single(b => b.TextContent.Contains("SEND TO KITCHEN")).ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        await page.Find("[data-testid=send]").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
 
         page.WaitForAssertion(() => Services.GetRequiredService<NavigationManager>().Uri.Should().EndWith("tables/5"));
         page.FindAll(".cart-line").Should().BeEmpty("a successful send leaves nothing to send twice");
+        page.Find(".cart h2").TextContent.Should().Be("Order · 0 items");
         handler.Calls.Count(c => c == "POST /api/orders").Should().Be(1);
         Services.GetRequiredService<ToastService>().Items.Should().Contain(t => t.Text == "Order #1005 sent to the kitchen.");
         await Services.GetRequiredService<WebRealtimeClient>().StopAsync();
