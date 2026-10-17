@@ -21,6 +21,10 @@ public sealed class KitchenApi
     public Task<ApiResult<KitchenTicketListDto>> ListAsync(int? stationId, CancellationToken ct = default) =>
         _api.GetAsync<KitchenTicketListDto>(stationId is { } id ? $"api/kitchen/orders?stationId={id}" : "api/kitchen/orders", ct);
 
+    /// <summary>The order behind a ticket (guest count, order notes). Any signed-in role may read it; the kitchen never shows its prices.</summary>
+    public Task<ApiResult<HotelPOS.Contracts.Orders.OrderDetailDto>> GetOrderAsync(int orderId, CancellationToken ct = default) =>
+        _api.GetAsync<HotelPOS.Contracts.Orders.OrderDetailDto>($"api/orders/{orderId}", ct);
+
     public Task<ApiResult<KitchenTicketListDto>> CompletedAsync(CancellationToken ct = default) =>
         _api.GetAsync<KitchenTicketListDto>("api/kitchen/orders/completed", ct);
 

@@ -14,34 +14,55 @@
 {
     <div class="banner error">You do not have access to the kitchen display.</div>
 }
-else if (_error is not null)
-{
-    <ErrorState Message="@_error" OnRetry="RefreshAsync" />
-}
-else if (_tickets is null)
-{
-    <Skeleton Variant="Skeleton.SkeletonVariant.Card" Count="3" Label="Loading" />
-}
-else if (_tickets.Count == 0)
-{
-    <EmptyState Icon="☑" Text="No tickets completed today yet." />
-}
 else
 {
-    <div class="muted small" style="margin-bottom:8px">@_tickets.Count tickets today · average preparation @AveragePrep min</div>
-    <div class="stack">
-        @foreach (var ticket in _tickets.OrderByDescending(t => t.CompletedAtUtc ?? t.CancelledAtUtc))
-        {
-            <div class="card">
-                <div class="row between">
-                    <b>@ticket.TicketNumber · @ticket.TableCode</b>
-                    <span class="chip @(ticket.Status == KitchenOrderStatus.Cancelled ? "danger" : "success")">@ticket.Status</span>
-                </div>
-                <div class="muted small">@string.Join(", ", ticket.Items.Where(i => !i.IsCancelled).Select(i => $"{i.Quantity} × {i.Name}"))</div>
-                <div class="muted small">in @ticket.CreatedAtUtc.ToLocalTime().ToString("HH:mm") · wait @Minutes(ticket.CreatedAtUtc, ticket.AcceptedAtUtc ?? ticket.StartedAtUtc) · prep @Minutes(ticket.StartedAtUtc ?? ticket.AcceptedAtUtc, ticket.ReadyAtUtc) · total @Minutes(ticket.CreatedAtUtc, ticket.CompletedAtUtc ?? ticket.ReadyAtUtc)</div>
-            </div>
-        }
-    </div>
+    <KitchenHeader />
+    @if (_error is not null)
+    {
+        <ErrorState Message="@_error" OnRetry="RefreshAsync" />
+    }
+    else if (_tickets is null)
+    {
+        <Skeleton Variant="Skeleton.SkeletonVariant.Card" Count="3" Label="Loading" />
+    }
+    else if (_tickets.Count == 0)
+    {
+        <EmptyState Icon="☑" Text="No tickets completed today yet." />
+    }
+    else
+    {
+        <div class="muted small" style="margin-bottom:8px">@_tickets.Count tickets today · average preparation @AveragePrep min</div>
+        <div class="kds-done">
+            @foreach (var ticket in _tickets.OrderByDescending(t => t.CompletedAtUtc ?? t.CancelledAtUtc))
+            {
+                <article class="ticket" data-ticket="@ticket.Id">
+                    <div class="ticket-top">
+                        <div class="ticket-id">
+                            <span class="ticket-table">@ticket.TableCode</span>
+                            @if (!string.IsNullOrEmpty(ticket.StationCode))
+                            {
+                                <span class="chip info ticket-station">@ticket.StationCode</span>
+                            }
+                        </div>
+                        <StatusBadge Display="StatusPresentation.For(ticket.Status)" />
+                    </div>
+                    <div class="ticket-meta muted">@ticket.TicketNumber · #@ticket.OrderNumber · @ticket.WaiterName</div>
+                    <ul class="ticket-lines">
+                        @foreach (var line in ticket.Items.Where(i => !i.IsCancelled))
+                        {
+                            <li><div class="ticket-line"><b class="ticket-qty">@line.Quantity ×</b> <span class="ticket-name">@line.Name</span></div></li>
+                        }
+                    </ul>
+                    <div class="kds-times muted">
+                        <span>in @ticket.CreatedAtUtc.ToLocalTime().ToString("HH:mm")</span>
+                        <span>wait @Minutes(ticket.CreatedAtUtc, ticket.AcceptedAtUtc ?? ticket.StartedAtUtc)</span>
+                        <span>prep @Minutes(ticket.StartedAtUtc ?? ticket.AcceptedAtUtc, ticket.ReadyAtUtc)</span>
+                        <span>total @Minutes(ticket.CreatedAtUtc, ticket.CompletedAtUtc ?? ticket.ReadyAtUtc)</span>
+                    </div>
+                </article>
+            }
+        </div>
+    }
 }
 
 @code {

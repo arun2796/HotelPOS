@@ -15,14 +15,15 @@
 }
 else
 {
+    <KitchenHeader />
     <div class="card">
         <h2>Which station is this tablet?</h2>
         <p class="muted">Only that station's tickets are shown and pushed to this tablet. "All stations" shows everything.</p>
-        <div class="stack" style="margin-top:12px">
-            <button class="btn block lg @(_stationId is null ? "primary" : null)" @onclick="() => ChooseAsync(null)">All stations</button>
+        <div class="kds-station-list">
+            <button class="btn block lg @(_stationId is null ? "primary" : "outline")" aria-pressed="@((_stationId is null).ToString().ToLowerInvariant())" @onclick="() => ChooseAsync(null)">@if (_stationId is null) { <Icon Name="check" /> }All stations</button>
             @foreach (var station in _stations)
             {
-                <button class="btn block lg @(_stationId == station.Id ? "primary" : null)" @onclick="() => ChooseAsync(station.Id)">@station.Name <span class="muted small">(@station.Code)</span></button>
+                <button class="btn block lg @(_stationId == station.Id ? "primary" : "outline")" aria-pressed="@((_stationId == station.Id).ToString().ToLowerInvariant())" @onclick="() => ChooseAsync(station.Id)">@if (_stationId == station.Id) { <Icon Name="check" /> }@station.Name <span class="muted small">(@station.Code)</span></button>
             }
         </div>
         @if (_error is not null)

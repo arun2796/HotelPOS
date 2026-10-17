@@ -18,16 +18,8 @@
 }
 else
 {
-    <div class="row between" style="margin-bottom:8px">
-        <div class="chip-row grow">
-            <button class="chip-btn @(_stationId is null ? "on" : null)" @onclick="() => SetStationAsync(null)">All stations</button>
-            @foreach (var station in _stations)
-            {
-                <button class="chip-btn @(_stationId == station.Id ? "on" : null)" @onclick="() => SetStationAsync(station.Id)">@station.Name</button>
-            }
-        </div>
-        <button class="btn icon" title="Refresh" @onclick="RefreshAsync">↻</button>
-    </div>
+    <KitchenHeader Stations="_stations" StationId="_stationId" AllCount="_stationId is null ? _tickets?.Count(t => KitchenRules.ColumnOf(t.Status) is not null) : null"
+                   OnStation="SetStationAsync" @bind-Search="_search" OnRefresh="RefreshAsync" />
 
     @if (_error is not null)
     {
@@ -39,73 +31,49 @@ else
     }
     else
     {
-        <div class="row" style="margin-bottom:8px" id="kds-summary">
-            <span class="chip @(DelayedCount > 0 ? "danger lg" : null)">Delayed @DelayedCount</span>
-            <span class="muted small">Completed today <b>@(_completedToday?.ToString() ?? "—")</b></span>
+        <div class="kds-kpis" id="kds-kpis">
+            <KpiTile Compact="true" Label="New" Value="@CountIn(TicketColumn.New).ToString()" Icon="bell" Tone="StatusTone.Info" />
+            <KpiTile Compact="true" Label="Preparing" Value="@CountIn(TicketColumn.Preparing).ToString()" Icon="flame" Tone="StatusTone.Warning" />
+            <KpiTile Compact="true" Label="Ready" Value="@CountIn(TicketColumn.Ready).ToString()" Icon="check" Tone="StatusTone.Success" />
+            <KpiTile Compact="true" Label="Delayed" Value="@DelayedCount.ToString()" Icon="alert" Tone="@(DelayedCount > 0 ? StatusTone.Danger : StatusTone.Neutral)" />
+            <KpiTile Compact="true" Label="Completed today" Value="@(_completedToday?.ToString() ?? "—")" Icon="utensils" Tone="StatusTone.Neutral" />
+        </div>
+        <div class="kds-toolbar" id="kds-summary">
+            <span id="kds-delayed-filter"><FilterChip Label="Delayed" Count="DelayedCount" Selected="_delayedOnly" OnClick="() => _delayedOnly = !_delayedOnly" /></span>
+            <span id="kds-sort"><FilterChip Label="Oldest first" Selected="_oldestFirst" OnClick="() => _oldestFirst = !_oldestFirst" /></span>
+            <span class="muted small grow kds-updated">Updated @_updatedAt.ToLocalTime().ToString("HH:mm:ss")</span>
         </div>
         <div class="kds">
             @foreach (var column in new[] { TicketColumn.New, TicketColumn.Preparing, TicketColumn.Ready })
             {
-                var tickets = _tickets.Where(t => KitchenRules.ColumnOf(t.Status) == column).OrderBy(t => t.CreatedAtUtc).ToList();
-                <section class="kds-col">
-                    <h2 class="kds-head">@column.ToString().ToUpperInvariant() · @tickets.Count</h2>
+                var tickets = Visible(column);
+                <section class="kds-col" data-column="@column">
+                    <header class="kds-colhead">
+                        <h2 class="kds-head">@column.ToString().ToUpperInvariant() · @tickets.Count</h2>
+                        <div class="kds-sub muted small">
+                            @Subtitle(column)
+                            @if (tickets.Count > 0)
+                            {
+                                <span class="kds-timer num-tab" data-testid="column-timer"> · oldest @ColumnTimer(column, tickets)</span>
+                            }
+                        </div>
+                    </header>
                     @if (tickets.Count == 0)
                     {
                         <div class="empty small">—</div>
                     }
                     @foreach (var ticket in tickets)
                     {
-                        var timing = KitchenRules.Timing(ticket.CreatedAtUtc, Now, _warn, _late);
-                        <article class="ticket @(timing == TicketTiming.Late ? "late" : timing == TicketTiming.Warn ? "warn" : null)">
-                            <div class="row between">
-                                <div class="row">
-                                    <span class="ticket-table">@ticket.TableCode</span>
-                                    @if (_stationId is null && !string.IsNullOrEmpty(ticket.StationCode))
-                                    {
-                                        @* One order makes one ticket per station; the station tells two "T05" tickets apart at a glance. *@
-                                        <span class="chip info ticket-station">@ticket.StationCode</span>
-                                    }
-                                    @if (ticket.Status == KitchenOrderStatus.Accepted)
-                                    {
-                                        <span class="chip info">Accepted</span>
-                                    }
-                                    @if (KitchenRules.IsAddedItems(ticket))
-                                    {
-                                        <span class="chip primary">+ADD</span>
-                                    }
-                                </div>
-                                <span class="chip @(timing == TicketTiming.Late ? "danger" : timing == TicketTiming.Warn ? "warning" : null)">@KitchenRules.ElapsedText(ticket.CreatedAtUtc, Now)</span>
-                            </div>
-                            <div class="muted small">@ticket.TicketNumber · @ticket.WaiterName</div>
-                            <div class="ticket-lines">
-                                @foreach (var line in ticket.Items)
-                                {
-                                    <div class="@(line.IsCancelled ? "cancelled" : null)">
-                                        <div class="ticket-line"><b>@line.Quantity ×</b> @line.Name</div>
-                                        @if (line.Modifiers.Count > 0)
-                                        {
-                                            <div class="muted small" style="margin-left:24px">@string.Join(", ", line.Modifiers)</div>
-                                        }
-                                        @if (!string.IsNullOrEmpty(line.Notes))
-                                        {
-                                            <div class="ticket-note">@line.Notes</div>
-                                        }
-                                    </div>
-                                }
-                            </div>
-                            <div class="row" style="margin-top:10px;gap:8px">
-                                @{ var actions = KitchenRules.ActionsFor(ticket.Status); }
-                                @foreach (var action in actions)
-                                {
-                                    @* Only the expected next step is solid; ACCEPT and START side by side must not look alike. *@
-                                    <button class="btn lg @(action == actions[0] ? "primary" : "secondary")" data-action="@action" disabled="@(_busyTicket == ticket.Id)" @onclick="() => ActAsync(ticket, action)">@KitchenRules.Label(action)</button>
-                                }
-                            </div>
-                        </article>
+                        <TicketCard @key="ticket.Id" Ticket="ticket" Now="Now" Warn="_warn" Late="_late" ShowStation="_stationId is null"
+                                    Busy="_busyTicket == ticket.Id" Selected="_selectedId == ticket.Id" OnOpen="t => _selectedId = t.Id" OnAct="ActAsync" />
                     }
                 </section>
             }
         </div>
+        @if (SelectedTicket is { } selected)
+        {
+            <TicketDetailPane Ticket="selected" Now="Now" Late="IsLate(selected)" OnClose="() => _selectedId = null" />
+        }
     }
 }
 
@@ -115,7 +83,7 @@ else
     private readonly HashSet<int> _lateSeen = new();
     private bool _lateBaselined;
     private List<KitchenTicketDto>? _tickets;
-    private List<StationDto> _stations = new();
+    private IReadOnlyList<StationDto> _stations = new List<StationDto>();
     private int? _stationId;
     private int _warn = KitchenRules.DefaultWarnMinutes;
     private int _late = KitchenRules.DefaultLateMinutes;
@@ -125,12 +93,44 @@ else
     private readonly List<IDisposable> _subscriptions = new();
     private CancellationTokenSource? _debounce;
     private System.Threading.Timer? _clock;
+    private string? _search;
+    private bool _delayedOnly;
+    private bool _oldestFirst = true;
+    private int? _selectedId;
+    private DateTime _updatedAt = DateTime.UtcNow;
 
     private DateTime Now => DateTime.UtcNow + _clockOffset;
 
     private int? _completedToday;
 
-    private int DelayedCount => _tickets?.Count(t => KitchenRules.ColumnOf(t.Status) is not null && KitchenRules.Timing(t.CreatedAtUtc, Now, _warn, _late) == TicketTiming.Late) ?? 0;
+    private bool IsLate(KitchenTicketDto t) => KitchenRules.Timing(t.CreatedAtUtc, Now, _warn, _late) == TicketTiming.Late;
+
+    private int DelayedCount => _tickets?.Count(t => KitchenRules.ColumnOf(t.Status) is not null && IsLate(t)) ?? 0;
+
+    private int CountIn(TicketColumn column) => _tickets?.Count(t => KitchenRules.ColumnOf(t.Status) == column) ?? 0;
+
+    private KitchenTicketDto? SelectedTicket => _selectedId is { } id ? _tickets?.FirstOrDefault(t => t.Id == id) : null;
+
+    // The Delayed toggle and the search narrow the three columns only; the KPI strip always counts the whole station view.
+    private List<KitchenTicketDto> Visible(TicketColumn column)
+    {
+        var query = _tickets!.Where(t => KitchenRules.ColumnOf(t.Status) == column && KitchenRules.Matches(t, _search) && (!_delayedOnly || IsLate(t)));
+        return (_oldestFirst ? query.OrderBy(t => t.CreatedAtUtc) : query.OrderByDescending(t => t.CreatedAtUtc)).ToList();
+    }
+
+    private static string Subtitle(TicketColumn column) => column switch
+    {
+        TicketColumn.New => "Waiting to be accepted or started",
+        TicketColumn.Preparing => "On the stove",
+        _ => "Waiting to be served",
+    };
+
+    // Oldest ticket in the column; a Ready ticket is timed from when it became ready, the others from when they were created.
+    private string ColumnTimer(TicketColumn column, List<KitchenTicketDto> tickets)
+    {
+        var oldest = tickets.Min(t => column == TicketColumn.Ready ? t.ReadyAtUtc ?? t.CreatedAtUtc : t.CreatedAtUtc);
+        return KitchenRules.ElapsedText(oldest, Now);
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -173,6 +173,7 @@ else
         {
             _tickets = data.Tickets.ToList();
             _clockOffset = data.ServerTimeUtc - DateTime.UtcNow;
+            _updatedAt = DateTime.UtcNow;
             _error = null;
             AnnounceNewlyLate();
         }
@@ -228,12 +229,18 @@ else
         _ = Task.Delay(250, cts.Token).ContinueWith(t => { if (!t.IsCanceled) { _ = InvokeAsync(RefreshAsync); } }, TaskScheduler.Default);
     }
 
-    private async Task ActAsync(KitchenTicketDto ticket, string action)
+    private async Task ActAsync((KitchenTicketDto Ticket, string Action) request)
     {
-        _busyTicket = ticket.Id;
+        // One action at a time: a second tap while the first is in flight is ignored (the button is disabled as well).
+        if (_busyTicket is not null)
+        {
+            return;
+        }
+
+        _busyTicket = request.Ticket.Id;
         try
         {
-            var result = await Api.ActAsync(ticket.Id, action);
+            var result = await Api.ActAsync(request.Ticket.Id, request.Action);
             if (!result.Success)
             {
                 Toasts.Error(result.Message);
