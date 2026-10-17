@@ -9,7 +9,12 @@
   <sys:Double x:Key="Font.Size.Caption">12</sys:Double>
   <sys:Double x:Key="Font.Size.Label">12</sys:Double>
   <sys:Double x:Key="Font.Size.Button">13</sys:Double>
-  <sys:Double x:Key="Font.Size.GridHeader">11</sys:Double>
+  <sys:Double x:Key="Font.Size.GridHeader">12</sys:Double>
+  <sys:Double x:Key="Font.Size.PageTitle">24</sys:Double>
+  <sys:Double x:Key="Font.Size.Section">18</sys:Double>
+  <sys:Double x:Key="Font.Size.Amount">24</sys:Double>
+  <sys:Double x:Key="Font.Size.AmountLarge">32</sys:Double>
+  <sys:Double x:Key="Font.Size.Kpi">28</sys:Double>
 
   <sys:Double x:Key="Size.Control">38</sys:Double>
   <sys:Double x:Key="Size.CheckBox">16</sys:Double>

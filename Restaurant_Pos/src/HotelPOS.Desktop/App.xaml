@@ -25,7 +25,7 @@
       <ResourceDictionary.MergedDictionaries>
         <!-- MaterialDesign base: its palette in our accent (so its controls never have undefined brushes), then its
              control defaults. Our design system below overrides the controls we use. -->
-        <md:CustomColorTheme BaseTheme="Light" PrimaryColor="#2563EB" SecondaryColor="#2563EB" />
+        <md:CustomColorTheme BaseTheme="Light" PrimaryColor="#078747" SecondaryColor="#2563EB" />
         <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign2.Defaults.xaml" />
         <!-- Swapped at runtime by ThemeService: Tokens.Light / Tokens.Dark and Density.Comfort / Density.Compact. -->
         <ResourceDictionary Source="Themes/Tokens.Light.xaml" />

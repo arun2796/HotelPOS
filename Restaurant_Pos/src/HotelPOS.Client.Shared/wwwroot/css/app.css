@@ -1,5 +1,5 @@
 /* Base styles and reusable pieces for the waiter (phone, portrait) and kitchen (tablet, landscape) screens.
-   Mobile-first; touch targets are at least var(--touch) = 44 px. */
+   Mobile-first; touch targets are at least var(--touch) = 48 px. */
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
 body {

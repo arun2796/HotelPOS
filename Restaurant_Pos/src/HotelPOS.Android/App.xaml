@@ -4,7 +4,7 @@
              x:Class="HotelPOS.Android.App">
     <Application.Resources>
         <ResourceDictionary>
-            <Color x:Key="Primary">#078B45</Color>
+            <Color x:Key="Primary">#078747</Color>
         </ResourceDictionary>
     </Application.Resources>
 </Application>
