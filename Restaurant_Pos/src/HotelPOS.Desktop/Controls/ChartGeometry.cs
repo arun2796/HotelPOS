@@ -35,6 +35,35 @@ public static class ChartGeometry
         return geometry;
     }
 
+    // A series as a line in a 100 x 100 box (y flipped, scaled between the series' own min and max), for a Path with
+    // Stretch="Fill". A flat series is drawn along the middle.
+    public static Geometry Sparkline(IReadOnlyList<double> values)
+    {
+        var min = values.Min();
+        var max = values.Max();
+        var range = max - min;
+        var geometry = new StreamGeometry();
+        using (var context = geometry.Open())
+        {
+            for (var i = 0; i < values.Count; i++)
+            {
+                var x = values.Count == 1 ? 0 : 100.0 * i / (values.Count - 1);
+                var y = range <= 0 ? 50 : 100 - 100 * (values[i] - min) / range;
+                if (i == 0)
+                {
+                    context.BeginFigure(new Point(x, y), isFilled: false, isClosed: false);
+                }
+                else
+                {
+                    context.LineTo(new Point(x, y), true, true);
+                }
+            }
+        }
+
+        geometry.Freeze();
+        return geometry;
+    }
+
     private static Point PointOn(Point center, double radius, double angle)
     {
         var radians = (angle - 90) * Math.PI / 180;

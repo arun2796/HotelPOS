@@ -2,6 +2,7 @@ using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Floor;
+using HotelPOS.Contracts.Presentation;
 using HotelPOS.Contracts.Realtime;
 
 namespace HotelPOS.Desktop.Modules.Tables;
@@ -33,7 +34,7 @@ public sealed partial class TableTileViewModel : ObservableObject
     private int _capacity;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(StatusText), nameof(StatusLine), nameof(IsAvailable), nameof(IsOccupied), nameof(GuestsText))]
+    [NotifyPropertyChangedFor(nameof(StatusText), nameof(StatusLine), nameof(StatusIcon), nameof(IsAvailable), nameof(IsOccupied), nameof(GuestsText))]
     private TableStatus _status;
 
     [ObservableProperty]
@@ -66,6 +67,9 @@ public sealed partial class TableTileViewModel : ObservableObject
     public bool IsOccupied => Status == TableStatus.Occupied;
 
     public string StatusText => DescribeStatus(Status);
+
+    /// <summary>Icon name from the single status map (StatusPresentation), drawn next to the status word on the tile.</summary>
+    public string StatusIcon => StatusPresentation.For(Status).Icon;
 
     public string StatusLine => CurrentOrderNumber is { } number ? $"{StatusText} · #{number}" : StatusText;
 

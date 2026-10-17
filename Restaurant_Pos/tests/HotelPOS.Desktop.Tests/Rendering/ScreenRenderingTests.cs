@@ -197,6 +197,12 @@ public class ScreenRenderingTests
             env.Theme.Apply(ThemeService.Light);
             shell.Dispose();
 
+            // Phase 21 primitives (StatusBadge, KpiTile, Pager, SearchBox, OrderLine, Tabs, PaymentPanel ...) in both themes.
+            rendered.Add(await RenderOnceAsync(env, PrimitivesGallery.Build(), "55-primitives"));
+            env.Theme.Apply(ThemeService.Dark);
+            rendered.Add(await RenderOnceAsync(env, PrimitivesGallery.Build(), "55-primitives-dark"));
+            env.Theme.Apply(ThemeService.Light);
+
             // Waiter and kitchen screens render as on their touch terminals.
             env.Theme.ApplyDensity(ThemeService.Comfort);
             env.Session.Start(TestData.Login("waiter1", roles: "Waiter"));
@@ -471,7 +477,7 @@ public class ScreenRenderingTests
         }
 
         bindingErrors.Errors.Should().BeEmpty("every binding in the views must point at an existing property");
-        rendered.Should().HaveCount(76);
+        rendered.Should().HaveCount(78);
         // Phase 21: the bundled Inter (Regular/Medium/SemiBold/Bold) is the body font on every Windows version.
         bodyFontFiles.Should().HaveCount(4).And.OnlyContain(f => f.StartsWith("inter-"));
     }

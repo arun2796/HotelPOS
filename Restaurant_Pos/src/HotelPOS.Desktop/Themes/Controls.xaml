@@ -1,4 +1,4 @@
-<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
                     xmlns:controls="clr-namespace:HotelPOS.Desktop.Controls">
@@ -17,13 +17,23 @@
         <ControlTemplate TargetType="controls:EmptyState">
           <StackPanel MaxWidth="380">
             <Border Width="56" Height="56" CornerRadius="28" HorizontalAlignment="Center" Background="{DynamicResource Brush.SurfaceSubtle}">
-              <TextBlock Text="{TemplateBinding Glyph}" Style="{StaticResource Text.Icon}" FontSize="22" HorizontalAlignment="Center"
-                         Foreground="{DynamicResource Brush.TextSecondary}" />
+              <Grid>
+                <controls:Icon x:Name="PartIcon" Kind="{TemplateBinding Icon}" Width="24" Height="24" HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Foreground="{DynamicResource Brush.TextSecondary}" />
+                <TextBlock x:Name="PartGlyph" Text="{TemplateBinding Glyph}" Style="{StaticResource Text.Icon}" FontSize="22" HorizontalAlignment="Center"
+                           Foreground="{DynamicResource Brush.TextSecondary}" Visibility="Collapsed" />
+              </Grid>
             </Border>
             <TextBlock Text="{TemplateBinding Title}" Style="{StaticResource Text.Subtitle}" TextAlignment="Center" Margin="0,14,0,0" />
             <TextBlock Text="{TemplateBinding Message}" Style="{StaticResource Text.Caption}" TextAlignment="Center" Margin="0,6,0,0" />
             <ContentPresenter HorizontalAlignment="Center" Margin="0,16,0,0" />
           </StackPanel>
+          <ControlTemplate.Triggers>
+            <Trigger Property="Icon" Value="">
+              <Setter TargetName="PartIcon" Property="Visibility" Value="Collapsed" />
+              <Setter TargetName="PartGlyph" Property="Visibility" Value="Visible" />
+            </Trigger>
+          </ControlTemplate.Triggers>
         </ControlTemplate>
       </Setter.Value>
     </Setter>
@@ -39,30 +49,51 @@
       <Setter.Value>
         <ControlTemplate TargetType="controls:KpiTile">
           <Border x:Name="Root" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
-                  CornerRadius="{StaticResource Radius.Card}" Padding="20" MinHeight="116" SnapsToDevicePixels="True">
+                  CornerRadius="{StaticResource Radius.Card}" Padding="18" MinHeight="116" SnapsToDevicePixels="True">
             <Grid>
               <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
               </Grid.ColumnDefinitions>
-              <StackPanel>
+              <!-- Coloured icon square: the tone says what kind of figure it is; the icon, not the colour, says which. -->
+              <Border Width="44" Height="44" CornerRadius="10" VerticalAlignment="Top" Margin="0,0,14,0"
+                      Background="{TemplateBinding IconBackground}">
+                <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
+                  <controls:Icon x:Name="PartIcon" Kind="{TemplateBinding Icon}" Width="22" Height="22" Foreground="{TemplateBinding IconForeground}" />
+                  <TextBlock x:Name="PartGlyph" Text="{TemplateBinding Glyph}" Style="{StaticResource Text.Icon}" FontSize="20" Visibility="Collapsed"
+                             Foreground="{TemplateBinding IconForeground}" />
+                </Grid>
+              </Border>
+              <StackPanel Grid.Column="1">
                 <TextBlock Text="{TemplateBinding Title}" FontSize="{DynamicResource Font.Size.Label}" FontWeight="SemiBold"
-                           Foreground="{DynamicResource Brush.TextSecondary}" />
-                <!-- DownOnly: the value keeps its 30 px size and only shrinks when the tile is too narrow (five tiles at 1366 px). -->
-                <Viewbox StretchDirection="DownOnly" HorizontalAlignment="Left" Margin="0,6,0,2">
-                  <TextBlock Text="{TemplateBinding Value}" FontSize="30" FontWeight="Bold"
+                           Foreground="{DynamicResource Brush.TextSecondary}" TextTrimming="CharacterEllipsis" />
+                <!-- DownOnly: the value keeps its size and only shrinks when the tile is too narrow (five tiles at 1366 px). -->
+                <Viewbox StretchDirection="DownOnly" HorizontalAlignment="Left" Margin="0,4,0,2">
+                  <TextBlock Text="{TemplateBinding Value}" FontSize="{DynamicResource Font.Size.Kpi}" FontWeight="Bold"
                              Foreground="{DynamicResource Brush.TextPrimary}" Typography.NumeralAlignment="Tabular" />
                 </Viewbox>
-                <TextBlock Text="{TemplateBinding Detail}" Style="{StaticResource Text.Caption}" />
+                <WrapPanel>
+                  <TextBlock x:Name="PartDelta" Text="{TemplateBinding DeltaText}" FontSize="{DynamicResource Font.Size.Caption}" FontWeight="SemiBold"
+                             Foreground="{TemplateBinding DeltaForeground}" Margin="0,0,8,0" Typography.NumeralAlignment="Tabular" />
+                  <TextBlock Text="{TemplateBinding Detail}" Style="{StaticResource Text.Caption}" />
+                </WrapPanel>
               </StackPanel>
-              <Border Grid.Column="1" Width="40" Height="40" CornerRadius="10" VerticalAlignment="Top"
-                      Background="{DynamicResource Brush.PrimarySoft}">
-                <TextBlock Text="{TemplateBinding Glyph}" Style="{StaticResource Text.Icon}" FontSize="18" HorizontalAlignment="Center"
-                           Foreground="{DynamicResource Brush.Primary}" />
-              </Border>
+              <Path x:Name="PartSpark" Grid.Column="1" Data="{TemplateBinding SparkGeometry}" Stretch="Fill" Width="72" Height="24"
+                    HorizontalAlignment="Right" VerticalAlignment="Bottom" Stroke="{TemplateBinding IconForeground}" StrokeThickness="2"
+                    StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
             </Grid>
           </Border>
           <ControlTemplate.Triggers>
+            <Trigger Property="Icon" Value="">
+              <Setter TargetName="PartIcon" Property="Visibility" Value="Collapsed" />
+              <Setter TargetName="PartGlyph" Property="Visibility" Value="Visible" />
+            </Trigger>
+            <Trigger Property="DeltaText" Value="">
+              <Setter TargetName="PartDelta" Property="Visibility" Value="Collapsed" />
+            </Trigger>
+            <Trigger Property="SparkGeometry" Value="{x:Null}">
+              <Setter TargetName="PartSpark" Property="Visibility" Value="Collapsed" />
+            </Trigger>
             <Trigger Property="IsMouseOver" Value="True">
               <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}" />
               <Setter TargetName="Root" Property="Background" Value="{DynamicResource Brush.SurfaceAlt}" />
@@ -102,6 +133,7 @@
               <Border Background="{DynamicResource Brush.Surface}" Opacity="0.7" CornerRadius="{StaticResource Radius.Card}" />
               <Border Style="{StaticResource Card}" Padding="20,16" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <StackPanel Width="180">
+                  <controls:Icon Kind="{TemplateBinding Icon}" Width="22" Height="22" Margin="0,0,0,8" Foreground="{DynamicResource Brush.TextSecondary}" />
                   <TextBlock Text="{TemplateBinding Message}" Style="{StaticResource Text.Body}" TextAlignment="Center" />
                   <ProgressBar IsIndeterminate="{TemplateBinding IsBusy}" Margin="0,12,0,0" />
                 </StackPanel>
@@ -337,11 +369,11 @@
   </Style>
   <Style x:Key="Chip.Success" TargetType="Border" BasedOn="{StaticResource Chip.Base}">
     <Setter Property="Background" Value="{DynamicResource Brush.SuccessSoft}" />
-    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Success}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.SuccessText}" />
   </Style>
   <Style x:Key="Chip.Warning" TargetType="Border" BasedOn="{StaticResource Chip.Base}">
     <Setter Property="Background" Value="{DynamicResource Brush.WarningSoft}" />
-    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Warning}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.WarningText}" />
   </Style>
   <Style x:Key="Chip.Danger" TargetType="Border" BasedOn="{StaticResource Chip.Base}">
     <Setter Property="Background" Value="{DynamicResource Brush.DangerSoft}" />
@@ -349,7 +381,11 @@
   </Style>
   <Style x:Key="Chip.Info" TargetType="Border" BasedOn="{StaticResource Chip.Base}">
     <Setter Property="Background" Value="{DynamicResource Brush.InfoSoft}" />
-    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Info}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.InfoText}" />
+  </Style>
+  <Style x:Key="Chip.Neutral" TargetType="Border" BasedOn="{StaticResource Chip.Base}">
+    <Setter Property="Background" Value="{DynamicResource Brush.NeutralSoft}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.NeutralText}" />
   </Style>
   <Style x:Key="Chip.Primary" TargetType="Border" BasedOn="{StaticResource Chip.Base}">
     <Setter Property="Background" Value="{DynamicResource Brush.PrimarySoft}" />
@@ -367,5 +403,400 @@
   <Style x:Key="Card.Section" TargetType="Border" BasedOn="{StaticResource Card}">
     <Setter Property="Padding" Value="16" />
   </Style>
+
+
+  <!-- ============================ Phase 21 primitives (0.5) ============================ -->
+
+  <!-- Icon: a 24-grid stroke geometry from Resources/Icons.xaml, coloured by Foreground. -->
+  <Style TargetType="controls:Icon">
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="controls:Icon">
+          <Viewbox Stretch="Uniform">
+            <Canvas Width="24" Height="24">
+              <Path Data="{TemplateBinding Data}" Stroke="{TemplateBinding Foreground}" StrokeThickness="{TemplateBinding StrokeThickness}"
+                    StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+            </Canvas>
+          </Viewbox>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- StatusBadge: soft fill + tone text + icon + label, or the solid variant (Display.Fill = Solid). -->
+  <Style TargetType="controls:StatusBadge">
+    <Setter Property="HorizontalAlignment" Value="Left" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="controls:StatusBadge">
+          <Border x:Name="Root" Background="{TemplateBinding BadgeBackground}" CornerRadius="{StaticResource Radius.Pill}" Padding="8,3">
+            <StackPanel Orientation="Horizontal">
+              <controls:Icon x:Name="PartIcon" Kind="{TemplateBinding Icon}" Width="12" Height="12" Margin="0,0,5,0"
+                             Foreground="{TemplateBinding Foreground}" />
+              <TextBlock Text="{TemplateBinding Label}" FontSize="{DynamicResource Font.Size.Caption}" FontWeight="SemiBold"
+                         Foreground="{TemplateBinding Foreground}" VerticalAlignment="Center" />
+            </StackPanel>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="Icon" Value="">
+              <Setter TargetName="PartIcon" Property="Visibility" Value="Collapsed" />
+            </Trigger>
+            <Trigger Property="ShowIcon" Value="False">
+              <Setter TargetName="PartIcon" Property="Visibility" Value="Collapsed" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- Pager: Prev / "1–20 of 186" / Next. -->
+  <Style TargetType="controls:Pager">
+    <Setter Property="HorizontalAlignment" Value="Right" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="controls:Pager">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Text="{TemplateBinding RangeText}" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,12,0"
+                       Typography.NumeralAlignment="Tabular" />
+            <Button Style="{StaticResource Button.Secondary}" Width="36" Padding="0" Command="{Binding PreviousCommand, RelativeSource={RelativeSource TemplatedParent}}"
+                    ToolTip="Previous page" AutomationProperties.Name="Previous page">
+              <controls:Icon Kind="chevron-left" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+            </Button>
+            <Button Style="{StaticResource Button.Secondary}" Width="36" Padding="0" Margin="6,0,0,0"
+                    Command="{Binding NextCommand, RelativeSource={RelativeSource TemplatedParent}}"
+                    ToolTip="Next page" AutomationProperties.Name="Next page">
+              <controls:Icon Kind="chevron-right" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+            </Button>
+          </StackPanel>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- DetailPane: right drawer. -->
+  <Style TargetType="controls:DetailPane">
+    <Setter Property="Width" Value="{Binding PaneWidth, RelativeSource={RelativeSource Self}}" />
+    <Setter Property="HorizontalAlignment" Value="Right" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="controls:DetailPane">
+          <Border Style="{StaticResource Card}" Padding="0">
+            <Grid>
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+              </Grid.RowDefinitions>
+              <Border BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,0,0,1" Padding="20,14,12,14">
+                <Grid>
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+                  <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="{TemplateBinding Title}" FontSize="{DynamicResource Font.Size.Section}" FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis" />
+                    <TextBlock x:Name="PartSubtitle" Text="{TemplateBinding Subtitle}" Style="{StaticResource Text.Caption}" TextTrimming="CharacterEllipsis" />
+                  </StackPanel>
+                  <Button x:Name="PartClose" Grid.Column="1" Style="{StaticResource Button.Icon}" Command="{TemplateBinding CloseCommand}"
+                          ToolTip="Close">
+                    <controls:Icon Kind="x" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                  </Button>
+                </Grid>
+              </Border>
+              <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="20,16">
+                <ContentPresenter />
+              </ScrollViewer>
+            </Grid>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="Subtitle" Value="">
+              <Setter TargetName="PartSubtitle" Property="Visibility" Value="Collapsed" />
+            </Trigger>
+            <Trigger Property="CloseCommand" Value="{x:Null}">
+              <Setter TargetName="PartClose" Property="Visibility" Value="Collapsed" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- ErrorState: danger banner with an icon, what happened, and Retry. -->
+  <Style TargetType="controls:ErrorState">
+    <Setter Property="Margin" Value="0,8" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="controls:ErrorState">
+          <Border Background="{DynamicResource Brush.DangerSoft}" BorderBrush="{DynamicResource Brush.Danger}" BorderThickness="1"
+                  CornerRadius="{StaticResource Radius.Card}" Padding="16,12">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <controls:Icon Kind="{TemplateBinding Icon}" Width="22" Height="22" Margin="0,2,14,0" VerticalAlignment="Top"
+                             Foreground="{DynamicResource Brush.DangerText}" />
+              <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <TextBlock Text="{TemplateBinding Title}" FontWeight="SemiBold" Foreground="{DynamicResource Brush.DangerText}" TextWrapping="Wrap" />
+                <TextBlock x:Name="PartMessage" Text="{TemplateBinding Message}" Style="{StaticResource Text.Body}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                <ContentPresenter Margin="0,4,0,0" />
+              </StackPanel>
+              <Button x:Name="PartRetry" Grid.Column="2" Content="{TemplateBinding RetryText}" Command="{TemplateBinding RetryCommand}"
+                      Style="{StaticResource Button.Secondary}" Margin="16,0,0,0" VerticalAlignment="Center" />
+            </Grid>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="Message" Value="">
+              <Setter TargetName="PartMessage" Property="Visibility" Value="Collapsed" />
+            </Trigger>
+            <Trigger Property="RetryCommand" Value="{x:Null}">
+              <Setter TargetName="PartRetry" Property="Visibility" Value="Collapsed" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- SearchBox: icon + placeholder + optional shortcut hint ("Ctrl K"). -->
+  <Style TargetType="controls:SearchBox">
+    <Setter Property="Height" Value="38" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="FontSize" Value="{DynamicResource Font.Size.Body}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+    <Setter Property="Background" Value="{DynamicResource Brush.InputBackground}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.InputBorder}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    <Setter Property="IsReadOnlyCaretVisible" Value="False" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="controls:SearchBox">
+          <Border x:Name="Root" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource Radius.Button}" SnapsToDevicePixels="True">
+            <Grid Margin="12,0,8,0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <controls:Icon Kind="search" Width="16" Height="16" Foreground="{DynamicResource Brush.TextSecondary}" />
+              <Grid Grid.Column="1" Margin="8,0,0,0">
+                <ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="Center" Focusable="False" />
+                <TextBlock x:Name="PartHint" Text="{TemplateBinding Placeholder}" IsHitTestVisible="False" VerticalAlignment="Center" Visibility="Collapsed"
+                           Foreground="{DynamicResource Brush.TextTertiary}" TextTrimming="CharacterEllipsis" />
+              </Grid>
+              <Border x:Name="PartShortcut" Grid.Column="2" CornerRadius="4" Padding="6,1" Margin="8,0,0,0" VerticalAlignment="Center"
+                      Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1">
+                <TextBlock Text="{TemplateBinding ShortcutHint}" FontSize="11" Foreground="{DynamicResource Brush.TextSecondary}" />
+              </Border>
+            </Grid>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="Text" Value="">
+              <Setter TargetName="PartHint" Property="Visibility" Value="Visible" />
+            </Trigger>
+            <Trigger Property="ShortcutHint" Value="">
+              <Setter TargetName="PartShortcut" Property="Visibility" Value="Collapsed" />
+            </Trigger>
+            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+              <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource Brush.Focus}" />
+              <Setter TargetName="Root" Property="Background" Value="{DynamicResource Brush.InputBackgroundFocus}" />
+            </Trigger>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- OrderLine: picture (or initials), "2 × Name", modifiers, note callout, price on the right; Content under the text. -->
+  <Style TargetType="controls:OrderLine">
+    <Setter Property="Padding" Value="0,10" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="controls:OrderLine">
+          <Grid Margin="{TemplateBinding Padding}">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Border Width="{TemplateBinding ImageSize}" Height="{TemplateBinding ImageSize}" CornerRadius="8" Margin="0,0,12,0"
+                    VerticalAlignment="Top" Background="{DynamicResource Brush.SurfaceSubtle}">
+              <Grid>
+                <TextBlock x:Name="PartInitials" Text="{TemplateBinding Initials}" FontWeight="SemiBold" FontSize="16"
+                           Foreground="{DynamicResource Brush.TextSecondary}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                <Image x:Name="PartPicture" Source="{TemplateBinding Image}" Stretch="UniformToFill" />
+              </Grid>
+            </Border>
+            <StackPanel Grid.Column="1">
+              <TextBlock Text="{TemplateBinding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
+              <TextBlock x:Name="PartModifiers" Text="{TemplateBinding Modifiers}" Style="{StaticResource Text.Caption}" TextWrapping="Wrap" Margin="0,2,0,0" />
+              <Border x:Name="PartNote" Background="{DynamicResource Brush.WarningSoft}" CornerRadius="6" Padding="8,4" Margin="0,6,0,0" HorizontalAlignment="Left">
+                <StackPanel Orientation="Horizontal">
+                  <controls:Icon Kind="alert" Width="12" Height="12" Margin="0,0,6,0" Foreground="{DynamicResource Brush.WarningText}" />
+                  <TextBlock Text="{TemplateBinding Note}" FontSize="{DynamicResource Font.Size.Caption}" Foreground="{DynamicResource Brush.WarningText}"
+                             TextWrapping="Wrap" VerticalAlignment="Center" />
+                </StackPanel>
+              </Border>
+              <ContentPresenter Margin="0,6,0,0" />
+            </StackPanel>
+            <TextBlock Grid.Column="2" Text="{TemplateBinding PriceText}" FontWeight="SemiBold" Typography.NumeralAlignment="Tabular"
+                       Margin="12,0,0,0" VerticalAlignment="Top" TextAlignment="Right" />
+          </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="Image" Value="{x:Null}">
+              <Setter TargetName="PartPicture" Property="Visibility" Value="Collapsed" />
+            </Trigger>
+            <Trigger Property="Modifiers" Value="">
+              <Setter TargetName="PartModifiers" Property="Visibility" Value="Collapsed" />
+            </Trigger>
+            <Trigger Property="Note" Value="">
+              <Setter TargetName="PartNote" Property="Visibility" Value="Collapsed" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- ============================ Tabs and Segmented ============================ -->
+  <!-- Tabs: underline tabs (Details / Items / Timeline) for a ListBox: Style="{StaticResource Tabs}". Same look as the hub tabs. -->
+  <Style x:Key="Tabs" TargetType="ListBox" BasedOn="{StaticResource Hub.Tabs}" />
+  <Style x:Key="Tabs.Item" TargetType="ListBoxItem" BasedOn="{StaticResource Hub.Tab}" />
+
+  <!-- Segmented: a pill group (Today / 7 Days / 30 Days); the selected segment is a raised white pill. -->
+  <Style x:Key="Segmented.Item" TargetType="ListBoxItem">
+    <Setter Property="FocusVisualStyle" Value="{StaticResource Focus.Visual}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ListBoxItem">
+          <Border x:Name="Root" CornerRadius="{StaticResource Radius.Pill}" Padding="14,0" MinHeight="30" Background="Transparent"
+                  BorderThickness="1" BorderBrush="Transparent"
+                  TextElement.Foreground="{DynamicResource Brush.TextSecondary}" TextElement.FontSize="{DynamicResource Font.Size.Button}"
+                  TextElement.FontWeight="SemiBold" SnapsToDevicePixels="True">
+            <ContentPresenter VerticalAlignment="Center" />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Root" Property="TextElement.Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+            </Trigger>
+            <Trigger Property="IsSelected" Value="True">
+              <Setter TargetName="Root" Property="Background" Value="{DynamicResource Brush.Surface}" />
+              <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+              <Setter TargetName="Root" Property="TextElement.Foreground" Value="{DynamicResource Brush.Primary}" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style x:Key="Segmented" TargetType="ListBox">
+    <Setter Property="Background" Value="{DynamicResource Brush.SurfaceSubtle}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="3" />
+    <Setter Property="HorizontalAlignment" Value="Left" />
+    <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+    <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled" />
+    <Setter Property="ItemContainerStyle" Value="{StaticResource Segmented.Item}" />
+    <Setter Property="ItemsPanel">
+      <Setter.Value>
+        <ItemsPanelTemplate>
+          <StackPanel Orientation="Horizontal" />
+        </ItemsPanelTemplate>
+      </Setter.Value>
+    </Setter>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ListBox">
+          <Border Background="{TemplateBinding Background}" CornerRadius="{StaticResource Radius.Pill}" Padding="{TemplateBinding Padding}">
+            <ItemsPresenter />
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- ============================ PaymentPanel ============================ -->
+  <!-- Pieces of the cashier's payment column (340 px). Due amount, quick amounts, 2 x 2 method toggles, received, change. -->
+  <Style x:Key="PaymentPanel" TargetType="Border" BasedOn="{StaticResource Card}">
+    <Setter Property="Padding" Value="16" />
+  </Style>
+  <Style x:Key="PaymentPanel.Due" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="{DynamicResource Font.Size.AmountLarge}" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Primary}" />
+    <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
+  </Style>
+  <Style x:Key="PaymentPanel.QuickAmount" TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+    <Setter Property="MinHeight" Value="44" />
+    <Setter Property="Margin" Value="0,0,8,8" />
+    <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
+  </Style>
+  <Style x:Key="PaymentPanel.Method" TargetType="ToggleButton">
+    <Setter Property="MinHeight" Value="52" />
+    <Setter Property="Margin" Value="0,0,8,8" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FontSize" Value="{DynamicResource Font.Size.Button}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+    <Setter Property="FocusVisualStyle" Value="{StaticResource Focus.Visual}" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ToggleButton">
+          <Border x:Name="Root" CornerRadius="{StaticResource Radius.Button}" Background="{DynamicResource Brush.Surface}"
+                  BorderBrush="{DynamicResource Brush.BorderStrong}" BorderThickness="1" SnapsToDevicePixels="True">
+            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="12,0" />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Root" Property="Background" Value="{DynamicResource Brush.LayerHover}" />
+            </Trigger>
+            <Trigger Property="IsChecked" Value="True">
+              <Setter TargetName="Root" Property="Background" Value="{DynamicResource Brush.PrimarySoft}" />
+              <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource Brush.Primary}" />
+              <Setter Property="Foreground" Value="{DynamicResource Brush.Primary}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter TargetName="Root" Property="Opacity" Value="0.45" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style x:Key="PaymentPanel.Received" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+    <Setter Property="FontSize" Value="{DynamicResource Font.Size.Amount}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="MinHeight" Value="56" />
+    <Setter Property="TextAlignment" Value="Right" />
+    <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
+  </Style>
+  <Style x:Key="PaymentPanel.Change" TargetType="Border">
+    <Setter Property="Background" Value="{DynamicResource Brush.SuccessSoft}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Success}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{StaticResource Radius.Button}" />
+    <Setter Property="Padding" Value="14,10" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.SuccessText}" />
+    <Setter Property="TextElement.FontWeight" Value="SemiBold" />
+  </Style>
+  <Style x:Key="PaymentPanel.ChangeAmount" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="{DynamicResource Font.Size.Amount}" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.SuccessText}" />
+    <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
+    <Setter Property="TextAlignment" Value="Right" />
+  </Style>
+
 
 </ResourceDictionary>

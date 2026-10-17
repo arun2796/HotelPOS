@@ -1,4 +1,4 @@
-<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
                     xmlns:conv="clr-namespace:HotelPOS.Desktop.Converters">
@@ -152,11 +152,11 @@
   </Style>
   <Style x:Key="Pill.Success" TargetType="Border" BasedOn="{StaticResource Pill.Base}">
     <Setter Property="Background" Value="{DynamicResource Brush.SuccessSoft}" />
-    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Success}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.SuccessText}" />
   </Style>
   <Style x:Key="Pill.Warning" TargetType="Border" BasedOn="{StaticResource Pill.Base}">
     <Setter Property="Background" Value="{DynamicResource Brush.WarningSoft}" />
-    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Warning}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.WarningText}" />
   </Style>
   <Style x:Key="Pill.Danger" TargetType="Border" BasedOn="{StaticResource Pill.Base}">
     <Setter Property="Background" Value="{DynamicResource Brush.DangerSoft}" />
@@ -164,7 +164,11 @@
   </Style>
   <Style x:Key="Pill.Info" TargetType="Border" BasedOn="{StaticResource Pill.Base}">
     <Setter Property="Background" Value="{DynamicResource Brush.InfoSoft}" />
-    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Info}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.InfoText}" />
+  </Style>
+  <Style x:Key="Pill.Neutral" TargetType="Border" BasedOn="{StaticResource Pill.Base}">
+    <Setter Property="Background" Value="{DynamicResource Brush.NeutralSoft}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.NeutralText}" />
   </Style>
 
   <Style TargetType="Separator">
@@ -235,7 +239,12 @@
 
   <Style TargetType="Button" BasedOn="{StaticResource Button.Base}" />
 
-  <Style x:Key="Button.Secondary" TargetType="Button" BasedOn="{StaticResource Button.Base}" />
+  <!-- Secondary: grey outline on a transparent fill (Cancel, Back, Print). -->
+  <Style x:Key="Button.Secondary" TargetType="Button" BasedOn="{StaticResource Button.Base}">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+  </Style>
 
   <Style x:Key="Button.Primary" TargetType="Button" BasedOn="{StaticResource Button.Base}">
     <Setter Property="Background" Value="{DynamicResource Brush.Primary}" />
@@ -247,6 +256,38 @@
     <Setter Property="Background" Value="{DynamicResource Brush.Danger}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Brush.Danger}" />
     <Setter Property="Foreground" Value="{DynamicResource Brush.PrimaryText}" />
+  </Style>
+
+  <!-- Primary outline: the quieter green action (Start, Recall) next to a filled one. -->
+  <Style x:Key="Button.PrimaryOutline" TargetType="Button" BasedOn="{StaticResource Button.Base}">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Primary}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Primary}" />
+  </Style>
+
+  <!-- Warning: the orange "Mark ready" / "Request bill" action. Dark text: white on #F59E0B is only 2:1. -->
+  <Style x:Key="Button.Warning" TargetType="Button" BasedOn="{StaticResource Button.Base}">
+    <Setter Property="Background" Value="{DynamicResource Brush.Warning}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Warning}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.OnWarning}" />
+  </Style>
+
+  <!-- Large: the 56 px touch size (pay, send to kitchen) in the primary fill; the cashier screens run Compact density, so
+       the payment buttons ask for it explicitly. Use Button.Large.Outline / Button.Large.Warning for the other fills. -->
+  <Style x:Key="Button.Large" TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+    <Setter Property="MinHeight" Value="56" />
+    <Setter Property="FontSize" Value="16" />
+    <Setter Property="Padding" Value="24,12" />
+  </Style>
+  <Style x:Key="Button.Large.Outline" TargetType="Button" BasedOn="{StaticResource Button.PrimaryOutline}">
+    <Setter Property="MinHeight" Value="56" />
+    <Setter Property="FontSize" Value="16" />
+    <Setter Property="Padding" Value="24,12" />
+  </Style>
+  <Style x:Key="Button.Large.Warning" TargetType="Button" BasedOn="{StaticResource Button.Warning}">
+    <Setter Property="MinHeight" Value="56" />
+    <Setter Property="FontSize" Value="16" />
+    <Setter Property="Padding" Value="24,12" />
   </Style>
 
   <Style x:Key="Button.Ghost" TargetType="Button" BasedOn="{StaticResource Button.Base}">
@@ -1034,18 +1075,20 @@
   </Style>
 
   <!-- ============================ Restaurant controls ============================ -->
-  <!-- Table tile on the floor map. The fill is the table's state colour (Brush.Status.*), the same on every
-       terminal and in both themes; the selected table gets a ring. -->
+  <!-- Table tile on the floor map and the admin dashboard (Phase 21): soft tone fill, a tone border, the table code at 22 px,
+       then status icon + label (+ order number), guests and the running timer. Ready is the one solid tile (a check and the
+       word "Ready" keep it apart from Available). The tone follows the table's Status, so the colours are the same on every
+       terminal; the selected table gets a thicker, dark ring. The view's DataTemplate lays the content out. -->
   <Style x:Key="TableTile" TargetType="Button">
-    <Setter Property="Width" Value="148" />
-    <Setter Property="Height" Value="112" />
+    <Setter Property="Width" Value="156" />
+    <Setter Property="Height" Value="120" />
     <Setter Property="Margin" Value="0,0,12,12" />
     <Setter Property="Cursor" Value="Hand" />
     <Setter Property="FocusVisualStyle" Value="{StaticResource Focus.Visual}" />
-    <Setter Property="Foreground" Value="#FFFFFF" />
-    <Setter Property="Background" Value="{DynamicResource Brush.Status.Available}" />
-    <Setter Property="BorderBrush" Value="Transparent" />
-    <Setter Property="BorderThickness" Value="3" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.SuccessText}" />
+    <Setter Property="Background" Value="{DynamicResource Brush.SuccessSoft}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Status.Available}" />
+    <Setter Property="BorderThickness" Value="1.5" />
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="Button">
@@ -1059,10 +1102,10 @@
           </Grid>
           <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
-              <Setter TargetName="State" Property="Background" Value="#14FFFFFF" />
+              <Setter TargetName="State" Property="Background" Value="{DynamicResource Brush.HoverOverlay}" />
             </Trigger>
             <Trigger Property="IsPressed" Value="True">
-              <Setter TargetName="State" Property="Background" Value="#1F000000" />
+              <Setter TargetName="State" Property="Background" Value="{DynamicResource Brush.PressedOverlay}" />
               <Setter TargetName="Root" Property="RenderTransform">
                 <Setter.Value>
                   <ScaleTransform ScaleX="0.97" ScaleY="0.97" />
@@ -1075,54 +1118,74 @@
     </Setter>
     <Style.Triggers>
       <DataTrigger Binding="{Binding Status}" Value="Occupied">
-        <Setter Property="Background" Value="{DynamicResource Brush.Status.Occupied}" />
+        <Setter Property="Background" Value="{DynamicResource Brush.InfoSoft}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Status.Occupied}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.InfoText}" />
       </DataTrigger>
       <DataTrigger Binding="{Binding Status}" Value="Ordering">
-        <Setter Property="Background" Value="{DynamicResource Brush.Status.Ordering}" />
+        <Setter Property="Background" Value="{DynamicResource Brush.InfoSoft}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Status.Ordering}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.InfoText}" />
       </DataTrigger>
       <DataTrigger Binding="{Binding Status}" Value="Preparing">
-        <Setter Property="Background" Value="{DynamicResource Brush.Status.Preparing}" />
+        <Setter Property="Background" Value="{DynamicResource Brush.WarningSoft}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Status.Preparing}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.WarningText}" />
       </DataTrigger>
       <DataTrigger Binding="{Binding Status}" Value="Ready">
         <Setter Property="Background" Value="{DynamicResource Brush.Status.Ready}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Status.Ready}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.PrimaryText}" />
       </DataTrigger>
       <DataTrigger Binding="{Binding Status}" Value="Billing">
-        <Setter Property="Background" Value="{DynamicResource Brush.Status.Billing}" />
+        <Setter Property="Background" Value="{DynamicResource Brush.WarningSoft}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Status.Billing}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.WarningText}" />
       </DataTrigger>
       <DataTrigger Binding="{Binding Status}" Value="OutOfService">
-        <Setter Property="Background" Value="{DynamicResource Brush.Status.OutOfService}" />
+        <Setter Property="Background" Value="{DynamicResource Brush.NeutralSoft}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Status.OutOfService}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.NeutralText}" />
       </DataTrigger>
       <DataTrigger Binding="{Binding IsSelected}" Value="True">
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.TextPrimary}" />
+        <Setter Property="BorderThickness" Value="3" />
       </DataTrigger>
     </Style.Triggers>
   </Style>
 
+  <!-- Status of a table as a badge (table details header): soft tone fill and tone text, Ready solid. -->
   <Style x:Key="TableStatusBadge" TargetType="Border">
     <Setter Property="CornerRadius" Value="{StaticResource Radius.Pill}" />
     <Setter Property="Padding" Value="12,4" />
     <Setter Property="HorizontalAlignment" Value="Left" />
-    <Setter Property="TextElement.Foreground" Value="#FFFFFF" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.SuccessText}" />
     <Setter Property="TextElement.FontWeight" Value="SemiBold" />
-    <Setter Property="Background" Value="{DynamicResource Brush.Status.Available}" />
+    <Setter Property="Background" Value="{DynamicResource Brush.SuccessSoft}" />
     <Style.Triggers>
       <DataTrigger Binding="{Binding Status}" Value="Occupied">
-        <Setter Property="Background" Value="{DynamicResource Brush.Status.Occupied}" />
+        <Setter Property="Background" Value="{DynamicResource Brush.InfoSoft}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.InfoText}" />
       </DataTrigger>
       <DataTrigger Binding="{Binding Status}" Value="Ordering">
-        <Setter Property="Background" Value="{DynamicResource Brush.Status.Ordering}" />
+        <Setter Property="Background" Value="{DynamicResource Brush.InfoSoft}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.InfoText}" />
       </DataTrigger>
       <DataTrigger Binding="{Binding Status}" Value="Preparing">
-        <Setter Property="Background" Value="{DynamicResource Brush.Status.Preparing}" />
+        <Setter Property="Background" Value="{DynamicResource Brush.WarningSoft}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.WarningText}" />
       </DataTrigger>
       <DataTrigger Binding="{Binding Status}" Value="Ready">
         <Setter Property="Background" Value="{DynamicResource Brush.Status.Ready}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.PrimaryText}" />
       </DataTrigger>
       <DataTrigger Binding="{Binding Status}" Value="Billing">
-        <Setter Property="Background" Value="{DynamicResource Brush.Status.Billing}" />
+        <Setter Property="Background" Value="{DynamicResource Brush.WarningSoft}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.WarningText}" />
       </DataTrigger>
       <DataTrigger Binding="{Binding Status}" Value="OutOfService">
-        <Setter Property="Background" Value="{DynamicResource Brush.Status.OutOfService}" />
+        <Setter Property="Background" Value="{DynamicResource Brush.NeutralSoft}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.NeutralText}" />
       </DataTrigger>
     </Style.Triggers>
   </Style>
