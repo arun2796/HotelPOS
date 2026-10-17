@@ -1,1 +1,63 @@
 /* Phase 21 kitchen (tablet/monitor) screens: K1-K6. Loaded after app.css via index.html. */
+
+/* ---- K1 header: station chips, search, overflow menu (brand/clock/pill/bell/theme stay in the shell bar) ---- */
+.kds-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.kds-stations { flex: 1 1 auto; min-width: 0; }
+.kds-search { flex: 0 1 280px; min-width: 160px; }
+.kds-back { gap: 4px; }
+.kds-menu-wrap { position: relative; }
+.kds-menu-backdrop { position: fixed; inset: 0; z-index: 30; }
+.kds-menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 31; min-width: 240px; padding: 6px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius-card); box-shadow: 0 8px 24px rgba(9, 9, 11, 0.18); display: flex; flex-direction: column; gap: 2px; }
+.kds-menu-item { display: flex; align-items: center; gap: 10px; min-height: var(--touch); padding: 0 12px; border-radius: var(--radius-button); color: var(--text); text-decoration: none; font-weight: 600; }
+.kds-menu-item:hover, .kds-menu-item.active { background: var(--primary-soft); }
+.kds-menu .device-card { margin-top: 4px; }
+
+/* ---- K2 KPI strip, toolbar, columns ---- */
+.kds-kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
+.kds-kpis .kpi { min-width: 0; }
+@media (max-width: 719px) { .kds-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.kds-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.kds-updated { text-align: right; }
+.kds-colhead { margin: 4px 0 8px; }
+.kds-colhead .kds-head { margin: 0; font-size: var(--fs-section); }
+.kds-sub { min-height: 18px; }
+.kds .kds-col { min-width: 0; }
+
+/* ---- K3 ticket card: readable from a distance ---- */
+.ticket { padding: 14px; }
+.ticket.selected { box-shadow: 0 0 0 3px var(--primary-soft); }
+.ticket-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; min-height: var(--touch); }
+.ticket-id { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.ticket-table { font-size: 28px; line-height: 1.1; margin-right: 4px; }
+.ticket-elapsed { font-size: var(--fs-label); font-weight: 700; display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.ticket-meta { font-size: var(--fs-label); margin-top: 2px; }
+.ticket-lines { list-style: none; margin: 10px 0 0; padding: 0; font-size: 20px; }
+.ticket-lines li { padding: 4px 0; border-top: 1px solid var(--border); }
+.ticket-lines li:first-child { border-top: 0; }
+.ticket-qty { font-size: 24px; margin-right: 4px; }
+.ticket-mods { margin-left: 34px; font-size: 15px; }
+.ticket-note { display: flex; align-items: flex-start; gap: 6px; margin-left: 34px; color: var(--warning-text); font-weight: 700; font-size: 16px; }
+.ticket-note::before { content: none; }
+.kds-detail .ticket-note { margin-left: 0; }
+.ticket-actions { display: flex; gap: 8px; margin-top: 12px; }
+.ticket .ticket-actions .btn.lg { flex: 1; min-height: 56px; font-size: 18px; font-weight: 700; letter-spacing: 0.02em; }
+.btn.warning { background: var(--warning); border-color: var(--warning); color: var(--on-warning, var(--text)); }
+.btn.outline { background: transparent; border: 2px solid var(--text-2); color: var(--text); }
+
+/* ---- K4 detail pane ---- */
+.kds-detail { display: flex; flex-direction: column; gap: 10px; }
+.kds-detail-h { margin: 8px 0 0; font-size: var(--fs-section); }
+.kds-guests { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+.kds-detail .ticket-lines { margin-top: 0; }
+
+/* ---- K5 completed and station pages ---- */
+.kds-done { display: grid; grid-template-columns: 1fr; gap: 10px; }
+@media (min-width: 720px) { .kds-done { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1280px) { .kds-done { grid-template-columns: repeat(3, 1fr); } }
+.kds-done .ticket { margin-bottom: 0; }
+.kds-done .ticket-lines { font-size: 17px; }
+.kds-times { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: var(--fs-label); margin-top: 8px; }
+.kds-station-list { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 12px; }
+@media (min-width: 720px) { .kds-station-list { grid-template-columns: repeat(2, 1fr); } }
+.kds-station-list .btn { justify-content: flex-start; }
