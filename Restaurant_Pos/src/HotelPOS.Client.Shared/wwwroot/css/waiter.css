@@ -97,6 +97,45 @@
 .options-foot { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
 .options-foot .grow { flex: 1; }
 
+/* ---- W6: order details. Details / Items / Timeline tabs, event list, outlined ActionList (danger last). ---- */
+.detail-title { font-size: var(--fs-title); margin: 0 0 2px; line-height: 1.15; }
+.detail-guests { margin-top: 6px; }
+.detail-list { display: grid; gap: 0; margin: 12px 0 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card); padding: 4px 12px; }
+.detail-list > div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border-subtle); }
+.detail-list > div:last-child { border-bottom: 0; }
+.detail-list dt { margin: 0; color: var(--text-2); font-size: var(--fs-label); }
+.detail-list dd { margin: 0; font-weight: 600; text-align: right; }
+.detail-list > .total dd { font-size: var(--fs-amount); }
+.detail-list > .notes { flex-direction: column; align-items: flex-start; gap: 4px; }
+.detail-list > .notes dd { text-align: left; font-weight: 500; color: var(--warning-text); display: inline-flex; align-items: center; gap: 4px; }
+.detail-items { margin-top: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card); padding: 0 12px; }
+.detail-item .order-line { border-bottom: 0; padding-bottom: 4px; }
+.detail-item-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 0 8px 64px; border-bottom: 1px solid var(--border-subtle); }
+.detail-item:last-child .detail-item-foot { border-bottom: 0; }
+.detail-item-foot .btn.ghost { min-height: 40px; padding: 0 8px; font-size: var(--fs-label); }
+.detail-timeline { margin-top: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card); padding: 14px 12px; }
+.event-list { list-style: none; margin: 16px 0 0; padding: 0; position: relative; }
+.event-list::before { content: ""; position: absolute; left: 61px; top: 8px; bottom: 8px; width: 2px; background: var(--border); }
+.event { display: flex; align-items: center; gap: 10px; min-height: 36px; --tc: var(--text-2); --ts: var(--primary); }
+.event.success { --ts: var(--success); --tc: var(--success-text); }
+.event.warning { --ts: var(--warning); --tc: var(--warning-text); }
+.event.danger { --ts: var(--danger); --tc: var(--danger-text); }
+.event-time { width: 44px; flex: none; text-align: right; color: var(--text-2); font-size: var(--fs-label); font-weight: 600; }
+.event-dot { position: relative; z-index: 1; width: 12px; height: 12px; flex: none; border-radius: 50%; background: var(--ts); border: 2px solid var(--surface); box-shadow: 0 0 0 2px var(--ts); margin: 0 4px; }
+.event-text { color: var(--text); font-size: var(--fs-body); }
+.event.success .event-text, .event.danger .event-text { color: var(--tc); font-weight: 600; }
+.action-list { display: flex; flex-direction: column; gap: 8px; }
+.action-row { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 0 12px 0 10px; border: 1px solid var(--border); border-radius: var(--radius-card);
+  background: var(--surface); color: var(--text); font-weight: 600; font-size: var(--fs-body); text-align: left; cursor: pointer; }
+.action-row:disabled { opacity: 0.5; cursor: default; }
+.action-ico { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: var(--radius-button); background: var(--surface-subtle); color: var(--text-2); }
+.action-label { flex: 1; }
+.action-chev { color: var(--text-3); }
+.action-row.primary { border-color: var(--primary); }
+.action-row.primary .action-ico { background: var(--primary-soft); color: var(--primary); }
+.action-row.danger { border-color: var(--danger-text); color: var(--danger-text); margin-top: 8px; }
+.action-row.danger .action-ico { background: var(--danger-soft); color: var(--danger-text); }
+
 /* ---- W5: order cards (My orders, Home attention list). ---- */
 .order-card { display: flex; flex-direction: column; gap: 6px; width: 100%; text-align: left; cursor: pointer; }
 .order-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }

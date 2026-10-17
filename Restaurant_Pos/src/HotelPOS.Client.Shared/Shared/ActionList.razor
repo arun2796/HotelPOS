@@ -1,0 +1,23 @@
+@* Phase 21 W6: outlined action rows (48 px+), one per allowed action; the page decides which keys are valid for the
+   current status and puts destructive ones last. *@
+
+<div class="action-list" data-testid="action-list" role="group" aria-label="Actions">
+    @foreach (var item in Items)
+    {
+        var a = item;
+        <button type="button" class="action-row @a.Style.ToString().ToLowerInvariant()" data-action="@a.Key" disabled="@(a.Disabled || Busy)" @onclick="() => OnAction.InvokeAsync(a.Key)">
+            <span class="action-ico"><Icon Name="@a.Icon" /></span>
+            <span class="action-label">@a.Label</span>
+            <Icon Name="chevron-right" Size="18" Class="action-chev" />
+        </button>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<ActionItem> Items { get; set; } = Array.Empty<ActionItem>();
+
+    /// <summary>Disables every row while one action is in flight (no duplicate taps).</summary>
+    [Parameter] public bool Busy { get; set; }
+
+    [Parameter] public EventCallback<string> OnAction { get; set; }
+}

@@ -15,6 +15,7 @@ using HotelPOS.Contracts.Floor;
 using HotelPOS.Contracts.Kitchen;
 using HotelPOS.Contracts.Menu;
 using HotelPOS.Contracts.Orders;
+using HotelPOS.Contracts.Presentation;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Contracts.Security;
 using Microsoft.AspNetCore.Components;
@@ -440,5 +441,233 @@ public sealed class WaiterScreensTests : TestContext
         await page.InvokeAsync(() => done[1].Click());
         Services.GetRequiredService<NavigationManager>().Uri.Should().EndWith("orders/1", "a finished order opens by its own id");
         await StopRealtimeAsync();
+    }
+
+    // ---- W6 order details ---------------------------------------------------------------------------------------
+
+    private static OrderDetailDto Detail(OrderStatus status, bool canModify, KitchenOrderStatus? ticket = KitchenOrderStatus.Preparing, bool bill = false, string? notes = null) => new()
+    {
+        Id = 1, OrderNumber = 1005, TableId = 5, TableCode = "T05", WaiterId = Me, WaiterName = "Arun", GuestCount = 2, Notes = notes, Status = status, CanModify = canModify,
+        RowVersion = "RV1", ApproxSubtotal = 420m, CreatedAtUtc = DateTime.UtcNow.AddMinutes(-40), SubmittedAtUtc = DateTime.UtcNow.AddMinutes(-39),
+        Items = new[]
+        {
+            new OrderItemDto { Id = 11, MenuItemId = 10, ItemName = "Chicken Biryani", Quantity = 1, UnitPrice = 260m, LineTotal = 290m, Status = OrderItemStatus.Sent, TicketId = 77, TicketStatus = ticket, Notes = "Less oil", Modifiers = new[] { new OrderItemModifierDto(200, "Extra raita", 30m) } },
+            new OrderItemDto { Id = 12, MenuItemId = 20, ItemName = "Butter Naan", Quantity = 2, UnitPrice = 50m, LineTotal = 100m, Status = OrderItemStatus.Cancelled, TicketId = 77, TicketStatus = ticket },
+        },
+        Tickets = ticket is { } t ? new[] { new OrderTicketDto { Id = 77, TicketNumber = "1005-1-MAIN", StationCode = "MAIN", Status = t } } : Array.Empty<OrderTicketDto>(),
+        Bill = bill ? new HotelPOS.Contracts.Billing.OrderBillDto { Id = 9, BillNumber = 9 } : null,
+    };
+
+    private static TableDetailDto Table5(TableStatus status, int? currentOrderId) => new()
+    {
+        Table = new TableDto { Id = 5, Code = "T05", SectionName = "Ground Floor", Capacity = 4, Status = status, GuestCount = currentOrderId is null && status == TableStatus.Available ? null : 2, CurrentOrderId = currentOrderId, RowVersion = "TRV" },
+    };
+
+    private async Task<IRenderedComponent<TableDetailsPage>> RenderDetailsAsync(RouteHandler handler, int? orderId = null, params string[] permissions)
+    {
+        AddPageServices(await WaiterAsync(permissions), handler);
+        var page = RenderComponent<TableDetailsPage>(p => { if (orderId is { } id) { p.Add(x => x.OrderId, id); } else { p.Add(x => x.Id, 5); } });
+        page.WaitForAssertion(() => page.FindAll(".detail-card").Should().ContainSingle());
+        await Task.Delay(300);
+        return page;
+    }
+
+    [Theory]
+    [InlineData(OrderStatus.Submitted, true, KitchenOrderStatus.New, false, "add-items|edit|cancel")]
+    [InlineData(OrderStatus.Preparing, true, KitchenOrderStatus.Preparing, false, "add-items|edit|cancel")]
+    [InlineData(OrderStatus.Ready, true, KitchenOrderStatus.Ready, false, "add-items|edit|serve|request-bill|cancel")]
+    [InlineData(OrderStatus.Served, false, KitchenOrderStatus.Completed, false, "request-bill")]
+    [InlineData(OrderStatus.BillRequested, false, KitchenOrderStatus.Completed, true, "")]
+    [InlineData(OrderStatus.Paid, false, KitchenOrderStatus.Completed, true, "")]
+    public async Task Details_ActionList_OffersOnlyTheActionsValidForTheStatus_DestructiveLast(OrderStatus status, bool canModify, KitchenOrderStatus ticket, bool bill, string expected)
+    {
+        var handler = new RouteHandler
+        {
+            Respond = r => r.RequestUri!.AbsolutePath switch
+            {
+                "/api/tables/5" => Table5(TableStatus.Occupied, 1),
+                "/api/orders/1" => Detail(status, canModify, ticket, bill),
+                _ => null,
+            },
+        };
+        var page = await RenderDetailsAsync(handler);
+
+        var keys = page.FindAll("[data-testid=action-list] [data-action]").Select(b => b.GetAttribute("data-action")).ToArray();
+        keys.Should().Equal(expected.Split('|', StringSplitOptions.RemoveEmptyEntries));
+        keys.Should().NotContain(new[] { "hold", "print-kot" }, "D9: no Hold status exists and the phone cannot print");
+        if (keys.Length > 0)
+        {
+            page.FindAll("[data-testid=action-list] .action-row.danger").Should().HaveCount(keys.Contains("cancel") ? 1 : 0);
+            page.FindAll("[data-testid=action-list] [data-action]").Last().GetAttribute("data-action").Should().Be(keys.Contains("cancel") ? "cancel" : keys.Last());
+        }
+
+        page.Find("[data-testid=order-status]").TextContent.Should().Be(StatusPresentation.For(status).Label);
+        await StopRealtimeAsync();
+    }
+
+    [Fact]
+    public async Task Details_TableWithoutOrder_OffersNewOrder_AndReleaseOnlyWhenOccupiedAndAllowed()
+    {
+        var handler = new RouteHandler { Respond = r => r.RequestUri!.AbsolutePath == "/api/tables/5" ? Table5(TableStatus.Occupied, null) : null };
+        var page = await RenderDetailsAsync(handler);
+        page.FindAll("[data-action]").Select(b => b.GetAttribute("data-action")).Should().Equal("new-order", "release");
+        page.FindAll(".tabs").Should().BeEmpty("no order, no Details / Items / Timeline");
+
+        await page.InvokeAsync(() => page.Find("[data-action=release]").Click());
+        page.Find("[data-testid=confirm-release]").Should().NotBeNull("releasing a table asks first");
+        await page.InvokeAsync(() => page.Find("[data-action=new-order]").Click());
+        Services.GetRequiredService<NavigationManager>().Uri.Should().EndWith("tables/5/order");
+        await StopRealtimeAsync();
+    }
+
+    [Fact]
+    public async Task Details_EditOrder_SendsGuestsNotesAndTheCurrentRowVersion()
+    {
+        var updated = false;
+        var handler = new RouteHandler
+        {
+            Respond = r => (r.Method.Method, r.RequestUri!.AbsolutePath) switch
+            {
+                ("GET", "/api/tables/5") => Table5(TableStatus.Preparing, 1),
+                ("GET", "/api/orders/1") => updated ? Detail(OrderStatus.Preparing, true, notes: "No onion") with { GuestCount = 3, RowVersion = "RV2" } : Detail(OrderStatus.Preparing, true),
+                ("PUT", "/api/orders/1") => Mark(() => updated = true, Detail(OrderStatus.Preparing, true, notes: "No onion") with { GuestCount = 3, RowVersion = "RV2" }),
+                _ => null,
+            },
+        };
+        var page = await RenderDetailsAsync(handler);
+
+        await page.InvokeAsync(() => page.Find("[data-action=edit]").Click());
+        page.Find(".sheet button[aria-label='Guests: one more']").Click();
+        page.Find("[data-testid=edit-notes]").Change("No onion");
+        await page.Find("[data-testid=edit-save]").ClickAsync(new MouseEventArgs());
+
+        page.WaitForAssertion(() => page.FindAll(".sheet").Should().BeEmpty("the sheet closes once the server confirmed"));
+        var index = handler.Calls.FindIndex(c => c == "PUT /api/orders/1");
+        index.Should().BeGreaterThanOrEqualTo(0);
+        var request = JsonSerializer.Deserialize<UpdateOrderRequest>(handler.Bodies[index], PosJson.Options)!;
+        request.Should().BeEquivalentTo(new UpdateOrderRequest { GuestCount = 3, Notes = "No onion", RowVersion = "RV1" });
+        page.Find("[data-testid=order-details]").TextContent.Should().Contain("3 guests").And.Contain("No onion");
+        Services.GetRequiredService<ToastService>().Items.Should().Contain(t => t.Text == "Order updated.");
+        await StopRealtimeAsync();
+    }
+
+    [Fact]
+    public async Task Details_ItemsTab_CancelsOneLineThroughTheExistingEndpoint_AfterConfirming()
+    {
+        var handler = new RouteHandler
+        {
+            Respond = r => (r.Method.Method, r.RequestUri!.AbsolutePath) switch
+            {
+                ("GET", "/api/tables/5") => Table5(TableStatus.Preparing, 1),
+                ("GET", "/api/orders/1") => Detail(OrderStatus.Preparing, true),
+                ("POST", "/api/orders/1/items/11/cancel") => Detail(OrderStatus.Preparing, true),
+                _ => null,
+            },
+        };
+        var page = await RenderDetailsAsync(handler);
+
+        await page.InvokeAsync(() => page.FindAll(".tabs .tab").Single(t => t.TextContent.Contains("Items")).Click());
+        var lines = page.FindAll("[data-testid=order-items] [data-testid=order-line]");
+        lines.Should().HaveCount(2);
+        lines[0].QuerySelector(".order-line-mods")!.TextContent.Should().Be("Extra raita");
+        lines[0].QuerySelector(".order-line-note")!.TextContent.Should().Contain("Less oil");
+        lines[1].ClassList.Should().Contain("cancelled");
+        page.FindAll("[data-testid=cancel-line]").Should().ContainSingle("a cancelled line cannot be cancelled again");
+
+        await page.InvokeAsync(() => page.Find("[data-testid=cancel-line]").Click());
+        page.Find("[data-testid=cancel-line-reason]").Change("Guest changed mind");
+        await page.Find("[data-testid=confirm-cancel-line]").ClickAsync(new MouseEventArgs());
+
+        page.WaitForAssertion(() => handler.Calls.Should().Contain("POST /api/orders/1/items/11/cancel"));
+        var index = handler.Calls.FindIndex(c => c == "POST /api/orders/1/items/11/cancel");
+        JsonSerializer.Deserialize<CancelOrderItemRequest>(handler.Bodies[index], PosJson.Options)!.Reason.Should().Be("Guest changed mind");
+        await StopRealtimeAsync();
+    }
+
+    [Fact]
+    public async Task Details_TimelineTab_ReadsTheKitchenTicketTimes_AndListsTheEvents()
+    {
+        var now = DateTime.UtcNow;
+        var handler = new RouteHandler
+        {
+            Respond = r => r.RequestUri!.AbsolutePath switch
+            {
+                "/api/tables/5" => Table5(TableStatus.Ready, 1),
+                "/api/orders/1" => Detail(OrderStatus.Ready, true, KitchenOrderStatus.Ready),
+                "/api/kitchen/orders/77" => new KitchenTicketDto
+                {
+                    Id = 77, TicketNumber = "1005-1-MAIN", StationCode = "MAIN", Status = KitchenOrderStatus.Ready,
+                    CreatedAtUtc = now.AddMinutes(-39), AcceptedAtUtc = now.AddMinutes(-38), StartedAtUtc = now.AddMinutes(-30), ReadyAtUtc = now.AddMinutes(-5),
+                },
+                _ => null,
+            },
+        };
+        var page = await RenderDetailsAsync(handler);
+        handler.Calls.Should().NotContain(c => c.Contains("/api/kitchen/orders/"), "ticket times are read only when the Timeline tab opens");
+
+        await page.InvokeAsync(() => page.FindAll(".tabs .tab").Single(t => t.TextContent.Contains("Timeline")).Click());
+
+        page.WaitForAssertion(() => page.FindAll("[data-testid=order-events] .event").Should().HaveCount(5));
+        handler.Calls.Should().ContainSingle(c => c == "GET /api/kitchen/orders/77");
+        var steps = page.FindAll("[data-testid=order-timeline] .timeline-step");
+        steps.Select(s => s.ClassName).Should().Equal("timeline-step done", "timeline-step done", "timeline-step current", "timeline-step todo");
+        steps[1].QuerySelector(".timeline-time")!.TextContent.Should().Be(now.AddMinutes(-30).ToLocalTime().ToString("HH:mm"), "Preparing takes the ticket's StartedAtUtc");
+        steps[2].QuerySelector(".timeline-time")!.TextContent.Should().Be(now.AddMinutes(-5).ToLocalTime().ToString("HH:mm"));
+        page.FindAll("[data-testid=order-events] .event-text").Select(e => e.TextContent).Should().Equal(
+            "Order created", "Sent to kitchen", "MAIN accepted ticket 1005-1-MAIN", "MAIN preparing", "MAIN ready");
+        page.FindAll("[data-testid=timeline-note]").Should().BeEmpty();
+        await StopRealtimeAsync();
+    }
+
+    [Fact]
+    public async Task Details_WhenTicketTimesAreRefused_FallsBackToOrderTimes_AndSaysSo()
+    {
+        var handler = new RouteHandler
+        {
+            Respond = r => r.RequestUri!.AbsolutePath switch
+            {
+                "/api/tables/5" => Table5(TableStatus.Preparing, 1),
+                "/api/orders/1" => Detail(OrderStatus.Preparing, true),
+                _ => null,
+            },
+        };
+        var page = await RenderDetailsAsync(handler);
+
+        await page.InvokeAsync(() => page.FindAll(".tabs .tab").Single(t => t.TextContent.Contains("Timeline")).Click());
+
+        page.WaitForAssertion(() => page.Find("[data-testid=timeline-note]").TextContent.Should().Contain("unavailable"));
+        page.FindAll("[data-testid=order-events] .event-text").Select(e => e.TextContent).Should().Equal("Order created", "Sent to kitchen");
+        page.FindAll("[data-testid=order-timeline] .timeline-step.current").Single().GetAttribute("data-step").Should().Be("Preparing");
+        await StopRealtimeAsync();
+    }
+
+    [Fact]
+    public async Task Details_OpenedByOrderId_ReadsTheOrderFirst_ThenItsTable_AndGoesBackToMyOrders()
+    {
+        var handler = new RouteHandler
+        {
+            Respond = r => r.RequestUri!.AbsolutePath switch
+            {
+                "/api/orders/1" => Detail(OrderStatus.Paid, false, KitchenOrderStatus.Completed, bill: true),
+                "/api/tables/5" => Table5(TableStatus.Available, null),
+                _ => null,
+            },
+        };
+        var page = await RenderDetailsAsync(handler, orderId: 1);
+
+        handler.Calls.Take(2).Should().Equal("GET /api/orders/1", "GET /api/tables/5");
+        var shell = Services.GetRequiredService<ShellState>();
+        shell.Title.Should().Be("Order #1005");
+        shell.BackHref.Should().Be("my-orders");
+        page.Find(".detail-title").TextContent.Should().Be("Order #1005");
+        page.FindAll("[data-action]").Should().BeEmpty("a paid order on a free table offers nothing: no new order from here, nothing to release");
+        page.Find("a.btn[href=my-orders]").TextContent.Should().Be("Back to my orders");
+        await StopRealtimeAsync();
+    }
+
+    private static T Mark<T>(Action action, T value)
+    {
+        action();
+        return value;
     }
 }
