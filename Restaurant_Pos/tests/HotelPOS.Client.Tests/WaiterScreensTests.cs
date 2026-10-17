@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Bunit;
 using FluentAssertions;
+using HotelPOS.Client.Pages;
 using HotelPOS.Client.Pages.Waiter;
 using HotelPOS.Client.Services;
 using HotelPOS.Client.Shared;
@@ -669,5 +670,84 @@ public sealed class WaiterScreensTests : TestContext
     {
         action();
         return value;
+    }
+
+    // ---- W7 notifications, sign-in, offline / back online ---------------------------------------------------------
+
+    [Fact]
+    public async Task NotificationPanel_UsesLineIconsAndTones_KeepsMarkAllReadAndAcknowledge()
+    {
+        var auth = await WaiterAsync();
+        Services.AddSingleton(auth);
+        var center = new NotificationCenter(_storage);
+        Services.AddSingleton(center);
+        center.Add(new NotificationDraft(NotificationKind.OrderReady, NoticeLevel.Warning, "TABLE T05 — ORDER READY", "Ticket 1005-1-MAIN", "a", new NotificationTarget(NotificationTargetType.Table, "5")));
+        center.Add(new NotificationDraft(NotificationKind.BillRequested, NoticeLevel.Info, "Bill requested", "T06", "b", null));
+
+        var panel = RenderComponent<NotificationPanel>();
+
+        var rows = panel.FindAll("[data-testid=notice]");
+        rows.Should().HaveCount(2);
+        rows[0].QuerySelector(".notice-ico svg")!.GetAttribute("data-icon").Should().Be("receipt");
+        rows[1].QuerySelector(".notice-ico svg")!.GetAttribute("data-icon").Should().Be("utensils");
+        rows[1].QuerySelector(".notice-ico")!.ClassList.Should().Contain("warning");
+        panel.Find("[data-testid=notice-unread]").TextContent.Should().Be("2");
+        panel.Markup.Should().NotContainAny("🧾", "🍽", "ℹ");
+
+        panel.FindAll("button").Single(b => b.TextContent == "Mark all read").Click();
+        center.UnreadCount.Should().Be(0);
+        panel.FindAll("[data-testid=notice-unread]").Should().BeEmpty();
+        panel.FindAll("[data-testid=notice] button.btn").Should().HaveCount(2, "acknowledge stays until pressed");
+    }
+
+    [Fact]
+    public async Task SignIn_HasRoleSegments_PasswordEye_TerminalName_AndServerBadge()
+    {
+        var handler = new RouteHandler { Respond = r => r.RequestUri!.AbsolutePath == "/api/system/info" ? new SystemInfoDto { RestaurantName = "Saravana Bhavan" } : null };
+        var transport = Substitute.For<ISessionTransport>();
+        var auth = new WebAuthState(transport, _host);
+        Services.AddSingleton<IClientHost>(_host);
+        Services.AddSingleton(auth);
+        Services.AddSingleton<IBrowserStorage>(_storage);
+        Services.AddSingleton<DeviceIdentity>();
+        Services.AddSingleton(new WebApiClient(new HttpClient(handler), _host, auth));
+        Services.AddSingleton<WebRealtimeClient>();
+
+        var page = RenderComponent<SignIn>();
+        page.WaitForAssertion(() => page.Find(".signin-brand").TextContent.Should().Be("Saravana Bhavan"));
+
+        page.FindAll(".segmented .segment").Select(s => s.TextContent.Trim()).Should().Equal("Waiter", "Kitchen");
+        page.Find(".segmented .segment.on").TextContent.Trim().Should().Be("Waiter");
+        page.Find("[data-testid=signin-device]").TextContent.Should().StartWith("WEB-WAITER-");
+        page.Find(".signin-foot .status-badge").TextContent.Should().Be("Server online");
+        page.Find("[data-testid=password]").GetAttribute("type").Should().Be("password");
+
+        page.Find("[data-testid=toggle-password]").Click();
+        page.Find("[data-testid=password]").GetAttribute("type").Should().Be("text");
+        page.Find("[data-testid=toggle-password]").GetAttribute("aria-label").Should().Be("Hide password");
+
+        await page.InvokeAsync(() => page.FindAll(".segmented .segment")[1].Click());
+        page.WaitForAssertion(() => page.Find("[data-testid=signin-device]").TextContent.Should().StartWith("WEB-KITCHEN-"));
+        page.Find("button[type=submit]").HasAttribute("disabled").Should().BeTrue("no credentials typed yet");
+    }
+
+    [Fact]
+    public async Task OfflineBanner_ShowsBackOnlineBriefly_WithoutClaimingToSync()
+    {
+        var auth = await WaiterAsync();
+        var realtime = new WebRealtimeClient(_host, auth);
+        realtime.SetStatus(WebConnectionStatus.Disconnected);
+        Services.AddSingleton(auth);
+        Services.AddSingleton(realtime);
+
+        var banner = RenderComponent<OfflineBanner>(p => p.Add(c => c.BackOnlineMs, 200).AddChildContent("Offline — your items are kept on this phone."));
+        banner.Find("[data-testid=offline-banner]").TextContent.Should().Contain("kept on this phone");
+        banner.Find("[data-testid=offline-banner] svg").GetAttribute("data-icon").Should().Be("wifi-off");
+
+        realtime.SetStatus(WebConnectionStatus.Connected);
+
+        banner.WaitForAssertion(() => banner.Find("[data-testid=online-banner]").TextContent.Should().Be("Back online."));
+        banner.Markup.Should().NotContainEquivalentOf("sync", "there is no send queue");
+        banner.WaitForAssertion(() => banner.Markup.Trim().Should().BeEmpty(), TimeSpan.FromSeconds(5));
     }
 }

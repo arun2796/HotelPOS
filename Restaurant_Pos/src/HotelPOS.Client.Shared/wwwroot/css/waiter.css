@@ -136,6 +136,40 @@
 .action-row.danger { border-color: var(--danger-text); color: var(--danger-text); margin-top: 8px; }
 .action-row.danger .action-ico { background: var(--danger-soft); color: var(--danger-text); }
 
+/* ---- W7: notifications, settings, sign-in, offline / back-online. ---- */
+.notice-head .tab-count { margin-left: 6px; background: var(--danger-soft); color: var(--danger-text); }
+.notice-ico { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex: none; border-radius: var(--radius-button);
+  background: var(--info-soft); color: var(--info-text); font-size: inherit; }
+.notice-ico.warning { background: var(--warning-soft); color: var(--warning-text); }
+.notice-ico.critical { background: var(--danger-soft); color: var(--danger-text); }
+.notice-text { flex: 1; min-width: 0; }
+.notice-msg { overflow: hidden; text-overflow: ellipsis; }
+.settings-section { margin-bottom: 16px; }
+.settings-profile, .settings-row { display: flex; align-items: center; gap: 12px; }
+.settings-ico { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: var(--radius-button); background: var(--surface-subtle); color: var(--text-2); flex: none; }
+.settings-list { padding: 0 12px; }
+.settings-pref { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: var(--touch); padding: 8px 0; border-bottom: 1px solid var(--border-subtle); }
+.settings-pref:last-child { border-bottom: 0; }
+.settings-pref-name { flex: 1; min-width: 0; }
+.settings-pref-toggles { display: flex; gap: 12px; flex: none; }
+.toggle { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; font-size: var(--fs-label); color: var(--text-2); }
+.toggle input { width: 20px; height: 20px; accent-color: var(--primary); }
+.signin-card { padding: 24px 20px 20px; text-align: center; }
+.signin-hero { display: flex; justify-content: center; margin-bottom: 12px; }
+.signin-mark { display: inline-flex; align-items: center; justify-content: center; width: 88px; height: 88px; border-radius: 50%; background: var(--primary-soft); color: var(--primary); }
+.signin-brand { color: var(--text-2); font-size: var(--fs-label); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.signin-title { font-size: var(--fs-title); margin: 2px 0 16px; }
+.signin-card .field { text-align: left; }
+.signin-card .segmented { display: flex; width: 100%; }
+.signin-card .segment { flex: 1; justify-content: center; min-height: var(--touch); }
+.input-wrap { position: relative; display: block; }
+.input-wrap .input { padding-right: 48px; }
+.input-eye { position: absolute; top: 0; right: 0; width: var(--touch); height: 100%; border: 0; background: transparent; color: var(--text-2); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.signin-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 16px; }
+.offline-banner { display: flex; align-items: center; gap: 8px; }
+.offline-banner svg { flex: none; color: var(--warning-text); }
+.offline-banner.success svg { color: var(--success-text); }
+
 /* ---- W5: order cards (My orders, Home attention list). ---- */
 .order-card { display: flex; flex-direction: column; gap: 6px; width: 100%; text-align: left; cursor: pointer; }
 .order-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
