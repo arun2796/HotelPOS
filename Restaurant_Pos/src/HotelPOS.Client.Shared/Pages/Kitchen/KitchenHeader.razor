@@ -1,0 +1,49 @@
+@using HotelPOS.Contracts.Menu
+@* Phase 21.2 K1: the kitchen's control row under the shell bar (brand, clock, connection pill, bell, theme and sign-out stay
+   in the shell bar, so they are not drawn twice). Station chips: only "All stations" carries a live count, by design. *@
+<div class="kds-header" data-testid="kds-header">
+    @if (Stations is not null)
+    {
+        <div class="chip-row grow kds-stations" role="group" aria-label="Station">
+            <FilterChip Label="All stations" Count="AllCount" Selected="StationId is null" OnClick="() => OnStation.InvokeAsync(null)" />
+            @foreach (var station in Stations)
+            {
+                var id = station.Id;
+                <FilterChip Label="@station.Name" Selected="StationId == id" OnClick="() => OnStation.InvokeAsync(id)" />
+            }
+        </div>
+        <div class="kds-search"><SearchBox Value="Search" ValueChanged="SearchChanged" Placeholder="Table or order number" AriaLabel="Search tickets" /></div>
+        <button type="button" class="btn icon" title="Refresh" aria-label="Refresh" @onclick="OnRefresh"><Icon Name="refresh" /></button>
+    }
+    else
+    {
+        <NavLink class="btn kds-back" href="kitchen"><Icon Name="chevron-left" /> Kitchen board</NavLink>
+        <div class="grow"></div>
+    }
+    <div class="kds-menu-wrap">
+        <button type="button" class="btn icon" aria-haspopup="true" aria-expanded="@_menu.ToString().ToLowerInvariant()" aria-label="More" title="More" @onclick="() => _menu = !_menu"><Icon Name="more" /></button>
+        @if (_menu)
+        {
+            <div class="kds-menu-backdrop" @onclick="() => _menu = false"></div>
+            <div class="kds-menu" role="menu" data-testid="kds-menu">
+                <NavLink class="kds-menu-item" href="kitchen/completed" role="menuitem" @onclick="() => _menu = false"><Icon Name="check" /> Completed</NavLink>
+                <NavLink class="kds-menu-item" href="kitchen/station" role="menuitem" @onclick="() => _menu = false"><Icon Name="table" /> Station</NavLink>
+                <NavLink class="kds-menu-item" href="settings" role="menuitem" @onclick="() => _menu = false"><Icon Name="settings" /> Settings</NavLink>
+                <DeviceStatusCard Type="DeviceType.Kitchen" />
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private bool _menu;
+
+    /// <summary>Null on the Completed and Station pages: they show a back link instead of the station chips and search.</summary>
+    [Parameter] public IReadOnlyList<StationDto>? Stations { get; set; }
+    [Parameter] public int? StationId { get; set; }
+    [Parameter] public int? AllCount { get; set; }
+    [Parameter] public EventCallback<int?> OnStation { get; set; }
+    [Parameter] public string? Search { get; set; }
+    [Parameter] public EventCallback<string?> SearchChanged { get; set; }
+    [Parameter] public EventCallback OnRefresh { get; set; }
+}
