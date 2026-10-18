@@ -70,6 +70,7 @@ public sealed record OrderQuery : PagedQuery
     public OrderStatus? Status { get; init; }
     public int? TableId { get; init; }
     public int? WaiterId { get; init; }
+    public bool? Mine { get; init; }
     public DateTime? FromUtc { get; init; }
     public DateTime? ToUtc { get; init; }
 }

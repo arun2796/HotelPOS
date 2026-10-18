@@ -1,7 +1,9 @@
 @page "/tables/{TableId:int}/order"
 @page "/tables/{TableId:int}/order/{OrderId:int}/add"
+@page "/tables/{TableId:int}/order/{OrderId:int}/edit"
 @page "/orders/new"
 @page "/orders/{OrderId:int}/add"
+@page "/orders/{OrderId:int}/edit"
 @attribute [Authorize]
 @implements IDisposable
 @using HotelPOS.Contracts.Enums
@@ -101,7 +103,7 @@ else
 @* Review = the confirm-before-send step: every line with its controls, order notes, then one Send button. *@
 @if (_review && _menu is not null)
 {
-    <BottomSheet Open="true" Title="@(IsAppend ? "Added items" : $"Order · {_tableCode ?? $"table {TableId}"}")" OnClose="() => _review = false">
+    <BottomSheet Open="true" Title="@(IsAppend ? "Added items" : IsEdit ? "Edit draft" : $"Order · {_tableCode ?? $"table {TableId}"}")" OnClose="() => _review = false">
         @if (_cart.IsEmpty)
         {
             <EmptyState Small="true" Text="Nothing in the order yet." />
@@ -222,7 +224,9 @@ else
 
     private string SearchText { get; set; } = string.Empty;
 
-    private bool IsAppend => OrderId is not null;
+    private bool IsEdit => Navigation.Uri.Contains("/edit", StringComparison.OrdinalIgnoreCase);
+    private bool IsAppend => OrderId is not null && !IsEdit;
+    private string? _orderRowVersion;
 
     private bool IsSearching => SearchText.Trim().Length > 0;
 
@@ -264,7 +268,7 @@ else
 
     private void SetTitle()
     {
-        var what = IsAppend ? "Add items" : _orderType == OrderType.Takeaway ? "Takeaway" : _orderType == OrderType.Delivery ? "Delivery" : "New order";
+        var what = IsEdit ? "Edit draft" : IsAppend ? "Add items" : _orderType == OrderType.Takeaway ? "Takeaway" : _orderType == OrderType.Delivery ? "Delivery" : "New order";
         var title = _tableCode is null ? what : $"{_tableCode} · {what}";
         var backUrl = TableId.HasValue ? $"tables/{TableId.Value}" : "my-orders";
         Shell.Set(title, IsAppend ? null : TextFormat.Count(_cart.Guests, "guest"), backUrl);
@@ -300,6 +304,24 @@ else
             _cart.LoadDraft(draft);
             _pendingKey = draft.PendingKey;
             _restoredDraft = !_cart.IsEmpty;
+        }
+        else if (IsEdit && OrderId is { } editId)
+        {
+            var orderResult = await Api.GetOrderAsync(editId);
+            if (orderResult.Success && orderResult.Data is { } order)
+            {
+                _orderRowVersion = order.RowVersion;
+                _orderType = order.OrderType;
+                _customerName = order.CustomerName;
+                _customerPhone = order.CustomerPhone;
+                _deliveryAddress = order.DeliveryAddress;
+                _deliveryNotes = order.DeliveryNotes;
+                _cart.LoadOrder(order);
+                if (order.TableCode is not null)
+                {
+                    _tableCode = order.TableCode;
+                }
+            }
         }
 
         if (TableId.HasValue)
@@ -406,6 +428,35 @@ else
 
     private async Task SaveDraftAndBackAsync()
     {
+        if (IsEdit && OrderId is { } editId && !string.IsNullOrEmpty(_orderRowVersion))
+        {
+            _sending = true;
+            try
+            {
+                var replaceResult = await Api.ReplaceItemsAsync(editId, new ReplaceOrderItemsRequest
+                {
+                    Items = _cart.ToInputs(),
+                    RowVersion = _orderRowVersion,
+                });
+                if (replaceResult.Success)
+                {
+                    await Drafts.RemoveAsync(DraftKey);
+                    Toasts.Success("Draft saved.");
+                    Navigation.NavigateTo(TableId.HasValue && _orderType == OrderType.DineIn ? $"tables/{TableId.Value}" : "my-orders");
+                    return;
+                }
+                else
+                {
+                    Toasts.Error(replaceResult.Message);
+                    return;
+                }
+            }
+            finally
+            {
+                _sending = false;
+            }
+        }
+
         await PersistAsync();
         Toasts.Info(_cart.IsEmpty ? "Nothing to keep." : "Draft kept on this phone.");
         Navigation.NavigateTo(TableId.HasValue && _orderType == OrderType.DineIn ? $"tables/{TableId.Value}" : "my-orders");
@@ -427,6 +478,42 @@ else
             _pendingKey ??= IdempotentSender.NewKey();
             await PersistAsync();
             var key = _pendingKey.Value;
+
+            if (IsEdit && OrderId is { } editId)
+            {
+                if (!string.IsNullOrEmpty(_orderRowVersion))
+                {
+                    var replaceResult = await Api.ReplaceItemsAsync(editId, new ReplaceOrderItemsRequest
+                    {
+                        Items = _cart.ToInputs(),
+                        RowVersion = _orderRowVersion,
+                    });
+                    if (!replaceResult.Success)
+                    {
+                        Toasts.Error(replaceResult.Message);
+                        return;
+                    }
+                    _orderRowVersion = replaceResult.Data?.RowVersion ?? _orderRowVersion;
+                }
+
+                var submitResult = await Api.SubmitOrderAsync(editId);
+                if (submitResult.Success && submitResult.Data is { } submitted)
+                {
+                    _pendingKey = null;
+                    await Favourites.RecordOrderedAsync(_cart.Lines.Select(l => l.MenuItemId));
+                    _cart.Clear();
+                    _review = false;
+                    await Drafts.RemoveAsync(DraftKey);
+                    Toasts.Success($"Order #{submitted.OrderNumber} sent to the kitchen.");
+                    Navigation.NavigateTo(TableId.HasValue && _orderType == OrderType.DineIn ? $"tables/{TableId.Value}" : "my-orders");
+                    return;
+                }
+                else
+                {
+                    Toasts.Error(submitResult.Message);
+                    return;
+                }
+            }
 
             var result = IsAppend
                 ? await Sender.SendAsync(key, (k, ct) => Api.AppendItemsAsync(OrderId!.Value, new AppendOrderItemsRequest { Items = _cart.ToInputs() }, k, ct))

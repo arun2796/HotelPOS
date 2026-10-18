@@ -71,19 +71,26 @@ internal sealed class SubmitOrderHandler : ICommandHandler<SubmitOrderCommand, O
         }
 
         order.Submit(_clock.UtcNow);
-        var table = order.Table!;
-        table.FollowOrder(order.Status);
+        var table = order.Table;
+        if (table is not null)
+        {
+            table.FollowOrder(order.Status);
+        }
         var tickets = await _tickets.CreateAsync(order, 1, cancellationToken);
         _db.KitchenOrders.AddRange(tickets);
+        var tableLabel = OrderChannels.TableLabel(order.OrderType, order.OrderNumber, table?.Code);
         _audit.Add(AuditActions.OrderSubmitted, nameof(Order), order.Id.ToString(),
-            newValues: new { order.OrderNumber, Table = table.Code, Items = order.Items.Count });
+            newValues: new { order.OrderNumber, Table = tableLabel, Items = order.Items.Count });
 
         var result = await _orders.SaveAsync(order, cancellationToken);
         if (result.IsSuccess)
         {
-            _afterCommit.Enqueue(() => _tableEvents.PublishStatusAsync(table, order.OrderNumber));
-            _afterCommit.Enqueue(() => _events.PublishCreatedAsync(order, table.Code));
-            _afterCommit.Enqueue(() => _kitchen.PublishAsync(order, table, new KitchenChange(order.Status, order.Status, table.Status, table.Status),
+            if (table is not null)
+            {
+                _afterCommit.Enqueue(() => _tableEvents.PublishStatusAsync(table, order.OrderNumber));
+            }
+            _afterCommit.Enqueue(() => _events.PublishCreatedAsync(order, tableLabel));
+            _afterCommit.Enqueue(() => _kitchen.PublishAsync(order, table, new KitchenChange(order.Status, order.Status, table?.Status ?? TableStatus.Available, table?.Status ?? TableStatus.Available),
                 tickets, Array.Empty<KitchenOrder>(), Array.Empty<string>()));
         }
 

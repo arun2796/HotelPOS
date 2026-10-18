@@ -81,6 +81,18 @@ public sealed class WaiterApi
     public Task<ApiResult<PagedResult<OrderSummaryDto>>> GetOrdersAsync(int waiterId, DateTime fromUtc, CancellationToken ct = default) =>
         _api.GetAsync<PagedResult<OrderSummaryDto>>($"api/orders?waiterId={waiterId}&fromUtc={Uri.EscapeDataString(fromUtc.ToString("O"))}&pageSize={PagedQuery.MaxPageSize}", ct);
 
+    /// <summary>The signed-in waiter's held/draft orders: the "Held" tab.</summary>
+    public Task<ApiResult<PagedResult<OrderSummaryDto>>> GetHeldOrdersAsync(CancellationToken ct = default) =>
+        _api.GetAsync<PagedResult<OrderSummaryDto>>($"api/orders?status=Draft&mine=true&pageSize={PagedQuery.MaxPageSize}", ct);
+
+    /// <summary>Replaces the draft items with the cart items.</summary>
+    public Task<ApiResult<OrderDetailDto>> ReplaceItemsAsync(int orderId, ReplaceOrderItemsRequest request, CancellationToken ct = default) =>
+        _api.PutAsync<OrderDetailDto>($"api/orders/{orderId}/items", request, null, ct);
+
+    /// <summary>Submits a draft order to the kitchen.</summary>
+    public Task<ApiResult<OrderDetailDto>> SubmitOrderAsync(int orderId, CancellationToken ct = default) =>
+        _api.PostAsync<OrderDetailDto>($"api/orders/{orderId}/submit", null, null, ct);
+
     /// <summary>Guests and order notes; the caller sends the order's current <c>RowVersion</c> so a stale edit comes back as a conflict.</summary>
     public Task<ApiResult<OrderDetailDto>> UpdateOrderAsync(int orderId, UpdateOrderRequest request, CancellationToken ct = default) =>
         _api.PutAsync<OrderDetailDto>($"api/orders/{orderId}", request, null, ct);

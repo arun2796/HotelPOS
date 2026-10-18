@@ -99,6 +99,7 @@ public sealed class DatabaseFixture : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
+        Npgsql.NpgsqlConnection.ClearAllPools();
         await using (var scope = Services.CreateAsyncScope())
         {
             await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.EnsureDeletedAsync();

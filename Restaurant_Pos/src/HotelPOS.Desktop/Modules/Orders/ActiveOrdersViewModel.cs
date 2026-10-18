@@ -12,6 +12,7 @@ using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Auth;
 using HotelPOS.Desktop.Services.Navigation;
+using HotelPOS.Desktop.Services.Orders;
 using HotelPOS.Desktop.Services.Realtime;
 
 namespace HotelPOS.Desktop.Modules.Orders;
@@ -102,7 +103,7 @@ public sealed partial class ActiveOrdersViewModel : ViewModelBase, INavigationAw
     private string _summaryText = string.Empty;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasSelection))]
+    [NotifyPropertyChangedFor(nameof(HasSelection), nameof(OpenButtonText), nameof(CanOpenSelection))]
     private OrderRow? _selectedRow;
 
     [ObservableProperty]
@@ -115,6 +116,10 @@ public sealed partial class ActiveOrdersViewModel : ViewModelBase, INavigationAw
     public bool HasSelection => SelectedRow is not null;
 
     public bool HasDetail => Detail is not null;
+
+    public string OpenButtonText => SelectedRow?.IsDraft == true ? "Resume draft" : "Open table";
+
+    public bool CanOpenSelection => SelectedRow?.IsDraft == true || CanOpenTables;
 
     public string DetailTitle => Detail is { } d
         ? d.OrderType switch
@@ -332,10 +337,32 @@ public sealed partial class ActiveOrdersViewModel : ViewModelBase, INavigationAw
     [RelayCommand]
     private void ClearSearch() => Search = string.Empty;
 
-    /// <summary>"View": the table behind the order, the screen that already knows how to act on it.</summary>
+    /// <summary>"View" or "Resume": the table behind the order, or the builder for drafts.</summary>
     [RelayCommand]
-    private Task OpenAsync(OrderRow? row) =>
-        row is not null && CanOpenTables ? _navigation.NavigateToAsync(ModuleRegistry.Tables, row.Order.TableId) : Task.CompletedTask;
+    private Task OpenAsync(OrderRow? row)
+    {
+        if (row is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        if (row.IsDraft)
+        {
+            var ctx = new OrderBuilderContext(
+                row.Order.TableId,
+                row.Order.TableCode ?? string.Empty,
+                OrderBuilderMode.EditDraft,
+                row.Order.GuestCount,
+                row.Order.Id,
+                row.Order.OrderNumber,
+                row.Order.OrderType);
+            return _navigation.NavigateToPageAsync<OrderBuilderViewModel>(ctx);
+        }
+
+        return row.Order.TableId is { } tableId && CanOpenTables
+            ? _navigation.NavigateToAsync(ModuleRegistry.Tables, tableId)
+            : Task.CompletedTask;
+    }
 
     [RelayCommand]
     private Task OpenSelectedTableAsync() => OpenAsync(SelectedRow);

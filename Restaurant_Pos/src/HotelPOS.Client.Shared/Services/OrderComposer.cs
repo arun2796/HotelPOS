@@ -1,3 +1,4 @@
+using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Floor;
 using HotelPOS.Contracts.Menu;
 using HotelPOS.Contracts.Orders;
@@ -160,6 +161,24 @@ public sealed class OrderComposer
             ModifierOptionIds = l.ModifierOptionIds,
             ModifierNames = l.ModifierNames,
             ModifierTotal = l.ModifierTotal,
+        }));
+    }
+
+    public void LoadOrder(OrderDetailDto order)
+    {
+        Guests = order.GuestCount;
+        Notes = order.Notes;
+        _lines.Clear();
+        _lines.AddRange(order.Items.Where(i => i.Status != OrderItemStatus.Cancelled).Select(i => new CartLine
+        {
+            MenuItemId = i.MenuItemId,
+            Name = i.ItemName,
+            UnitPrice = i.UnitPrice,
+            Quantity = Math.Clamp(i.Quantity, 1, OrderLimits.MaxQuantity),
+            Notes = i.Notes,
+            ModifierOptionIds = i.Modifiers.Select(m => m.ModifierOptionId).ToList(),
+            ModifierNames = i.Modifiers.Select(m => m.Name).ToList(),
+            ModifierTotal = i.Modifiers.Sum(m => m.PriceDelta),
         }));
     }
 

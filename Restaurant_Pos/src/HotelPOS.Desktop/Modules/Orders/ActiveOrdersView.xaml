@@ -89,7 +89,7 @@
           <DataGridTemplateColumn Header="" Width="80">
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate DataType="{x:Type orders:OrderRow}">
-                <Button Content="View" Style="{StaticResource Button.Link}" CommandParameter="{Binding}"
+                <Button Content="{Binding ActionText}" Style="{StaticResource Button.Link}" CommandParameter="{Binding}"
                         Command="{Binding DataContext.OpenCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
                         HorizontalAlignment="Center" VerticalAlignment="Center" />
               </DataTemplate>
@@ -135,8 +135,8 @@
               <TextBlock Text="Approx. subtotal" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
               <TextBlock Text="{Binding DetailTotalText}" Style="{StaticResource Text.Amount}" HorizontalAlignment="Right" />
             </Grid>
-            <Button Content="Open table" Style="{StaticResource Button.Primary}" Command="{Binding OpenSelectedTableCommand}"
-                    Visibility="{Binding CanOpenTables, Converter={StaticResource BoolToVisibility}}" />
+            <Button Content="{Binding OpenButtonText}" Style="{StaticResource Button.Primary}" Command="{Binding OpenSelectedTableCommand}"
+                    Visibility="{Binding CanOpenSelection, Converter={StaticResource BoolToVisibility}}" />
           </StackPanel>
         </Grid>
       </controls:DetailPane>
