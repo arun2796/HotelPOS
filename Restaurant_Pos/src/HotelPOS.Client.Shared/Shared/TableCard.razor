@@ -19,6 +19,12 @@
             <span class="table-order num-tab" data-testid="table-order">#@number</span>
         }
     </div>
+    @if (Table.UpcomingReservation is { } upcoming)
+    {
+        <span class="chip info table-reservation" data-testid="table-reservation-badge">
+            <Icon Name="calendar" Size="12" /> @upcoming.StartTimeUtc.ToLocalTime().ToString("t") (@upcoming.PartySize)
+        </span>
+    }
     @if (HasDraft)
     {
         <span class="chip warning table-draft">Draft on this phone</span>

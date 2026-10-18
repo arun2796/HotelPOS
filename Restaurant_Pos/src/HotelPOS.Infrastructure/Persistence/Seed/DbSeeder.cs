@@ -1,5 +1,6 @@
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Contracts.Admin;
+using HotelPOS.Contracts.Billing;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Security;
 using HotelPOS.Domain.Administration;
@@ -115,6 +116,7 @@ public sealed class DbSeeder
         await SeedStationsAsync(cancellationToken);
         await SeedTemplatesAsync(cancellationToken);
         await SeedDenominationsAsync(cancellationToken);
+        await SeedExpenseCategoriesAsync(cancellationToken);
         if (options.DemoData)
         {
             await SeedDemoUsersAsync(options.DemoPassword, cancellationToken);
@@ -197,9 +199,10 @@ public sealed class DbSeeder
     {
         var defaults = new[]
         {
-            new PaymentMethod("Cash", "CASH", requiresReference: false, sortOrder: 1),
-            new PaymentMethod("Card", "CARD", requiresReference: true, sortOrder: 2),
-            new PaymentMethod("UPI", "UPI", requiresReference: true, sortOrder: 3),
+            new PaymentMethod("Cash", PaymentMethodCodes.Cash, requiresReference: false, sortOrder: 1),
+            new PaymentMethod("Card", PaymentMethodCodes.Card, requiresReference: true, sortOrder: 2),
+            new PaymentMethod("UPI", PaymentMethodCodes.Upi, requiresReference: true, sortOrder: 3),
+            new PaymentMethod("Wallet", PaymentMethodCodes.Wallet, requiresReference: true, sortOrder: 4),
         };
 
         var existing = await _db.PaymentMethods.Select(p => p.Code).ToListAsync(cancellationToken);
@@ -243,6 +246,27 @@ public sealed class DbSeeder
             _db.Denominations.AddRange(DefaultDenominations());
             await _db.SaveChangesAsync(cancellationToken);
         }
+    }
+
+    private async Task SeedExpenseCategoriesAsync(CancellationToken cancellationToken)
+    {
+        var defaults = new[]
+        {
+            new HotelPOS.Domain.Finance.ExpenseCategory("Food Supplies", "Raw ingredients, vegetables, meat, groceries", 1),
+            new HotelPOS.Domain.Finance.ExpenseCategory("Beverages", "Milk, soft drinks, juices, coffee, tea", 2),
+            new HotelPOS.Domain.Finance.ExpenseCategory("Utilities", "Electricity, water, gas, internet", 3),
+            new HotelPOS.Domain.Finance.ExpenseCategory("Maintenance", "Repairs, equipment servicing, kitchen maintenance", 4),
+            new HotelPOS.Domain.Finance.ExpenseCategory("Salaries & Wages", "Staff advances, daily wages, temporary labor", 5),
+            new HotelPOS.Domain.Finance.ExpenseCategory("Miscellaneous", "Cleaning materials, stationery, local transport", 6),
+        };
+
+        var existing = await _db.ExpenseCategories.Select(c => c.Name).ToListAsync(cancellationToken);
+        foreach (var category in defaults.Where(c => !existing.Contains(c.Name)))
+        {
+            _db.ExpenseCategories.Add(category);
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
     }
 
     private async Task SeedDemoUsersAsync(string password, CancellationToken cancellationToken)

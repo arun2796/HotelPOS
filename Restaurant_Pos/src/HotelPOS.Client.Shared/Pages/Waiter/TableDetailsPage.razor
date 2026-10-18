@@ -52,6 +52,30 @@ else
         }
     </div>
 
+    @if (table.UpcomingReservation is { } res)
+    {
+        <div class="card" style="margin-top:10px" data-testid="table-reservation-banner">
+            <div class="row between">
+                <div>
+                    <div class="bold"><Icon Name="calendar" Size="16" /> Reservation: @res.CustomerName</div>
+                    <div class="muted small">@res.PartySize guests · @res.StartTimeUtc.ToLocalTime().ToString("t") - @res.EndTimeUtc.ToLocalTime().ToString("t")</div>
+                    @if (!string.IsNullOrEmpty(res.CustomerPhone))
+                    {
+                        <div class="muted small">Phone: @res.CustomerPhone</div>
+                    }
+                    @if (!string.IsNullOrEmpty(res.Notes))
+                    {
+                        <div class="muted small">Notes: @res.Notes</div>
+                    }
+                </div>
+                @if (table.Status == TableStatus.Available && CanOperateTables && OrderId is null)
+                {
+                    <button class="btn primary sm" data-action="seat-reservation" @onclick="SeatReservationAsync" disabled="@_busy">Seat</button>
+                }
+            </div>
+        </div>
+    }
+
     @if (table.Status == TableStatus.Available && CanOperateTables && OrderId is null)
     {
         <div class="card" style="margin-top:10px">
@@ -85,6 +109,19 @@ else
                     <div><dt>Cancelled</dt><dd>@order.CancelReason</dd></div>
                 }
             </dl>
+            @if (order.Tickets.Count > 0)
+            {
+                <h2 class="detail-sub" style="margin-top:12px">Kitchen tickets</h2>
+                <ul class="detail-list" data-testid="order-tickets" style="list-style:none;padding:0">
+                    @foreach (var ticket in order.Tickets)
+                    {
+                        <li class="row between" data-testid="order-ticket">
+                            <span><b>@ticket.TicketNumber</b> <span class="muted small">· @ticket.StationCode</span></span>
+                            <PrintKotButton TicketId="ticket.Id" Label="@ticket.TicketNumber" />
+                        </li>
+                    }
+                </ul>
+            }
             @if (order.Bill is not null)
             {
                 <div class="banner info" style="margin:10px 0 0">Bill requested — the counter has it.</div>
@@ -253,7 +290,7 @@ else
     private bool ShowCancelOrder => CanTakeOrders && _order is { CanModify: true };
     private bool CanCancelLine(OrderItemDto item) => CanTakeOrders && _order is { CanModify: true } && item.Status != OrderItemStatus.Cancelled;
 
-    /// <summary>Only the actions valid now, destructive last (no Hold, no Print KOT: D9).</summary>
+    /// <summary>Only the actions valid now, destructive last (no Hold; Print KOT sits with the order's kitchen tickets, Phase 22 P6).</summary>
     private IReadOnlyList<ActionItem> Actions
     {
         get
@@ -300,7 +337,12 @@ else
             }
 
             order = byId.Data;
-            tableId = order.TableId;
+            if (order.TableId is not { } tid)
+            {
+                Navigation.NavigateTo("waiter/orders");
+                return;
+            }
+            tableId = tid;
         }
 
         var result = await Api.GetTableAsync(tableId);
@@ -432,6 +474,23 @@ else
         }
 
         return Task.CompletedTask;
+    }
+
+    private async Task SeatReservationAsync()
+    {
+        if (_detail?.Table.UpcomingReservation is not { } res) return;
+        await RunAsync(async () =>
+        {
+            var result = await Api.SeatReservationAsync(res.Id, new HotelPOS.Contracts.Reservations.SeatReservationRequest { RowVersion = res.RowVersion }, CancellationToken.None);
+            if (!result.Success)
+            {
+                return (false, result.Message, null, result.IsConflict);
+            }
+
+            _guests = res.PartySize;
+            var occupyResult = await Api.OccupyAsync(Id, _guests, _detail.Table.RowVersion);
+            return (occupyResult.Success, occupyResult.Message, occupyResult.Success ? $"{_detail.Table.Code} seated and occupied." : null, occupyResult.IsConflict);
+        });
     }
 
     private async Task OccupyAsync()

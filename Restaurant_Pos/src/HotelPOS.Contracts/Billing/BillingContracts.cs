@@ -23,6 +23,7 @@ public static class PaymentMethodCodes
     public const string Cash = "CASH";
     public const string Card = "CARD";
     public const string Upi = "UPI";
+    public const string Wallet = "WALLET";
 }
 
 // Action types an approval token is bound to (POST /api/auth/approval).
@@ -55,6 +56,7 @@ public sealed record BillSummaryDto
     public int OrderId { get; init; }
     public int OrderNumber { get; init; }
     public string TableCode { get; init; } = string.Empty;
+    public OrderType OrderType { get; init; } = OrderType.DineIn;
     public string WaiterName { get; init; } = string.Empty;
     public BillStatus Status { get; init; }
     public PaymentStatus PaymentStatus { get; init; }
@@ -117,8 +119,9 @@ public sealed record BillDetailDto
     public string? InvoiceNumber { get; init; }
     public int OrderId { get; init; }
     public int OrderNumber { get; init; }
-    public int TableId { get; init; }
+    public int? TableId { get; init; }
     public string TableCode { get; init; } = string.Empty;
+    public OrderType OrderType { get; init; } = OrderType.DineIn;
     public int WaiterId { get; init; }
     public string WaiterName { get; init; } = string.Empty;
     public int GuestCount { get; init; }

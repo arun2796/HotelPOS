@@ -147,6 +147,56 @@ public class PrintLogTests : PrintScenario
     }
 
     [Fact]
+    public async Task KotPdf_RendersTheTicketOnAnEightyMmRoll_AndLogsItsOwnPdfCopy()
+    {
+        var s = await FinalizedBillAsync();
+
+        var first = await SendAsync(new GetDocumentPdfCommand(PrintDocumentType.Kot, s.TicketId, null));
+        var again = await SendAsync(new GetDocumentPdfCommand(PrintDocumentType.Kot, s.TicketId, "a5"));
+
+        first.IsSuccess.Should().BeTrue(first.Error?.Message);
+        first.Value.Content.Take(4).Should().Equal("%PDF"u8.ToArray());
+        first.Value.Content.Length.Should().BeGreaterThan(1500);
+        first.Value.FileName.Should().StartWith("kot-").And.EndWith("-copy1.pdf");
+        var text = Text(first.Value.Content);
+        text.Should().Contain("KITCHEN TICKET").And.Contain("T01").And.Contain("Chicken Biryani").And.Contain("Butter Naan").And.NotContain("DUPLICATE");
+        Pages(first.Value.Content).Single().Width.Should().BeApproximately(80 / 25.4 * 72, 1, "an 80 mm roll unless asked");
+        Text(again.Value.Content).Should().Contain("DUPLICATE");
+        Pages(again.Value.Content).Single().Width.Should().BeApproximately(420, 1);
+        (await QueryAsync(db => db.PrintLogs.Where(p => p.DocumentType == PrintDocumentType.Kot).Select(p => p.Output).ToListAsync()))
+            .Should().HaveCount(2).And.OnlyContain(o => o == PrintOutput.Pdf);
+        (await SendAsync(new GetDocumentPdfCommand(PrintDocumentType.Kot, 999999, null))).Error!.Code.Should().Be(ErrorCodes.NotFound);
+    }
+
+    [Fact]
+    public async Task KotPdf_ForAReservedCopy_UsesThatCopyAndTakesNoNewOne()
+    {
+        var s = await FinalizedBillAsync();
+        CurrentUser.SignIn(s.Waiter, "waiter1", Roles.Waiter);
+        CurrentUser.DeviceId = null;
+        var reserved = (KitchenTicketDocument)(await SendAsync(new ReserveCopyCommand(PrintDocumentType.Kot, s.TicketId,
+            new ReserveCopyRequest(), Guid.NewGuid()))).Value;
+        var again = (KitchenTicketDocument)(await SendAsync(new ReserveCopyCommand(PrintDocumentType.Kot, s.TicketId,
+            new ReserveCopyRequest(), Guid.NewGuid()))).Value;
+
+        var pdf = await SendAsync(new GetDocumentPdfCommand(PrintDocumentType.Kot, s.TicketId, null, again.PrintLogId));
+        var done = await SendAsync(new CompletePrintCommand(again.PrintLogId!.Value, new CompletePrintRequest { Succeeded = true }));
+
+        pdf.IsSuccess.Should().BeTrue(pdf.Error?.Message);
+        pdf.Value.FileName.Should().EndWith("-copy2.pdf");
+        Text(pdf.Value.Content).Should().Contain("DUPLICATE");
+        done.Value.Result.Should().Be(PrintResult.Printed);
+        reserved.CopyNumber.Should().Be(1);
+        (await QueryAsync(db => db.PrintLogs.CountAsync(p => p.DocumentType == PrintDocumentType.Kot))).Should().Be(2, "the PDF for a reserved copy takes no copy of its own");
+
+        CurrentUser.SignIn(s.Cashier, "cashier1", Roles.Cashier);
+        CurrentUser.DeviceId = null;
+        (await SendAsync(new GetDocumentPdfCommand(PrintDocumentType.Kot, s.TicketId, null, again.PrintLogId))).Error!.Code
+            .Should().Be(ErrorCodes.Forbidden, "only the user who reserved the copy (or a manager) may render it");
+        (await SendAsync(new GetDocumentPdfCommand(PrintDocumentType.Kot, s.TicketId, null, 987654))).Error!.Code.Should().Be(ErrorCodes.NotFound);
+    }
+
+    [Fact]
     public async Task InvoicePdf_FollowsTheTemplate_RegionalNamesAndTheRateTable()
     {
         var s = await FinalizedBillAsync();

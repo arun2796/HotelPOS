@@ -86,6 +86,8 @@ public sealed class WaiterScreensTests : TestContext
         Services.AddSingleton<IBrowserStorage>(_storage);
         Services.AddSingleton(new WebApiClient(new HttpClient(handler), _host, auth));
         Services.AddSingleton<WaiterApi>();
+        Services.AddSingleton<FloorLayoutApi>();
+        _storage.Items[FloorLayoutApi.ViewModeKey] = FloorLayoutApi.ListMode; // the existing tests exercise the list; map tests live in TablesFloorMapTests
         Services.AddSingleton<WebRealtimeClient>();
         Services.AddSingleton<DraftStore>();
         Services.AddSingleton<FavouritesStore>();
@@ -405,11 +407,13 @@ public sealed class WaiterScreensTests : TestContext
                     Summary(5, "T05", Me, OrderStatus.Ready, 115),
                     Summary(6, "T06", 99, OrderStatus.Ready, 1),
                 },
-                "/api/orders" => new PagedResult<OrderSummaryDto>
-                {
-                    Items = new[] { Summary(1, "T01", Me, OrderStatus.Paid, 300), Summary(2, "T02", Me, OrderStatus.Cancelled, 200), Summary(4, "T04", Me, OrderStatus.Served, 20) },
-                    Page = 1, PageSize = 200, TotalCount = 3,
-                },
+                "/api/orders" => r.RequestUri!.Query.Contains("status=Draft")
+                    ? new PagedResult<OrderSummaryDto> { Items = Array.Empty<OrderSummaryDto>(), Page = 1, PageSize = 200, TotalCount = 0 }
+                    : new PagedResult<OrderSummaryDto>
+                    {
+                        Items = new[] { Summary(1, "T01", Me, OrderStatus.Paid, 300), Summary(2, "T02", Me, OrderStatus.Cancelled, 200), Summary(4, "T04", Me, OrderStatus.Served, 20) },
+                        Page = 1, PageSize = 200, TotalCount = 3,
+                    },
                 _ => null,
             },
         };
@@ -418,7 +422,7 @@ public sealed class WaiterScreensTests : TestContext
         page.WaitForAssertion(() => page.FindAll("[data-testid=active-orders] [data-testid=order-card]").Should().HaveCount(2, "another waiter's order is not mine"));
         await Task.Delay(300);
 
-        page.FindAll(".tabs .tab").Select(t => t.TextContent.Replace(" ", string.Empty)).Should().Equal("Active2", "Completed");
+        page.FindAll(".tabs .tab").Select(t => t.TextContent.Replace(" ", string.Empty)).Should().Equal("Active2", "Held0", "Completed");
         var cards = page.FindAll("[data-testid=active-orders] [data-testid=order-card]");
         cards[0].QuerySelector(".order-card-title")!.TextContent.Should().Be("#1005 · T05", "ready first");
         cards[0].QuerySelector("[data-testid=order-status]")!.TextContent.Should().Be("Ready");
@@ -428,7 +432,7 @@ public sealed class WaiterScreensTests : TestContext
         cards[0].QuerySelector("[data-testid=kitchen-progress] .timeline-step.current")!.GetAttribute("data-step").Should().Be("Ready");
         cards[1].QuerySelector("[data-testid=kitchen-progress] .timeline-step.current")!.GetAttribute("data-step").Should().Be("Preparing");
         cards[0].TextContent.Should().Contain("4 items · 2 guests").And.Contain("approx. 420.00");
-        handler.Calls.Should().NotContain(c => c.StartsWith("GET /api/orders?", StringComparison.Ordinal), "the completed list is read only when its tab opens");
+        handler.Calls.Should().NotContain(c => c.StartsWith("GET /api/orders?waiterId=", StringComparison.Ordinal), "the completed list is read only when its tab opens");
 
         await page.InvokeAsync(() => page.FindAll(".tabs .tab").Single(t => t.TextContent.Contains("Completed")).Click());
 
@@ -441,6 +445,43 @@ public sealed class WaiterScreensTests : TestContext
 
         await page.InvokeAsync(() => done[1].Click());
         Services.GetRequiredService<NavigationManager>().Uri.Should().EndWith("orders/1", "a finished order opens by its own id");
+        await StopRealtimeAsync();
+    }
+
+    [Fact]
+    public async Task MyOrders_HeldTab_ShowsDrafts_AndResumeNavigatesToEdit()
+    {
+        var handler = new RouteHandler
+        {
+            Respond = r => r.RequestUri!.AbsolutePath switch
+            {
+                "/api/orders/active" => new List<OrderSummaryDto>(),
+                "/api/orders" => r.RequestUri!.Query.Contains("status=Draft")
+                    ? new PagedResult<OrderSummaryDto>
+                    {
+                        Items = new[] { Summary(8, "T08", Me, OrderStatus.Draft, 15) },
+                        Page = 1, PageSize = 200, TotalCount = 1,
+                    }
+                    : new PagedResult<OrderSummaryDto>
+                    {
+                        Items = Array.Empty<OrderSummaryDto>(),
+                        Page = 1, PageSize = 200, TotalCount = 0,
+                    },
+                _ => null,
+            },
+        };
+        AddPageServices(await WaiterAsync(), handler);
+        var page = RenderComponent<MyOrdersPage>();
+        page.WaitForAssertion(() => page.FindAll(".tabs .tab").Select(t => t.TextContent.Replace(" ", string.Empty)).Should().Equal("Active0", "Held1", "Completed"));
+
+        await page.InvokeAsync(() => page.FindAll(".tabs .tab").Single(t => t.TextContent.Contains("Held")).Click());
+        page.WaitForAssertion(() => page.FindAll("[data-testid=held-orders] [data-testid=held-order-card]").Should().HaveCount(1));
+
+        var resumeBtn = page.Find("[data-testid=resume-order]");
+        resumeBtn.Should().NotBeNull();
+        await page.InvokeAsync(() => resumeBtn.Click());
+
+        Services.GetRequiredService<NavigationManager>().Uri.Should().EndWith("tables/8/order/8/edit");
         await StopRealtimeAsync();
     }
 

@@ -128,6 +128,95 @@ public sealed class QuestPdfRenderer : IPdfRenderer
         })).GeneratePdf();
     }
 
+    // The kitchen ticket: the same fields and switches as the ESC/POS layout (station heading, waiter, guests, bold notes).
+    public byte[] Kitchen(KitchenTicketDocument document, PaperSize paper)
+    {
+        var layout = document.Template ?? TemplateLayout.DefaultFor(PrintDocumentType.Kot);
+        var roll = TemplateLayout.IsThermal(paper);
+        var itemSize = roll ? 11 : 13;
+        var indent = roll ? 24 : 30;
+        return Document.Create(container => container.Page(page =>
+        {
+            Page(page, paper);
+            page.Content().Column(column =>
+            {
+                column.Spacing(roll ? 4 : 6);
+                column.Item().AlignCenter().Text("KITCHEN TICKET").Bold().FontSize(roll ? 10 : 12).LetterSpacing(0.05f);
+                if (layout.KotStationHeading && !string.IsNullOrWhiteSpace(document.StationName))
+                {
+                    column.Item().AlignCenter().Text(document.StationName).Bold().FontSize(roll ? 14 : 18).FontColor(Accent);
+                }
+
+                column.Item().AlignCenter().Text(document.IsAddition ? $"{document.TicketNumber}  +ADD" : document.TicketNumber).Bold().FontSize(roll ? 14 : 18);
+                if (document.CopyLabel is not null)
+                {
+                    column.Item().AlignCenter().Border(1).BorderColor(Danger).PaddingHorizontal(6).PaddingVertical(2)
+                        .Text(document.CopyLabel).Bold().FontColor(Danger).FontSize(roll ? 9 : 11);
+                }
+
+                var facts = new List<(string Label, string Value)>
+                {
+                    ("Table", document.TableCode),
+                    ("Order", "#" + document.OrderNumber.ToString(CultureInfo.InvariantCulture)),
+                };
+                if (layout.ShowWaiter)
+                {
+                    facts.Add(("Waiter", document.WaiterName));
+                }
+
+                if (layout.ShowGuests)
+                {
+                    facts.Add(("Guests", document.GuestCount.ToString(CultureInfo.InvariantCulture)));
+                }
+
+                facts.Add(("Station", document.StationCode));
+                facts.Add(("Time", Local(document.CreatedAtUtc)));
+                column.Item().Element(c => Facts(c, roll, facts));
+                column.Item().BorderTop(1).BorderColor(Rule);
+                foreach (var item in document.Items)
+                {
+                    column.Item().Column(line =>
+                    {
+                        line.Item().Row(row =>
+                        {
+                            row.ConstantItem(indent).Text(item.Quantity.ToString(CultureInfo.InvariantCulture)).Bold().FontSize(itemSize);
+                            var name = item.Name + (item.IsCancelled ? " (CANCELLED)" : string.Empty);
+                            row.RelativeItem().Text(name).Bold().FontSize(itemSize).FontColor(item.IsCancelled ? Danger : Colors.Black);
+                            if (item.UnitPrice is { } unit && document.ShowPrices)
+                            {
+                                row.AutoItem().Text(IndianNumbers.Money(unit, document.CurrencySymbol));
+                            }
+                        });
+                        if (item.Modifiers.Count > 0)
+                        {
+                            line.Item().PaddingLeft(indent).Text("- " + string.Join(", ", item.Modifiers));
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(item.Notes))
+                        {
+                            var note = line.Item().PaddingLeft(indent).Text("* " + item.Notes);
+                            if (layout.KotNotesBold)
+                            {
+                                note.Bold();
+                            }
+                        }
+                    });
+                }
+
+                if (!string.IsNullOrWhiteSpace(document.OrderNotes))
+                {
+                    var note = column.Item().BorderTop(1).BorderColor(Rule).PaddingTop(4).Text("Note: " + document.OrderNotes);
+                    if (layout.KotNotesBold)
+                    {
+                        note.Bold();
+                    }
+                }
+
+                column.Item().Element(c => Closing(c, null, layout, document.PrintedAtUtc, document.CopyNumber, roll));
+            });
+        })).GeneratePdf();
+    }
+
     public byte[] Report(ReportTable table, Letterhead letterhead) => Reports(new[] { table }, letterhead);
 
     // Several reports in one PDF, each starting on its own page (the Day End pack).

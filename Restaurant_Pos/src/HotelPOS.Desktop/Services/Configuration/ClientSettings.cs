@@ -31,6 +31,9 @@ public sealed class ClientSettings
 
     public bool AutoPrintReceipt { get; set; } = true;
 
+    // Phase 22 P5: kitchen display shows the menu item's picture beside each ticket line. Off until a cook turns it on.
+    public bool ShowTicketPictures { get; set; }
+
     [JsonIgnore]
     public bool IsConfigured => !string.IsNullOrWhiteSpace(ApiBaseUrl) && !string.IsNullOrWhiteSpace(DeviceName);
 

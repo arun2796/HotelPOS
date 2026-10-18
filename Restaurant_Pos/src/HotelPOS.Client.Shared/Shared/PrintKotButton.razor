@@ -1,0 +1,46 @@
+@using HotelPOS.Contracts.Security
+@using Microsoft.Extensions.DependencyInjection
+@inject WebAuthState Auth
+@inject IServiceProvider Provider
+@inject ToastService Toasts
+@* Phase 22 P6 (E11): Print KOT from the browser. Reserves a print-log copy, opens the ticket PDF in a new tab and reports
+   the result. Shown to the roles that may print a KOT today (Waiter, Kitchen, Manager, Admin; same as GET api/print/kot). *@
+@if (Allowed)
+{
+    <button type="button" class="btn @Class" data-testid="print-kot" aria-label="@($"Print KOT {Label}")"
+            @onclick="PrintAsync" disabled="@_busy">
+        <Icon Name="receipt" Size="18" /> @(_busy ? "Printing…" : "Print KOT")
+    </button>
+}
+
+@code {
+    private bool _busy;
+
+    [Parameter, EditorRequired] public int TicketId { get; set; }
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string Class { get; set; } = "ghost";
+
+    private bool Allowed => Auth.IsInRole(Roles.Waiter) || Auth.IsInRole(Roles.Kitchen) || Auth.IsInRole(Roles.Manager) || Auth.IsInRole(Roles.Admin);
+
+    private async Task PrintAsync()
+    {
+        if (_busy)
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var failure = await Provider.GetRequiredService<KotPrinter>().PrintAsync(TicketId);
+            if (failure is not null)
+            {
+                Toasts.Error(failure);
+            }
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

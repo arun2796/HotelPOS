@@ -12,7 +12,7 @@ namespace HotelPOS.Application.Features.Print.Commands;
 // The invoice or receipt as a PDF: the same render model and the same copy rule as a printed copy (the PDF takes
 // the next copy number and is logged with output PDF). A command although it answers a GET, because it writes the
 // print log. Paper: A4, A5 or 80mm; none uses the template's sheet size, or PdfPaper for thermal templates.
-public sealed record GetDocumentPdfCommand(PrintDocumentType DocumentType, int DocumentId, string? Paper)
+public sealed record GetDocumentPdfCommand(PrintDocumentType DocumentType, int DocumentId, string? Paper, long? LogId = null)
     : ICommand<ExportFile>, IAuditedCommand;
 
 internal sealed class GetDocumentPdfHandler : ICommandHandler<GetDocumentPdfCommand, ExportFile>
@@ -39,11 +39,6 @@ internal sealed class GetDocumentPdfHandler : ICommandHandler<GetDocumentPdfComm
 
     public async Task<Result<ExportFile>> Handle(GetDocumentPdfCommand command, CancellationToken cancellationToken)
     {
-        if (command.DocumentType == PrintDocumentType.Kot)
-        {
-            return AppErrors.Validation("documentType", "Kitchen tickets have no PDF.");
-        }
-
         PaperSize? requested = null;
         if (!string.IsNullOrWhiteSpace(command.Paper))
         {
@@ -57,7 +52,11 @@ internal sealed class GetDocumentPdfHandler : ICommandHandler<GetDocumentPdfComm
             }
         }
 
-        var reserved = await _log.ReserveAsync(command.DocumentType, command.DocumentId, PrintOutput.Pdf, null, null, cancellationToken);
+        // A kitchen ticket opened from a copy the browser reserved first (POST kot/{id}/copies, then PUT copies/{logId}
+        // to report) renders that copy and takes no new one; without a log id it logs its own PDF copy like a receipt.
+        var reserved = command.LogId is { } logId && command.DocumentType == PrintDocumentType.Kot
+            ? await _log.ForReservedAsync(command.DocumentType, command.DocumentId, logId, cancellationToken)
+            : await _log.ReserveAsync(command.DocumentType, command.DocumentId, PrintOutput.Pdf, null, null, cancellationToken);
         if (reserved.IsFailure)
         {
             return reserved.Error!;
@@ -75,6 +74,9 @@ internal sealed class GetDocumentPdfHandler : ICommandHandler<GetDocumentPdfComm
                 var receiptPaper = requested ?? SheetOr(receipt.Template, fallback);
                 return new ExportFile(_pdf.Receipt(receipt, receiptPaper), ExportFormats.ContentType(ExportFormat.Pdf),
                     $"receipt-{receipt.PaymentId.ToString(CultureInfo.InvariantCulture)}-copy{copy}.pdf");
+            case KitchenTicketDocument kot:
+                return new ExportFile(_pdf.Kitchen(kot, requested ?? PaperSize.Mm80), ExportFormats.ContentType(ExportFormat.Pdf),
+                    $"kot-{Safe(kot.TicketNumber)}-copy{copy}.pdf");
             default:
                 return AppErrors.Validation("documentType", "This document has no PDF.");
         }

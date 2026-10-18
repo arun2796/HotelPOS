@@ -10,6 +10,10 @@ public sealed record KitchenTicketDto
     public int OrderNumber { get; init; }
     public int BatchNumber { get; init; }
     public string TableCode { get; init; } = string.Empty;
+    public OrderType OrderType { get; init; } = OrderType.DineIn;
+    public string? CustomerName { get; init; }
+    public string? CustomerPhone { get; init; }
+    public string? DeliveryAddress { get; init; }
     public string WaiterName { get; init; } = string.Empty;
     public int StationId { get; init; }
     public string StationCode { get; init; } = string.Empty;
@@ -32,6 +36,9 @@ public sealed record KitchenTicketItemDto
     public string? Notes { get; init; }
     public IReadOnlyList<string> Modifiers { get; init; } = Array.Empty<string>();
     public bool IsCancelled { get; init; }
+
+    // The menu item's picture URL (same scheme as MenuItemDto.ImageUrl); null when the item has none.
+    public string? ImageUrl { get; init; }
 }
 
 public sealed record KitchenTicketListDto

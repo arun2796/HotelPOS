@@ -29,6 +29,8 @@ using HotelPOS.Contracts.Orders;
 using HotelPOS.Contracts.Print;
 using HotelPOS.Contracts.Reports;
 using HotelPOS.Desktop.Modules.Reports;
+using HotelPOS.Contracts.Finance;
+using HotelPOS.Desktop.Modules.Expenses;
 using HotelPOS.Desktop.Modules.Printing;
 using HotelPOS.Desktop.Services.Printing;
 using HotelPOS.Desktop.Modules.Billing;
@@ -151,8 +153,14 @@ public class ScreenRenderingTests
             floor.Sections.EditCommand.Execute(null);
             rendered.Add(await RenderScreenAsync(env, shell, "12-admin-floor-sections"));
 
+            await shell.NavigateToAsync(ModuleRegistry.FloorPlan, null);
+            var plan = (FloorEditorViewModel)shell.CurrentPage!;
+            plan.Placed.Should().HaveCount(8);
+            plan.SelectedItem = plan.Placed.Single(i => i.Code == "T02");
+            rendered.Add(await RenderScreenAsync(env, shell, "56-admin-floor-plan"));
+
             await shell.NavigateToAsync(ModuleRegistry.Menu, null);
-            var menu = (MenuAdminViewModel)shell.CurrentPage!;
+            var menu =(MenuAdminViewModel)shell.CurrentPage!;
             menu.Items.SelectedItem = menu.Items.Items[0];
             await menu.Items.EditCommand.ExecuteAsync(null);
             rendered.Add(await RenderScreenAsync(env, shell, "15-admin-menu-items"));
@@ -226,6 +234,11 @@ public class ScreenRenderingTests
             env.Theme.ApplyDensity(ThemeService.Comfort);
 
             var map = (HotelPOS.Desktop.Modules.Tables.TableMapViewModel)waiterShell.CurrentPage!;
+            map.Sections.Single(s => s.Id == 1).UseCanvas.Should().BeTrue("Ground Floor has placed tables");
+            map.Sections.Single(s => s.Id == 2).UseCanvas.Should().BeFalse("First Floor has no floor plan, so it stays a list");
+            map.SelectedFilter = map.Filters.Single(f => f.SectionId == 1);
+            rendered.Add(await RenderScreenAsync(env, waiterShell, "57-table-map-floor-plan"));
+            map.SelectedFilter = map.Filters[0];
             map.SelectTableCommand.Execute(map.AllTables.Single(t => t.Code == "T05"));
             map.Details.DigitCommand.Execute("4");
             rendered.Add(await RenderScreenAsync(env, waiterShell, "13-waiter-table-details"));
@@ -451,6 +464,10 @@ public class ScreenRenderingTests
             customers.EditCommand.Execute(null);
             rendered.Add(await RenderScreenAsync(env, setupShell, "73-customers"));
 
+            await setupShell.NavigateToAsync(ModuleRegistry.Expenses, null);
+            var expenses = (ExpensesViewModel)setupShell.CurrentPage!;
+            rendered.Add(await RenderScreenAsync(env, setupShell, "77-expenses"));
+
             await setupShell.NavigateToAsync(ModuleRegistry.Reports, null);
             rendered.Add(await RenderScreenAsync(env, setupShell, "40-reports-daily-sales"));
             ((ReportsViewModel)setupShell.CurrentPage!).SelectedReport = ReportsViewModel.Catalogue.Single(r => r.Key == ReportKeys.ItemSales);
@@ -501,7 +518,7 @@ public class ScreenRenderingTests
         }
 
         bindingErrors.Errors.Should().BeEmpty("every binding in the views must point at an existing property");
-        rendered.Should().HaveCount(81);
+        rendered.Should().HaveCount(84);
         // Phase 21: the bundled Inter (Regular/Medium/SemiBold/Bold) is the body font on every Windows version.
         bodyFontFiles.Should().HaveCount(4).And.OnlyContain(f => f.StartsWith("inter-"));
     }
@@ -712,6 +729,7 @@ public class ScreenRenderingTests
             services.AddSingleton(DemoOperationsApi());
             services.AddSingleton(DemoBillingApi());
             services.AddSingleton(DemoReportsApi());
+            services.AddSingleton(DemoFloorLayoutApi());
             services.AddSingleton(DemoPrintApi());
             services.AddSingleton(DemoTemplatesApi());
             services.AddSingleton(DemoCashApi());
@@ -719,6 +737,7 @@ public class ScreenRenderingTests
             services.AddSingleton(DemoLicenseApi());
             services.AddSingleton(DemoImportApi());
             services.AddSingleton(DemoCustomersApi());
+            services.AddSingleton(DemoExpensesApi());
             services.AddSingleton(Substitute.For<IUpdateService>());
             services.AddSingleton(Substitute.For<IAppLifetime>());
             services.AddSingleton<HotelPOS.Desktop.Services.Printing.IPrinterProfiles, HotelPOS.Desktop.Services.Printing.PrinterProfiles>();
@@ -1332,6 +1351,42 @@ public class ScreenRenderingTests
             return api;
         }
 
+        private static IExpensesApi DemoExpensesApi()
+        {
+            var api = Substitute.For<IExpensesApi>();
+            var today = new DateOnly(2026, 10, 7);
+            var categories = new List<ExpenseCategoryDto>
+            {
+                new() { Id = 1, Name = "Kitchen Groceries", Description = "Daily fresh produce & dairy", SortOrder = 1, IsActive = true },
+                new() { Id = 2, Name = "Gas & Utilities", Description = "LPG cylinders & electricity", SortOrder = 2, IsActive = true },
+                new() { Id = 3, Name = "Repairs & Maintenance", Description = "Equipment servicing", SortOrder = 3, IsActive = true },
+                new() { Id = 4, Name = "Staff Welfare", Description = "Staff tea and emergency funds", SortOrder = 4, IsActive = true },
+            };
+            var expenses = new List<ExpenseDto>
+            {
+                new() { Id = 1, ExpenseDate = today, CategoryId = 1, CategoryName = "Kitchen Groceries", Amount = 1250m, PaymentSource = ExpensePaymentSources.CashDrawer, Payee = "Fresh Farms", Notes = "Tomatoes and onions", IsVoid = false, CreatedAtUtc = DateTime.UtcNow, CreatedByUserName = "manager1" },
+                new() { Id = 2, ExpenseDate = today, CategoryId = 2, CategoryName = "Gas & Utilities", Amount = 3400m, PaymentSource = ExpensePaymentSources.BankTransfer, Payee = "Indane Gas", Notes = "2 commercial cylinders", IsVoid = false, CreatedAtUtc = DateTime.UtcNow, CreatedByUserName = "manager1" },
+                new() { Id = 3, ExpenseDate = today.AddDays(-1), CategoryId = 3, CategoryName = "Repairs & Maintenance", Amount = 800m, PaymentSource = ExpensePaymentSources.CashDrawer, Payee = "Quick Fix Plumbing", Notes = "Sink leak repair", IsVoid = false, CreatedAtUtc = DateTime.UtcNow, CreatedByUserName = "admin" },
+                new() { Id = 4, ExpenseDate = today.AddDays(-2), CategoryId = 1, CategoryName = "Kitchen Groceries", Amount = 500m, PaymentSource = ExpensePaymentSources.CashDrawer, Payee = "Local Dairy", Notes = "Wrong entry", IsVoid = true, VoidReason = "Duplicate bill", VoidedAtUtc = DateTime.UtcNow, VoidedByUserId = 1, CreatedAtUtc = DateTime.UtcNow, CreatedByUserName = "manager1" },
+            };
+
+            api.ListCategoriesAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>())
+                .Returns(call => ApiResult<IReadOnlyList<ExpenseCategoryDto>>.Ok(categories.Where(c => c.IsActive || call.Arg<bool>()).ToList()));
+
+            api.ListAsync(Arg.Any<ExpenseFilter>(), Arg.Any<CancellationToken>())
+                .Returns(call =>
+                {
+                    var filter = call.Arg<ExpenseFilter>();
+                    var items = expenses.AsEnumerable();
+                    if (filter.CategoryId.HasValue) items = items.Where(e => e.CategoryId == filter.CategoryId.Value);
+                    if (!filter.IncludeVoid) items = items.Where(e => !e.IsVoid);
+                    var list = (IReadOnlyList<ExpenseDto>)items.ToList();
+                    return ApiResult<IReadOnlyList<ExpenseDto>>.Ok(list);
+                });
+
+            return api;
+        }
+
         private static ILicenseApi DemoLicenseApi()
         {
             var api = Substitute.For<ILicenseApi>();
@@ -1459,6 +1514,28 @@ public class ScreenRenderingTests
             return api;
         }
 
+        // The floor-plan editor reads the same demo tables as the map: section 1 is placed, the others are in the Unplaced tray.
+        private static IFloorLayoutApi DemoFloorLayoutApi()
+        {
+            var api = Substitute.For<IFloorLayoutApi>();
+            api.GetAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(call =>
+            {
+                var section = DemoMap().Sections.Single(s => s.Id == call.ArgAt<int>(0));
+                return ApiResult<FloorLayoutDto>.Ok(new FloorLayoutDto
+                {
+                    SectionId = section.Id,
+                    SectionName = section.Name,
+                    Tables = section.Tables.Select(t => new FloorTableDto
+                    {
+                        TableId = t.Id, Code = t.Code, Capacity = t.Capacity, Status = t.Status,
+                        PosX = t.PosX, PosY = t.PosY, Width = t.Width, Height = t.Height, Shape = t.Shape, Rotation = t.Rotation,
+                        HasLayout = t.PosX is not null,
+                    }).ToList(),
+                });
+            });
+            return api;
+        }
+
         private static IReportsApi DemoReportsApi()
         {
             var today = new DateOnly(2026, 10, 7);
@@ -1475,6 +1552,7 @@ public class ScreenRenderingTests
                 PendingKitchenTickets = 5,
                 PendingBills = 3,
                 AverageTicketMinutes = 14.2m,
+                ExpensesToday = 6450m,
                 TopItems = new[]
                 {
                     new DashboardTopItem { ItemName = "Chicken Biryani", Quantity = 38, Amount = 9880m },
@@ -1626,6 +1704,13 @@ public class ScreenRenderingTests
                 CurrentOrderNumber = order,
                 IsActive = true,
                 RowVersion = "AAAFow==",
+                // Section 1 has a floor plan (Phase 22 P2): two rows of four, one round table and one rotated; the others are unplaced.
+                PosX = section == 1 ? 24 + ((id - 1) % 4) * 168 : null,
+                PosY = section == 1 ? 24 + ((id - 1) / 4) * 128 : null,
+                Width = section == 1 ? (id == 7 ? 144 : 120) : null,
+                Height = section == 1 ? (id == 7 ? 96 : 80) : null,
+                Shape = section == 1 ? (id == 3 ? TableShape.Round : TableShape.Rectangle) : null,
+                Rotation = section == 1 ? (id == 5 ? 90 : 0) : null,
             };
 
             return new TableMapDto

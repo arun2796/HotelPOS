@@ -20,6 +20,7 @@ public sealed class Order : BaseEntity, IHasRowVersion
             throw new DomainException("At least one guest is required.");
         }
 
+        OrderType = OrderType.DineIn;
         TableId = table.Id;
         Table = table;
         WaiterId = waiterId;
@@ -29,13 +30,38 @@ public sealed class Order : BaseEntity, IHasRowVersion
         OpenedOnOccupiedTable = table.Status == TableStatus.Occupied;
     }
 
+    public Order(OrderType orderType, int waiterId, int guestCount, string? notes = null,
+        string? customerName = null, string? customerPhone = null, string? deliveryAddress = null, string? deliveryNotes = null)
+    {
+        if (orderType == OrderType.DineIn)
+        {
+            throw new DomainException("Dine-in orders require a table.");
+        }
+
+        OrderType = orderType;
+        WaiterId = waiterId;
+        GuestCount = guestCount < 1 ? 1 : guestCount;
+        Notes = Clean(notes);
+        Status = OrderStatus.Draft;
+        OpenedOnOccupiedTable = false;
+        CustomerName = Clean(customerName);
+        CustomerPhone = Clean(customerPhone);
+        DeliveryAddress = Clean(deliveryAddress);
+        DeliveryNotes = Clean(deliveryNotes);
+    }
+
     public int OrderNumber { get; private set; }
-    public int TableId { get; private set; }
+    public OrderType OrderType { get; private set; } = OrderType.DineIn;
+    public int? TableId { get; private set; }
     public Table? Table { get; private set; }
     public int WaiterId { get; private set; }
     public int GuestCount { get; private set; }
     public OrderStatus Status { get; private set; }
     public string? Notes { get; private set; }
+    public string? CustomerName { get; private set; }
+    public string? CustomerPhone { get; private set; }
+    public string? DeliveryAddress { get; private set; }
+    public string? DeliveryNotes { get; private set; }
     public DateTime? SubmittedAt { get; private set; }
     public DateTime? ServedAt { get; private set; }
     public DateTime? BillRequestedAt { get; private set; }
@@ -71,6 +97,19 @@ public sealed class Order : BaseEntity, IHasRowVersion
 
         GuestCount = guestCount;
         Notes = Clean(notes);
+    }
+
+    public void UpdateDeliveryDetails(string? name, string? phone, string? address, string? notes)
+    {
+        if (OrderStateMachine.IsTerminal(Status) || Status == OrderStatus.Paid)
+        {
+            throw new DomainException($"Order {OrderNumber} is {Status} and can no longer be changed.", ErrorCodes.OrderLocked);
+        }
+
+        CustomerName = Clean(name);
+        CustomerPhone = Clean(phone);
+        DeliveryAddress = Clean(address);
+        DeliveryNotes = Clean(notes);
     }
 
     public void ReplaceDraftItems(IEnumerable<OrderItem> items)

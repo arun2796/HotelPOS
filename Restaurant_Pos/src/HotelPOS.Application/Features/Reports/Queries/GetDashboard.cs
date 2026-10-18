@@ -16,9 +16,11 @@ internal sealed class GetDashboardHandler : IQueryHandler<GetDashboardQuery, Das
     private readonly IReportQueries _queries;
     private readonly IBusinessDays _businessDays;
     private readonly IClock _clock;
+    private readonly IPresenceTracker _presence;
 
-    public GetDashboardHandler(IReportQueries queries, IBusinessDays businessDays, IClock clock)
+    public GetDashboardHandler(IReportQueries queries, IBusinessDays businessDays, IClock clock, IPresenceTracker presence)
     {
+        _presence = presence;
         _queries = queries;
         _businessDays = businessDays;
         _clock = clock;
@@ -33,6 +35,8 @@ internal sealed class GetDashboardHandler : IQueryHandler<GetDashboardQuery, Das
         var topItems = await _queries.TopItemsAsync(window, 5, cancellationToken);
         var week = await _queries.DailySalesAsync(ReportRanges.Window(calendar, today.AddDays(-6), today), cancellationToken);
         var byDay = week.ToDictionary(r => r.Day, r => r.NetSales);
+        var hourly = await _queries.HourlySalesAsync(window, cancellationToken);
+        var staff = await StaffOnDutyMerge.LoadAsync(_queries, _presence, cancellationToken);
 
         return new DashboardDto
         {
@@ -46,10 +50,20 @@ internal sealed class GetDashboardHandler : IQueryHandler<GetDashboardQuery, Das
             PendingKitchenTickets = figures.PendingKitchenTickets,
             PendingBills = figures.PendingBills,
             AverageTicketMinutes = figures.AverageTicketMinutes,
+            ReservationsToday = figures.ReservationsToday,
+            ExpensesToday = figures.ExpensesToday,
             TopItems = topItems,
+            StaffOnDuty = staff,
             LastDays = Enumerable.Range(0, 7).Select(i => today.AddDays(i - 6))
                 .Select(day => new DashboardDayPoint { Day = day, NetSales = byDay.GetValueOrDefault(day) })
                 .ToList(),
+            HourlyToday = hourly.Select((h, i) => new DashboardHourPoint
+            {
+                Hour = i,
+                Label = h.Hour,
+                NetSales = h.NetSales,
+                Bills = h.Bills,
+            }).ToList(),
             GeneratedAtUtc = _clock.UtcNow,
         };
     }

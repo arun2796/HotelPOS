@@ -110,6 +110,7 @@ endpoint is `tests/HotelPOS.Api.Tests/authorization-matrix.txt`; `AuthorizationM
 | POST | `/api/tables/{id}/occupy` | A, W, C, M | `{guestCount, rowVersion}` Available -> Occupied |
 | POST | `/api/tables/{id}/release` | A, W, C, M | Occupied (no order) -> Available; with order: Manager only |
 | POST | `/api/tables/{id}/out-of-service` / `in-service` | A, M | |
+| GET / PUT | `/api/sections/{id}/layout` | GET: * (`tables.view`); PUT: A (`floor.layout.manage`) | Phase 22 floor plan: active tables of the section with `posX/posY/width/height/shape/rotation` (nullable, `hasLayout`); PUT `{items:[{tableId,posX,posY,width,height,shape,rotation}]}` saves the listed tables (each must belong to the section) and publishes `FloorLayoutChanged` |
 
 ### 3.4 Menu (Phase 3)
 
@@ -147,7 +148,7 @@ endpoint is `tests/HotelPOS.Api.Tests/authorization-matrix.txt`; `AuthorizationM
 | Method | Route | Roles | Notes |
 |---|---|---|---|
 | GET | `/api/kitchen/orders` | K, M, A | `?stationId=&status=` open tickets with items; `serverTimeUtc` for timers |
-| GET | `/api/kitchen/orders/{ticketId}` | K, W, M | |
+| GET | `/api/kitchen/orders/{ticketId}` | K, W, M | Each item has `imageUrl` (nullable): the menu item's picture, same `/images/menu/...` scheme as `MenuItemDto.ImageUrl`; also on the list and completed endpoints. Resolved with one batched lookup per response, no per-item query. |
 | GET | `/api/kitchen/orders/completed` | K, M | `?date=` business day |
 | POST | `/api/kitchen/orders/{ticketId}/accept` | K, M | New -> Accepted |
 | POST | `/api/kitchen/orders/{ticketId}/start` | K, M | Accepted -> Preparing (also allowed from New: implicit accept) |
@@ -181,6 +182,7 @@ endpoint is `tests/HotelPOS.Api.Tests/authorization-matrix.txt`; `AuthorizationM
 | Method | Route | Roles | Notes |
 |---|---|---|---|
 | GET | `/api/print/kot/{ticketId}` | K, W, M, A | `KitchenTicketDocument` (never prices unless `KotShowPrices`) |
+| GET | `/api/print/kot/{ticketId}.pdf` | K, W, M, A | PDF of the ticket (`paper`, optional `logId`; see the print log notes below) |
 | GET | `/api/print/invoice/{billId}` | C, M, A, W (own order) | `InvoiceDocument` (header, tax breakup, payments, footer, `isCancelled` for voided bills, `copies` from `PrintInvoiceCopies`) |
 | GET | `/api/print/receipt/{paymentId}` | C, M, A | `ReceiptDocument` (refund rows print as REFUND) |
 | POST | `/api/print/reprints` | C, M, A | `{documentType, entityId, reason}` writes `Print.Reprint` to the audit log; the client then fetches and prints the document |
@@ -191,12 +193,14 @@ All `GET`, roles A/M, params `from`, `to` (business days, default today, at most
 (UTF-8 with BOM, `text/csv` attachment, totals row at the end).
 
 ```
+/api/staff/on-duty              (Phase 22 P4, ReportsView: users merged from live hub connections, open cash shifts and active orders; presence, not attendance; also on the dashboard as StaffOnDuty)
 /api/reports/dashboard          /api/reports/my-day   (any signed-in user: own orders, sales and tables today)
 /api/reports/sales/daily        /api/reports/sales/monthly?year=
 /api/reports/sales/items        /api/reports/sales/categories
 /api/reports/payments           /api/reports/cancellations
 /api/reports/discounts          /api/reports/taxes
 /api/reports/staff/waiters      /api/reports/kitchen
+/api/reports/sales/hourly       /api/reports/profit-loss   (Phase 22: 24 zero-filled business hours; "sales minus expenses" statement)
 ```
 
 ### 3.10 Admin operations (Phase 9, 10)
@@ -314,4 +318,5 @@ the object is optional. Since Phase 9 the object may instead carry `approvalToke
   `POST /api/print/kot/{ticketId}/copies` reserve a copy number (copy 2+ is marked DUPLICATE) and return the document;
   `PUT /api/print/copies/{logId}` records the result; `GET /api/print/{type}/{id}/history` lists the copies.
 - `GET /api/print/invoice/{billId}.pdf`, `GET /api/print/receipt/{paymentId}.pdf` — the same document as a PDF.
+- `GET /api/print/kot/{ticketId}.pdf?paper=80&logId=` (K, W, M, A; Phase 22 P6) — the kitchen ticket as a PDF, 80 mm roll by default (`paper` takes the same values as the invoice PDF). With `logId` (a copy reserved by `POST .../copies`, usable only by the user or terminal that reserved it, or a manager) it renders that copy and takes no new number; without it the PDF logs its own copy with output PDF, like the receipt PDF. The browser flow is reserve (`POST kot/{id}/copies`), fetch the PDF with the bearer token, open it in a new tab, then `PUT copies/{logId}`.
 - Report endpoints accept `format=csv|xlsx|pdf`; the audit log export accepts `format=xlsx` (CSV by default).

@@ -12,6 +12,7 @@ public static class ReportLimits
 public static class ReportKeys
 {
     public const string DailySales = "sales/daily";
+    public const string HourlySales = "sales/hourly";
     public const string MonthlySales = "sales/monthly";
     public const string ItemSales = "sales/items";
     public const string CategorySales = "sales/categories";
@@ -19,6 +20,7 @@ public static class ReportKeys
     public const string Cancellations = "cancellations";
     public const string Discounts = "discounts";
     public const string Taxes = "taxes";
+    public const string ProfitLoss = "profit-loss";
     public const string Waiters = "staff/waiters";
     public const string Kitchen = "kitchen";
 }
@@ -81,6 +83,14 @@ public sealed record DashboardDayPoint
     public decimal NetSales { get; init; }
 }
 
+public sealed record DashboardHourPoint
+{
+    public int Hour { get; init; }
+    public string Label { get; init; } = string.Empty;
+    public decimal NetSales { get; init; }
+    public int Bills { get; init; }
+}
+
 public sealed record DashboardDto
 {
     public DateOnly BusinessDay { get; init; }
@@ -93,8 +103,16 @@ public sealed record DashboardDto
     public int PendingKitchenTickets { get; init; }
     public int PendingBills { get; init; }
     public decimal AverageTicketMinutes { get; init; }
+    public int ReservationsToday { get; init; }
+
+    // Phase 22 F4: live (non-void) expenses dated the current business day.
+    public decimal ExpensesToday { get; init; }
     public IReadOnlyList<DashboardTopItem> TopItems { get; init; } = Array.Empty<DashboardTopItem>();
     public IReadOnlyList<DashboardDayPoint> LastDays { get; init; } = Array.Empty<DashboardDayPoint>();
+    public IReadOnlyList<DashboardHourPoint> HourlyToday { get; init; } = Array.Empty<DashboardHourPoint>();
+
+    // Phase 22 P4: live hub connections + open cash shifts + waiters with active orders, merged per user (not attendance).
+    public IReadOnlyList<StaffOnDutyDto> StaffOnDuty { get; init; } = Array.Empty<StaffOnDutyDto>();
     public DateTime GeneratedAtUtc { get; init; }
 }
 
@@ -107,6 +125,19 @@ public sealed record WaiterDashboardDto
     public int TablesServing { get; init; }
     public int CoversToday { get; init; }
     public DateTime GeneratedAtUtc { get; init; }
+}
+
+public sealed record HourlySalesRowDto
+{
+    public string Hour { get; init; } = string.Empty;
+    public int Bills { get; init; }
+    public int Covers { get; init; }
+    public decimal Subtotal { get; init; }
+    public decimal Discounts { get; init; }
+    public decimal Tax { get; init; }
+    public decimal GrossSales { get; init; }
+    public decimal Refunds { get; init; }
+    public decimal NetSales { get; init; }
 }
 
 public sealed record DailySalesRowDto
@@ -204,6 +235,17 @@ public sealed record TaxCollectionRowDto
     public decimal TaxAmount { get; init; }
 }
 
+// Phase 22 F4: one line of the "Sales minus expenses" statement. Amounts are magnitudes; the Line text says whether a
+// figure is added or deducted ("Less: Refunds"), so a totals row would be meaningless and the column is NoTotal.
+public sealed record ProfitLossRowDto
+{
+    public string Section { get; init; } = string.Empty;
+    public string Line { get; init; } = string.Empty;
+
+    [NoTotal]
+    public decimal Amount { get; init; }
+}
+
 public sealed record WaiterPerformanceRowDto
 {
     public string WaiterName { get; init; } = string.Empty;
@@ -235,4 +277,19 @@ public sealed record KitchenPerformanceRowDto
 
     [NoTotal]
     public decimal LatePercent { get; init; }
+}
+
+// Phase 22 P4: one row per user seen by any of the three sources. "Online" is a live SignalR connection (lost on an API
+// restart, can flap on phones) - it is presence, not attendance.
+public sealed record StaffOnDutyDto
+{
+    public int UserId { get; init; }
+    public string UserName { get; init; } = string.Empty;
+    public IReadOnlyList<string> Roles { get; init; } = Array.Empty<string>();
+    public bool IsOnline { get; init; }
+    public IReadOnlyList<string> Devices { get; init; } = Array.Empty<string>();
+    public DateTime? ConnectedSinceUtc { get; init; }
+    public bool HasOpenShift { get; init; }
+    public string? ShiftDeviceName { get; init; }
+    public int ActiveOrders { get; init; }
 }

@@ -1,10 +1,11 @@
-﻿using HotelPOS.Contracts.Security;
+using HotelPOS.Contracts.Security;
 using HotelPOS.Desktop.Modules.Admin;
 using HotelPOS.Desktop.Modules.Billing;
 using HotelPOS.Desktop.Modules.Customers;
 using HotelPOS.Desktop.Modules.Cash;
 using HotelPOS.Desktop.Modules.Config;
 using HotelPOS.Desktop.Modules.Dashboard;
+using HotelPOS.Desktop.Modules.Expenses;
 using HotelPOS.Desktop.Modules.Gst;
 using HotelPOS.Desktop.Modules.Kitchen;
 using HotelPOS.Desktop.Modules.Licensing;
@@ -12,6 +13,7 @@ using HotelPOS.Desktop.Modules.MenuAdmin;
 using HotelPOS.Desktop.Modules.Orders;
 using HotelPOS.Desktop.Modules.Printing;
 using HotelPOS.Desktop.Modules.Reports;
+using HotelPOS.Desktop.Modules.Reservations;
 using HotelPOS.Desktop.Modules.Tables;
 
 namespace HotelPOS.Desktop.Services.Navigation;
@@ -40,6 +42,7 @@ public static class ModuleRegistry
     public const string ClosedBills = "closed-bills";
     public const string Reports = "reports";
     public const string Floor = "floor";
+    public const string FloorPlan = "floor-plan";
     public const string Menu = "menu";
     public const string Discounts = "discounts";
     public const string Users = "users";
@@ -60,6 +63,8 @@ public static class ModuleRegistry
     public const string License = "license";
     public const string Import = "import";
     public const string Customers = "customers";
+    public const string Reservations = "reservations";
+    public const string Expenses = "expenses";
     public const string Orders = "orders";
     public const string Stations = "stations";
 
@@ -77,6 +82,8 @@ public static class ModuleRegistry
             "Live table map: occupy tables, open orders and follow their status.", typeof(TableMapViewModel)),
         new(Floor, "Sections & Tables", "", "Live Operations", Management, 2,
             "Create sections and tables, capacity and service state.", typeof(FloorViewModel)),
+        new(FloorPlan, "Floor plan", "", "Live Operations", AdminOnly, 22,
+            "Arrange the tables of each section on the floor plan: drag, resize, snap, shape and rotation.", typeof(FloorEditorViewModel)),
         new(MyOrders, "My Orders", "", "Live Operations", new[] { Roles.Admin, Roles.Manager, Roles.Waiter }, 4,
             "Your active orders, with ready orders highlighted.", typeof(MyOrdersViewModel)),
         new(Orders, "Orders", "", "Live Operations", Management, 21,
@@ -93,12 +100,16 @@ public static class ModuleRegistry
             "Prints that failed on this terminal: filter the failed ones and retry them as the next copy.", typeof(PrintLogViewModel)),
         new(Customers, "Customers", "","Live Operations", new[] { Roles.Admin, Roles.Manager, Roles.Cashier }, 16,
             "Search, add, edit and deactivate customers; bills pick from this list.", typeof(CustomersViewModel), ShowInNav: false),
+        new(Reservations, "Reservations", "\uE787", "Live Operations", new[] { Roles.Admin, Roles.Manager, Roles.Waiter, Roles.Cashier }, 22,
+            "Book, view, seat and manage table reservations.", typeof(ReservationsViewModel)),
 
         new(Menu, "Menu", "", "Menu Management", Management, 3,
             "Categories, items, prices, modifiers, taxes and preparation stations.", typeof(MenuAdminViewModel)),
 
         new(Discounts, "Payments & discounts", "", "Finance", Management, 6,
             "Predefined discounts and payment methods.", typeof(BillingSetupViewModel)),
+        new(Expenses, "Expenses", "\uE825", "Finance", Management, 22,
+            "Record, filter and void day-to-day restaurant expenses.", typeof(ExpensesViewModel)),
         new(Shifts, "Cash shifts", "\uE8C7", "Finance", Management, 13,
             "Every cash shift of the day: float, expected, counted and variance; X/Z reports and force close.", typeof(ShiftsViewModel)),
         new(DayEnd, "Day End", "\uE930", "Finance", Management, 13,
@@ -157,6 +168,8 @@ public static class ModuleRegistry
         [ClosedBills] = Permissions.BillingOperate,
         [PrintLog] = Permissions.BillingOperate,
         [Customers] = Permissions.BillingOperate,
+        [Reservations] = Permissions.ReservationsView,
+        [Expenses] = Permissions.ExpensesView,
         [Shifts] = Permissions.ShiftManage,
         [DayEnd] = Permissions.DayEndRun,
         [DayEndHistory] = Permissions.DayEndRun,
@@ -166,6 +179,7 @@ public static class ModuleRegistry
         [Import] = Permissions.ImportRun,
         [Reports] = Permissions.ReportsView,
         [Floor] = Permissions.TablesManage,
+        [FloorPlan] = Permissions.FloorLayoutManage,
         [Menu] = Permissions.MenuManage,
         [Audit] = Permissions.AuditView,
         [Users] = Permissions.UsersManage,

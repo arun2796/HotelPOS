@@ -1,0 +1,192 @@
+<UserControl x:Class="HotelPOS.Desktop.Modules.Reservations.ReservationsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:HotelPOS.Desktop.Controls"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:reservations="clr-namespace:HotelPOS.Desktop.Modules.Reservations"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance reservations:ReservationsViewModel}"
+             d:DesignWidth="1100" d:DesignHeight="700">
+
+  <Grid Margin="24">
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="*" />
+      <ColumnDefinition Width="Auto" />
+    </Grid.ColumnDefinitions>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <!-- Filter bar -->
+    <Grid Margin="0,0,0,16">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="*" MinWidth="140" MaxWidth="260" />
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+
+      <DatePicker SelectedDate="{Binding SelectedDate}" Width="140" VerticalAlignment="Center"
+                  ToolTip="Filter by date" AutomationProperties.Name="Filter date" />
+      <Button Grid.Column="1" Content="Today" Command="{Binding TodayCommand}" Margin="6,0,0,0" VerticalAlignment="Center" />
+      <Button Grid.Column="2" Content="Tomorrow" Command="{Binding TomorrowCommand}" Margin="6,0,16,0" VerticalAlignment="Center" />
+
+      <ListBox Grid.Column="3" Style="{StaticResource ChipList}" ItemsSource="{Binding StatusFilters}"
+               SelectedItem="{Binding SelectedFilter}" VerticalAlignment="Center" Margin="0,0,16,0">
+        <ListBox.ItemTemplate>
+          <DataTemplate DataType="{x:Type reservations:ReservationStatusFilter}">
+            <TextBlock Text="{Binding Name}" />
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+
+      <TextBox Grid.Column="4" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+               ToolTip="Search by customer name or phone" md:HintAssist.Hint="Search customer..."
+               VerticalAlignment="Center" AutomationProperties.Name="Search reservations">
+        <TextBox.InputBindings>
+          <KeyBinding Key="Enter" Command="{Binding SearchCommand}" />
+        </TextBox.InputBindings>
+      </TextBox>
+      <Button Grid.Column="5" Command="{Binding SearchCommand}" Margin="6,0,0,0" ToolTip="Search" VerticalAlignment="Center">
+        <TextBlock Text="&#xE721;" Style="{StaticResource Text.Icon}" />
+      </Button>
+
+      <TextBlock Grid.Column="6" Text="{Binding SummaryText}" Style="{StaticResource Text.Caption}" FontSize="14"
+                 HorizontalAlignment="Right" VerticalAlignment="Center" Margin="16,0" />
+
+      <Button Grid.Column="7" Command="{Binding RefreshListCommand}" ToolTip="Reload from server" VerticalAlignment="Center">
+        <TextBlock Text="&#xE72C;" Style="{StaticResource Text.Icon}" />
+      </Button>
+
+      <Button Grid.Column="8" Command="{Binding NewReservationCommand}" Style="{StaticResource Button.Primary}"
+              Margin="8,0,0,0" VerticalAlignment="Center">
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Text="&#xE710;" Style="{StaticResource Text.Icon}" FontSize="14" />
+          <TextBlock Text="New reservation" Margin="8,0,0,0" />
+        </StackPanel>
+      </Button>
+    </Grid>
+
+    <Border Grid.Row="1" Style="{StaticResource Banner.Error}" Margin="0,0,0,12"
+            Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibility}}">
+      <TextBlock Text="{Binding ErrorMessage}" Style="{StaticResource Text.Error}" />
+    </Border>
+
+    <!-- Reservations DataGrid -->
+    <Grid Grid.Row="2">
+      <DataGrid ItemsSource="{Binding Reservations}" SelectedItem="{Binding SelectedReservation}"
+                controls:SelectorBehaviors.ScrollSelectedIntoView="True" HorizontalScrollBarVisibility="Disabled">
+        <DataGrid.InputBindings>
+          <MouseBinding Gesture="LeftDoubleClick" Command="{Binding EditCommand}" />
+        </DataGrid.InputBindings>
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="TIME" Binding="{Binding TimeText}" Width="1.1*" MinWidth="110" />
+          <DataGridTextColumn Header="TABLE" Binding="{Binding TableText}" Width="1*" MinWidth="90" />
+          <DataGridTextColumn Header="CUSTOMER" Binding="{Binding CustomerName}" Width="1.5*" MinWidth="130" />
+          <DataGridTextColumn Header="PHONE" Binding="{Binding CustomerPhone}" Width="1.1*" MinWidth="100" />
+          <DataGridTextColumn Header="GUESTS" Binding="{Binding GuestsText}" Width="0.8*" MinWidth="80" />
+          <DataGridTextColumn Header="STATUS" Binding="{Binding StatusText}" Width="0.9*" MinWidth="90" />
+          <DataGridTextColumn Header="NOTES" Binding="{Binding Notes}" Width="1.8*" MinWidth="120" />
+        </DataGrid.Columns>
+      </DataGrid>
+
+      <ProgressBar IsIndeterminate="True" Height="3" VerticalAlignment="Top"
+                   Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}" />
+    </Grid>
+
+    <!-- Bottom Action Bar -->
+    <Grid Grid.Row="3" Margin="0,12,0,0">
+      <WrapPanel Margin="0,0,0,-8">
+        <Button Content="Seat" Command="{Binding SeatCommand}" MinWidth="90" Margin="0,0,8,8"
+                Style="{StaticResource Button.Primary}" />
+        <Button Content="Edit" Command="{Binding EditCommand}" MinWidth="90" Margin="0,0,8,8" />
+        <Button Content="Cancel" Command="{Binding CancelCommand}" MinWidth="90" Margin="0,0,8,8" />
+        <Button Content="Mark No-Show" Command="{Binding MarkNoShowCommand}" MinWidth="110" Margin="0,0,8,8" />
+      </WrapPanel>
+    </Grid>
+
+    <!-- Editor Sidebar -->
+    <Border Grid.Column="1" Grid.RowSpan="4" Style="{StaticResource Card}" Width="380" Margin="20,0,0,0"
+            DataContext="{Binding Editor}"
+            Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibility}}">
+      <Grid>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="*" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <TextBlock Text="{Binding Title}" Style="{StaticResource Text.Title}" Margin="0,0,0,20" />
+
+            <TextBlock Text="Table" Style="{StaticResource Text.Label}" />
+            <ComboBox ItemsSource="{Binding TableChoices}" SelectedItem="{Binding SelectedTable}"
+                      DisplayMemberPath="Display" Margin="0,0,0,14" AutomationProperties.Name="Table" />
+
+            <TextBlock Text="Customer name" Style="{StaticResource Text.Label}" />
+            <TextBox Text="{Binding CustomerName, UpdateSourceTrigger=PropertyChanged}" MaxLength="100"
+                     Margin="0,0,0,14" AutomationProperties.Name="Customer name" />
+
+            <TextBlock Text="Customer phone" Style="{StaticResource Text.Label}" />
+            <TextBox Text="{Binding CustomerPhone, UpdateSourceTrigger=PropertyChanged}" MaxLength="20"
+                     Margin="0,0,0,14" AutomationProperties.Name="Phone" />
+
+            <TextBlock Text="Party size (guests)" Style="{StaticResource Text.Label}" />
+            <TextBox Text="{Binding PartySize, UpdateSourceTrigger=PropertyChanged}" MaxLength="4"
+                     Margin="0,0,0,14" AutomationProperties.Name="Party size" />
+
+            <TextBlock Text="Date" Style="{StaticResource Text.Label}" />
+            <DatePicker SelectedDate="{Binding Date}" Margin="0,0,0,14" AutomationProperties.Name="Date" />
+
+            <Grid Margin="0,0,0,14">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <StackPanel>
+                <TextBlock Text="Start time (HH:mm)" Style="{StaticResource Text.Label}" />
+                <TextBox Text="{Binding StartTime, UpdateSourceTrigger=PropertyChanged}" MaxLength="5" AutomationProperties.Name="Start time" />
+              </StackPanel>
+              <StackPanel Grid.Column="2">
+                <TextBlock Text="End time (HH:mm)" Style="{StaticResource Text.Label}" />
+                <TextBox Text="{Binding EndTime, UpdateSourceTrigger=PropertyChanged}" MaxLength="5" AutomationProperties.Name="End time" />
+              </StackPanel>
+            </Grid>
+
+            <TextBlock Text="Notes" Style="{StaticResource Text.Label}" />
+            <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}" MaxLength="500"
+                     TextWrapping="Wrap" AcceptsReturn="True" MinHeight="64" AutomationProperties.Name="Notes" />
+
+            <Border Style="{StaticResource Banner.Error}" Margin="0,16,0,0"
+                    Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibility}}">
+              <TextBlock Text="{Binding ErrorMessage}" Style="{StaticResource Text.Error}" />
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+
+        <Grid Grid.Row="1" Margin="0,20,0,0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="12" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <Button Content="Cancel"
+                  Command="{Binding DataContext.CancelEditCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+          <Button Grid.Column="2" Content="{Binding SaveText}" Style="{StaticResource Button.Primary}"
+                  Command="{Binding DataContext.SaveReservationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+        </Grid>
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>
+

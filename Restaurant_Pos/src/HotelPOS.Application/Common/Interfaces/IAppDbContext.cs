@@ -32,6 +32,7 @@ public interface IAppDbContext
     DbSet<PaymentMethod> PaymentMethods { get; }
     DbSet<Section> Sections { get; }
     DbSet<Table> Tables { get; }
+    DbSet<Reservation> Reservations { get; }
     DbSet<Category> Categories { get; }
     DbSet<Tax> Taxes { get; }
     DbSet<ModifierGroup> ModifierGroups { get; }
@@ -60,6 +61,8 @@ public interface IAppDbContext
     DbSet<Customer> Customers { get; }
     DbSet<ImportBatch> ImportBatches { get; }
     DbSet<ImportEntry> ImportEntries { get; }
+    DbSet<HotelPOS.Domain.Finance.Expense> Expenses { get; }
+    DbSet<HotelPOS.Domain.Finance.ExpenseCategory> ExpenseCategories { get; }
 
     DatabaseFacade Database { get; }
 

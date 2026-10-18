@@ -19,6 +19,8 @@
              xmlns:printing="clr-namespace:HotelPOS.Desktop.Modules.Printing"
              xmlns:dashboard="clr-namespace:HotelPOS.Desktop.Modules.Dashboard"
              xmlns:reports="clr-namespace:HotelPOS.Desktop.Modules.Reports"
+             xmlns:reservations="clr-namespace:HotelPOS.Desktop.Modules.Reservations"
+             xmlns:expenses="clr-namespace:HotelPOS.Desktop.Modules.Expenses"
              ShutdownMode="OnMainWindowClose">
   <Application.Resources>
     <ResourceDictionary>
@@ -58,6 +60,9 @@
       <DataTemplate DataType="{x:Type customers:CustomersViewModel}">
         <customers:CustomersView />
       </DataTemplate>
+      <DataTemplate DataType="{x:Type reservations:ReservationsViewModel}">
+        <reservations:ReservationsView />
+      </DataTemplate>
       <DataTemplate DataType="{x:Type admin:UsersViewModel}">
         <admin:UsersView />
       </DataTemplate>
@@ -81,6 +86,9 @@
       </DataTemplate>
       <DataTemplate DataType="{x:Type admin:SettingsHubViewModel}">
         <admin:SettingsHubView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type admin:FloorEditorViewModel}">
+        <admin:FloorEditorView />
       </DataTemplate>
       <DataTemplate DataType="{x:Type admin:FloorViewModel}">
         <admin:FloorView />
@@ -165,6 +173,9 @@
       </DataTemplate>
       <DataTemplate DataType="{x:Type reports:ReportsViewModel}">
         <reports:ReportsView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type expenses:ExpensesViewModel}">
+        <expenses:ExpensesView />
       </DataTemplate>
     </ResourceDictionary>
   </Application.Resources>

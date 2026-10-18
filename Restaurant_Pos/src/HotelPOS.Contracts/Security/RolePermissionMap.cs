@@ -10,17 +10,20 @@ public static class RolePermissionMap
         {
             Permissions.AuditView,
             Permissions.TablesView, Permissions.TablesOperate, Permissions.TablesManage,
+            Permissions.ReservationsView, Permissions.ReservationsManage,
             Permissions.MenuView, Permissions.MenuManage, Permissions.MenuAvailability,
             Permissions.OrdersCreate, Permissions.OrdersEditAny, Permissions.OrdersCancelAny,
             Permissions.KitchenOperate,
             Permissions.BillingOperate, Permissions.BillingDiscount, Permissions.BillingVoid, Permissions.BillingRefund,
             Permissions.ReportsView,
+            Permissions.ExpensesView, Permissions.ExpensesManage,
             Permissions.ShiftOperate, Permissions.ShiftManage, Permissions.DayEndRun,
             Permissions.GstView, Permissions.ImportRun,
         },
         [Roles.Waiter] = new[]
         {
             Permissions.TablesView, Permissions.TablesOperate, Permissions.MenuView, Permissions.OrdersCreate,
+            Permissions.ReservationsView, Permissions.ReservationsManage,
         },
         [Roles.Kitchen] = new[]
         {
@@ -30,6 +33,7 @@ public static class RolePermissionMap
         [Roles.Cashier] = new[]
         {
             Permissions.TablesView, Permissions.TablesOperate, Permissions.MenuView,
+            Permissions.ReservationsView, Permissions.ReservationsManage,
             Permissions.BillingOperate, Permissions.BillingDiscount,
             Permissions.ShiftOperate,
         },

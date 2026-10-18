@@ -84,6 +84,9 @@ public interface IPdfRenderer
 
     byte[] Receipt(ReceiptDocument document, PaperSize paper);
 
+    // The kitchen ticket (Phase 22 P6), printed from a browser; thermal rolls by default.
+    byte[] Kitchen(KitchenTicketDocument document, PaperSize paper);
+
     byte[] Report(ReportTable table, Letterhead letterhead);
 
     // Several reports in one PDF, one page run each (the Day End pack of Phase 13).

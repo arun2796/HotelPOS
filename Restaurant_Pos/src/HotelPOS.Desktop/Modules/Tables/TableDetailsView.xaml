@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:controls="clr-namespace:HotelPOS.Desktop.Controls"
              xmlns:tables="clr-namespace:HotelPOS.Desktop.Modules.Tables"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance tables:TableDetailsViewModel}"
@@ -31,6 +32,22 @@
           </Grid>
           <TextBlock Text="{Binding Table.Name}" Style="{StaticResource Text.Body}" Foreground="{DynamicResource Brush.TextSecondary}"
                      Visibility="{Binding Table.Name, Converter={StaticResource StringToVisibility}}" />
+
+          <Border Background="{DynamicResource Brush.PrimarySoft}" CornerRadius="8" Padding="12" Margin="0,10,0,0"
+                  Visibility="{Binding Table.HasUpcomingReservation, Converter={StaticResource BoolToVisibility}}">
+            <StackPanel>
+              <Grid>
+                <StackPanel Orientation="Horizontal">
+                  <controls:Icon Kind="calendar" Width="14" Height="14" Margin="0,0,6,0" Foreground="{DynamicResource Brush.Primary}" />
+                  <TextBlock Text="Upcoming Reservation" FontWeight="SemiBold" Foreground="{DynamicResource Brush.Primary}" />
+                </StackPanel>
+              </Grid>
+              <TextBlock Text="{Binding Table.ReservationText}" FontWeight="SemiBold" FontSize="14" Margin="0,4,0,0" Foreground="{DynamicResource Brush.TextPrimary}" />
+              <TextBlock Text="{Binding Table.UpcomingReservation.CustomerName, StringFormat='Customer: {0}'}" Style="{StaticResource Text.Caption}" Margin="0,2,0,0" />
+              <TextBlock Text="{Binding Table.UpcomingReservation.CustomerPhone, StringFormat='Phone: {0}'}" Style="{StaticResource Text.Caption}"
+                         Visibility="{Binding Table.UpcomingReservation.CustomerPhone, Converter={StaticResource StringToVisibility}}" />
+            </StackPanel>
+          </Border>
 
           <Grid Margin="0,14,0,12">
             <Grid.ColumnDefinitions>
@@ -162,6 +179,9 @@
         </WrapPanel.Resources>
         <Button Content="OCCUPY" Command="{Binding OccupyCommand}"
                 Visibility="{Binding ShowOccupy, Converter={StaticResource BoolToVisibility}}" />
+        <Button Content="SEAT RESERVATION" Command="{Binding SeatReservationCommand}"
+                Background="{DynamicResource Brush.Primary}" BorderBrush="{DynamicResource Brush.Primary}" Foreground="{DynamicResource Brush.PrimaryText}"
+                Visibility="{Binding ShowSeatReservation, Converter={StaticResource BoolToVisibility}}" />
         <Button Content="{Binding NewOrderText}" Command="{Binding NewOrderCommand}"
                 Background="{DynamicResource Brush.Primary}" BorderBrush="{DynamicResource Brush.Primary}" Foreground="{DynamicResource Brush.PrimaryText}"
                 Visibility="{Binding ShowNewOrder, Converter={StaticResource BoolToVisibility}}" />

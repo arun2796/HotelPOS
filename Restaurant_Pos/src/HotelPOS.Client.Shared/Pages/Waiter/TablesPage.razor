@@ -5,6 +5,9 @@
 @using HotelPOS.Contracts.Realtime
 @inject WebAuthState Auth
 @inject WaiterApi Api
+@inject FloorLayoutApi Layouts
+@using Microsoft.JSInterop
+@inject IJSRuntime Js
 @inject WebRealtimeClient Realtime
 @inject DraftStore Drafts
 @inject ShellState Shell
@@ -42,10 +45,62 @@ else
     {
         <div class="tables-toolbar">
             <span class="muted small" data-testid="tables-summary">@Summary</span>
-            <Segmented Items="SortItems" Selected="@_sort" SelectedChanged="s => _sort = s" />
+            <div class="tables-toolbar-controls">
+                <Segmented Items="ViewItems" Selected="@_mode" SelectedChanged="SetModeAsync" />
+                @if (_mode == FloorLayoutApi.ListMode)
+                {
+                    <Segmented Items="SortItems" Selected="@_sort" SelectedChanged="s => _sort = s" />
+                }
+            </div>
         </div>
 
-        @if (_sort == AvailableFirst)
+        @if (_mode == FloorLayoutApi.MapMode)
+        {
+            @foreach (var sec in VisibleSections)
+            {
+                var active = ActiveTables(sec);
+                var byId = active.ToDictionary(t => t.Id);
+                _layouts.TryGetValue(sec.Id, out var layout);
+                var placedIds = layout is null
+                    ? new HashSet<int>()
+                    : layout.Tables.Where(g => g.HasLayout && byId.ContainsKey(g.TableId)).Select(g => g.TableId).ToHashSet();
+                @if (_sectionId is null)
+                {
+                    <h2 class="section-head">@sec.Name</h2>
+                }
+                @if (layout is not null && placedIds.Count > 0)
+                {
+                    <FloorMap Layout="layout" Tables="byId" OnOpen="Open" />
+                    var unplaced = active.Where(t => !placedIds.Contains(t.Id)).ToList();
+                    @if (unplaced.Count > 0)
+                    {
+                        <h3 class="section-head" data-testid="not-on-map">Not on the map</h3>
+                        <div class="table-grid" data-testid="table-grid">
+                            @foreach (var table in unplaced)
+                            {
+                                var t = table;
+                                <TableCard Table="t" Elapsed="@Elapsed(t)" HasDraft="@_draftTables.Contains(t.Id)" OnClick="() => Open(t)" />
+                            }
+                        </div>
+                    }
+                }
+                else
+                {
+                    @if (layout is not null && active.Count > 0)
+                    {
+                        <p class="muted small map-hint" data-testid="map-hint">No floor plan for this section yet</p>
+                    }
+                    <div class="table-grid" data-testid="table-grid">
+                        @foreach (var table in active)
+                        {
+                            var t = table;
+                            <TableCard Table="t" Elapsed="@Elapsed(t)" HasDraft="@_draftTables.Contains(t.Id)" OnClick="() => Open(t)" />
+                        }
+                    </div>
+                }
+            }
+        }
+        else if (_sort == AvailableFirst)
         {
             <div class="table-grid" data-testid="table-grid">
                 @foreach (var table in VisibleSections.SelectMany(ActiveTables).OrderBy(SortRank).ThenBy(t => t.Code, StringComparer.OrdinalIgnoreCase))
@@ -86,6 +141,11 @@ else
 
     private static readonly IReadOnlyList<TabItem> SortItems = new[] { new TabItem(BySection, "By section"), new TabItem(AvailableFirst, "Available first") };
 
+    private static readonly IReadOnlyList<TabItem> ViewItems = new[] { new TabItem(FloorLayoutApi.ListMode, "List"), new TabItem(FloorLayoutApi.MapMode, "Map") };
+
+    // Geometry per section (layout query); live status always comes from _map, merged by table id in FloorMap.
+    private readonly Dictionary<int, FloorLayoutDto> _layouts = new();
+    private string _mode = FloorLayoutApi.MapMode;
     private TableMapDto? _map;
     private string? _error;
     private int? _sectionId;
@@ -132,6 +192,11 @@ else
             _subscriptions.Add(Realtime.Subscribe<System.Text.Json.JsonElement>(name, _ => ScheduleRefresh()));
         }
 
+        _subscriptions.Add(Realtime.Subscribe<FloorLayoutChangedEvent>(HubEvents.FloorLayoutChanged, e => _ = InvokeAsync(() => ReloadLayoutAsync(e.SectionId))));
+
+        // The saved choice wins; otherwise phones (under 600 px) start on the list and wider screens on the map.
+        _mode = await Layouts.GetViewModeAsync() ?? (await IsNarrowAsync() ? FloorLayoutApi.ListMode : FloorLayoutApi.MapMode);
+
         Realtime.Reconnected += RefreshAsync;
         _tick = new Timer(_ => _ = InvokeAsync(StateHasChanged), null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
         await RefreshAsync();
@@ -156,7 +221,62 @@ else
         }
 
         _draftTables = (await Drafts.TablesWithDraftsAsync()).ToHashSet();
+        if (_mode == FloorLayoutApi.MapMode)
+        {
+            await LoadLayoutsAsync();
+        }
+
         await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadLayoutsAsync()
+    {
+        foreach (var section in Sections.ToList())
+        {
+            await ReloadLayoutAsync(section.Id, render: false);
+        }
+    }
+
+    // A failed layout call leaves the section without a plan, so it shows as the list; nothing disappears.
+    private async Task ReloadLayoutAsync(int sectionId, bool render = true)
+    {
+        if (_mode != FloorLayoutApi.MapMode)
+        {
+            return;
+        }
+
+        var result = await Layouts.GetLayoutAsync(sectionId);
+        if (result.Success && result.Data is { } layout)
+        {
+            _layouts[sectionId] = layout;
+        }
+
+        if (render)
+        {
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task SetModeAsync(string mode)
+    {
+        _mode = mode;
+        await Layouts.SetViewModeAsync(mode);
+        if (mode == FloorLayoutApi.MapMode)
+        {
+            await LoadLayoutsAsync();
+        }
+    }
+
+    private async Task<bool> IsNarrowAsync()
+    {
+        try
+        {
+            return await Js.InvokeAsync<bool>("hotelposViewport.isNarrow");
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     // Several events arrive for one change; one refresh a quarter second later is enough.

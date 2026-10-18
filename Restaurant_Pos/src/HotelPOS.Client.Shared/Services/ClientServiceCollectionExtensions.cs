@@ -18,7 +18,10 @@ public static class ClientServiceCollectionExtensions
         services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<WebAuthState>());
         services.AddScoped<WebApiClient>();
         services.AddScoped<WaiterApi>();
+        services.AddScoped<IPrintApi, PrintApi>();
+        services.AddScoped<KotPrinter>();
         services.AddScoped<KitchenApi>();
+        services.AddScoped<FloorLayoutApi>();
         services.AddScoped<IdempotentSender>();
         services.AddScoped<DraftStore>();
         services.AddScoped<FavouritesStore>();

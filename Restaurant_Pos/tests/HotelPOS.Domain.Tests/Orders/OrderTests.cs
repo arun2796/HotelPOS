@@ -107,6 +107,24 @@ public class OrderTests
     }
 
     [Fact]
+    public void TablelessOrder_SupportsTakeawayAndDelivery()
+    {
+        var takeaway = new Order(OrderType.Takeaway, waiterId: 3, guestCount: 1, customerName: "Rahul", customerPhone: "9876543210", notes: "no onions");
+        takeaway.OrderType.Should().Be(OrderType.Takeaway);
+        takeaway.TableId.Should().BeNull();
+        takeaway.Table.Should().BeNull();
+        takeaway.CustomerName.Should().Be("Rahul");
+        takeaway.CustomerPhone.Should().Be("9876543210");
+        takeaway.Status.Should().Be(OrderStatus.Draft);
+
+        var delivery = new Order(OrderType.Delivery, waiterId: 3, guestCount: 1, customerName: "Anita", customerPhone: "9876543211", deliveryAddress: "123 Main St", deliveryNotes: "Call on arrival");
+        delivery.OrderType.Should().Be(OrderType.Delivery);
+        delivery.TableId.Should().BeNull();
+        delivery.DeliveryAddress.Should().Be("123 Main St");
+        delivery.DeliveryNotes.Should().Be("Call on arrival");
+    }
+
+    [Fact]
     public void Submit_SendsTheDraftItems_AndNeedsAtLeastOne()
     {
         var empty = new Order(NewTable(), 3, 2, null);
@@ -182,5 +200,31 @@ public class OrderTests
         table.SetOutOfService();
 
         table.CanTakeNewOrder.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Order_TakeawayAndDelivery_DoNotRequireATable()
+    {
+        var takeaway = new Order(OrderType.Takeaway, waiterId: 2, guestCount: 1, notes: "no onions");
+        takeaway.OrderType.Should().Be(OrderType.Takeaway);
+        takeaway.TableId.Should().BeNull();
+        takeaway.Table.Should().BeNull();
+        takeaway.Status.Should().Be(OrderStatus.Draft);
+
+        var delivery = new Order(OrderType.Delivery, waiterId: 2, guestCount: 1, notes: null,
+            customerName: "Alice", customerPhone: "9876543210", deliveryAddress: "123 Main St", deliveryNotes: "Ring bell");
+        delivery.OrderType.Should().Be(OrderType.Delivery);
+        delivery.TableId.Should().BeNull();
+        delivery.CustomerName.Should().Be("Alice");
+        delivery.CustomerPhone.Should().Be("9876543210");
+        delivery.DeliveryAddress.Should().Be("123 Main St");
+        delivery.DeliveryNotes.Should().Be("Ring bell");
+    }
+
+    [Fact]
+    public void Order_DineInWithoutTable_Throws()
+    {
+        var act = () => new Order(OrderType.DineIn, waiterId: 2, guestCount: 2, notes: null);
+        act.Should().Throw<DomainException>().WithMessage("*Dine-in orders require a table*");
     }
 }

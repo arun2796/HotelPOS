@@ -7,6 +7,7 @@ using HotelPOS.Application.Features.Floor;
 using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Billing;
 using HotelPOS.Contracts.Enums;
+using HotelPOS.Contracts.Orders;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Domain.Billing;
 using HotelPOS.Domain.Common;
@@ -73,7 +74,8 @@ internal sealed class RequestBillHandler : ICommandHandler<RequestBillCommand, B
             return AppErrors.InvalidState($"The bill for order {order.OrderNumber} was already requested.", await _bills.DetailAsync(existingId, cancellationToken));
         }
 
-        var table = order.Table!;
+        var table = order.Table;
+        var tableCode = OrderChannels.TableLabel(order.OrderType, order.OrderNumber, table?.Code);
         var now = _clock.UtcNow;
         Bill bill;
         try
@@ -83,14 +85,14 @@ internal sealed class RequestBillHandler : ICommandHandler<RequestBillCommand, B
                 .OrderBy(i => i.BatchNumber).ThenBy(i => i.Id)
                 .Select(i => new BillLineInput(i.Id, i.ItemName, i.Quantity, i.UnitPrice, i.Modifiers.Sum(m => m.PriceDelta), i.TaxRatePercent))
                 .ToList();
-            bill = new Bill(order, table.Code, lines, await _bills.RoundOffAsync(cancellationToken));
+            bill = new Bill(order, tableCode, lines, await _bills.RoundOffAsync(cancellationToken));
         }
         catch (DomainException ex)
         {
             return new AppError(ex.Code, ex.Message);
         }
 
-        if (table.CurrentOrderId == order.Id)
+        if (table != null && table.CurrentOrderId == order.Id)
         {
             table.FollowOrder(order.Status);
         }
@@ -106,9 +108,12 @@ internal sealed class RequestBillHandler : ICommandHandler<RequestBillCommand, B
         }
 
         _audit.Add(AuditActions.BillRequested, nameof(Bill), bill.Id.ToString(CultureInfo.InvariantCulture),
-            newValues: new { bill.BillNumber, order.OrderNumber, Table = table.Code, bill.GrandTotal });
-        _afterCommit.Enqueue(() => _events.PublishRequestedAsync(bill, order, table.Code));
-        _afterCommit.Enqueue(() => _tableEvents.PublishStatusAsync(table, order.OrderNumber));
+            newValues: new { bill.BillNumber, order.OrderNumber, Table = tableCode, bill.GrandTotal });
+        _afterCommit.Enqueue(() => _events.PublishRequestedAsync(bill, order, tableCode));
+        if (table != null)
+        {
+            _afterCommit.Enqueue(() => _tableEvents.PublishStatusAsync(table, order.OrderNumber));
+        }
         _afterCommit.Enqueue(() => _events.PublishOrderUpdatedAsync(order, OrderChangeTypes.BillRequested));
         return await _bills.GetAsync(bill.Id, cancellationToken);
     }

@@ -55,12 +55,22 @@ public sealed record StaffRow(string Name, string Orders, string Sales)
     public string Initials => Dashboard.Initials.Of(Name);
 }
 
+// Phase 22 P4: one user on the Staff today card. Status is built from live connection, open shift and active orders.
+public sealed record DutyRow(string Name, string Role, string Status, bool IsOnline)
+{
+    public string Initials => Dashboard.Initials.Of(Name);
+
+    public StatusDisplay Display => IsOnline ? new StatusDisplay("Online", StatusTone.Success, "signal") : new StatusDisplay("Not connected", StatusTone.Neutral, "wifi-off");
+}
+
 public sealed record DeviceRow(string Name, string Kind, string Status, bool IsOnline)
 {
     public StatusDisplay Display => IsOnline ? new StatusDisplay("Online", StatusTone.Success, "signal") : new StatusDisplay("Offline", StatusTone.Danger, "wifi-off");
 }
 
 public sealed record DayBar(string Label, string Amount, double Height, bool IsToday, string CompactAmount = "");
+
+public sealed record HourBar(string Label, string Amount, double Height, bool IsPeak, string CompactAmount = "");
 
 // One payment method in today's split: ColorIndex picks the chart colour (Brush.Chart.N).
 public sealed record ChartSlice(string Label, string AmountText, string PercentText, int ColorIndex, Geometry Shape);
@@ -179,6 +189,9 @@ public sealed partial class DashboardViewModel : ViewModelBase, INavigationAware
     [ObservableProperty]
     private string _businessDayText = string.Empty;
 
+    [ObservableProperty]
+    private int _reservationsToday;
+
     // ----- KPI cards (A2)
 
     public ObservableCollection<KpiCard> Cards { get; } = new();
@@ -248,6 +261,9 @@ public sealed partial class DashboardViewModel : ViewModelBase, INavigationAware
 
     public ObservableCollection<StaffRow> Staff { get; } = new();
 
+    // Phase 22 P4: live connections + open shifts + active orders from DashboardDto.StaffOnDuty (presence, not attendance).
+    public ObservableCollection<DutyRow> OnDuty { get; } = new();
+
     public ObservableCollection<DeviceRow> Devices { get; } = new();
 
     [ObservableProperty]
@@ -263,6 +279,8 @@ public sealed partial class DashboardViewModel : ViewModelBase, INavigationAware
 
     public bool HasStaff => Staff.Count > 0;
 
+    public bool HasOnDuty => OnDuty.Count > 0;
+
     public bool HasDevices => Devices.Count > 0;
 
     // ----- Charts kept from Phase 20: 7-day bars, payments donut, top items (now with thumbnails, D11)
@@ -270,6 +288,11 @@ public sealed partial class DashboardViewModel : ViewModelBase, INavigationAware
     public ObservableCollection<TopItemRow> TopItems { get; } = new();
 
     public ObservableCollection<DayBar> DayBars { get; } = new();
+
+    public ObservableCollection<HourBar> HourlyBars { get; } = new();
+
+    [ObservableProperty]
+    private string _peakHourText = string.Empty;
 
     public ObservableCollection<ChartSlice> PaymentSlices { get; } = new();
 
@@ -434,6 +457,7 @@ public sealed partial class DashboardViewModel : ViewModelBase, INavigationAware
         var d = result.Data;
         ErrorMessage = null;
         RefreshCount++;
+        ReservationsToday = d.ReservationsToday;
         BusinessDayText = "Business day " + d.BusinessDay.ToString("ddd d MMM", CultureInfo.CurrentCulture);
         UpdatedText = "Updated " + d.GeneratedAtUtc.ToLocalTime().ToString("HH:mm:ss", CultureInfo.CurrentCulture);
         Replace(Cards, BuildCards(d));
@@ -447,7 +471,18 @@ public sealed partial class DashboardViewModel : ViewModelBase, INavigationAware
             max == 0 ? 0 : (double)(p.NetSales / max),
             p.Day == d.BusinessDay,
             p.NetSales == 0 ? string.Empty : Money.Compact(p.NetSales))));
+        var maxHourly = d.HourlyToday.Count == 0 ? 0m : d.HourlyToday.Max(h => h.NetSales);
+        var peakPoint = maxHourly > 0 ? d.HourlyToday.FirstOrDefault(h => h.NetSales == maxHourly) : null;
+        PeakHourText = peakPoint is not null ? $"Peak: {peakPoint.Label} ({Money.Format(peakPoint.NetSales)})" : string.Empty;
+        Replace(HourlyBars, d.HourlyToday.Select(h => new HourBar(
+            h.Hour switch { 0 => "12a", 12 => "12p", < 12 => $"{h.Hour}a", _ => $"{h.Hour - 12}p" },
+            Money.Format(h.NetSales),
+            maxHourly == 0 ? 0 : (double)(h.NetSales / maxHourly),
+            maxHourly > 0 && h.NetSales == maxHourly,
+            h.NetSales == 0 ? string.Empty : Money.Compact(h.NetSales))));
         OnPropertyChanged(nameof(HasTopItems));
+        Replace(OnDuty, d.StaffOnDuty.Select(BuildDutyRow));
+        OnPropertyChanged(nameof(HasOnDuty));
 
         // Each panel below is optional: the dashboard stays intact when one endpoint is unavailable.
         await LoadActiveOrdersAsync();
@@ -481,6 +516,11 @@ public sealed partial class DashboardViewModel : ViewModelBase, INavigationAware
                 ModuleRegistry.Reports, ReportKeys.DailySales),
             new KpiCard("Occupied tables", $"{d.ActiveTables} / {d.TotalTables}", $"{occupancy * 100:0}% occupancy", "table", StatusTone.Warning,
                 ModuleRegistry.Tables, Progress: occupancy),
+
+            // Phase 22 F4: today's live expenses; the detail is "sales minus expenses" so far, the card opens the P&L.
+            new KpiCard("Expenses today", Money.Format(d.ExpensesToday),
+                d.ExpensesToday == 0 ? "none recorded yet" : $"{Money.Format(d.TodaySales - d.ExpensesToday)} after expenses", "shopping-bag",
+                StatusTone.Neutral, ModuleRegistry.Reports, ReportKeys.ProfitLoss),
         };
     }
 
@@ -656,6 +696,27 @@ public sealed partial class DashboardViewModel : ViewModelBase, INavigationAware
         Replace(KitchenStations, rows.Select(r => new KitchenStationRow(r.Station, r.Tickets.ToString(CultureInfo.CurrentCulture),
             $"{r.AveragePrepMinutes:0.#} min", $"{r.LatePercent:0.#}%", r.LateTickets > 0)));
         OnPropertyChanged(nameof(HasKitchen));
+    }
+
+    public static DutyRow BuildDutyRow(StaffOnDutyDto s)
+    {
+        var parts = new List<string>();
+        if (s.IsOnline)
+        {
+            parts.Add(s.Devices.Count == 0 ? "online" : "online on " + string.Join(", ", s.Devices));
+        }
+
+        if (s.HasOpenShift)
+        {
+            parts.Add(string.IsNullOrEmpty(s.ShiftDeviceName) ? "open shift" : "open shift on " + s.ShiftDeviceName);
+        }
+
+        if (s.ActiveOrders > 0)
+        {
+            parts.Add(s.ActiveOrders.ToString(CultureInfo.CurrentCulture) + (s.ActiveOrders == 1 ? " active order" : " active orders"));
+        }
+
+        return new DutyRow(s.UserName, string.Join(", ", s.Roles), string.Join(" · ", parts), s.IsOnline);
     }
 
     private async Task LoadStaffAsync(DateOnly day)

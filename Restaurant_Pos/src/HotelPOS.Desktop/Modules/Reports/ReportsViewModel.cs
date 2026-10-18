@@ -31,6 +31,7 @@ public sealed partial class ReportsViewModel : ViewModelBase, INavigationAware
     public static readonly IReadOnlyList<ReportDefinition> Catalogue = new[]
     {
         new ReportDefinition(ReportKeys.DailySales, "Daily sales", "Bills, covers, discounts, tax and net sales per business day"),
+        new ReportDefinition(ReportKeys.HourlySales, "Hourly sales", "Net sales, bills and covers per business hour"),
         new ReportDefinition(ReportKeys.MonthlySales, "Monthly sales", "The same figures per month of a year", IsMonthly: true),
         new ReportDefinition(ReportKeys.ItemSales, "Item sales", "Quantity and amount per menu item"),
         new ReportDefinition(ReportKeys.CategorySales, "Category sales", "Quantity and amount per category"),
@@ -38,6 +39,7 @@ public sealed partial class ReportsViewModel : ViewModelBase, INavigationAware
         new ReportDefinition(ReportKeys.Cancellations, "Cancellations", "Cancelled orders with reason and who cancelled"),
         new ReportDefinition(ReportKeys.Discounts, "Discounts", "Every discounted bill and who approved it"),
         new ReportDefinition(ReportKeys.Taxes, "Tax collection", "Taxable amount and tax per rate"),
+        new ReportDefinition(ReportKeys.ProfitLoss, "Profit & Loss", "Sales minus expenses by category for the range; no cost of goods"),
         new ReportDefinition(ReportKeys.Waiters, "Waiter performance", "Orders, covers, sales and cancellations per waiter"),
         new ReportDefinition(ReportKeys.Kitchen, "Kitchen performance", "Tickets, accept and preparation times per station"),
     };
@@ -183,6 +185,7 @@ public sealed partial class ReportsViewModel : ViewModelBase, INavigationAware
             var loaded = SelectedReport.Key switch
             {
                 ReportKeys.DailySales => await LoadAsync(_api.GetRowsAsync<DailySalesRowDto>(ReportKeys.DailySales, from, to)),
+                ReportKeys.HourlySales => await LoadAsync(_api.GetRowsAsync<HourlySalesRowDto>(ReportKeys.HourlySales, from, to)),
                 ReportKeys.MonthlySales => await LoadAsync(_api.GetMonthlyAsync(Year)),
                 ReportKeys.ItemSales => await LoadAsync(_api.GetRowsAsync<ItemSalesRowDto>(ReportKeys.ItemSales, from, to)),
                 ReportKeys.CategorySales => await LoadAsync(_api.GetRowsAsync<CategorySalesRowDto>(ReportKeys.CategorySales, from, to)),
@@ -190,6 +193,7 @@ public sealed partial class ReportsViewModel : ViewModelBase, INavigationAware
                 ReportKeys.Cancellations => await LoadAsync(_api.GetRowsAsync<CancelledOrderRowDto>(ReportKeys.Cancellations, from, to)),
                 ReportKeys.Discounts => await LoadAsync(_api.GetRowsAsync<DiscountRowDto>(ReportKeys.Discounts, from, to)),
                 ReportKeys.Taxes => await LoadAsync(_api.GetRowsAsync<TaxCollectionRowDto>(ReportKeys.Taxes, from, to)),
+                ReportKeys.ProfitLoss => await LoadAsync(_api.GetRowsAsync<ProfitLossRowDto>(ReportKeys.ProfitLoss, from, to)),
                 ReportKeys.Waiters => await LoadAsync(_api.GetRowsAsync<WaiterPerformanceRowDto>(ReportKeys.Waiters, from, to)),
                 _ => await LoadAsync(_api.GetRowsAsync<KitchenPerformanceRowDto>(ReportKeys.Kitchen, from, to)),
             };

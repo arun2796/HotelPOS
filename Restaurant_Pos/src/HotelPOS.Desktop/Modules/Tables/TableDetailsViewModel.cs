@@ -7,6 +7,7 @@ using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Floor;
 using HotelPOS.Contracts.Kitchen;
 using HotelPOS.Contracts.Orders;
+using HotelPOS.Contracts.Reservations;
 using HotelPOS.Desktop.Modules.Billing;
 using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Modules.Orders;
@@ -41,6 +42,7 @@ public sealed partial class TableDetailsViewModel : ViewModelBase
     private readonly bool _canTakeOrders;
     private readonly bool _isManager;
     private readonly bool _isCashier;
+    private readonly IReservationsApi? _reservationsApi;
     private Guid? _billRequestKey;
 
     public TableDetailsViewModel(
@@ -54,7 +56,8 @@ public sealed partial class TableDetailsViewModel : ViewModelBase
         Func<Task> refreshMap,
         bool canTakeOrders,
         bool isManager = false,
-        bool isCashier = false)
+        bool isCashier = false,
+        IReservationsApi? reservationsApi = null)
     {
         _floorApi = floorApi;
         _ordersApi = ordersApi;
@@ -67,6 +70,7 @@ public sealed partial class TableDetailsViewModel : ViewModelBase
         _canTakeOrders = canTakeOrders;
         _isManager = isManager;
         _isCashier = isCashier;
+        _reservationsApi = reservationsApi;
     }
 
     [ObservableProperty]
@@ -115,6 +119,8 @@ public sealed partial class TableDetailsViewModel : ViewModelBase
     public IReadOnlyList<string> Keys { get; } = new[] { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
 
     public bool ShowOccupy => Table?.IsAvailable == true;
+
+    public bool ShowSeatReservation => Table is { HasUpcomingReservation: true, IsAvailable: true };
 
     public bool ShowRelease => Table is { IsOccupied: true, CurrentOrderId: null };
 
@@ -248,6 +254,39 @@ public sealed partial class TableDetailsViewModel : ViewModelBase
         RefreshCommands();
     }
 
+    private bool CanSeatReservation() => !IsBusy && ShowSeatReservation;
+
+    [RelayCommand(CanExecute = nameof(CanSeatReservation))]
+    private async Task SeatReservationAsync()
+    {
+        var table = Table;
+        if (table?.UpcomingReservation is not { } res || _reservationsApi is null)
+        {
+            return;
+        }
+
+        await ExecuteAsync(async () =>
+        {
+            var result = await _reservationsApi.SeatAsync(res.Id, new SeatReservationRequest { RowVersion = res.RowVersion });
+            if (!result.Success)
+            {
+                ErrorMessage = result.Message;
+                return;
+            }
+
+            var occupy = await _floorApi.OccupyAsync(table.Id, new OccupyTableRequest { GuestCount = res.PartySize, RowVersion = table.RowVersion });
+            if (occupy.Success && occupy.Data is not null)
+            {
+                _applyTable(occupy.Data);
+                _notifications.Success($"Table {table.Code} seated ({res.CustomerName}, {res.PartySize} guests).");
+                return;
+            }
+
+            HandleFailure(occupy, "occupied");
+        });
+        RefreshCommands();
+    }
+
     private bool CanRelease() => !IsBusy && ShowRelease;
 
     [RelayCommand(CanExecute = nameof(CanRelease))]
@@ -339,7 +378,10 @@ public sealed partial class TableDetailsViewModel : ViewModelBase
             var result = await _ordersApi.CancelAsync(order.Id, new CancelOrderRequest { Reason = reason });
             if (result.Success)
             {
-                _drafts.Delete(order.TableId);
+                if (order.TableId is { } tid)
+                {
+                    _drafts.Delete(tid);
+                }
                 _notifications.Success($"Order #{order.OrderNumber} cancelled.");
                 await _refreshMap();
             }
@@ -460,9 +502,10 @@ public sealed partial class TableDetailsViewModel : ViewModelBase
 
     private void RefreshCommands()
     {
+        SeatReservationCommand.NotifyCanExecuteChanged();
         ServeCommand.NotifyCanExecuteChanged();
         RequestBillCommand.NotifyCanExecuteChanged();
-        foreach (var name in new[] { nameof(ShowServe), nameof(ShowRequestBill), nameof(ShowOccupy), nameof(ShowRelease), nameof(ShowNewOrder), nameof(ShowOpenOrder), nameof(ShowAddItems), nameof(ShowCancelOrder), nameof(NewOrderText) })
+        foreach (var name in new[] { nameof(ShowSeatReservation), nameof(ShowServe), nameof(ShowRequestBill), nameof(ShowOccupy), nameof(ShowRelease), nameof(ShowNewOrder), nameof(ShowOpenOrder), nameof(ShowAddItems), nameof(ShowCancelOrder), nameof(NewOrderText) })
         {
             OnPropertyChanged(name);
         }

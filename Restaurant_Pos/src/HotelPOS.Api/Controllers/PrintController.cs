@@ -77,6 +77,14 @@ public sealed class PrintController : ApiControllerBase
     public Task<IActionResult> InvoicePdf(int billId, [FromQuery] string? paper, CancellationToken cancellationToken) =>
         PdfAsync(PrintDocumentType.Invoice, billId, paper, cancellationToken);
 
+    // Phase 22 P6: the kitchen ticket as a PDF for browsers (80 mm roll unless ?paper= says otherwise). With ?logId= it
+    // renders the copy that POST kot/{id}/copies reserved; without, it logs its own PDF copy like the receipt PDF.
+    [HttpGet("kot/{ticketId:int}.pdf")]
+    [Authorize(Roles = KotReaders)]
+    [Produces("application/pdf", "application/json")]
+    public Task<IActionResult> KotPdf(int ticketId, [FromQuery] string? paper, [FromQuery] long? logId, CancellationToken cancellationToken) =>
+        PdfAsync(PrintDocumentType.Kot, ticketId, paper, cancellationToken, logId);
+
     [HttpGet("receipt/{paymentId:int}.pdf")]
     [Authorize(Roles = Desk)]
     [Produces("application/pdf", "application/json")]
@@ -95,9 +103,9 @@ public sealed class PrintController : ApiControllerBase
         return FromResult(await Sender.Send(new ReserveCopyCommand(type, id, request, key), cancellationToken));
     }
 
-    private async Task<IActionResult> PdfAsync(PrintDocumentType type, int id, string? paper, CancellationToken cancellationToken)
+    private async Task<IActionResult> PdfAsync(PrintDocumentType type, int id, string? paper, CancellationToken cancellationToken, long? logId = null)
     {
-        var result = await Sender.Send(new GetDocumentPdfCommand(type, id, paper), cancellationToken);
+        var result = await Sender.Send(new GetDocumentPdfCommand(type, id, paper, logId), cancellationToken);
         return result.IsSuccess ? File(result.Value.Content, result.Value.ContentType, result.Value.FileName) : Failure(result.Error!);
     }
 }

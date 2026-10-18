@@ -23,20 +23,57 @@ public enum TicketUrgency
     Late,
 }
 
-public sealed record TicketLine(string Text, string? Notes, string Modifiers, bool IsCancelled)
+public sealed partial class TicketLine : ObservableObject
 {
+    public TicketLine(string text, string? notes, string modifiers, bool isCancelled, string? imageUrl = null)
+    {
+        Text = text;
+        Notes = notes;
+        Modifiers = modifiers;
+        IsCancelled = isCancelled;
+        ImageUrl = imageUrl;
+    }
+
+    public string Text { get; }
+
+    public string? Notes { get; }
+
+    public string Modifiers { get; }
+
+    public bool IsCancelled { get; }
+
+    // The menu item's picture URL from the ticket; the file comes from the image cache once pictures are switched on.
+    public string? ImageUrl { get; }
+
     public bool HasNotes => !string.IsNullOrWhiteSpace(Notes);
 
     public bool HasModifiers => Modifiers.Length > 0;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasPicture))]
+    private string? _imageFile;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasPicture))]
+    private bool _showPicture;
+
+    public bool HasPicture => ShowPicture && ImageFile is not null;
 }
 
 public sealed record StationFilter(int? Id, string Name);
 
 public sealed partial class TicketCardViewModel : ObservableObject
 {
-    public TicketCardViewModel(KitchenTicketDto ticket)
+    private readonly Func<string?, Task<string?>>? _imageLoader;
+    private bool _showPictures;
+    private IReadOnlyList<TicketLine> _lines = Array.Empty<TicketLine>();
+
+    public TicketCardViewModel(KitchenTicketDto ticket, bool showPictures = false, Func<string?, Task<string?>>? imageLoader = null)
     {
         _ticket = ticket;
+        _showPictures = showPictures;
+        _imageLoader = imageLoader;
+        RebuildLines();
     }
 
     [ObservableProperty]
@@ -58,6 +95,19 @@ public sealed partial class TicketCardViewModel : ObservableObject
 
     public int Id => Ticket.Id;
 
+    public OrderType OrderType => Ticket.OrderType;
+
+    public bool IsTakeaway => Ticket.OrderType == OrderType.Takeaway;
+
+    public bool IsDelivery => Ticket.OrderType == OrderType.Delivery;
+
+    public bool HasDeliveryInfo => IsDelivery && (!string.IsNullOrWhiteSpace(Ticket.CustomerName) || !string.IsNullOrWhiteSpace(Ticket.DeliveryAddress));
+
+    public string DeliveryRecipient => string.Join(" · ",
+        new[] { Ticket.CustomerName, Ticket.CustomerPhone }.Where(s => !string.IsNullOrWhiteSpace(s)));
+
+    public string DeliveryAddress => Ticket.DeliveryAddress ?? string.Empty;
+
     public bool IsAddBatch => Ticket.BatchNumber > 1;
 
     public string StatusText => Ticket.Status.ToString();
@@ -72,9 +122,74 @@ public sealed partial class TicketCardViewModel : ObservableObject
 
     public bool ShowRecall => Ticket.Status == KitchenOrderStatus.Ready;
 
-    public IReadOnlyList<TicketLine> Lines => Ticket.Items
-        .Select(i => new TicketLine($"{i.Quantity} × {i.Name}", i.Notes, string.Join(", ", i.Modifiers), i.IsCancelled))
-        .ToList();
+    public IReadOnlyList<TicketLine> Lines => _lines;
+
+    public bool ShowPictures
+    {
+        get => _showPictures;
+        set
+        {
+            if (_showPictures == value)
+            {
+                return;
+            }
+
+            _showPictures = value;
+            foreach (var line in _lines)
+            {
+                line.ShowPicture = value && line.ImageUrl is not null;
+            }
+
+            if (value)
+            {
+                LoadImages();
+            }
+        }
+    }
+
+    partial void OnTicketChanged(KitchenTicketDto value) => RebuildLines();
+
+    private void RebuildLines()
+    {
+        _lines = Ticket.Items
+            .Select(i => new TicketLine($"{i.Quantity} × {i.Name}", i.Notes, string.Join(", ", i.Modifiers), i.IsCancelled, i.ImageUrl))
+            .ToList();
+        foreach (var line in _lines)
+        {
+            line.ShowPicture = _showPictures && line.ImageUrl is not null;
+        }
+
+        if (_showPictures)
+        {
+            LoadImages();
+        }
+    }
+
+    // Authenticated download/cache is the menu cache's (the order builder's), never a loader of our own.
+    private void LoadImages()
+    {
+        if (_imageLoader is null)
+        {
+            return;
+        }
+
+        foreach (var line in _lines.Where(l => l.ImageUrl is not null && l.ImageFile is null))
+        {
+            _ = LoadImageAsync(line);
+        }
+    }
+
+    private async Task LoadImageAsync(TicketLine line)
+    {
+        try
+        {
+            line.ImageFile = await _imageLoader!(line.ImageUrl);
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or System.Net.Http.HttpRequestException or OperationCanceledException)
+        {
+            // A picture that cannot be fetched leaves the line text-only.
+        }
+    }
 
     public void Tick(DateTime serverNowUtc, int warnMinutes, int lateMinutes)
     {
@@ -127,6 +242,7 @@ public sealed partial class KitchenDisplayViewModel : ViewModelBase, INavigation
     private CancellationTokenSource? _timer;
     private TimeSpan _serverClockOffset;
     private bool _loadingStations;
+    private bool _showPictures;
 
     public KitchenDisplayViewModel(
         IKitchenApi kitchenApi,
@@ -146,6 +262,7 @@ public sealed partial class KitchenDisplayViewModel : ViewModelBase, INavigation
         _settings = settings;
         _router = router;
         _notifications = notifications;
+        _showPictures = settings.Current.ShowTicketPictures;
     }
 
     public ObservableCollection<TicketCardViewModel> NewTickets { get; } = new();
@@ -163,6 +280,32 @@ public sealed partial class KitchenDisplayViewModel : ViewModelBase, INavigation
 
     [ObservableProperty]
     private bool _isSoldOutOpen;
+
+    // Phase 22 P5: "Show item pictures", a per-terminal setting kept with the station choice; off by default.
+    public bool ShowPictures
+    {
+        get => _showPictures;
+        set
+        {
+            if (_showPictures == value)
+            {
+                return;
+            }
+
+            _showPictures = value;
+            var settings = _settings.Current;
+            settings.ShowTicketPictures = value;
+            _settings.Save(settings);
+            foreach (var card in AllCards)
+            {
+                card.ShowPictures = value;
+            }
+
+            OnPropertyChanged();
+        }
+    }
+
+    private TicketCardViewModel NewCard(KitchenTicketDto ticket) => new(ticket, _showPictures, _menuCache.GetImageFileAsync);
 
     public int WarnMinutes { get; private set; } = DefaultWarnMinutes;
 
@@ -228,7 +371,7 @@ public sealed partial class KitchenDisplayViewModel : ViewModelBase, INavigation
         ReadyTickets.Clear();
         foreach (var ticket in result.Data.Tickets)
         {
-            Place(new TicketCardViewModel(ticket));
+            Place(NewCard(ticket));
         }
 
         UpdateHeaders();
@@ -244,7 +387,7 @@ public sealed partial class KitchenDisplayViewModel : ViewModelBase, INavigation
         }
         else if (KitchenOpen(ticket.Status))
         {
-            card = new TicketCardViewModel(ticket);
+            card = NewCard(ticket);
             if (isNew)
             {
                 _ = HighlightAsync(card);

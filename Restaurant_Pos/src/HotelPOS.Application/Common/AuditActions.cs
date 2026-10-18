@@ -140,4 +140,19 @@ public static class AuditActions
     public const string ImportUndone = "Import.Undone";
     public const string DayEndReopened = "DayEnd.Reopened";
     public const string NonTillCollectionRecorded = "DayEnd.NonTillCollectionRecorded";
+
+    public const string ReservationCreated = "Reservation.Created";
+    public const string ReservationUpdated = "Reservation.Updated";
+    public const string ReservationCancelled = "Reservation.Cancelled";
+    public const string FloorLayoutSaved = "Floor.LayoutSaved";
+    public const string ReservationSeated = "Reservation.Seated";
+    public const string ReservationNoShow = "Reservation.NoShow";
+
+    public const string ExpenseCreated = "Expense.Created";
+    public const string ExpenseUpdated = "Expense.Updated";
+    public const string ExpenseVoided = "Expense.Voided";
+    public const string ExpenseCategoryCreated = "ExpenseCategory.Created";
+    public const string ExpenseCategoryUpdated = "ExpenseCategory.Updated";
+    public const string ExpenseCategoryActivated = "ExpenseCategory.Activated";
+    public const string ExpenseCategoryDeactivated = "ExpenseCategory.Deactivated";
 }

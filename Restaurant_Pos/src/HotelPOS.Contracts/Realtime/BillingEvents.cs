@@ -43,7 +43,7 @@ public sealed record PaymentCompletedEvent : RealtimeEvent
 {
     public int BillId { get; init; }
     public int OrderId { get; init; }
-    public int TableId { get; init; }
+    public int? TableId { get; init; }
     public string TableCode { get; init; } = string.Empty;
     public string? InvoiceNumber { get; init; }
     public decimal GrandTotal { get; init; }

@@ -27,12 +27,30 @@
                       Visibility="{Binding IsAddBatch, Converter={StaticResource BoolToVisibility}}">
                 <TextBlock Text="+ADD" Foreground="{DynamicResource Brush.PrimaryText}" FontWeight="Bold" FontSize="12" />
               </Border>
+              <Border Background="{DynamicResource Brush.SurfaceAlt}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                      CornerRadius="8" Padding="8,2" Margin="10,0,0,0" VerticalAlignment="Center"
+                      Visibility="{Binding IsTakeaway, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Text="COUNTER" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource Brush.TextSecondary}" />
+              </Border>
+              <Border Background="{DynamicResource Brush.PrimarySoft}" BorderBrush="{DynamicResource Brush.Primary}" BorderThickness="1"
+                      CornerRadius="8" Padding="8,2" Margin="10,0,0,0" VerticalAlignment="Center"
+                      Visibility="{Binding IsDelivery, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Text="DELIVERY" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource Brush.Primary}" />
+              </Border>
             </StackPanel>
             <Border x:Name="Timer" HorizontalAlignment="Right" VerticalAlignment="Center" CornerRadius="10" Padding="10,3"
                     Background="{DynamicResource Brush.SurfaceAlt}">
               <TextBlock x:Name="TimerText" Text="{Binding ElapsedText}" FontWeight="Bold" FontSize="15" Foreground="{DynamicResource Brush.TextPrimary}" />
             </Border>
           </Grid>
+          <Border Background="{DynamicResource Brush.SurfaceSubtle}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                  CornerRadius="6" Padding="8,4" Margin="0,4,0,4"
+                  Visibility="{Binding HasDeliveryInfo, Converter={StaticResource BoolToVisibility}}">
+            <StackPanel>
+              <TextBlock Text="{Binding DeliveryRecipient}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource Brush.TextPrimary}" />
+              <TextBlock Text="{Binding DeliveryAddress}" FontSize="11" Foreground="{DynamicResource Brush.TextSecondary}" TextWrapping="Wrap" />
+            </StackPanel>
+          </Border>
           <TextBlock Style="{StaticResource Text.Caption}" Margin="0,2,0,8">
             <Run Text="{Binding Ticket.TicketNumber, Mode=OneWay}" />
             <Run Text="·" />
@@ -43,14 +61,22 @@
           <ItemsControl ItemsSource="{Binding Lines}" Focusable="False">
             <ItemsControl.ItemTemplate>
               <DataTemplate DataType="{x:Type kitchen:TicketLine}">
-                <StackPanel Margin="0,2">
-                  <TextBlock x:Name="LineText" Text="{Binding Text}" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap"
-                             Foreground="{DynamicResource Brush.TextPrimary}" />
-                  <TextBlock Text="{Binding Modifiers}" Margin="18,0,0,0" FontSize="14" Foreground="{DynamicResource Brush.TextSecondary}" TextWrapping="Wrap"
-                             Visibility="{Binding HasModifiers, Converter={StaticResource BoolToVisibility}}" />
-                  <TextBlock Text="{Binding Notes}" Margin="18,0,0,0" FontSize="14" FontStyle="Italic" Foreground="{DynamicResource Brush.Warning}" TextWrapping="Wrap"
-                             Visibility="{Binding HasNotes, Converter={StaticResource BoolToVisibility}}" />
-                </StackPanel>
+                <DockPanel Margin="0,2">
+                  <Border DockPanel.Dock="Left" Width="36" Height="36" CornerRadius="6" Margin="0,0,10,0" VerticalAlignment="Top" ClipToBounds="True"
+                          Visibility="{Binding HasPicture, Converter={StaticResource BoolToVisibility}}">
+                    <Border.Background>
+                      <ImageBrush ImageSource="{Binding ImageFile, Converter={StaticResource ImageFile}}" Stretch="UniformToFill" />
+                    </Border.Background>
+                  </Border>
+                  <StackPanel>
+                    <TextBlock x:Name="LineText" Text="{Binding Text}" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap"
+                               Foreground="{DynamicResource Brush.TextPrimary}" />
+                    <TextBlock Text="{Binding Modifiers}" Margin="18,0,0,0" FontSize="14" Foreground="{DynamicResource Brush.TextSecondary}" TextWrapping="Wrap"
+                               Visibility="{Binding HasModifiers, Converter={StaticResource BoolToVisibility}}" />
+                    <TextBlock Text="{Binding Notes}" Margin="18,0,0,0" FontSize="14" FontStyle="Italic" Foreground="{DynamicResource Brush.Warning}" TextWrapping="Wrap"
+                               Visibility="{Binding HasNotes, Converter={StaticResource BoolToVisibility}}" />
+                  </StackPanel>
+                </DockPanel>
                 <DataTemplate.Triggers>
                   <DataTrigger Binding="{Binding IsCancelled}" Value="True">
                     <Setter TargetName="LineText" Property="TextDecorations" Value="Strikethrough" />
@@ -139,7 +165,7 @@
     </Grid.ColumnDefinitions>
 
     <Grid Grid.ColumnSpan="5" Margin="0,0,0,12">
-      <ListBox Style="{StaticResource ChipList}" ItemsSource="{Binding Stations}" SelectedItem="{Binding SelectedStation}" Margin="0,0,280,0">
+      <ListBox Style="{StaticResource ChipList}" ItemsSource="{Binding Stations}" SelectedItem="{Binding SelectedStation}" Margin="0,0,440,0">
         <ListBox.ItemTemplate>
           <DataTemplate DataType="{x:Type kitchen:StationFilter}">
             <TextBlock Text="{Binding Name}" />
@@ -147,6 +173,7 @@
         </ListBox.ItemTemplate>
       </ListBox>
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+        <CheckBox Content="Show item pictures" IsChecked="{Binding ShowPictures}" VerticalAlignment="Center" Margin="0,0,12,0" MinHeight="40" />
         <Button Content="Sold out…" Command="{Binding OpenSoldOutCommand}" MinWidth="120" />
         <Button Command="{Binding RefreshListCommand}" Margin="8,0,0,0" ToolTip="Reload from the server">
           <TextBlock Text="&#xE72C;" Style="{StaticResource Text.Icon}" />

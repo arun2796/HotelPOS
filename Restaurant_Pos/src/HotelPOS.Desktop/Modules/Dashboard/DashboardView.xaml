@@ -24,6 +24,7 @@
         <RowDefinition Height="Auto" />
         <RowDefinition Height="Auto" />
         <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
       </Grid.RowDefinitions>
 
       <!-- Header: business day, welcome, last refresh; the live connection as a pill (A2). -->
@@ -54,7 +55,7 @@
       </Border>
 
       <!-- KPI cards (A2): comparison only when yesterday's figure exists; AOV says it is derived; occupancy as a bar. -->
-      <controls:KpiStrip x:Name="KpiRow" Grid.Row="2" ItemsSource="{Binding Cards}" Columns="4">
+      <controls:KpiStrip x:Name="KpiRow" Grid.Row="2" ItemsSource="{Binding Cards}" Columns="5">
         <controls:KpiStrip.ItemTemplate>
           <DataTemplate DataType="{x:Type dashboard:KpiCard}">
             <Grid>
@@ -312,7 +313,7 @@
         <Border Style="{StaticResource Admin.Panel}">
           <StackPanel>
             <TextBlock Text="Staff &amp; Terminals" Style="{StaticResource Admin.PanelTitle}" />
-            <TextBlock Text="Waiters with orders today · terminals registered on the server." Style="{StaticResource Text.Caption}" TextWrapping="Wrap" />
+            <TextBlock Text="Connected, on a cash shift or serving orders · terminals registered on the server." Style="{StaticResource Text.Caption}" TextWrapping="Wrap" />
             <Grid Margin="0,12,0,0">
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
@@ -321,25 +322,31 @@
               </Grid.ColumnDefinitions>
               <StackPanel>
                 <TextBlock Text="STAFF TODAY" Style="{StaticResource Admin.ColumnLabel}" />
-                <TextBlock Text="No orders yet today." Style="{StaticResource Text.Caption}" Margin="0,8,0,0"
-                           Visibility="{Binding HasStaff, Converter={StaticResource InverseBoolToVisibility}}" />
-                <ItemsControl ItemsSource="{Binding Staff}" Focusable="False">
+                <TextBlock Text="Live connections, not attendance." Style="{StaticResource Text.Caption}" Margin="0,4,0,0" TextWrapping="Wrap" />
+                <TextBlock Text="Nobody connected" Style="{StaticResource Text.Caption}" Margin="0,8,0,0"
+                           Visibility="{Binding HasOnDuty, Converter={StaticResource InverseBoolToVisibility}}" />
+                <ItemsControl ItemsSource="{Binding OnDuty}" Focusable="False">
                   <ItemsControl.ItemTemplate>
-                    <DataTemplate DataType="{x:Type dashboard:StaffRow}">
+                    <DataTemplate DataType="{x:Type dashboard:DutyRow}">
                       <Grid Margin="0,8,0,0">
                         <Grid.ColumnDefinitions>
                           <ColumnDefinition Width="Auto" />
                           <ColumnDefinition Width="*" />
+                          <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <Border Style="{StaticResource Admin.Avatar}">
                           <TextBlock Text="{Binding Initials}" FontWeight="SemiBold" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
-                          <TextBlock Text="{Binding Name}" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
-                          <TextBlock Style="{StaticResource Text.Caption}">
-                            <Run Text="{Binding Orders, Mode=OneWay}" /><Run Text=" orders · " /><Run Text="{Binding Sales, Mode=OneWay}" />
-                          </TextBlock>
+                          <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding Name}" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
+                            <Border Style="{StaticResource Chip.Neutral}" Margin="6,0,0,0">
+                              <TextBlock Text="{Binding Role}" />
+                            </Border>
+                          </StackPanel>
+                          <TextBlock Text="{Binding Status}" Style="{StaticResource Text.Caption}" TextTrimming="CharacterEllipsis" />
                         </StackPanel>
+                        <controls:StatusBadge Grid.Column="2" Display="{Binding Display}" Margin="8,0,0,0" />
                       </Grid>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
@@ -550,6 +557,59 @@
           </StackPanel>
         </Border>
       </UniformGrid>
+
+      <!-- Step F1: Hourly sales today -->
+      <Border Grid.Row="7" Style="{StaticResource Admin.Panel}" Margin="0,16,0,0"
+              Visibility="{Binding IsManagerView, Converter={StaticResource BoolToVisibility}}">
+        <StackPanel>
+          <Grid>
+            <StackPanel>
+              <TextBlock Text="Hourly sales · today" Style="{StaticResource Admin.PanelTitle}" />
+              <TextBlock Text="Net sales grouped by settled hour. Peak hour is highlighted." Style="{StaticResource Text.Caption}" />
+            </StackPanel>
+            <TextBlock Text="{Binding PeakHourText}" Style="{StaticResource Text.Caption}" FontWeight="SemiBold"
+                       HorizontalAlignment="Right" VerticalAlignment="Top" />
+          </Grid>
+          <ItemsControl ItemsSource="{Binding HourlyBars}" Focusable="False" Height="170" Margin="0,16,0,0">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <UniformGrid Rows="1" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate DataType="{x:Type dashboard:HourBar}">
+                <Grid Background="Transparent" ToolTip="{Binding Amount}">
+                  <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                  </Grid.RowDefinitions>
+                  <StackPanel VerticalAlignment="Bottom" Margin="1,0">
+                    <TextBlock Text="{Binding CompactAmount}" Style="{StaticResource Text.Caption}" FontSize="10"
+                               HorizontalAlignment="Center" Margin="0,0,0,2" />
+                    <Border CornerRadius="4,4,1,1" MinHeight="3"
+                            Height="{Binding Height, Converter={StaticResource BarHeight}, ConverterParameter=130}">
+                      <Border.Style>
+                        <Style TargetType="Border">
+                          <Setter Property="Background" Value="{DynamicResource Brush.PrimarySoft}" />
+                          <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsPeak}" Value="True">
+                              <Setter Property="Background" Value="{DynamicResource Brush.Primary}" />
+                            </DataTrigger>
+                          </Style.Triggers>
+                        </Style>
+                      </Border.Style>
+                    </Border>
+                  </StackPanel>
+                  <Border Grid.Row="1" Height="1" Background="{DynamicResource Brush.Border}" />
+                  <TextBlock Grid.Row="2" Text="{Binding Label}" Style="{StaticResource Text.Caption}" FontSize="10"
+                             HorizontalAlignment="Center" Margin="0,4,0,0" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
     </Grid>
   </ScrollViewer>
 </UserControl>

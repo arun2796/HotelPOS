@@ -40,7 +40,7 @@ Last updated: 2026-10-14
 | Entity | Key columns |
 |---|---|
 | `Sections` | `Name` (unique), `SortOrder`, `IsActive` |
-| `Tables` | `Code` (unique, e.g. T01), `Name?`, `SectionId`, `Capacity`, `Status` (enum, stored), `CurrentOrderId?`, `OccupiedAt?`, `GuestCount?`, `IsActive`, `RowVersion` |
+| `Tables` | `Code` (unique, e.g. T01), `Name?`, `SectionId`, `Capacity`, `Status` (enum, stored), `CurrentOrderId?`, `OccupiedAt?`, `GuestCount?`, `IsActive`, `PosX?`, `PosY?`, `Width?`, `Height?` (layout units = px at 100%), `Shape?` (1 Rectangle, 2 Round), `Rotation?` (0-359; all six null or all set, `CK_Tables_Layout`; Phase 22), `RowVersion` |
 
 ### 2.3 Menu (Phase 3)
 
@@ -60,7 +60,7 @@ Unique: `MenuItems (CategoryId, Name)`.
 
 | Entity | Key columns |
 |---|---|
-| `Orders` | `OrderNumber` (int from SEQUENCE, unique), `TableId`, `WaiterId`, `GuestCount`, `Status` (enum), `Notes?`, `SubmittedAt?`, `ServedAt?`, `BillRequestedAt?`, `ClosedAt?`, `CancelledAt?`, `CancelledBy?`, `CancelReason?`, `RowVersion` |
+| `Orders` | `OrderNumber` (int from SEQUENCE, unique), `TableId?` (null for takeaway/delivery; Phase 22), `OrderType` (1 DineIn, 2 Takeaway, 3 Delivery; default DineIn, `CK_Orders_OrderType`; Phase 22), `CustomerName?`, `CustomerPhone?`, `DeliveryAddress?`, `DeliveryNotes?` (Phase 22, delivery orders), `WaiterId`, `GuestCount`, `Status` (enum), `Notes?`, `SubmittedAt?`, `ServedAt?`, `BillRequestedAt?`, `ClosedAt?`, `CancelledAt?`, `CancelledBy?`, `CancelReason?`, `RowVersion` |
 | `OrderItems` | `OrderId`, `BatchNumber` (1..n), `MenuItemId`, `ItemName` (snapshot), `UnitPrice` (snapshot), `Quantity`, `Notes?`, `TaxId?`, `TaxRatePercent` (snapshot), `PreparationStationId` (snapshot), `Status` (Draft/Sent/Cancelled), `KitchenOrderId?`, `CancelledBy?`, `CancelReason?` |
 | `OrderItemModifiers` | `OrderItemId`, `ModifierOptionId`, `Name` (snapshot), `PriceDelta` (snapshot) |
 
@@ -116,6 +116,20 @@ Setting `GstB2clThreshold` (default 100000). Returns are computed from settled b
 period = business day of `SettledAt`, credit notes = refunds by refund date. A closed month or year refuses bill and
 payment commands dated in it with `PERIOD_CLOSED` (same `IBusinessDayLock`: shared advisory lock per month,
 exclusive for close/reopen).
+
+### 2.9 Reservations, expenses and floor plan (Phase 22)
+
+| Table | Columns |
+|---|---|
+| `Reservations` | `TableId`, `CustomerName` (100), `CustomerPhone` (30), `PartySize` (1–50), `StartTimeUtc`, `EndTimeUtc` (> start), `Status` (1 Booked, 2 Seated, 3 Cancelled, 4 NoShow), `Notes?` (500), `SeatedAtUtc?`, `CancelledAtUtc?`, `CancelReason?` (200), `RowVersion`, audit columns. Tables never get a Reserved status: "reserved soon" is derived from the next Booked row in `TableMapping` |
+| `ExpenseCategories` | `Name` (64, unique), `Description?` (256), `IsActive`, `SortOrder`. Six categories are seeded (Food Supplies, Beverages, Utilities, Maintenance, Salaries & Wages, Miscellaneous) |
+| `Expenses` | `ExpenseDate` (date, a calendar day chosen by the user), `CategoryId`, `Amount` (> 0, ≤ 10,000,000), `Payee?` (128), `Notes?` (512), `PaymentSource` (DRAWER / BANK / OTHER), `CashMovementId?` (optional link to a drawer pay-out so cash spend is not counted twice), `IsVoid`, `VoidedAtUtc?`, `VoidedByUserId?`, `VoidReason?` (256), `RowVersion`, audit columns. Expenses dated in a closed period are read-only (`IBusinessDayLock`) |
+| `Tables` (added) | `PosX/PosY/Width/Height/Shape/Rotation` — see § 2.2; `Phase22_FloorLayout` fills a 6-per-row grid for existing active tables |
+
+Phase 22 migrations: `Phase22_Channels` (Orders), `Phase22_Reservations` (table + `reservations.view/manage` for Admin,
+Manager, Waiter, Cashier), `Phase22_Expenses` (both tables), `Phase22_ExpensePermissions` (`expenses.view/manage` for
+Admin and Manager), `Phase22_FloorLayout` (columns + `floor.layout.manage` for Admin). The
+item-split migration (`Phase22_BillSplit`) exists only in the B2 spec until the owner approves it.
 
 ## 3. Enums (defined in `HotelPOS.Contracts.Enums`)
 
@@ -259,6 +273,10 @@ Prices are tax-exclusive in v1 (`PricesIncludeTax` setting reserved).
 - `Bills(OrderId) WHERE Status <> Voided` unique; `Bills(BillNumber)` unique; `Bills(InvoiceNumber)` unique partial (where not null);
   `Bills(Status, CreatedAt)`
 - `Payments(BillId)`; `Payments(IdempotencyKey)` unique
+- Phase 22: `Orders(OrderType)`; `Orders(TableId) WHERE active` now ignores null table ids; `Reservations(TableId)`,
+  `Reservations(StartTimeUtc)`, `Reservations(TableId, Status, StartTimeUtc, EndTimeUtc)`; `Expenses(ExpenseDate)`,
+  `Expenses(CategoryId)`, `Expenses(CashMovementId)`; `ExpenseCategories(Name)` unique; checks `CK_Orders_OrderType`,
+  `CK_Reservations_PartySize/Status/TimeRange`, `CK_Expenses_Amount/PaymentSource`, `CK_Tables_Layout`
 - `AuditLogs(Timestamp)`, `AuditLogs(EntityType, EntityId)`, `AuditLogs(UserId)`
 - `IdempotencyRecords(ExpiresAt)`
 - Check constraints: `Price >= 0`, `Quantity > 0`, `RatePercent BETWEEN 0 AND 100`,

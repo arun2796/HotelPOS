@@ -26,6 +26,7 @@ open at least one screen in it. The sidebar collapses to an icon rail on its own
 | Overview | Cashier home | Cashier | Pending bills, own shift, expected cash, print failures, business day (3.1.1) |
 | Live Operations | Tables | Admin, Manager, Waiter, Cashier | Live table map; occupy tables, take orders |
 | Live Operations | Sections & Tables | Admin, Manager | Set up sections and tables |
+| Live Operations | Floor plan | Admin (`floor.layout.manage`) | Arrange each section's tables on the floor plan (6.6, Phase 22 P2) |
 | Live Operations | My Orders | Admin, Manager, Waiter | Your active orders; ready ones highlighted |
 | Live Operations | Orders | Admin, Manager | Every active order: search, status chips, sort, open the table (3.4, new in Phase 21) |
 | Live Operations | Kitchen Display | Admin, Manager, Kitchen | New / preparing / ready tickets |
@@ -56,9 +57,10 @@ open at least one screen in it. The sidebar collapses to an icon rail on its own
 | (not in the sidebar) | Customers | Admin, Manager, Cashier | Customer list used by the bill (5.3). Hidden from the menu in Phase 21 (D3); reached from the command palette or the bill's customer panel |
 
 \* Administrators only. That is 29 screens in the sidebar plus Customers. Where a screen has tabs they are listed in its
-section below (Sections & Tables, Menu, Payments & discounts, Restaurant Settings, Tax Returns). Expenses, Profit & Loss,
-hourly sales, low stock and the floor-plan drawing of the mock-ups have no data behind them and are not screens
-(`docs/phases/phase-21-role-ui-ux-redesign.md` § 3 Out).
+section below (Sections & Tables, Menu, Payments & discounts, Restaurant Settings, Tax Returns). Phase 22 added Expenses
+(Finance group), the Hourly sales and Profit & Loss tabs under Reports and the "Expenses today" dashboard card
+(`docs/phases/phase-22-excluded-features.md` F1–F4). Low stock still has no data behind it and is not a screen. The floor-plan drawing of the mock-ups is the **Floor plan**
+editor (Admin, 6.6) and the Map view of the table map (3.2.1) since Phase 22 P2.
 
 After sign-in each person lands on a home screen: Admin and Manager on Dashboard, Kitchen on Kitchen Display, Cashier on the cashier home (shown as "Dashboard"), Waiter on Tables (in the browser and the Android app, on the waiter Home page at /home).
 
@@ -181,7 +183,7 @@ KPI cards (manager view, one row): **Today's sales** (settled bills; red/green d
 **Recent activity**: the last eight audit-log rows as sentences ("cashier1 settled bill INV-…"), with live notices prepended as they arrive; **View all** opens the Audit Log. Without the audit permission the widget falls back to the bell feed (D10).
 Then, as before: "Net sales - last 7 days" bars, "Payments today" donut by method with ₹ and percent, "Top items today" (picture or initials, name, quantity, amount), **Kitchen performance today**, **Staff today** and **Terminals** side by side (Terminals lists devices for administrators only, because `api/admin/devices` is administrator-only; a manager sees a placeholder). A panel whose endpoint fails stays empty; the rest of the dashboard is unaffected.
 Tiles (own view, waiter): My orders today (and still open), My sales today (settled bills), Tables I am serving (and guests today).
-Not on the dashboard (no data, plan § 3 Out): hourly sales, expenses, profit & loss, low stock, staff presence.
+Phase 22 added a fifth KPI card, **Expenses today** (live expenses dated the business day; detail "… after expenses"; opens Reports → Profit & Loss), and the **Hourly sales · today** bars (F1). The **Staff today** column now lists live presence (P4): name, role chip, online with device names / open shift / active orders, "Nobody connected" when empty, captioned "Live connections, not attendance" (hub presence is in-memory: empty after an API restart, can flap on phones); it comes from `DashboardDto.StaffOnDuty` (`GET api/staff/on-duty`). Not on the dashboard: low stock.
 
 Source: `Modules/Dashboard/DashboardView.xaml`
 
@@ -208,6 +210,8 @@ Purpose: the live table map. Opened by Admin, Manager, Waiter, Cashier.
 
 Controls: section filter tabs (All plus each section), summary text, refresh. Each table tile shows code, time since occupied, status line and guests. Legend: Available, Occupied, Ordering, Preparing, Ready, Billing, Out of service. Click a table to open its details panel.
 
+**Waiter Tables in the browser and Android app (Phase 22 P3).** The toolbar has a **List / Map** toggle, kept per device (`hotelpos.tables.view-mode`); until it is used, phones narrower than 600 px start on List and wider screens on Map. **Map** draws each section's placed tables as tiles at the position, size, shape (Round or Rectangle) and rotation set in Sections & Tables, scaled to the screen width (never below half size: the plan then scrolls sideways; tiles keep a 44 px tap target and show only the code when narrow). Tiles use the same status colours as the cards, show the reservation badge, and open the table on tap. Tables without a position are listed under **Not on the map** as normal cards. A section with no placed table shows the list with "No floor plan for this section yet". Status updates live; a saved layout change reloads the plan. **By section / Available first** applies to List only.
+
 #### 3.2.1 Table details panel
 
 Shows table code, status, name, guests, occupied since, and the current order with its batches and lines (item, options, total) and the bill status.
@@ -227,6 +231,12 @@ Buttons (each shown only when it applies):
 - **CANCEL ORDER** - asks for a reason ("required once the kitchen has started").
 - Cancel-item icon on a sent line - asks for a reason for the kitchen. Allowed while the kitchen ticket is new or accepted; once preparing only a manager may cancel.
 - Close (X).
+
+**List / Map toggle** (next to the summary, Phase 22 P2): *List* is the tile list described above; *Map* draws every section that
+has placed tables as its floor plan (same tiles: status colour, shape, rotation, upcoming-reservation mark; clicking a tile does
+what clicking a list tile does; the plan is scaled down to fit the window width). A section with no placed table is always shown
+as the list. The choice is remembered on this terminal (`preferences.json`, `TableMapMode`; default Map). The map reloads when
+the server announces `FloorLayoutChanged`.
 
 Source: `Modules/Tables/TableMapView.xaml`, `Modules/Tables/TableDetailsView.xaml`
 
@@ -276,6 +286,9 @@ Source: `Modules/Orders/ActiveOrdersView.xaml`, `Modules/Orders/ActiveOrderQueri
 Purpose: large touch tickets for the kitchen. Opened by Admin, Manager, Kitchen.
 Controls: station filter (All stations or one station), **Sold out...**, refresh. Three columns with counts: NEW, PREPARING, READY. A ticket shows table, "+ADD" tag for added items, elapsed time, ticket number, waiter, status, lines with options and notes (cancelled lines struck through). Tickets turn amber after the "warn" minutes and red after the "late" minutes set in Restaurant Settings (default 10 and 20).
 Ticket buttons by status: **ACCEPT** (new), **START** (new or accepted), **READY** (preparing), **DONE** and **RECALL** (ready).
+Item pictures (Phase 22): each ticket line carries the menu item's picture URL (`ImageUrl`, null when the item has no picture). The checkbox **Show item pictures** beside **Sold out...** puts a small thumbnail before each line; it is a per-terminal setting, **off by default**, kept with the station choice. In the browser, **Kitchen > Station** has the same device setting, **Show item pictures on tickets** (off by default); the ticket detail pane always shows a larger thumbnail. A picture that fails to load is hidden and the line stays text-only.
+
+**Print KOT (browser and Android app, Phase 22 P6).** The ticket detail pane has a **Print KOT** button, and the waiter's order page (Details tab, **Kitchen tickets** list, one row per ticket) has one beside each ticket. It reserves a print-log copy, opens the ticket PDF (80 mm roll) in a new tab and reports the result; a copy after the first says DUPLICATE. It shows for Waiter, Kitchen, Manager and Admin only. A failure (ticket not found, pop-up blocked) shows an error toast and the log copy is recorded as failed. The Android native print bridge is not part of this step.
 
 #### 4.1.1 Sold-out panel ("Item availability")
 List of menu items with a toggle button per item (mark sold out / available again). Button **Close**.
@@ -621,6 +634,20 @@ Controls: refresh, **New section**. Columns: ORDER, NAME, ACTIVE TABLES, STATUS.
 Buttons: **Cancel**, **Save**.
 
 Source: `Modules/Admin/FloorView.xaml`, `Modules/Admin/TablesView.xaml`, `Modules/Admin/SectionsView.xaml`
+
+### 6.6 Floor plan (Phase 22 P2)
+
+Purpose: place each section's tables on a canvas. Admin only (permission `floor.layout.manage`; the sidebar entry sits under Live Operations after Sections & Tables).
+
+Controls: **Section** picker; **Snap to 8-unit grid** (on by default); **Rotate 90°** and **Round / Rectangle** (act on the selected table); **Undo** / **Redo** (Ctrl+Z / Ctrl+Y); **Reset to grid** (every table of the section in rows of six, 120 x 80, 24 apart, rectangles, no rotation); **Zoom** slider (25 % to 200 %) and **Fit**; **Save layout** (enabled only when something changed). The header says "Unsaved changes" or "All changes saved".
+
+Canvas: 1200 x 800 layout units at least (grows with the tables), 1 unit = 1 px at 100 %. Each table is a tile with its code, seats and status colour; Round tables have rounded ends, rotated tables turn about their centre. Drag a tile to move it; the selected tile shows eight handles to resize; the arrow keys nudge the selection by 8. Limits are enforced as you edit: position 0 to 5000, size 40 to 600.
+
+**Unplaced tables** (right): tables of the section that have no position yet, each with **Place** (puts it on the next free grid spot). Tables cannot be removed from the plan once placed (Undo before saving).
+
+Save sends the placed tables of the section; on a refusal (not a connection failure) the stored layout is loaded again. If another terminal saves the same section while there are unsaved edits, a warning appears and the edits stay.
+
+Source: `Modules/Admin/FloorEditorView.xaml`, `Modules/Admin/FloorEditorViewModel.cs`
 
 ### 6.6 Menu
 

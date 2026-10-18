@@ -42,6 +42,16 @@ public sealed record TableDto
 
     public int? CurrentOrderNumber { get; init; }
 
+    public Reservations.ReservationSummaryDto? UpcomingReservation { get; init; }
+
+    // Floor-plan geometry in layout units (px at 100%); all null until the table is placed.
+    public int? PosX { get; init; }
+    public int? PosY { get; init; }
+    public int? Width { get; init; }
+    public int? Height { get; init; }
+    public TableShape? Shape { get; init; }
+    public int? Rotation { get; init; }
+
     public string RowVersion { get; init; } = string.Empty;
 }
 

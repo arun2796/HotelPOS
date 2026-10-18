@@ -1,7 +1,9 @@
 using System.Text;
+using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Features.Billing.Commands;
 using HotelPOS.Application.Features.Billing.Queries;
 using HotelPOS.Application.Common.Results;
+using HotelPOS.Application.Features.Finance.Commands;
 using HotelPOS.Application.Features.Floor.Commands;
 using HotelPOS.Application.Features.Kitchen.Commands;
 using HotelPOS.Application.Features.Kitchen.Queries;
@@ -16,6 +18,7 @@ using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Billing;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Enums;
+using HotelPOS.Contracts.Finance;
 using HotelPOS.Contracts.Floor;
 using HotelPOS.Contracts.Kitchen;
 using HotelPOS.Contracts.Menu;
@@ -85,6 +88,85 @@ public class ReportTests : DatabaseTestBase
             (day.AddDays(1), 1, 53m, 0m, 53m));
         rows.Value[0].Covers.Should().Be(4);
         rows.Value[0].Tax.Should().Be(30m);
+    }
+
+    [Fact]
+    public async Task HourlySales_ZeroFillsAll24Hours_AndReconcilesWithDailySales()
+    {
+        var s = await SetupAsync();
+        var calendar = await Get<IBusinessDays>().GetAsync();
+        var day = calendar.DayOf(Clock.UtcNow);
+
+        var first = await SettledBillAsync(s, s.Tables[0], Line(s.Biryani, 2));
+        await RefundAsync(s, first, 100m);
+        Clock.Advance(TimeSpan.FromHours(1));
+        await SettledBillAsync(s, s.Tables[1], Line(s.Naan, 4));
+
+        var daily = (await SendAsAdminAsync(new GetDailySalesReportQuery(new ReportQuery { From = day, To = day }))).Value.Single();
+        var hourly = (await SendAsAdminAsync(new GetHourlySalesReportQuery(new ReportQuery { From = day, To = day }))).Value;
+
+        hourly.Should().HaveCount(24);
+        var expectedHours = Enumerable.Range(0, 24).Select(h => $"{h:D2}:00");
+        hourly.Select(h => h.Hour).Should().Equal(expectedHours);
+        hourly.Sum(h => h.NetSales).Should().Be(daily.NetSales);
+        hourly.Sum(h => h.Bills).Should().Be(daily.Bills);
+
+        var dashboard = (await SendAsAdminAsync(new GetDashboardQuery())).Value;
+        dashboard.HourlyToday.Should().HaveCount(24);
+        dashboard.HourlyToday.Sum(h => h.NetSales).Should().Be(daily.NetSales);
+    }
+
+    // Phase 22 F4: the P&L's sales side is the Daily sales report; voided expenses and expenses outside the range stay out.
+    [Fact]
+    public async Task ProfitLoss_ReconcilesWithDailySales_AndSubtractsLiveExpensesByCategory()
+    {
+        var s = await SetupAsync();
+        var calendar = await Get<IBusinessDays>().GetAsync();
+        var day = calendar.DayOf(Clock.UtcNow);
+
+        var first = await SettledBillAsync(s, s.Tables[0], Line(s.Biryani, 2));
+        await RefundAsync(s, first, 100m);
+        await SettledBillAsync(s, s.Tables[1], Line(s.Naan, 4));
+
+        var rent = (await SendAsAdminAsync(new CreateExpenseCategoryCommand(new CreateExpenseCategoryRequest { Name = "Rent", SortOrder = 1 }))).Value;
+        var supplies = (await SendAsAdminAsync(new CreateExpenseCategoryCommand(new CreateExpenseCategoryRequest { Name = "Supplies", SortOrder = 2 }))).Value;
+        await ExpenseAsync(day, rent.Id, 5000m);
+        await ExpenseAsync(day, supplies.Id, 300m);
+        await ExpenseAsync(day, supplies.Id, 450m);
+        var duplicate = await ExpenseAsync(day, supplies.Id, 999m);
+        var voided = await SendAsAdminAsync(new VoidExpenseCommand(duplicate.Id, new VoidExpenseRequest { Reason = "Entered twice", RowVersion = duplicate.RowVersion }));
+        voided.IsSuccess.Should().BeTrue(voided.Error?.Message);
+        await ExpenseAsync(day.AddDays(-1), rent.Id, 777m);
+
+        var daily = (await SendAsAdminAsync(new GetDailySalesReportQuery(new ReportQuery { From = day, To = day }))).Value.Single();
+        var rows = (await SendAsAdminAsync(new GetProfitLossReportQuery(new ReportQuery { From = day, To = day }))).Value;
+
+        decimal Amount(string line) => rows.Single(r => r.Line == line).Amount;
+        Amount(ProfitLossStatement.GrossSalesLine).Should().Be(daily.GrossSales);
+        Amount(ProfitLossStatement.RefundsLine).Should().Be(100m);
+        Amount(ProfitLossStatement.NetSalesLine).Should().Be(daily.NetSales);
+        Amount(ProfitLossStatement.DiscountsLine).Should().Be(daily.Discounts);
+        Amount(ProfitLossStatement.TaxLine).Should().Be(daily.Tax);
+        rows.Where(r => r.Section == ProfitLossStatement.ExpensesSection).Select(r => (r.Line, r.Amount))
+            .Should().Equal(("Rent", 5000m), ("Supplies", 750m), (ProfitLossStatement.TotalExpensesLine, 5750m));
+        Amount(ProfitLossStatement.ProfitLine).Should().Be(daily.NetSales - 5750m);
+
+        var dashboard = (await SendAsAdminAsync(new GetDashboardQuery())).Value;
+        dashboard.ExpensesToday.Should().Be(5750m);
+
+        var twoDays = (await SendAsAdminAsync(new GetProfitLossReportQuery(new ReportQuery { From = day.AddDays(-1), To = day }))).Value;
+        twoDays.Single(r => r.Line == ProfitLossStatement.TotalExpensesLine).Amount.Should().Be(6527m, "yesterday's rent joins once the range includes it");
+        twoDays.Single(r => r.Line == ProfitLossStatement.NetSalesLine).Amount.Should().Be(daily.NetSales);
+    }
+
+    private async Task<ExpenseDto> ExpenseAsync(DateOnly date, int categoryId, decimal amount)
+    {
+        var result = await SendAsAdminAsync(new CreateExpenseCommand(new CreateExpenseRequest
+        {
+            ExpenseDate = date, CategoryId = categoryId, Amount = amount, PaymentSource = ExpensePaymentSources.Other,
+        }));
+        result.IsSuccess.Should().BeTrue(result.Error?.Message);
+        return result.Value;
     }
 
     [Fact]
@@ -158,6 +240,29 @@ public class ReportTests : DatabaseTestBase
         row.AverageTotalMinutes.Should().Be(25m);
         row.LateTickets.Should().Be(1, "25 minutes is over the 20-minute late threshold");
         row.LatePercent.Should().Be(100m);
+    }
+
+    [Fact]
+    public async Task Dashboard_StaffOnDuty_MergesPresenceOpenShiftsAndActiveOrders()
+    {
+        var s = await SetupAsync();
+        await SendAsync(s, s.Tables[1], Line(s.Naan, 1));
+        Fixture.Presence.Entries.Add(new PresenceEntry(s.Cashier, "cashier1", new[] { Roles.Cashier }, Guid.NewGuid(), "BILLING-01", Clock.UtcNow));
+        Fixture.Presence.Entries.Add(new PresenceEntry(s.WaiterTwo, "waiter2", new[] { Roles.Waiter }, null, "PHONE-2", Clock.UtcNow));
+
+        var dashboard = (await SendAsAdminAsync(new GetDashboardQuery())).Value;
+        var direct = (await SendAsAdminAsync(new GetStaffOnDutyQuery())).Value;
+
+        dashboard.StaffOnDuty.Select(r => r.UserId).Should().Equal(direct.Select(r => r.UserId));
+        dashboard.StaffOnDuty.Should().HaveCount(3);
+        var cashier = dashboard.StaffOnDuty.Single(r => r.UserId == s.Cashier);
+        cashier.IsOnline.Should().BeTrue();
+        cashier.HasOpenShift.Should().BeTrue();
+        cashier.ShiftDeviceName.Should().BeNull("the test shift's device id is not a registered device");
+        dashboard.StaffOnDuty.Single(r => r.UserId == s.Waiter).ActiveOrders.Should().Be(1);
+        dashboard.StaffOnDuty.Single(r => r.UserId == s.Waiter).IsOnline.Should().BeFalse();
+        dashboard.StaffOnDuty.Single(r => r.UserId == s.WaiterTwo).Roles.Should().Equal(Roles.Waiter);
+        dashboard.StaffOnDuty.Take(2).Should().OnlyContain(r => r.IsOnline, "online users sort first");
     }
 
     [Fact]
@@ -299,5 +404,50 @@ public class ReportTests : DatabaseTestBase
         var cash = bill.Payments.First(p => p.MethodCode == "CASH");
         var result = await SendAsync(new RefundPaymentCommand(bill.Id, new RefundRequest { PaymentId = cash.Id, Amount = amount, Reason = "Complaint", RowVersion = bill.RowVersion }, Guid.NewGuid()));
         result.IsSuccess.Should().BeTrue(result.Error?.Message);
+    }
+}
+
+// Phase 22 F4: the statement arithmetic without a database.
+public class ProfitLossStatementTests
+{
+    [Fact]
+    public void Compose_DerivesRoundOff_AndSubtractsExpensesFromNetSales()
+    {
+        var sales = new[]
+        {
+            new DailySalesRowDto { Subtotal = 1000m, Discounts = 100m, Tax = 45m, GrossSales = 945m, Refunds = 50m, NetSales = 895m },
+            new DailySalesRowDto { Subtotal = 200m, Discounts = 0m, Tax = 10m, GrossSales = 210.5m, Refunds = 0m, NetSales = 210.5m },
+        };
+        var expenses = new[]
+        {
+            new ExpenseCategoryTotal { Category = "Rent", Amount = 500m },
+            new ExpenseCategoryTotal { Category = "Gas", Amount = 95.5m },
+        };
+
+        var rows = ProfitLossStatement.Compose(sales, expenses);
+
+        rows.Select(r => (r.Section, r.Line, r.Amount)).Should().Equal(
+            ("Sales", ProfitLossStatement.ItemSalesLine, 1200m),
+            ("Sales", ProfitLossStatement.DiscountsLine, 100m),
+            ("Sales", ProfitLossStatement.TaxLine, 55m),
+            ("Sales", ProfitLossStatement.RoundOffLine, 0.5m),
+            ("Sales", ProfitLossStatement.GrossSalesLine, 1155.5m),
+            ("Sales", ProfitLossStatement.RefundsLine, 50m),
+            ("Sales", ProfitLossStatement.NetSalesLine, 1105.5m),
+            ("Expenses", "Rent", 500m),
+            ("Expenses", "Gas", 95.5m),
+            ("Expenses", ProfitLossStatement.TotalExpensesLine, 595.5m),
+            ("Result", ProfitLossStatement.ProfitLine, 510m));
+    }
+
+    [Fact]
+    public void Compose_WithNoSalesOrExpenses_StillShowsEveryLine_AndOmitsAZeroRoundOff()
+    {
+        var rows = ProfitLossStatement.Compose(Array.Empty<DailySalesRowDto>(), Array.Empty<ExpenseCategoryTotal>());
+
+        rows.Should().HaveCount(8);
+        rows.Select(r => r.Line).Should().NotContain(ProfitLossStatement.RoundOffLine);
+        rows[^1].Should().BeEquivalentTo(new ProfitLossRowDto { Section = "Result", Line = ProfitLossStatement.ProfitLine, Amount = 0m });
+        ReportSchema.Describe<ProfitLossRowDto>().Should().OnlyContain(c => !c.HasTotal, "a statement's lines must never be summed into a totals row");
     }
 }

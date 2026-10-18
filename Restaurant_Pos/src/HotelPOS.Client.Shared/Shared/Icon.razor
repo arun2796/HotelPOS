@@ -47,6 +47,8 @@
         ["swap"] = "<path d='m7 4-4 4 4 4M3 8h14M17 20l4-4-4-4M21 16H7'/>",
         ["undo"] = "<path d='m9 14-5-5 5-5M4 9h10a6 6 0 0 1 0 12h-3'/>",
         ["utensils"] = "<path d='M7 3v8M4 3v5a3 3 0 0 0 6 0V3M7 11v10M17 21V3c-3 1-4 4-4 8h4'/>",
+        ["shopping-bag"] = "<path d='M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0'/>",
+        ["truck"] = "<rect x='1' y='3' width='15' height='13'/><polygon points='16 8 20 8 23 11 23 16 16 16 16 8'/><circle cx='5.5' cy='18.5' r='2.5'/><circle cx='18.5' cy='18.5' r='2.5'/>",
     };
 
     private string Body => Paths.TryGetValue(Name, out var body) ? body : Paths["circle"];

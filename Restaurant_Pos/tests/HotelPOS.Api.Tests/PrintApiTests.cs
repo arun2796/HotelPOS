@@ -31,6 +31,9 @@ public class PrintApiTests : IClassFixture<ApiFactory>
         { "cashier1", "GET", "/api/print/kot/1", HttpStatusCode.Forbidden },
         { "kitchen1", "GET", "/api/print/kot/999999", HttpStatusCode.NotFound },
         { "cashier1", "GET", "/api/print/invoice/999999", HttpStatusCode.NotFound },
+        { "cashier1", "GET", "/api/print/kot/1.pdf", HttpStatusCode.Forbidden },
+        { "kitchen1", "GET", "/api/print/kot/999999.pdf", HttpStatusCode.NotFound },
+        { "waiter1", "GET", "/api/print/kot/999999.pdf", HttpStatusCode.NotFound },
     };
 
     [Theory]
@@ -42,6 +45,30 @@ public class PrintApiTests : IClassFixture<ApiFactory>
         var response = await client.SendAsync(new HttpRequestMessage(new HttpMethod(method), url) { Content = JsonContent.Create(new { }) });
 
         response.StatusCode.Should().Be(expected);
+    }
+
+    [Fact]
+    public async Task KotPdf_WaiterPrintsTheirOrdersTicket_ThroughReserveOpenComplete_AndOthersAreRefused()
+    {
+        var waiter = await _factory.CreateAuthenticatedClientAsync("waiter1", ApiFactory.DemoPassword);
+        var ticketId = (await SendOrderAsync(waiter, "T12", "Chicken Biryani")).Tickets.Single().Id;
+
+        var plain = await waiter.GetAsync($"/api/print/kot/{ticketId}.pdf");
+        var reserve = new HttpRequestMessage(HttpMethod.Post, $"/api/print/kot/{ticketId}/copies") { Content = JsonContent.Create(new ReserveCopyRequest(), options: PosJson.Options) };
+        reserve.Headers.Add(PosHeaders.IdempotencyKey, Guid.NewGuid().ToString());
+        var copy = (await (await waiter.SendAsync(reserve)).ReadEnvelopeAsync<KitchenTicketDocument>()).Data!;
+        var pdf = await waiter.GetAsync($"/api/print/kot/{ticketId}.pdf?paper=80&logId={copy.PrintLogId}");
+        var done = await waiter.PutAsJsonAsync($"/api/print/copies/{copy.PrintLogId}", new CompletePrintRequest { Succeeded = true }, PosJson.Options);
+
+        plain.StatusCode.Should().Be(HttpStatusCode.OK);
+        plain.Content.Headers.ContentType!.MediaType.Should().Be("application/pdf");
+        pdf.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await pdf.Content.ReadAsByteArrayAsync()).Take(4).Should().Equal("%PDF"u8.ToArray());
+        pdf.Content.Headers.ContentDisposition!.FileName.Should().Contain("copy2", "the plain GET logged copy 1, the reserved one is copy 2");
+        done.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var kitchen = await _factory.CreateAuthenticatedClientAsync("kitchen1", ApiFactory.DemoPassword);
+        (await kitchen.GetAsync($"/api/print/kot/{ticketId}.pdf?logId={copy.PrintLogId}")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     [Fact]

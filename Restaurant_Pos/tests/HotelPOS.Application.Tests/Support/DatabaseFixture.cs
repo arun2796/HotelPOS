@@ -31,6 +31,7 @@ public sealed class DatabaseFixture : IAsyncLifetime
     public RecordingRealtimeNotifier Realtime { get; } = new();
 
     public RecordingConnectionTracker Connections { get; } = new();
+    public FakePresenceTracker Presence { get; } = new();
 
     public ServiceProvider Services { get; private set; } = default!;
 
@@ -58,6 +59,7 @@ public sealed class DatabaseFixture : IAsyncLifetime
         services.AddSingleton<ICurrentUser>(CurrentUser);
         services.AddSingleton<IRealtimeNotifier>(Realtime);
         services.AddSingleton<IOnlineDeviceTracker>(Connections);
+        services.AddSingleton<IPresenceTracker>(Presence);
         services.Configure<AppOptions>(o => o.ApiVersion = "test");
         services.AddApplication();
         services.AddInfrastructure(configuration);
@@ -76,6 +78,7 @@ public sealed class DatabaseFixture : IAsyncLifetime
         CurrentUser.Reset();
         Realtime.Reset();
         Connections.Reset();
+        Presence.Reset();
 
         await using var scope = Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -99,6 +102,7 @@ public sealed class DatabaseFixture : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
+        Npgsql.NpgsqlConnection.ClearAllPools();
         await using (var scope = Services.CreateAsyncScope())
         {
             await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.EnsureDeletedAsync();

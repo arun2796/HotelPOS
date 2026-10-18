@@ -47,6 +47,22 @@ public sealed partial class QueueFilterChip : ObservableObject
     public bool HasCount => Count is > 0;
 }
 
+public sealed partial class ChannelFilterChip : ObservableObject
+{
+    public ChannelFilterChip(OrderType? channel, string label)
+    {
+        Channel = channel;
+        Label = label;
+    }
+
+    public OrderType? Channel { get; }
+
+    public string Label { get; }
+
+    [ObservableProperty]
+    private bool _isSelected;
+}
+
 /// <summary>
 /// Phase 21.3: the cashier's three-pane workspace. Left: the bill queue with search, sort and status chips; centre and
 /// right: the selected bill, hosted as the existing <see cref="BillDetailViewModel"/> (its bill, payment, idempotency
@@ -93,12 +109,26 @@ public sealed partial class CashierWorkspaceViewModel : ViewModelBase, INavigati
             new QueueFilterChip(QueueFilter.Paid, "Paid"),
         };
         Chips[0].IsSelected = true;
+
+        ChannelChips = new[]
+        {
+            new ChannelFilterChip(null, "All"),
+            new ChannelFilterChip(OrderType.DineIn, "Dine-In"),
+            new ChannelFilterChip(OrderType.Takeaway, "Takeaway"),
+            new ChannelFilterChip(OrderType.Delivery, "Delivery"),
+        };
+        ChannelChips[0].IsSelected = true;
     }
 
     /// <summary>The bills that match the chip, the search and the sort.</summary>
     public ObservableCollection<BillQueueItemViewModel> Bills { get; } = new();
 
     public IReadOnlyList<QueueFilterChip> Chips { get; }
+
+    public IReadOnlyList<ChannelFilterChip> ChannelChips { get; }
+
+    [ObservableProperty]
+    private OrderType? _channelFilter;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsPaidFilter), nameof(EmptyTitle), nameof(EmptyMessage))]
@@ -237,6 +267,21 @@ public sealed partial class CashierWorkspaceViewModel : ViewModelBase, INavigati
     [RelayCommand]
     private Task RefreshListAsync() => RefreshAsync();
 
+    [RelayCommand]
+    private void SelectChannelFilter(OrderType? channel)
+    {
+        ChannelFilter = channel;
+        Rebuild();
+    }
+
+    partial void OnChannelFilterChanged(OrderType? value)
+    {
+        foreach (var chip in ChannelChips)
+        {
+            chip.IsSelected = chip.Channel == value;
+        }
+    }
+
     partial void OnFilterChanged(QueueFilter value)
     {
         foreach (var chip in Chips)
@@ -353,6 +398,11 @@ public sealed partial class CashierWorkspaceViewModel : ViewModelBase, INavigati
             QueueFilter.PartlyPaid => _pending.Where(b => b.Bill.Status == BillStatus.Finalized && b.Bill.PaidAmount > 0),
             _ => _pending,
         };
+
+        if (ChannelFilter is { } channel)
+        {
+            source = source.Where(b => b.Bill.OrderType == channel);
+        }
 
         var search = SearchText.Trim();
         if (search.Length > 0)

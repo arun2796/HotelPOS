@@ -78,18 +78,20 @@ public static class NotificationMapper
             return null;
         }
 
-        var table = new NotificationTarget(NotificationTargetType.Table, e.TableId.ToString());
+        var target = e.TableId.HasValue
+            ? new NotificationTarget(NotificationTargetType.Table, e.TableId.Value.ToString())
+            : new NotificationTarget(NotificationTargetType.Order, e.OrderId.ToString());
         var code = e.TableCode.ToUpperInvariant();
         return eventName switch
         {
             HubEvents.OrderReady => new NotificationDraft(NotificationKind.OrderReady, NoticeLevel.Warning,
                 $"TABLE {code} — ORDER READY",
                 e.ReadyTicketNumbers.Count == 0 ? string.Empty : $"Ticket {string.Join(", ", e.ReadyTicketNumbers)}",
-                $"ready:{e.OrderId}", table),
+                $"ready:{e.OrderId}", target),
             HubEvents.OrderAccepted => new NotificationDraft(NotificationKind.OrderAccepted, NoticeLevel.Info,
-                $"Table {code} — kitchen accepted the order", string.Empty, $"accepted:{e.OrderId}", table),
+                $"Table {code} — kitchen accepted the order", string.Empty, $"accepted:{e.OrderId}", target),
             HubEvents.OrderPreparing => new NotificationDraft(NotificationKind.OrderPreparing, NoticeLevel.Info,
-                $"Table {code} — being prepared", string.Empty, $"preparing:{e.OrderId}", table),
+                $"Table {code} — being prepared", string.Empty, $"preparing:{e.OrderId}", target),
             _ => null,
         };
     }

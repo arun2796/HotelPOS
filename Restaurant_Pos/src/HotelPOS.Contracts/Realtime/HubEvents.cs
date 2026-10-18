@@ -32,6 +32,9 @@ public static class HubEvents
     public const string PrintFailed = "PrintFailed";
     public const string PaymentFailed = "PaymentFailed";
     public const string DayEndDue = "DayEndDue";
+    public const string ReservationChanged = "ReservationChanged";
+    public const string ExpenseChanged = "ExpenseChanged";
+    public const string FloorLayoutChanged = "FloorLayoutChanged";
 }
 
 public static class HubMethods
@@ -76,4 +79,27 @@ public sealed record DayEndDueEvent : RealtimeEvent
 {
     public DateOnly BusinessDay { get; init; }
     public string ReminderTime { get; init; } = string.Empty;
+}
+
+public sealed record ReservationChangedEvent : RealtimeEvent
+{
+    public int ReservationId { get; init; }
+    public int TableId { get; init; }
+    public string TableCode { get; init; } = string.Empty;
+    public Enums.ReservationStatus Status { get; init; }
+    public DateTime StartTimeUtc { get; init; }
+    public DateTime EndTimeUtc { get; init; }
+}
+
+public sealed record FloorLayoutChangedEvent : RealtimeEvent
+{
+    public int SectionId { get; init; }
+}
+
+public sealed record ExpenseChangedEvent : RealtimeEvent
+{
+    public int ExpenseId { get; init; }
+    public DateOnly ExpenseDate { get; init; }
+    public decimal Amount { get; init; }
+    public string ChangeType { get; init; } = string.Empty;
 }

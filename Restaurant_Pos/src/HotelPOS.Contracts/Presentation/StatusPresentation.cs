@@ -59,6 +59,22 @@ public static class StatusPresentation
         _ => throw Unmapped(status),
     };
 
+    public static StatusDisplay For(OrderType type) => type switch
+    {
+        OrderType.Takeaway => new("Takeaway", StatusTone.Warning, "shopping-bag"),
+        OrderType.Delivery => new("Delivery", StatusTone.Success, "truck"),
+        _ => new("Dine-in", StatusTone.Info, "utensils"),
+    };
+
+    public static StatusDisplay For(ReservationStatus status) => status switch
+    {
+        ReservationStatus.Booked => new("Booked", StatusTone.Info, "calendar"),
+        ReservationStatus.Seated => new("Seated", StatusTone.Success, "check", StatusFill.Solid),
+        ReservationStatus.Cancelled => new("Cancelled", StatusTone.Danger, "ban"),
+        ReservationStatus.NoShow => new("No-show", StatusTone.Warning, "alert"),
+        _ => throw Unmapped(status),
+    };
+
     public static StatusDisplay For(KitchenOrderStatus status) => status switch
     {
         KitchenOrderStatus.New => new("New", StatusTone.Info, "bell"),

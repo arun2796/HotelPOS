@@ -18,7 +18,8 @@ public sealed class StatusPresentationTests
             .Concat(All<PaymentRecordStatus>(StatusPresentation.For))
             .Concat(All<CashShiftStatus>(StatusPresentation.For))
             .Concat(All<BusinessDayStatus>(StatusPresentation.For))
-            .Concat(All<BackupStatus>(StatusPresentation.For));
+            .Concat(All<BackupStatus>(StatusPresentation.For))
+            .Concat(All<OrderType>(StatusPresentation.For));
 
     private static IEnumerable<object[]> All<T>(Func<T, StatusDisplay> map) where T : struct, Enum =>
         Enum.GetValues<T>().Select(v => new object[] { $"{typeof(T).Name}.{v}", map(v) });

@@ -1,0 +1,69 @@
+@* Phase 22 P3: one section's floor plan. Tiles are placed in percent of the layout box, so the plan scales to the
+   available width with no script. Below a scale of 0.5 the plan scrolls sideways instead of shrinking (the layout
+   box gets min-width = 0.5 x layout width), and every tile keeps a 44 px minimum hit area; a tile under 64 px wide
+   shows only its code. Status colour and badge text come from the same sources as TableCard. *@
+@using System.Globalization
+@using HotelPOS.Contracts.Floor
+
+<div class="floor-map-scroll" data-testid="floor-map">
+    <div class="floor-map" style="@BoxStyle">
+        @foreach (var tile in Placed)
+        {
+            var t = tile.Table;
+            <button type="button" class="floor-tile st-@StatusLabels.TableClass(t.Status) @(tile.Geometry.Shape == TableShape.Round ? "round" : null)"
+                    data-testid="floor-tile" data-table-id="@t.Id" data-status="@t.Status" style="@TileStyle(tile.Geometry)"
+                    title="@t.Code, @TextFormat.Count(t.Capacity, "seat"), @StatusPresentation.For(t.Status).Label"
+                    @onclick="() => OnOpen.InvokeAsync(t)">
+                <span class="floor-tile-body" style="@CounterRotate(tile.Geometry)">
+                    <span class="table-code">@t.Code</span>
+                    <span class="floor-tile-meta small">@t.Capacity</span>
+                    @if (t.UpcomingReservation is { } upcoming)
+                    {
+                        <span class="floor-tile-res" data-testid="table-reservation-badge" title="@upcoming.StartTimeUtc.ToLocalTime().ToString("t") (@upcoming.PartySize)"><Icon Name="calendar" Size="12" /></span>
+                    }
+                </span>
+            </button>
+        }
+    </div>
+</div>
+
+@code {
+    private const int Margin = 24;
+    public const double MinScale = 0.5;
+
+    private sealed record Tile(TableDto Table, FloorTableDto Geometry);
+
+    /// <summary>Geometry from the layout query.</summary>
+    [Parameter, EditorRequired] public FloorLayoutDto Layout { get; set; } = new();
+
+    /// <summary>Live state by table id (the page's table list), so status never comes from the layout response.</summary>
+    [Parameter, EditorRequired] public IReadOnlyDictionary<int, TableDto> Tables { get; set; } = new Dictionary<int, TableDto>();
+
+    [Parameter] public EventCallback<TableDto> OnOpen { get; set; }
+
+    private List<Tile> Placed => Layout.Tables
+        .Where(g => g.HasLayout && g.PosX.HasValue && g.PosY.HasValue && g.Width.HasValue && g.Height.HasValue && Tables.ContainsKey(g.TableId))
+        .Select(g => new Tile(Tables[g.TableId], g))
+        .ToList();
+
+    private double LayoutWidth => Placed.Max(p => p.Geometry.PosX!.Value + p.Geometry.Width!.Value) + Margin;
+
+    private double LayoutHeight => Placed.Max(p => p.Geometry.PosY!.Value + p.Geometry.Height!.Value) + Margin;
+
+    private string BoxStyle =>
+        $"aspect-ratio:{N(LayoutWidth)}/{N(LayoutHeight)};min-width:{N(LayoutWidth * MinScale)}px";
+
+    private string TileStyle(FloorTableDto g)
+    {
+        var w = LayoutWidth;
+        var h = LayoutHeight;
+        var rotation = g.Rotation is { } r && r != 0 ? $";transform:rotate({r}deg)" : string.Empty;
+        return $"left:{Pct(g.PosX!.Value, w)};top:{Pct(g.PosY!.Value, h)};width:{Pct(g.Width!.Value, w)};height:{Pct(g.Height!.Value, h)}{rotation}";
+    }
+
+    private static string? CounterRotate(FloorTableDto g) => g.Rotation is { } r && r != 0 ? $"transform:rotate({-r}deg)" : null;
+
+    private static string Pct(int value, double total) => N(value / total * 100) + "%";
+
+    private static string N(double value) => value.ToString("0.###", CultureInfo.InvariantCulture);
+}

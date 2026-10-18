@@ -5,6 +5,7 @@ using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
 using HotelPOS.Application.Features.Floor;
 using HotelPOS.Application.Features.Kitchen;
+using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Orders;
 using HotelPOS.Contracts.Security;
 using HotelPOS.Domain.Kitchen;
@@ -77,7 +78,8 @@ internal sealed class CancelOrderHandler : ICommandHandler<CancelOrderCommand, O
                 return AppErrors.Validation("reason", "Enter the reason for cancelling an order that is being prepared.");
         }
 
-        var table = order.Table!;
+        var table = order.Table;
+        var tableCode = OrderChannels.TableLabel(order.OrderType, order.OrderNumber, table?.Code);
         var openTickets = (await _kitchen.LoadTicketsAsync(order.Id, cancellationToken)).Where(t => t.IsOpen).ToList();
         foreach (var ticket in openTickets)
         {
@@ -85,20 +87,23 @@ internal sealed class CancelOrderHandler : ICommandHandler<CancelOrderCommand, O
         }
 
         order.Cancel(_orders.UserId, request.Reason, _clock.UtcNow);
-        if (table.CurrentOrderId == order.Id)
+        if (table != null && table.CurrentOrderId == order.Id)
         {
             table.DetachOrder(order.OpenedOnOccupiedTable);
         }
 
         _audit.Add(AuditActions.OrderCancelled, nameof(Order), order.Id.ToString(),
-            newValues: new { order.OrderNumber, Table = table.Code, order.CancelReason });
+            newValues: new { order.OrderNumber, Table = tableCode, order.CancelReason });
 
         var result = await _orders.SaveAsync(order, cancellationToken);
         if (result.IsSuccess)
         {
-            _afterCommit.Enqueue(() => _events.PublishCancelledAsync(order, table.Code));
-            _afterCommit.Enqueue(() => _tableEvents.PublishStatusAsync(table));
-            _afterCommit.Enqueue(() => _kitchen.PublishAsync(order, table, new KitchenChange(order.Status, order.Status, table.Status, table.Status),
+            _afterCommit.Enqueue(() => _events.PublishCancelledAsync(order, tableCode));
+            if (table != null)
+            {
+                _afterCommit.Enqueue(() => _tableEvents.PublishStatusAsync(table));
+            }
+            _afterCommit.Enqueue(() => _kitchen.PublishAsync(order, table, new KitchenChange(order.Status, order.Status, table?.Status ?? TableStatus.Available, table?.Status ?? TableStatus.Available),
                 Array.Empty<KitchenOrder>(), openTickets, Array.Empty<string>()));
         }
 

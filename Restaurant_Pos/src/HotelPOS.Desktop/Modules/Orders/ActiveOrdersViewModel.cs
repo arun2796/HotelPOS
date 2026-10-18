@@ -12,6 +12,7 @@ using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Auth;
 using HotelPOS.Desktop.Services.Navigation;
+using HotelPOS.Desktop.Services.Orders;
 using HotelPOS.Desktop.Services.Realtime;
 
 namespace HotelPOS.Desktop.Modules.Orders;
@@ -20,6 +21,11 @@ namespace HotelPOS.Desktop.Modules.Orders;
 public sealed record OrderStatusFilter(OrderStatus? Status, string Label, int Count)
 {
     public string Text => $"{Label} ({Count})";
+}
+
+public sealed record OrderChannelFilter(OrderType? Channel, string Label, int Count)
+{
+    public string Text => Count > 0 ? $"{Label} ({Count})" : Label;
 }
 
 /// <summary>One line of the detail pane: an order item with its modifiers and note, as the kitchen saw it.</summary>
@@ -62,6 +68,8 @@ public sealed partial class ActiveOrdersViewModel : ViewModelBase, INavigationAw
         CanOpenTables = roles.Any(r => r is Roles.Waiter or Roles.Cashier or Roles.Manager or Roles.Admin);
         Filters.Add(new OrderStatusFilter(null, "All", 0));
         _selectedFilter = Filters[0];
+        ChannelFilters.Add(new OrderChannelFilter(null, "All", 0));
+        _selectedChannelFilter = ChannelFilters[0];
     }
 
     public bool CanOpenTables { get; }
@@ -70,12 +78,17 @@ public sealed partial class ActiveOrdersViewModel : ViewModelBase, INavigationAw
 
     public ObservableCollection<OrderStatusFilter> Filters { get; } = new();
 
+    public ObservableCollection<OrderChannelFilter> ChannelFilters { get; } = new();
+
     public IReadOnlyList<SortOption> SortOptions => ActiveOrderQueries.SortOptions;
 
     public ObservableCollection<OrderDetailLine> DetailLines { get; } = new();
 
     [ObservableProperty]
     private OrderStatusFilter? _selectedFilter;
+
+    [ObservableProperty]
+    private OrderChannelFilter? _selectedChannelFilter;
 
     [ObservableProperty]
     private string _search = string.Empty;
@@ -90,7 +103,7 @@ public sealed partial class ActiveOrdersViewModel : ViewModelBase, INavigationAw
     private string _summaryText = string.Empty;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasSelection))]
+    [NotifyPropertyChangedFor(nameof(HasSelection), nameof(OpenButtonText), nameof(CanOpenSelection))]
     private OrderRow? _selectedRow;
 
     [ObservableProperty]
@@ -104,7 +117,18 @@ public sealed partial class ActiveOrdersViewModel : ViewModelBase, INavigationAw
 
     public bool HasDetail => Detail is not null;
 
-    public string DetailTitle => Detail is { } d ? $"#{d.OrderNumber} · {d.TableCode}" : SelectedRow?.Title ?? string.Empty;
+    public string OpenButtonText => SelectedRow?.IsDraft == true ? "Resume draft" : "Open table";
+
+    public bool CanOpenSelection => SelectedRow?.IsDraft == true || CanOpenTables;
+
+    public string DetailTitle => Detail is { } d
+        ? d.OrderType switch
+        {
+            OrderType.Takeaway => $"#{d.OrderNumber} · Takeaway",
+            OrderType.Delivery => $"#{d.OrderNumber} · Delivery",
+            _ => $"#{d.OrderNumber} · {d.TableCode}",
+        }
+        : SelectedRow?.Title ?? string.Empty;
 
     public string DetailSubtitle => Detail is { } d
         ? $"{d.WaiterName} · {Plural.Count(d.GuestCount, "guest")} · {StatusLabels.For(d.Status)}"
@@ -185,6 +209,14 @@ public sealed partial class ActiveOrdersViewModel : ViewModelBase, INavigationAw
         }
     }
 
+    partial void OnSelectedChannelFilterChanged(OrderChannelFilter? value)
+    {
+        if (!_rebuilding)
+        {
+            ApplyFilters();
+        }
+    }
+
     partial void OnSearchChanged(string value) => ApplyFilters();
 
     partial void OnSelectedSortChanged(SortOption value) => ApplyFilters();
@@ -200,6 +232,8 @@ public sealed partial class ActiveOrdersViewModel : ViewModelBase, INavigationAw
     private void RebuildFilters()
     {
         var current = SelectedFilter?.Status;
+        var currentChannel = SelectedChannelFilter?.Channel;
+
         Filters.Clear();
         Filters.Add(new OrderStatusFilter(null, "All", _all.Count));
         foreach (var (status, count) in ActiveOrderQueries.CountByStatus(_all))
@@ -207,11 +241,18 @@ public sealed partial class ActiveOrdersViewModel : ViewModelBase, INavigationAw
             Filters.Add(new OrderStatusFilter(status, StatusLabels.For(status), count));
         }
 
+        ChannelFilters.Clear();
+        ChannelFilters.Add(new OrderChannelFilter(null, "All", _all.Count));
+        ChannelFilters.Add(new OrderChannelFilter(OrderType.DineIn, "Dine-In", _all.Count(o => o.OrderType == OrderType.DineIn)));
+        ChannelFilters.Add(new OrderChannelFilter(OrderType.Takeaway, "Takeaway", _all.Count(o => o.OrderType == OrderType.Takeaway)));
+        ChannelFilters.Add(new OrderChannelFilter(OrderType.Delivery, "Delivery", _all.Count(o => o.OrderType == OrderType.Delivery)));
+
         // Keep the chip the manager had chosen; a status that has no order left falls back to All.
         _rebuilding = true;
         try
         {
             SelectedFilter = Filters.FirstOrDefault(f => f.Status == current) ?? Filters[0];
+            SelectedChannelFilter = ChannelFilters.FirstOrDefault(f => f.Channel == currentChannel) ?? ChannelFilters[0];
         }
         finally
         {
@@ -222,7 +263,7 @@ public sealed partial class ActiveOrdersViewModel : ViewModelBase, INavigationAw
     private void ApplyFilters()
     {
         var now = DateTime.UtcNow;
-        var visible = ActiveOrderQueries.Apply(_all, SelectedFilter?.Status, Search, SelectedSort.Sort);
+        var visible = ActiveOrderQueries.Apply(_all, SelectedFilter?.Status, Search, SelectedSort.Sort, SelectedChannelFilter?.Channel);
         var selectedId = SelectedRow?.Order.Id;
         Rows.Clear();
         foreach (var order in visible)
@@ -296,10 +337,32 @@ public sealed partial class ActiveOrdersViewModel : ViewModelBase, INavigationAw
     [RelayCommand]
     private void ClearSearch() => Search = string.Empty;
 
-    /// <summary>"View": the table behind the order, the screen that already knows how to act on it.</summary>
+    /// <summary>"View" or "Resume": the table behind the order, or the builder for drafts.</summary>
     [RelayCommand]
-    private Task OpenAsync(OrderRow? row) =>
-        row is not null && CanOpenTables ? _navigation.NavigateToAsync(ModuleRegistry.Tables, row.Order.TableId) : Task.CompletedTask;
+    private Task OpenAsync(OrderRow? row)
+    {
+        if (row is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        if (row.IsDraft)
+        {
+            var ctx = new OrderBuilderContext(
+                row.Order.TableId,
+                row.Order.TableCode ?? string.Empty,
+                OrderBuilderMode.EditDraft,
+                row.Order.GuestCount,
+                row.Order.Id,
+                row.Order.OrderNumber,
+                row.Order.OrderType);
+            return _navigation.NavigateToPageAsync<OrderBuilderViewModel>(ctx);
+        }
+
+        return row.Order.TableId is { } tableId && CanOpenTables
+            ? _navigation.NavigateToAsync(ModuleRegistry.Tables, tableId)
+            : Task.CompletedTask;
+    }
 
     [RelayCommand]
     private Task OpenSelectedTableAsync() => OpenAsync(SelectedRow);

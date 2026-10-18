@@ -43,6 +43,7 @@
           <RowDefinition Height="Auto" />
           <RowDefinition Height="Auto" />
           <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
           <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
@@ -60,7 +61,24 @@
         <controls:SearchBox Grid.Row="1" Margin="16,12,16,0" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
                             Placeholder="Search order, table or bill number" AutomationProperties.Name="Search bills" />
 
-        <ItemsControl Grid.Row="2" ItemsSource="{Binding Chips}" Margin="16,10,8,0" Focusable="False">
+        <ItemsControl Grid.Row="2" ItemsSource="{Binding ChannelChips}" Margin="16,8,8,0" Focusable="False">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <WrapPanel />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="{x:Type billing:ChannelFilterChip}">
+              <ToggleButton Style="{StaticResource Cashier.FilterChip}" IsChecked="{Binding IsSelected, Mode=OneWay}"
+                            Command="{Binding DataContext.SelectChannelFilterCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                            CommandParameter="{Binding Channel}" AutomationProperties.Name="{Binding Label}">
+                <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
+              </ToggleButton>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <ItemsControl Grid.Row="3" ItemsSource="{Binding Chips}" Margin="16,4,8,0" Focusable="False">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate>
               <WrapPanel />
@@ -82,21 +100,21 @@
           </ItemsControl.ItemTemplate>
         </ItemsControl>
 
-        <ListBox Grid.Row="3" Style="{StaticResource Segmented}" SelectedIndex="{Binding SortIndex}" Margin="16,8,16,10"
+        <ListBox Grid.Row="4" Style="{StaticResource Segmented}" SelectedIndex="{Binding SortIndex}" Margin="16,8,16,10"
                  Visibility="{Binding IsPaidFilter, Converter={StaticResource InverseBoolToVisibility}}" AutomationProperties.Name="Sort bills">
           <ListBoxItem Content="Oldest first" />
           <ListBoxItem Content="Highest amount" />
         </ListBox>
 
-        <Border Grid.Row="4" Style="{StaticResource Banner.Error}" Margin="16,0,16,8"
+        <Border Grid.Row="5" Style="{StaticResource Banner.Error}" Margin="16,0,16,8"
                 Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibility}}">
           <TextBlock Text="{Binding ErrorMessage}" Style="{StaticResource Text.Error}" TextWrapping="Wrap" />
         </Border>
 
-        <controls:EmptyState Grid.Row="5" Icon="receipt" Title="{Binding EmptyTitle}" Message="{Binding EmptyMessage}" Margin="16"
+        <controls:EmptyState Grid.Row="6" Icon="receipt" Title="{Binding EmptyTitle}" Message="{Binding EmptyMessage}" Margin="16"
                              Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}" />
 
-        <ListBox Grid.Row="5" ItemsSource="{Binding Bills}" SelectedItem="{Binding SelectedBill, Mode=TwoWay}"
+        <ListBox Grid.Row="6" ItemsSource="{Binding Bills}" SelectedItem="{Binding SelectedBill, Mode=TwoWay}"
                  Style="{StaticResource Cashier.Queue}" ItemContainerStyle="{StaticResource Cashier.QueueItem}"
                  ItemTemplate="{StaticResource Cashier.BillCard}" AutomationProperties.Name="Bill queue" />
       </Grid>

@@ -364,7 +364,13 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
 
     public bool IsDonePanel => ActivePanel == BillPanel.Done;
 
-    public string Title => Bill is null ? "Bill" : $"Table {Bill.TableCode} · Order #{Bill.OrderNumber}";
+    public string Title => Bill is null ? "Bill"
+        : Bill.OrderType switch
+        {
+            OrderType.Takeaway => $"Takeaway · Order #{Bill.OrderNumber}",
+            OrderType.Delivery => $"Delivery · Order #{Bill.OrderNumber}",
+            _ => $"Table {Bill.TableCode} · Order #{Bill.OrderNumber}",
+        };
 
     public string Subtitle => Bill is null ? string.Empty
         : $"Bill {Bill.BillNumber} · {Bill.WaiterName} · {Plural.Count(Bill.GuestCount, "guest")} · requested {Bill.RequestedAtUtc.ToLocalTime().ToString("HH:mm", CultureInfo.CurrentCulture)}";

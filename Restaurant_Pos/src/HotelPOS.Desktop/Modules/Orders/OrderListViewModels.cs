@@ -11,6 +11,7 @@ using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Auth;
 using HotelPOS.Desktop.Services.Navigation;
+using HotelPOS.Desktop.Services.Orders;
 using HotelPOS.Desktop.Services.Realtime;
 
 namespace HotelPOS.Desktop.Modules.Orders;
@@ -22,6 +23,8 @@ public sealed record OrderRow(OrderSummaryDto Order, string ElapsedText, string 
     public string StatusText => StatusLabels.For(Order.Status);
 
     public bool IsDraft => Order.Status == OrderStatus.Draft;
+
+    public string ActionText => IsDraft ? "Resume" : "View";
 
     public bool IsReady => Order.Status == OrderStatus.Ready;
 
@@ -35,6 +38,19 @@ public sealed record OrderRow(OrderSummaryDto Order, string ElapsedText, string 
     public string ItemCountText => Plural.Count(Order.ItemCount, "item");
 
     public string GuestsText => Plural.Count(Order.GuestCount, "guest");
+
+    public OrderType OrderType => Order.OrderType;
+
+    public bool IsTakeaway => Order.OrderType == OrderType.Takeaway;
+
+    public bool IsDelivery => Order.OrderType == OrderType.Delivery;
+
+    public string ChannelText => Order.OrderType switch
+    {
+        OrderType.Takeaway => "Takeaway",
+        OrderType.Delivery => "Delivery",
+        _ => "Dine-In",
+    };
 }
 
 public abstract partial class OrderListViewModelBase : ViewModelBase, INavigationAware, IRefreshable, IDisposable
@@ -135,8 +151,28 @@ public abstract partial class OrderListViewModelBase : ViewModelBase, INavigatio
     private Task RefreshListAsync() => RefreshAsync();
 
     [RelayCommand]
-    private Task OpenAsync(OrderRow? row) =>
-        row is not null && CanOpenTables ? _navigation.NavigateToAsync(ModuleRegistry.Tables, row.Order.TableId) : Task.CompletedTask;
+    private Task OpenAsync(OrderRow? row)
+    {
+        if (row is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        if (row.IsDraft)
+        {
+            var ctx = new OrderBuilderContext(
+                row.Order.TableId,
+                row.Order.TableCode ?? string.Empty,
+                OrderBuilderMode.EditDraft,
+                row.Order.GuestCount,
+                row.Order.Id,
+                row.Order.OrderNumber,
+                row.Order.OrderType);
+            return _navigation.NavigateToPageAsync<OrderBuilderViewModel>(ctx);
+        }
+
+        return CanOpenTables ? _navigation.NavigateToAsync(ModuleRegistry.Tables, row.Order.TableId) : Task.CompletedTask;
+    }
 
     // Any event payload: the list is simply reloaded.
     private sealed record RealtimeNotice;

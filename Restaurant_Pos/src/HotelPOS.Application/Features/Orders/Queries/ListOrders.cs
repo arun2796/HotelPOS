@@ -25,11 +25,13 @@ internal sealed class ListOrdersHandler : IQueryHandler<ListOrdersQuery, PagedRe
 {
     private readonly IAppDbContext _db;
     private readonly OrderSteps _orders;
+    private readonly ICurrentUser _currentUser;
 
-    public ListOrdersHandler(IAppDbContext db, OrderSteps orders)
+    public ListOrdersHandler(IAppDbContext db, OrderSteps orders, ICurrentUser currentUser)
     {
         _db = db;
         _orders = orders;
+        _currentUser = currentUser;
     }
 
     public async Task<Result<PagedResult<OrderSummaryDto>>> Handle(ListOrdersQuery request, CancellationToken cancellationToken)
@@ -43,6 +45,11 @@ internal sealed class ListOrdersHandler : IQueryHandler<ListOrdersQuery, PagedRe
             orders = orders.Where(o => o.Status == status);
         }
 
+        if (query.OrderType is { } orderType)
+        {
+            orders = orders.Where(o => o.OrderType == orderType);
+        }
+
         if (query.TableId is { } tableId)
         {
             orders = orders.Where(o => o.TableId == tableId);
@@ -51,6 +58,11 @@ internal sealed class ListOrdersHandler : IQueryHandler<ListOrdersQuery, PagedRe
         if (query.WaiterId is { } waiterId)
         {
             orders = orders.Where(o => o.WaiterId == waiterId);
+        }
+
+        if (query.Mine == true && _currentUser.UserId is { } myId)
+        {
+            orders = orders.Where(o => o.WaiterId == myId);
         }
 
         if (query.FromUtc is { } from)

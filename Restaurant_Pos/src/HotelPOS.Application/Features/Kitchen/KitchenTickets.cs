@@ -5,6 +5,8 @@ using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Kitchen;
+using HotelPOS.Contracts.Menu;
+using HotelPOS.Contracts.Orders;
 using HotelPOS.Domain.Common;
 using HotelPOS.Domain.Kitchen;
 using Microsoft.EntityFrameworkCore;
@@ -47,7 +49,13 @@ internal sealed class KitchenTickets
         var waiterIds = tickets.Select(t => t.Order!.WaiterId).Distinct().ToList();
         var waiters = await _db.Users.AsNoTracking().Where(u => waiterIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.DisplayName, cancellationToken);
         var stations = await _db.PreparationStations.AsNoTracking().ToDictionaryAsync(s => s.Id, s => s.Code, cancellationToken);
-        return tickets.Select(t => ToDto(t, waiters.GetValueOrDefault(t.Order!.WaiterId, string.Empty), stations.GetValueOrDefault(t.PreparationStationId, string.Empty))).ToList();
+        // One batched lookup for every item on the page (a fixed number of queries however many items there are).
+        var menuItemIds = tickets.SelectMany(t => t.Items).Select(i => i.OrderItem!.MenuItemId).Distinct().ToList();
+        var images = await _db.MenuItems.AsNoTracking()
+            .Where(m => menuItemIds.Contains(m.Id) && m.ImagePath != null)
+            .Select(m => new { m.Id, m.ImagePath })
+            .ToDictionaryAsync(m => m.Id, m => MenuImageRoutes.UrlFor(m.ImagePath!), cancellationToken);
+        return tickets.Select(t => ToDto(t, waiters.GetValueOrDefault(t.Order!.WaiterId, string.Empty), stations.GetValueOrDefault(t.PreparationStationId, string.Empty), images)).ToList();
     }
 
     // One step of the ticket state machine; the order and table follow the tickets.
@@ -96,14 +104,20 @@ internal sealed class KitchenTickets
         return await GetAsync(id, cancellationToken);
     }
 
-    private static KitchenTicketDto ToDto(KitchenOrder ticket, string waiterName, string stationCode) => new()
+    private static KitchenTicketDto ToDto(KitchenOrder ticket, string waiterName, string stationCode, IReadOnlyDictionary<int, string> images) => new()
     {
         Id = ticket.Id,
         TicketNumber = ticket.TicketNumber,
         OrderId = ticket.OrderId,
         OrderNumber = ticket.Order?.OrderNumber ?? 0,
         BatchNumber = ticket.BatchNumber,
-        TableCode = ticket.Order?.Table?.Code ?? string.Empty,
+        TableCode = ticket.Order is null
+            ? string.Empty
+            : OrderChannels.TableLabel(ticket.Order.OrderType, ticket.Order.OrderNumber, ticket.Order.Table?.Code),
+        OrderType = ticket.Order?.OrderType ?? OrderType.DineIn,
+        CustomerName = ticket.Order?.CustomerName,
+        CustomerPhone = ticket.Order?.CustomerPhone,
+        DeliveryAddress = ticket.Order?.DeliveryAddress,
         WaiterName = waiterName,
         StationId = ticket.PreparationStationId,
         StationCode = stationCode,
@@ -122,6 +136,7 @@ internal sealed class KitchenTickets
             Notes = i.OrderItem?.Notes,
             Modifiers = i.OrderItem?.Modifiers.Select(m => m.Name).ToList() ?? new List<string>(),
             IsCancelled = i.IsCancelled,
+            ImageUrl = i.OrderItem is not null && images.TryGetValue(i.OrderItem.MenuItemId, out var url) ? url : null,
         }).ToList(),
         RowVersion = RowVersions.Encode(ticket.RowVersion),
     };

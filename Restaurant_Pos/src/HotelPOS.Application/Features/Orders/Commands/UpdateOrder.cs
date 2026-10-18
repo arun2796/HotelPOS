@@ -67,15 +67,21 @@ internal sealed class UpdateOrderHandler : ICommandHandler<UpdateOrderCommand, O
 
         var oldValues = new { order.GuestCount, order.Notes };
         order.UpdateDetails(request.GuestCount, request.Notes);
-        var table = order.Table!;
-        table.SetGuestCount(order.GuestCount);
+        var table = order.Table;
+        if (table is not null)
+        {
+            table.SetGuestCount(order.GuestCount);
+        }
         _audit.Add(AuditActions.OrderUpdated, nameof(Order), order.Id.ToString(), oldValues, new { order.GuestCount, order.Notes });
 
         var result = await _orders.SaveAsync(order, cancellationToken);
         if (result.IsSuccess)
         {
             _afterCommit.Enqueue(() => _events.PublishUpdatedAsync(order, OrderChangeTypes.GuestsChanged));
-            _afterCommit.Enqueue(() => _tableEvents.PublishStatusAsync(table, order.OrderNumber));
+            if (table is not null)
+            {
+                _afterCommit.Enqueue(() => _tableEvents.PublishStatusAsync(table, order.OrderNumber));
+            }
         }
 
         return result;

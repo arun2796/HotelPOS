@@ -69,6 +69,38 @@ public sealed class KitchenDisplayViewModelTests : IDisposable
     }
 
     [Fact]
+    public async Task ShowPictures_IsOffByDefault_AndTurningItOnLoadsThePicturesAndIsRemembered()
+    {
+        var menu = Substitute.For<IMenuCache>();
+        menu.GetImageFileAsync("/images/menu/biryani.jpg").Returns("C:\\cache\\biryani.jpg");
+        var system = Substitute.For<ISystemApi>();
+        system.GetPublicSettingsAsync(Arg.Any<CancellationToken>()).Returns(ApiResult<List<SettingDto>>.Ok(new List<SettingDto>()));
+        var menuApi = Substitute.For<IMenuApi>();
+        menuApi.GetStationsAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(ApiResult<List<StationDto>>.Ok(new List<StationDto>()));
+        ReturnsOpen(Ticket(1, KitchenOrderStatus.New) with
+        {
+            Items = new[] { new KitchenTicketItemDto { OrderItemId = 1, Name = "Chicken Biryani", Quantity = 2, ImageUrl = "/images/menu/biryani.jpg" } },
+        });
+        using var vm = new KitchenDisplayViewModel(_api, menuApi, menu, system, _realtime, _settings, _router, Substitute.For<INotificationService>());
+
+        vm.ShowPictures.Should().BeFalse("pictures are off by default on the KDS");
+        await vm.OnNavigatedToAsync(null);
+        var line = vm.NewTickets.Single().Lines.Single();
+        line.ImageUrl.Should().Be("/images/menu/biryani.jpg", "rows carry the image URL");
+        line.HasPicture.Should().BeFalse();
+        await menu.DidNotReceive().GetImageFileAsync(Arg.Any<string?>());
+
+        vm.ShowPictures = true;
+        await WaitUntilAsync(() => line.HasPicture);
+
+        line.ImageFile.Should().Be("C:\\cache\\biryani.jpg");
+        _settings.Current.ShowTicketPictures.Should().BeTrue();
+        vm.ShowPictures = false;
+        line.HasPicture.Should().BeFalse();
+        _settings.Current.ShowTicketPictures.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task AnUpdateEvent_MovesTheCard_AndADuplicateChangesNothing()
     {
         await _vm.OnNavigatedToAsync(null);

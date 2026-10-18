@@ -13,6 +13,10 @@ public static class Permissions
     public const string TablesView = "tables.view";
     public const string TablesOperate = "tables.operate";
     public const string TablesManage = "tables.manage";
+    public const string FloorLayoutManage = "floor.layout.manage";
+
+    public const string ReservationsView = "reservations.view";
+    public const string ReservationsManage = "reservations.manage";
 
     public const string MenuView = "menu.view";
     public const string MenuManage = "menu.manage";
@@ -38,18 +42,23 @@ public static class Permissions
     public const string GstView = "gst.view";
     public const string PeriodClose = "period.close";
 
+    public const string ExpensesView = "expenses.view";
+    public const string ExpensesManage = "expenses.manage";
+
     public const string LicenseManage = "license.manage";
     public const string ImportRun = "import.run";
 
     public static IReadOnlyList<string> All { get; } = new[]
     {
         UsersManage, RolesManage, SettingsManage, DevicesManage, AuditView, BackupManage, ServerManage,
-        TablesView, TablesOperate, TablesManage,
+        TablesView, TablesOperate, TablesManage, FloorLayoutManage,
+        ReservationsView, ReservationsManage,
         MenuView, MenuManage, MenuAvailability,
         OrdersCreate, OrdersEditAny, OrdersCancelAny,
         KitchenOperate,
         BillingOperate, BillingDiscount, BillingVoid, BillingRefund,
         ReportsView,
+        ExpensesView, ExpensesManage,
         ShiftOperate, ShiftManage, DayEndRun,
         GstView, PeriodClose,
         LicenseManage, ImportRun,

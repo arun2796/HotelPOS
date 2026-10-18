@@ -1,6 +1,7 @@
 @page "/my-orders"
 @attribute [Authorize]
 @implements IDisposable
+@using HotelPOS.Contracts.Enums
 @using HotelPOS.Contracts.Orders
 @using HotelPOS.Contracts.Realtime
 @inject WebAuthState Auth
@@ -14,6 +15,21 @@
 <OfflineBanner>Offline — order states may be out of date until the connection is back.</OfflineBanner>
 
 <Tabs Items="TabItems" Selected="@_tab" SelectedChanged="SelectTabAsync" />
+
+<div class="channel-chips" data-testid="channel-chips" style="display: flex; gap: 8px; margin: 12px 0; overflow-x: auto;">
+    <button type="button" class="filter-chip @(_channelFilter == null ? "on" : null)" @onclick="() => FilterChannel(null)">
+        All @(CountForChannel(null) is { } c0 ? $"({c0})" : null)
+    </button>
+    <button type="button" class="filter-chip @(_channelFilter == OrderType.DineIn ? "on" : null)" @onclick="() => FilterChannel(OrderType.DineIn)">
+        Dine-In @(CountForChannel(OrderType.DineIn) is { } c1 ? $"({c1})" : null)
+    </button>
+    <button type="button" class="filter-chip @(_channelFilter == OrderType.Takeaway ? "on" : null)" @onclick="() => FilterChannel(OrderType.Takeaway)">
+        Takeaway @(CountForChannel(OrderType.Takeaway) is { } c2 ? $"({c2})" : null)
+    </button>
+    <button type="button" class="filter-chip @(_channelFilter == OrderType.Delivery ? "on" : null)" @onclick="() => FilterChannel(OrderType.Delivery)">
+        Delivery @(CountForChannel(OrderType.Delivery) is { } c3 ? $"({c3})" : null)
+    </button>
+</div>
 
 @if (_tab == ActiveTab)
 {
@@ -31,12 +47,53 @@
     }
     else
     {
-        <div class="page-sub" data-testid="orders-summary">@TextFormat.Count(_orders.Count, "active order") · ready ones first</div>
+        <div class="page-sub" data-testid="orders-summary">@TextFormat.Count(VisibleOrders.Count(), "active order") · ready ones first</div>
         <div class="stack" data-testid="active-orders">
-            @foreach (var order in _orders)
+            @foreach (var order in VisibleOrders)
             {
                 var o = order;
                 <OrderCard Order="o" Elapsed="@Elapsed(o)" OnClick="() => Open(o)" />
+            }
+        </div>
+    }
+}
+else if (_tab == HeldTab)
+{
+    @if (_heldError is not null)
+    {
+        <ErrorState Message="@_heldError" OnRetry="LoadHeldAsync" />
+    }
+    else if (_held is null)
+    {
+        <Skeleton Variant="Skeleton.SkeletonVariant.Card" Count="3" Label="Loading" />
+    }
+    else if (_held.Count == 0)
+    {
+        <EmptyState Icon="receipt" Text="No held orders." />
+    }
+    else
+    {
+        <div class="page-sub" data-testid="held-orders-summary">@TextFormat.Count(VisibleHeld.Count(), "held order") · newest first</div>
+        <div class="stack" data-testid="held-orders">
+            @foreach (var order in VisibleHeld)
+            {
+                var o = order;
+                <div class="card order-card" data-testid="held-order-card" style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; padding: 16px; cursor: default;">
+                    <div>
+                        <div class="order-card-head" style="margin-bottom: 4px;">
+                            <b class="order-card-title">#@o.OrderNumber · @(o.TableCode is not null ? $"Table {o.TableCode}" : StatusPresentation.For(o.OrderType).Label)</b>
+                            @if (o.OrderType is OrderType.Takeaway or OrderType.Delivery)
+                            {
+                                <StatusBadge Display="StatusPresentation.For(o.OrderType)" />
+                            }
+                        </div>
+                        <div class="order-card-foot muted small">@TextFormat.Count(o.ItemCount, "item") · @TextFormat.Count(o.GuestCount, "guest")</div>
+                        <div class="order-card-total num-tab" style="margin-top: 4px;">approx. @o.ApproxTotal.ToString("N2")</div>
+                    </div>
+                    <div>
+                        <button type="button" class="btn primary" data-testid="resume-order" @onclick="() => Resume(o)">Resume</button>
+                    </div>
+                </div>
             }
         </div>
     }
@@ -57,9 +114,9 @@ else
     }
     else
     {
-        <div class="page-sub">@TextFormat.Count(_completed.Count, "order") today · newest first</div>
+        <div class="page-sub">@TextFormat.Count(VisibleCompleted.Count(), "order") today · newest first</div>
         <div class="stack" data-testid="completed-orders">
-            @foreach (var order in _completed)
+            @foreach (var order in VisibleCompleted)
             {
                 var o = order;
                 <OrderCard Order="o" Elapsed="@null" ShowProgress="false" OnClick="() => OpenCompleted(o)" />
@@ -70,20 +127,49 @@ else
 
 @code {
     private const string ActiveTab = "active";
+    private const string HeldTab = "held";
     private const string CompletedTab = "completed";
 
     private List<OrderSummaryDto>? _orders;
+    private List<OrderSummaryDto>? _held;
     private List<OrderSummaryDto>? _completed;
     private string? _error;
+    private string? _heldError;
     private string? _completedError;
     private string _tab = ActiveTab;
+    private OrderType? _channelFilter;
     private readonly List<IDisposable> _subscriptions = new();
     private CancellationTokenSource? _debounce;
     private Timer? _tick;
 
+    private IEnumerable<OrderSummaryDto> VisibleOrders =>
+        (_orders ?? new List<OrderSummaryDto>())
+        .Where(o => _channelFilter == null || o.OrderType == _channelFilter);
+
+    private IEnumerable<OrderSummaryDto> VisibleHeld =>
+        (_held ?? new List<OrderSummaryDto>())
+        .Where(o => _channelFilter == null || o.OrderType == _channelFilter);
+
+    private IEnumerable<OrderSummaryDto> VisibleCompleted =>
+        (_completed ?? new List<OrderSummaryDto>())
+        .Where(o => _channelFilter == null || o.OrderType == _channelFilter);
+
+    private int? CountForChannel(OrderType? type)
+    {
+        var list = _tab == ActiveTab ? _orders : _tab == HeldTab ? _held : _completed;
+        if (list is null) return null;
+        return type is null ? list.Count : list.Count(o => o.OrderType == type);
+    }
+
+    private void FilterChannel(OrderType? type)
+    {
+        _channelFilter = type;
+    }
+
     private IReadOnlyList<TabItem> TabItems => new[]
     {
         new TabItem(ActiveTab, "Active", _orders?.Count),
+        new TabItem(HeldTab, "Held", _held?.Count),
         new TabItem(CompletedTab, "Completed", _completed?.Count),
     };
 
@@ -116,9 +202,29 @@ else
             _error = result.Message;
         }
 
+        await LoadHeldAsync();
+
         if (_tab == CompletedTab)
         {
             await LoadCompletedAsync();
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadHeldAsync()
+    {
+        var result = await Api.GetHeldOrdersAsync();
+        if (result.Success && result.Data is { } page)
+        {
+            _held = page.Items
+                .OrderByDescending(o => o.CreatedAtUtc)
+                .ToList();
+            _heldError = null;
+        }
+        else if (_held is null)
+        {
+            _heldError = result.Message;
         }
 
         await InvokeAsync(StateHasChanged);
@@ -148,7 +254,11 @@ else
     private async Task SelectTabAsync(string tab)
     {
         _tab = tab;
-        if (tab == CompletedTab && _completed is null)
+        if (tab == HeldTab && _held is null)
+        {
+            await LoadHeldAsync();
+        }
+        else if (tab == CompletedTab && _completed is null)
         {
             await LoadCompletedAsync();
         }
@@ -162,7 +272,29 @@ else
         _ = Task.Delay(250, cts.Token).ContinueWith(t => { if (!t.IsCanceled) { _ = InvokeAsync(RefreshAsync); } }, TaskScheduler.Default);
     }
 
-    private void Open(OrderSummaryDto order) => Navigation.NavigateTo($"tables/{order.TableId}");
+    private void Open(OrderSummaryDto order)
+    {
+        if (order.TableId is { } tableId)
+        {
+            Navigation.NavigateTo($"tables/{tableId}");
+        }
+        else
+        {
+            Navigation.NavigateTo($"orders/{order.Id}");
+        }
+    }
+
+    private void Resume(OrderSummaryDto order)
+    {
+        if (order.TableId is { } tableId)
+        {
+            Navigation.NavigateTo($"tables/{tableId}/order/{order.Id}/edit");
+        }
+        else
+        {
+            Navigation.NavigateTo($"orders/{order.Id}/edit");
+        }
+    }
 
     // A finished order is no longer the table's current one, so it opens by its own id.
     private void OpenCompleted(OrderSummaryDto order) => Navigation.NavigateTo($"orders/{order.Id}");

@@ -15,6 +15,27 @@ public sealed record DashboardFigures
     public int PendingKitchenTickets { get; init; }
     public int PendingBills { get; init; }
     public decimal AverageTicketMinutes { get; init; }
+    public int ReservationsToday { get; init; }
+    public decimal ExpensesToday { get; init; }
+}
+
+// Phase 22 F4: live expenses summed per category for a range of business days (ExpenseDate is a calendar date, so the
+// range is From..To inclusive with no shift).
+public sealed record ExpenseCategoryTotal
+{
+    public string Category { get; init; } = string.Empty;
+    public decimal Amount { get; init; }
+}
+
+// Phase 22 P4: one user with an open cash shift and/or active (non-final) orders; roles are comma-joined by the query.
+public sealed record StaffDutyRow
+{
+    public int UserId { get; init; }
+    public string UserName { get; init; } = string.Empty;
+    public string Roles { get; init; } = string.Empty;
+    public bool HasOpenShift { get; init; }
+    public string? ShiftDeviceName { get; init; }
+    public int ActiveOrders { get; init; }
 }
 
 public sealed record WaiterFigures
@@ -29,6 +50,8 @@ public sealed record WaiterFigures
 // SQL lives in Infrastructure (ReportQueries); every method aggregates in the database.
 public interface IReportQueries
 {
+    Task<IReadOnlyList<StaffDutyRow>> StaffDutyAsync(CancellationToken cancellationToken);
+
     Task<DashboardFigures> DashboardAsync(ReportWindow today, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<DashboardTopItem>> TopItemsAsync(ReportWindow window, int count, CancellationToken cancellationToken);
@@ -36,6 +59,8 @@ public interface IReportQueries
     Task<WaiterFigures> WaiterDashboardAsync(ReportWindow today, int waiterId, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<DailySalesRowDto>> DailySalesAsync(ReportWindow window, CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<HourlySalesRowDto>> HourlySalesAsync(ReportWindow window, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<MonthlySalesRowDto>> MonthlySalesAsync(ReportWindow window, CancellationToken cancellationToken);
 
@@ -50,6 +75,8 @@ public interface IReportQueries
     Task<IReadOnlyList<DiscountRowDto>> DiscountsAsync(ReportWindow window, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<TaxCollectionRowDto>> TaxesAsync(ReportWindow window, CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<ExpenseCategoryTotal>> ExpensesByCategoryAsync(ReportWindow window, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<WaiterPerformanceRowDto>> WaitersAsync(ReportWindow window, CancellationToken cancellationToken);
 

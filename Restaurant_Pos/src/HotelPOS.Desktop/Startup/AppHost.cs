@@ -55,6 +55,7 @@ public static class AppHost
         services.AddSingleton<IOperationsApi, OperationsApi>();
         services.AddSingleton<IAdminSettingsApi, AdminSettingsApi>();
         services.AddSingleton<IFloorApi, FloorApi>();
+        services.AddSingleton<IFloorLayoutApi, FloorLayoutApi>();
         services.AddSingleton<IMenuApi, MenuApi>();
         services.AddSingleton<IOrdersApi, OrdersApi>();
         services.AddSingleton<ILocalDraftStore, LocalDraftStore>();
@@ -62,6 +63,8 @@ public static class AppHost
         services.AddSingleton<IKitchenApi, KitchenApi>();
         services.AddSingleton<IBillingApi, BillingApi>();
         services.AddSingleton<ICustomersApi, CustomersApi>();
+        services.AddSingleton<IReservationsApi, ReservationsApi>();
+        services.AddSingleton<IExpensesApi, ExpensesApi>();
         services.AddSingleton<ICashApi, CashApi>();
         services.AddSingleton<IGstApi, GstApi>();
         services.AddSingleton<ILicenseApi, LicenseApi>();

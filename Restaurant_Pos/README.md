@@ -44,7 +44,8 @@ PostgreSQL is the single source of truth.
 | Phase 18 – Web Clients (Waiter, Kitchen) | In progress  |
 | Phase 19 – Android App (MAUI Blazor Hybrid) | In progress  |
 | Phase 20 – Enterprise Transformation (notifications, role homes, HTTPS) | In progress  |
-| Phase 21 – Role-based UI/UX Redesign (owner mock-ups) | Planned (spec for review) |
+| Phase 21 – Role-based UI/UX Redesign (owner mock-ups) | Code complete (merged to main 2026-10-17; device demo open) |
+| Phase 22 – Features excluded from Phase 21 (order types, reservations, expenses/P&L, floor plan, staff on duty, ticket pictures, KOT PDF) | In progress (branch `phase-22-excluded-features`; all steps except item split built 2026-10-19; verification 22.5 running) |
 
 Update this table (and `docs/phases/README.md`) when a phase starts or finishes.
 

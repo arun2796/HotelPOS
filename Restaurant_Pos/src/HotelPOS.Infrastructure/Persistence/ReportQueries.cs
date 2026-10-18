@@ -32,8 +32,27 @@ public sealed class ReportQueries : IReportQueries
               (SELECT COUNT(*) FROM "KitchenOrders" WHERE "Status" IN (1, 2, 3, 4))::int AS "PendingKitchenTickets",
               (SELECT COUNT(*) FROM "Bills" WHERE "Status" IN (1, 2))::int AS "PendingBills",
               (SELECT ROUND(COALESCE(AVG(EXTRACT(EPOCH FROM ("ReadyAt" - "CreatedAt")) / 60), 0)::numeric, 1) FROM "KitchenOrders"
-                 WHERE "ReadyAt" IS NOT NULL AND "CreatedAt" >= {today.FromUtc} AND "CreatedAt" < {today.ToUtc}) AS "AverageTicketMinutes"
+                 WHERE "ReadyAt" IS NOT NULL AND "CreatedAt" >= {today.FromUtc} AND "CreatedAt" < {today.ToUtc}) AS "AverageTicketMinutes",
+              (SELECT COUNT(*) FROM "Reservations"
+                 WHERE "Status" = 1 AND "StartTimeUtc" >= {today.FromUtc} AND "StartTimeUtc" < {today.ToUtc})::int AS "ReservationsToday",
+              (SELECT COALESCE(SUM("Amount"), 0) FROM "Expenses"
+                 WHERE NOT "IsVoid" AND "ExpenseDate" = {today.From}) AS "ExpensesToday"
             """).ToListAsync(cancellationToken)).Single();
+
+    // Phase 22 P4: users with an open cash shift (status 1) and/or orders not yet completed or cancelled (not 9, 10, 11).
+    public async Task<IReadOnlyList<StaffDutyRow>> StaffDutyAsync(CancellationToken cancellationToken) =>
+        await _db.Database.SqlQuery<StaffDutyRow>($"""
+            SELECT u."Id" AS "UserId", u."DisplayName" AS "UserName",
+                   COALESCE((SELECT string_agg(r."Name", ',' ORDER BY r."Name") FROM "UserRoles" ur JOIN "Roles" r ON r."Id" = ur."RoleId"
+                               WHERE ur."UserId" = u."Id"), '') AS "Roles",
+                   EXISTS (SELECT 1 FROM "CashShifts" s WHERE s."CashierUserId" = u."Id" AND s."Status" = 1) AS "HasOpenShift",
+                   (SELECT d."Name" FROM "CashShifts" s JOIN "Devices" d ON d."Id" = s."DeviceId"
+                      WHERE s."CashierUserId" = u."Id" AND s."Status" = 1 ORDER BY s."OpenedAt" DESC LIMIT 1) AS "ShiftDeviceName",
+                   (SELECT COUNT(*) FROM "Orders" o WHERE o."WaiterId" = u."Id" AND o."Status" NOT IN (9, 10, 11))::int AS "ActiveOrders"
+            FROM "Users" u
+            WHERE EXISTS (SELECT 1 FROM "CashShifts" s WHERE s."CashierUserId" = u."Id" AND s."Status" = 1)
+               OR EXISTS (SELECT 1 FROM "Orders" o WHERE o."WaiterId" = u."Id" AND o."Status" NOT IN (9, 10, 11))
+            """).ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyList<DashboardTopItem>> TopItemsAsync(ReportWindow window, int count, CancellationToken cancellationToken) =>
         await _db.Database.SqlQuery<DashboardTopItem>($"""
@@ -75,6 +94,54 @@ public sealed class ReportQueries : IReportQueries
             GROUP BY 1
             ORDER BY 1
             """).ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<HourlySalesRowDto>> HourlySalesAsync(ReportWindow window, CancellationToken cancellationToken)
+    {
+        var rows = await _db.Database.SqlQuery<HourlySalesRowDto>($"""
+            SELECT to_char((b."SettledAt" + make_interval(mins => {window.ShiftMinutes})) AT TIME ZONE 'UTC', 'HH24:00') AS "Hour",
+                   COUNT(*)::int AS "Bills",
+                   COALESCE(SUM(o."GuestCount"), 0)::int AS "Covers",
+                   COALESCE(SUM(b."Subtotal"), 0) AS "Subtotal",
+                   COALESCE(SUM(b."DiscountAmount"), 0) AS "Discounts",
+                   COALESCE(SUM(b."TaxAmount"), 0) AS "Tax",
+                   COALESCE(SUM(b."GrandTotal"), 0) AS "GrossSales",
+                   COALESCE(SUM(b."RefundedAmount"), 0) AS "Refunds",
+                   COALESCE(SUM(b."GrandTotal" - b."RefundedAmount"), 0) AS "NetSales"
+            FROM "Bills" b
+            JOIN "Orders" o ON o."Id" = b."OrderId"
+            WHERE b."Status" = {BillSettled} AND b."SettledAt" >= {window.FromUtc} AND b."SettledAt" < {window.ToUtc}
+            GROUP BY 1
+            ORDER BY 1
+            """).ToListAsync(cancellationToken);
+
+        var byHour = rows.ToDictionary(r => r.Hour);
+        var result = new List<HourlySalesRowDto>(24);
+        for (var h = 0; h < 24; h++)
+        {
+            var label = $"{h:00}:00";
+            if (byHour.TryGetValue(label, out var existing))
+            {
+                result.Add(existing);
+            }
+            else
+            {
+                result.Add(new HourlySalesRowDto
+                {
+                    Hour = label,
+                    Bills = 0,
+                    Covers = 0,
+                    Subtotal = 0m,
+                    Discounts = 0m,
+                    Tax = 0m,
+                    GrossSales = 0m,
+                    Refunds = 0m,
+                    NetSales = 0m,
+                });
+            }
+        }
+
+        return result;
+    }
 
     public async Task<IReadOnlyList<MonthlySalesRowDto>> MonthlySalesAsync(ReportWindow window, CancellationToken cancellationToken) =>
         await _db.Database.SqlQuery<MonthlySalesRowDto>($"""
@@ -173,6 +240,18 @@ public sealed class ReportQueries : IReportQueries
             WHERE b."Status" = {BillSettled} AND b."SettledAt" >= {window.FromUtc} AND b."SettledAt" < {window.ToUtc}
             GROUP BY bi."TaxRatePercent"
             ORDER BY bi."TaxRatePercent"
+            """).ToListAsync(cancellationToken);
+
+    // Phase 22 F4: ExpenseDate is a calendar date chosen by the user, so the window's business days are compared as
+    // dates (inclusive), not as the UTC instants the bill queries use. Voided expenses never count.
+    public async Task<IReadOnlyList<ExpenseCategoryTotal>> ExpensesByCategoryAsync(ReportWindow window, CancellationToken cancellationToken) =>
+        await _db.Database.SqlQuery<ExpenseCategoryTotal>($"""
+            SELECT c."Name" AS "Category", COALESCE(SUM(e."Amount"), 0) AS "Amount"
+            FROM "Expenses" e
+            JOIN "ExpenseCategories" c ON c."Id" = e."CategoryId"
+            WHERE NOT e."IsVoid" AND e."ExpenseDate" >= {window.From} AND e."ExpenseDate" <= {window.To}
+            GROUP BY c."Name", c."SortOrder"
+            ORDER BY c."SortOrder", c."Name"
             """).ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyList<WaiterPerformanceRowDto>> WaitersAsync(ReportWindow window, CancellationToken cancellationToken) =>

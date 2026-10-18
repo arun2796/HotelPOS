@@ -1,6 +1,6 @@
 # Phase 22 — Features excluded from Phase 21 (plan)
 
-Status: Planned — audit and plan only, nothing implemented (2026-10-17 on `main` 746336a) · Depends on: Phase 21
+Status: In progress on `phase-22-excluded-features` — Foundations 0.1–0.2, Ordering O1–O4, Billing B1, Finance F1–F4 and Operations P1–P6 built (2026-10-18/19); B2 spec written (`phase-22-item-split-spec.md`, owner decision open); release notes in `phase-22-release-notes.md`; Verification 22.5 in progress (full suite, venue-DB rehearsal, galleries); optional O5/P7 not started · Depends on: Phase 21
 
 Phase 21 restyled every client without touching the server. Its § 3 "Out" list names the mock-up elements that had no
 data behind them. This phase adds that data: entities, migrations, commands, endpoints and DTOs, then the UI on both
@@ -98,7 +98,7 @@ inventory, delivery dispatch/riders, online ordering channels, web admin pages.
 | # | Step | Size |
 |---|---|---|
 | B1 | Wallet: `PaymentMethodCodes.Wallet`, seed row, release note (existing DBs: admin adds it in Billing setup) | 0.1 / – / – / 0.2 |
-| B2 | Item split spec (rounding, discount share, tax per sibling, void/reopen with siblings) — written and approved before code | 0.5 (doc) |
+| B2 | Item split spec (rounding, discount share, tax per sibling, void/reopen with siblings) — written and approved before code. Draft: `phase-22-item-split-spec.md` (2026-10-18, awaiting owner decision § 6) | 0.5 (doc) |
 | B3 | Item split backend: `SplitBill`, `SplitIndex` + index migration, completion = all siblings settled, `VoidBill`/`ReopenBill` sibling rules, invoice numbering unchanged | 3 / – / – / 2 |
 | B4 | Item split UI: "Split items" picker in the cashier workspace, sibling bills in the queue ("#1016-A/B"), print suffix; web order details shows sibling bill status | – / 2 / 1 / 0.5 |
 
@@ -188,8 +188,69 @@ DTOs. Desktop/web: VM and bUnit tests per surface; rendering counts; `StatusPres
 - [ ] Kitchen tickets show pictures when enabled; the kitchen query count does not grow with items (no N+1).
 - [ ] A waiter on a desktop browser prints a KOT PDF and the print log records the copy.
 - [ ] (If B3–B4 are built) siblings sum to the original bill; GST register totals unchanged.
-- [ ] Full suite green; migrations applied to a venue-copy database; docs and release notes updated.
+- [ ] Full suite green (2026-10-19: Domain 413, Application 287, Api 203, Client 224, Desktop 452 + 2 skipped, 0 failed); docs and release notes updated; **migrations on a venue-copy database still to rehearse** (needs the owner's backup).
 
 ## 11. Changes during implementation
 
-(filled while building)
+- **P1 (2026-10-18).** Geometry is `int` layout units (px at 100%) with `TableShape` (Rectangle=1, Round=2) and
+  `Rotation` 0-359, guarded by `CK_Tables_Layout` (all six null or all valid). Bounds: position 0-5000, size 40-600,
+  at most 500 items per save. The migration fills a default grid for active tables only: per section ordered by
+  `Code` (tables have no `SortOrder`), 6 per row, 120x80 rectangles, 24-unit gap and margin
+  (`x = 24 + col*144`, `y = 24 + row*104`); inactive and later-created tables stay unplaced. The migration also
+  inserts `floor.layout.manage` for the Admin role (role permissions live in the `RolePermissions` table; Admin is
+  `Permissions.All` in code, so no Manager grant). Route is `api/sections/{id}/layout` (new
+  `FloorLayoutController`), GET uses `tables.view`, so waiters can read it. `PUT` saves only the listed tables and
+  returns the refreshed layout; the event payload is `FloorLayoutChangedEvent { SectionId }`. Audit action
+  `Floor.LayoutSaved` on the Section entity.
+- **P5 (2026-10-18).** `OrderItem` has no `MenuItem` navigation, so the picture is not a SQL join inside the ticket
+  query: `KitchenTickets.ToDtosAsync` does one extra batched `MenuItems WHERE Id IN (...)` lookup per response (list,
+  detail and completed alike). The count is fixed (+1) however many items or tickets there are, so there is no N+1; no
+  query-counter exists in `DatabaseTestBase`, so this is by construction rather than asserted. Web: the card preference
+  (`hotelpos.kitchen.show-pictures`, off by default) lives on **Kitchen > Station**; the detail pane always shows its
+  larger thumbnail. Desktop: `ClientSettings.ShowTicketPictures` plus a **Show item pictures** checkbox in the KDS
+  header; thumbnails load through `IMenuCache.GetImageFileAsync` (the order builder's cache).
+
+- **F4 (2026-10-18).** No `ProfitLossAsync` SQL: the handler composes `DailySalesAsync` (sales side) with a new
+  `ExpensesByCategoryAsync` (live expenses per category, `ExpenseDate` compared as calendar dates, inclusive) in
+  `ProfitLossStatement.Compose`, which is pure and unit-tested. The statement is rows of Section / Line / Amount with
+  magnitudes and "Less: …" / "Add: …" labels (no negative numbers); `Amount` is `[NoTotal]` so no export or grid sums
+  the lines. Round off is derived (`Gross − (Subtotal − Discounts + Tax)`) and shown only when non-zero. The dashboard
+  gains `ExpensesToday` and a fifth KPI card (strip widened to five columns) that deep-links to the P&L. Permission is
+  `ReportsView` (it is a report), not `ExpensesView`.
+- **P4 (2026-10-18).** `IPresenceTracker.Snapshot()` (Application) is implemented by `HubPresenceTracker` (Api), an adapter over
+  `ConnectionTracker`. One SQL (`ReportQueries.StaffDutyAsync`) returns users with an open cash shift (status 1) and/or
+  orders in a non-final status (not 9, 10, 11) - "active orders" are all currently open orders of the waiter, not only
+  those submitted today (same definition as the My day `OpenOrders`). `StaffOnDutyMerge.Compose` (pure, unit-tested) merges
+  presence and SQL rows per user. `GET api/staff/on-duty` (new `StaffController`, `ReportsView`) and `DashboardDto.StaffOnDuty`
+  share it. The desktop "Staff today" column now shows this list instead of the waiter-sales list; the old `Staff` rows
+  (waiter sales from the Waiters report) are still loaded by the view model but no longer displayed.
+- 2026-10-19 P6 (Print KOT from the web): `GET api/print/kot/{id}.pdf` renders the KOT document model through a new `IPdfRenderer.Kitchen` (QuestPDF, same switches as the ESC/POS layout; 80 mm default). Deviations: (1) a plain PDF GET takes its own PDF-output copy like the receipt PDF, so the browser passes `logId` of the copy it reserved first (`POST kot/{id}/copies`) and the PDF then takes no extra copy; `PUT copies/{logId}` completes it. (2) Web auth is bearer-token (the cookie only holds the refresh token), so a plain window.open or anchor GET cannot authenticate: the client fetches the PDF bytes with the token (`WebApiClient.GetBytesAsync`) and opens a blob URL via `hotelposPrint.openPdf` (`js/print.js` in the RCL, referenced from the Web and Android index.html). (3) Cashier cannot print a KOT (the existing KOT routes are K, W, M, A); the new route mirrors that. (4) Waiter order page: the button sits in a new Kitchen tickets list on the Details tab, not in the actions list.
+- **P3 (2026-10-19).** Web floor map on the waiter Tables page. No JS scaling: tiles are placed in percent of the layout
+  box (`layoutWidth = max(PosX+Width)+24`, same for height), the box keeps the plan's `aspect-ratio`, so inline styles
+  are percentages (`left:7.692%`), not pixels. Small-tile rule chosen: the plan never scales below 0.5 (the box gets
+  `min-width = 0.5 x layoutWidth` inside a horizontally scrolling wrapper), every tile has a 44 px minimum hit area,
+  and a tile narrower than 64 px shows only its code (container query). Default mode uses a tiny `matchMedia` interop
+  (`js/viewport.js`, wired in the Web and Android `index.html`): List under 600 px, Map otherwise; the stored
+  `hotelpos.tables.view-mode` wins. The preference lives on the new `FloorLayoutApi` (GET layout + view mode in
+  `IBrowserStorage`), tested with the fake storage rather than NSubstitute. Layouts load per section only in Map mode;
+  a failed layout call degrades to the list for that section. The Sort control is shown in List mode only. The tile
+  shows the reservation badge as an icon (time and party in the tooltip). The `docs/ui-ux/web` gallery was not
+  regenerated (no screenshots in this step), so its tables row is unchanged.
+
+- **P2 (2026-10-19).** Desktop only. New module `floor-plan` ("Floor plan", Live Operations, Admin, `floor.layout.manage`) with
+  `FloorEditorViewModel` over `IFloorLayoutApi`; the table map reads geometry from the existing `TableDto` fields, so it needs no
+  extra call, and reloads on `FloorLayoutChanged`. Deviations: (a) tables are placed with a **Place** button (next free grid slot),
+  not by dragging from the tray, and a placed table cannot be taken off the plan (the backend save only lists tables; Undo before
+  saving); (b) Round tables use a pill/circle corner radius, not a true ellipse for non-square sizes; (c) **no leave-confirmation**:
+  the shell has no navigation guard (`INavigationAware` only has OnNavigatedTo/From), so only the header shows "Unsaved changes";
+  (d) a bound `RotateTransform` fails inside data templates, so rotation is applied by the `FloorTile.Angle` attached property;
+  (e) the List/Map choice is `IUserPreferences.TableMapMode` (default Map, which is the list anyway for a section with no placed
+  table); (f) the read-only canvas is scaled to the window width by a `Viewbox` (down only), the editor has Zoom and Fit; resize
+  handles act in the tile's own frame; (g) a save refused for a reason other than a lost connection refetches the stored layout
+  and drops the unsaved edits. Desktop rendering screens 82 -> 84 (`56-admin-floor-plan`, `57-table-map-floor-plan`).
+- **22.5 (2026-10-19).** Verification found that `Phase22_Expenses` created the tables but granted `expenses.view/manage`
+  to nobody, and `DbSeeder` assigns defaults only to roles it creates, so an upgraded venue database would have had the
+  Expenses screen denied for Admin and Manager. Added `Phase22_ExpensePermissions` (idempotent insert for Admin and
+  Manager, same SQL shape as `Phase22_Reservations`). P1's `api/floor/sections/{id}/layout` was moved to
+  `api/sections/{id}/layout` to match the existing section routes before any client used it. Release notes:
+  `phase-22-release-notes.md`; docs 02/03/04/05/07 updated per step.

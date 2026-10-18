@@ -86,6 +86,34 @@ internal sealed class PrintLog
         return new ReservedCopy(PrintDocuments.WithCopy(built.Value, copy, entry.Id), entry);
     }
 
+    // A copy reserved earlier (POST .../copies) rendered another way, e.g. a browser opening the KOT PDF for it: the
+    // document carries that copy's number and no new copy is taken. Only the reserving user or terminal (or a
+    // manager) may use it.
+    public async Task<Result<ReservedCopy>> ForReservedAsync(PrintDocumentType type, int documentId, long logId, CancellationToken cancellationToken)
+    {
+        var entry = await _db.PrintLogs.AsNoTracking().FirstOrDefaultAsync(p => p.Id == logId, cancellationToken);
+        if (entry is null || entry.DocumentType != type || entry.DocumentId != documentId)
+        {
+            return AppErrors.NotFound("Printed copy", logId);
+        }
+
+        var isManager = _currentUser.IsInRole(Roles.Admin) || _currentUser.IsInRole(Roles.Manager);
+        var isOwner = (entry.UserId is not null && entry.UserId == _currentUser.UserId)
+            || (entry.DeviceId is not null && entry.DeviceId == _currentUser.DeviceId);
+        if (!isOwner && !isManager)
+        {
+            return AppErrors.Forbidden("This copy was printed by another user or terminal.");
+        }
+
+        var built = await _documents.BuildAsync(type, documentId, cancellationToken);
+        if (built.IsFailure)
+        {
+            return built.Error!;
+        }
+
+        return new ReservedCopy(PrintDocuments.WithCopy(built.Value, entry.CopyNumber, entry.Id), entry);
+    }
+
     public void Announce(PrintLogEntry entry)
     {
         var printed = new DocumentPrintedEvent

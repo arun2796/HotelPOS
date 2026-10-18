@@ -27,7 +27,7 @@ public sealed record OrderProgressEvent : RealtimeEvent
 {
     public int OrderId { get; init; }
     public int OrderNumber { get; init; }
-    public int TableId { get; init; }
+    public int? TableId { get; init; }
     public string TableCode { get; init; } = string.Empty;
     public int WaiterId { get; init; }
     public OrderStatus Status { get; init; }

@@ -37,6 +37,11 @@ public sealed class ReportsController : ApiControllerBase
     public Task<IActionResult> DailySales([FromQuery] ReportQuery query, CancellationToken cancellationToken) =>
         ReportAsync(query, "daily-sales", new GetDailySalesReportQuery(query), cancellationToken);
 
+    [HttpGet("sales/hourly")]
+    [Authorize(Policy = Permissions.ReportsView)]
+    public Task<IActionResult> HourlySales([FromQuery] ReportQuery query, CancellationToken cancellationToken) =>
+        ReportAsync(query, "hourly-sales", new GetHourlySalesReportQuery(query), cancellationToken);
+
     [HttpGet("sales/monthly")]
     [Authorize(Policy = Permissions.ReportsView)]
     public async Task<IActionResult> MonthlySales([FromQuery] int? year, [FromQuery] string? format, CancellationToken cancellationToken) =>
@@ -73,6 +78,12 @@ public sealed class ReportsController : ApiControllerBase
     public Task<IActionResult> Taxes([FromQuery] ReportQuery query, CancellationToken cancellationToken) =>
         ReportAsync(query, "taxes", new GetTaxesReportQuery(query), cancellationToken);
 
+    // Phase 22 F4: "Sales minus expenses" for the range; same JSON/CSV/XLSX/PDF delivery as every other report.
+    [HttpGet("profit-loss")]
+    [Authorize(Policy = Permissions.ReportsView)]
+    public Task<IActionResult> ProfitLoss([FromQuery] ReportQuery query, CancellationToken cancellationToken) =>
+        ReportAsync(query, "profit-loss", new GetProfitLossReportQuery(query), cancellationToken);
+
     [HttpGet("staff/waiters")]
     [Authorize(Policy = Permissions.ReportsView)]
     public Task<IActionResult> Waiters([FromQuery] ReportQuery query, CancellationToken cancellationToken) =>
@@ -94,12 +105,14 @@ public sealed class ReportsController : ApiControllerBase
     private static readonly IReadOnlyDictionary<string, string> Titles = new Dictionary<string, string>
     {
         ["daily-sales"] = "Daily sales",
+        ["hourly-sales"] = "Hourly sales",
         ["item-sales"] = "Item sales",
         ["category-sales"] = "Category sales",
         ["payments"] = "Payments",
         ["cancellations"] = "Cancellations",
         ["discounts"] = "Discounts",
         ["taxes"] = "Tax collection",
+        ["profit-loss"] = "Profit & Loss (sales minus expenses)",
         ["waiters"] = "Waiter performance",
         ["kitchen"] = "Kitchen performance",
     };
