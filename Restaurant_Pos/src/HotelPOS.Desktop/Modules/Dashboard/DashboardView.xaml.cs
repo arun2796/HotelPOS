@@ -13,8 +13,9 @@ public partial class DashboardView : UserControl
         InitializeComponent();
     }
 
-    // Four KPI cards shrink gracefully (the value is a DownOnly Viewbox) down to about 225 px each; below that they pair up.
-    public static int KpiColumnsFor(double width) => width < 900 ? 2 : 4;
+    // Five KPI cards (Phase 22 F4 added "Expenses today") shrink gracefully (the value is a DownOnly Viewbox) down to
+    // about 225 px each, so one row needs ~1150 px; below that they go 3 + 2, and under 700 px they pair up.
+    public static int KpiColumnsFor(double width) => width < 700 ? 2 : width < 1150 ? 3 : 5;
 
     public static int PanelColumnsFor(double width) => width < CompactWidth ? 2 : 3;
 
