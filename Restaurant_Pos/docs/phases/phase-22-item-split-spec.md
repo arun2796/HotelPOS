@@ -1,7 +1,8 @@
 # Phase 22 · B2 — Item-level bill split (specification)
 
-Status: Draft for owner approval (2026-10-18). Nothing is implemented; B3 (backend) and B4 (UI) start only after this
-document is approved and the Ordering/Finance/Operations tracks are merged (plan § 6). Parent: `phase-22-excluded-features.md`
+Status: **Closed — owner decided on 2026-10-19 that item-level split is not needed** (amount-wise split covers the
+venue). Nothing is implemented; the design is kept on file in case the need arises. B3/B4 would start only after a
+renewed approval of § 6. Parent: `phase-22-excluded-features.md`
 decision E5, steps B2–B4.
 
 ## 1. Question for the owner first

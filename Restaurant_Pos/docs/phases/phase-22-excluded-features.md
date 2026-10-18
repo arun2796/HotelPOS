@@ -1,6 +1,6 @@
 # Phase 22 — Features excluded from Phase 21 (plan)
 
-Status: Code complete, merged to `main` 2026-10-19 (1ba1439) — Foundations 0.1–0.2, Ordering O1–O4, Billing B1, Finance F1–F4 and Operations P1–P6 built; full suite green; B2 spec written (`phase-22-item-split-spec.md`, owner decision open, B3/B4 unbuilt); release notes in `phase-22-release-notes.md`; migrations rehearsed on a dev-DB copy (repeat on the venue backup); desktop gallery has the floor plan, dashboard and expenses renders (web gallery not regenerated); open: device demo, owner sign-off E1–E11, B2 decision; optional O5/P7 not started · Depends on: Phase 21
+Status: Done except the device demo — merged to `main` 2026-10-19 (1ba1439); Foundations 0.1–0.2, Ordering O1–O4, Billing B1, Finance F1–F4 and Operations P1–P6 built; full suite green; owner signed off E1–E11 on 2026-10-19 and decided item split (B3/B4) is not needed (`phase-22-item-split-spec.md` kept on file); release notes in `phase-22-release-notes.md`; migrations rehearsed on a dev-DB copy (repeat on the venue backup at upgrade time); desktop gallery has the floor plan, dashboard and expenses renders (web gallery not regenerated); optional O5/P7 not started · Depends on: Phase 21
 
 Phase 21 restyled every client without touching the server. Its § 3 "Out" list names the mock-up elements that had no
 data behind them. This phase adds that data: entities, migrations, commands, endpoints and DTOs, then the UI on both
@@ -98,7 +98,7 @@ inventory, delivery dispatch/riders, online ordering channels, web admin pages.
 | # | Step | Size |
 |---|---|---|
 | B1 | Wallet: `PaymentMethodCodes.Wallet`, seed row, release note (existing DBs: admin adds it in Billing setup) | 0.1 / – / – / 0.2 |
-| B2 | Item split spec (rounding, discount share, tax per sibling, void/reopen with siblings) — written and approved before code. Draft: `phase-22-item-split-spec.md` (2026-10-18, awaiting owner decision § 6) | 0.5 (doc) |
+| B2 | Item split spec (rounding, discount share, tax per sibling, void/reopen with siblings) — written and approved before code. Spec: `phase-22-item-split-spec.md` (2026-10-18). **Owner decision 2026-10-19: not needed; B3–B4 closed, spec kept on file** | 0.5 (doc) |
 | B3 | Item split backend: `SplitBill`, `SplitIndex` + index migration, completion = all siblings settled, `VoidBill`/`ReopenBill` sibling rules, invoice numbering unchanged | 3 / – / – / 2 |
 | B4 | Item split UI: "Split items" picker in the cashier workspace, sibling bills in the queue ("#1016-A/B"), print suffix; web order details shows sibling bill status | – / 2 / 1 / 0.5 |
 
@@ -178,7 +178,7 @@ DTOs. Desktop/web: VM and bUnit tests per surface; rendering counts; `StatusPres
 
 ## 10. Acceptance criteria
 
-- [ ] Owner has signed off E1–E11 before the related step starts.
+- [x] Owner signed off E1–E11 on 2026-10-19 (all recommended options, after implementation); E5 item split decided **not needed** (B2 spec kept on file, B3–B4 closed).
 - [ ] A takeaway order can be created, cooked, billed and paid with no table; a dine-in order behaves exactly as today.
 - [ ] A reservation shows on the waiter and admin tables, can be seated, and never changes `TableStatus` directly.
 - [ ] Wallet appears as a payment button once configured; reports group it like any method.
@@ -187,7 +187,7 @@ DTOs. Desktop/web: VM and bUnit tests per surface; rendering counts; `StatusPres
 - [ ] Floor plan edits on one terminal appear on the others; the phone keeps a usable list.
 - [ ] Kitchen tickets show pictures when enabled; the kitchen query count does not grow with items (no N+1).
 - [ ] A waiter on a desktop browser prints a KOT PDF and the print log records the copy.
-- [ ] (If B3–B4 are built) siblings sum to the original bill; GST register totals unchanged.
+- [x] (If B3–B4 are built) siblings sum to the original bill; GST register totals unchanged. — Not applicable: owner decided on 2026-10-19 that item-level split is not needed.
 - [x] Full suite green (2026-10-19: Domain 413, Application 287, Api 203, Client 224, Desktop 452 + 2 skipped, 0 failed); docs and release notes updated; migrations rehearsed 2026-10-19 on a `pg_dump` copy of `hotelpos_dev` (Phase 16 schema, 20 tables, 25 orders, 25 bills): all five applied, 16 active tables got grid positions, permissions granted per role, bills untouched. Repeat on the venue's own backup before go-live.
 
 ## 11. Changes during implementation

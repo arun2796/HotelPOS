@@ -63,7 +63,7 @@ Custom roles created by the venue do not receive the new permissions automatical
 
 ## Not in this release
 
-Item-level bill split (spec `phase-22-item-split-spec.md`, awaiting the owner's decision), table-freeing held orders
+Item-level bill split (owner decided on 2026-10-19 it is not needed; spec `phase-22-item-split-spec.md` kept on file), table-freeing held orders
 (O5), Android native KOT printing (P7), stored-value customer wallets, loyalty, attendance, COGS/inventory.
 
 ## Known limitations
