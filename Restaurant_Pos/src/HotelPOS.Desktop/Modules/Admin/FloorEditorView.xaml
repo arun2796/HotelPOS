@@ -47,16 +47,16 @@
 
     <WrapPanel Grid.Row="1" Margin="0,0,0,12">
       <ComboBox ItemsSource="{Binding Sections}" SelectedItem="{Binding SelectedSection}" DisplayMemberPath="Name"
-                MinWidth="200" Margin="0,0,12,0" VerticalAlignment="Center" AutomationProperties.Name="Section" />
+                MinWidth="160" Margin="0,0,12,0" VerticalAlignment="Center" AutomationProperties.Name="Section" />
       <CheckBox Content="Snap to 8-unit grid" IsChecked="{Binding SnapEnabled}" Margin="0,0,12,0" VerticalAlignment="Center" />
       <Button Content="Rotate 90°" Command="{Binding RotateCommand}" Margin="0,0,6,0" ToolTip="Rotate the selected table by 90 degrees" />
-      <Button Content="Round / Rectangle" Command="{Binding ToggleShapeCommand}" Margin="0,0,12,0" ToolTip="Switch the selected table's shape" />
+      <Button Content="Round / Rect" Command="{Binding ToggleShapeCommand}" Margin="0,0,12,0" ToolTip="Switch the selected table's shape" />
       <Button Content="Undo" Command="{Binding UndoCommand}" Margin="0,0,6,0" ToolTip="Ctrl+Z" />
       <Button Content="Redo" Command="{Binding RedoCommand}" Margin="0,0,12,0" ToolTip="Ctrl+Y" />
       <Button Content="Reset to grid" Command="{Binding ResetToGridCommand}" Margin="0,0,12,0" ToolTip="Lay every table out in rows of six" />
-      <TextBlock Text="Zoom" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,6,0" />
-      <Slider Minimum="0.25" Maximum="2" Width="140" Value="{Binding Zoom}" VerticalAlignment="Center" AutomationProperties.Name="Zoom" />
-      <Button Content="Fit" Click="OnFitClick" Margin="8,0,0,0" ToolTip="Fit the plan to the window width" />
+      <StackPanel Orientation="Horizontal"><TextBlock Text="Zoom" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,6,0" />
+      <Slider Minimum="0.25" Maximum="2" Width="100" Value="{Binding Zoom}" VerticalAlignment="Center" AutomationProperties.Name="Zoom" />
+      <Button Content="Fit" Click="OnFitClick" Margin="8,0,0,0" ToolTip="Fit the plan to the window width" /></StackPanel>
     </WrapPanel>
 
     <Border Grid.Row="2" Style="{StaticResource Banner.Error}" Margin="0,0,0,12"

@@ -23,26 +23,17 @@
     </Grid.RowDefinitions>
 
     <!-- Filter bar -->
-    <Grid Margin="0,0,0,16">
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="Auto" />
-        <ColumnDefinition Width="Auto" />
-        <ColumnDefinition Width="Auto" />
-        <ColumnDefinition Width="Auto" />
-        <ColumnDefinition Width="*" MinWidth="140" MaxWidth="260" />
-        <ColumnDefinition Width="Auto" />
-        <ColumnDefinition Width="*" />
-        <ColumnDefinition Width="Auto" />
-        <ColumnDefinition Width="Auto" />
-      </Grid.ColumnDefinitions>
+    <!-- A WrapPanel so the groups drop to a second row when the editor sidebar narrows the page. -->
+    <WrapPanel Margin="0,0,0,8">
+      <StackPanel Orientation="Horizontal" Margin="0,0,16,8" VerticalAlignment="Center">
+        <DatePicker SelectedDate="{Binding SelectedDate}" Width="140" VerticalAlignment="Center"
+                    ToolTip="Filter by date" AutomationProperties.Name="Filter date" />
+        <Button Content="Today" Command="{Binding TodayCommand}" Margin="6,0,0,0" VerticalAlignment="Center" />
+        <Button Content="Tomorrow" Command="{Binding TomorrowCommand}" Margin="6,0,0,0" VerticalAlignment="Center" />
+      </StackPanel>
 
-      <DatePicker SelectedDate="{Binding SelectedDate}" Width="140" VerticalAlignment="Center"
-                  ToolTip="Filter by date" AutomationProperties.Name="Filter date" />
-      <Button Grid.Column="1" Content="Today" Command="{Binding TodayCommand}" Margin="6,0,0,0" VerticalAlignment="Center" />
-      <Button Grid.Column="2" Content="Tomorrow" Command="{Binding TomorrowCommand}" Margin="6,0,16,0" VerticalAlignment="Center" />
-
-      <ListBox Grid.Column="3" Style="{StaticResource ChipList}" ItemsSource="{Binding StatusFilters}"
-               SelectedItem="{Binding SelectedFilter}" VerticalAlignment="Center" Margin="0,0,16,0">
+      <ListBox Style="{StaticResource ChipList}" ItemsSource="{Binding StatusFilters}"
+               SelectedItem="{Binding SelectedFilter}" VerticalAlignment="Center" Margin="0,0,8,0">
         <ListBox.ItemTemplate>
           <DataTemplate DataType="{x:Type reservations:ReservationStatusFilter}">
             <TextBlock Text="{Binding Name}" />
@@ -50,32 +41,35 @@
         </ListBox.ItemTemplate>
       </ListBox>
 
-      <TextBox Grid.Column="4" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-               ToolTip="Search by customer name or phone" md:HintAssist.Hint="Search customer..."
-               VerticalAlignment="Center" AutomationProperties.Name="Search reservations">
-        <TextBox.InputBindings>
-          <KeyBinding Key="Enter" Command="{Binding SearchCommand}" />
-        </TextBox.InputBindings>
-      </TextBox>
-      <Button Grid.Column="5" Command="{Binding SearchCommand}" Margin="6,0,0,0" ToolTip="Search" VerticalAlignment="Center">
-        <TextBlock Text="&#xE721;" Style="{StaticResource Text.Icon}" />
-      </Button>
+      <StackPanel Orientation="Horizontal" Margin="0,0,0,8" VerticalAlignment="Center">
+        <TextBox Width="120" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                 ToolTip="Search by customer name or phone" md:HintAssist.Hint="Search..."
+                 VerticalAlignment="Center" AutomationProperties.Name="Search reservations">
+          <TextBox.InputBindings>
+            <KeyBinding Key="Enter" Command="{Binding SearchCommand}" />
+          </TextBox.InputBindings>
+        </TextBox>
+        <Button Command="{Binding SearchCommand}" Margin="6,0,0,0" ToolTip="Search" VerticalAlignment="Center"
+                AutomationProperties.Name="Search">
+          <TextBlock Text="&#xE721;" Style="{StaticResource Text.Icon}" />
+        </Button>
 
-      <TextBlock Grid.Column="6" Text="{Binding SummaryText}" Style="{StaticResource Text.Caption}" FontSize="14"
-                 HorizontalAlignment="Right" VerticalAlignment="Center" Margin="16,0" />
+        <Button Command="{Binding RefreshListCommand}" ToolTip="Reload from server" Margin="6,0,0,0"
+                VerticalAlignment="Center" AutomationProperties.Name="Refresh">
+          <TextBlock Text="&#xE72C;" Style="{StaticResource Text.Icon}" />
+        </Button>
 
-      <Button Grid.Column="7" Command="{Binding RefreshListCommand}" ToolTip="Reload from server" VerticalAlignment="Center">
-        <TextBlock Text="&#xE72C;" Style="{StaticResource Text.Icon}" />
-      </Button>
-
-      <Button Grid.Column="8" Command="{Binding NewReservationCommand}" Style="{StaticResource Button.Primary}"
-              Margin="8,0,0,0" VerticalAlignment="Center">
-        <StackPanel Orientation="Horizontal">
-          <TextBlock Text="&#xE710;" Style="{StaticResource Text.Icon}" FontSize="14" />
-          <TextBlock Text="New reservation" Margin="8,0,0,0" />
-        </StackPanel>
-      </Button>
-    </Grid>
+        <!-- Label collapses to a plus icon on narrow pages (see ReservationsView.xaml.cs). -->
+        <Button Command="{Binding NewReservationCommand}" Style="{StaticResource Button.Primary}"
+                Margin="8,0,0,0" VerticalAlignment="Center" ToolTip="New reservation"
+                AutomationProperties.Name="New reservation">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Text="&#xE710;" Style="{StaticResource Text.Icon}" FontSize="14" />
+            <TextBlock x:Name="NewReservationLabel" Text="New reservation" Margin="8,0,0,0" />
+          </StackPanel>
+        </Button>
+      </StackPanel>
+    </WrapPanel>
 
     <Border Grid.Row="1" Style="{StaticResource Banner.Error}" Margin="0,0,0,12"
             Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibility}}">
@@ -85,7 +79,7 @@
     <!-- Reservations DataGrid -->
     <Grid Grid.Row="2">
       <DataGrid ItemsSource="{Binding Reservations}" SelectedItem="{Binding SelectedReservation}"
-                controls:SelectorBehaviors.ScrollSelectedIntoView="True" HorizontalScrollBarVisibility="Disabled">
+                controls:SelectorBehaviors.ScrollSelectedIntoView="True" HorizontalScrollBarVisibility="Auto">
         <DataGrid.InputBindings>
           <MouseBinding Gesture="LeftDoubleClick" Command="{Binding EditCommand}" />
         </DataGrid.InputBindings>
@@ -106,6 +100,13 @@
 
     <!-- Bottom Action Bar -->
     <Grid Grid.Row="3" Margin="0,12,0,0">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+      <TextBlock Grid.Column="1" Text="{Binding SummaryText}" Style="{StaticResource Text.Caption}" FontSize="14"
+                 TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" MaxWidth="360"
+                 VerticalAlignment="Center" Margin="16,0,0,8" />
       <WrapPanel Margin="0,0,0,-8">
         <Button Content="Seat" Command="{Binding SeatCommand}" MinWidth="90" Margin="0,0,8,8"
                 Style="{StaticResource Button.Primary}" />

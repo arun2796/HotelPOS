@@ -28,6 +28,8 @@ using HotelPOS.Contracts.Kitchen;
 using HotelPOS.Contracts.Orders;
 using HotelPOS.Contracts.Print;
 using HotelPOS.Contracts.Reports;
+using HotelPOS.Contracts.Reservations;
+using HotelPOS.Desktop.Modules.Reservations;
 using HotelPOS.Desktop.Modules.Reports;
 using HotelPOS.Contracts.Finance;
 using HotelPOS.Desktop.Modules.Expenses;
@@ -468,6 +470,12 @@ public class ScreenRenderingTests
             var expenses = (ExpensesViewModel)setupShell.CurrentPage!;
             rendered.Add(await RenderScreenAsync(env, setupShell, "77-expenses"));
 
+            await setupShell.NavigateToAsync(ModuleRegistry.Reservations, null);
+            var reservations = (ReservationsViewModel)setupShell.CurrentPage!;
+            rendered.Add(await RenderScreenAsync(env, setupShell, "78-reservations"));
+            reservations.NewReservationCommand.Execute(null);
+            rendered.Add(await RenderScreenAsync(env, setupShell, "79-reservation-form"));
+
             await setupShell.NavigateToAsync(ModuleRegistry.Reports, null);
             rendered.Add(await RenderScreenAsync(env, setupShell, "40-reports-daily-sales"));
             ((ReportsViewModel)setupShell.CurrentPage!).SelectedReport = ReportsViewModel.Catalogue.Single(r => r.Key == ReportKeys.ItemSales);
@@ -518,7 +526,7 @@ public class ScreenRenderingTests
         }
 
         bindingErrors.Errors.Should().BeEmpty("every binding in the views must point at an existing property");
-        rendered.Should().HaveCount(84);
+        rendered.Should().HaveCount(86);
         // Phase 21: the bundled Inter (Regular/Medium/SemiBold/Bold) is the body font on every Windows version.
         bodyFontFiles.Should().HaveCount(4).And.OnlyContain(f => f.StartsWith("inter-"));
     }
@@ -738,6 +746,7 @@ public class ScreenRenderingTests
             services.AddSingleton(DemoImportApi());
             services.AddSingleton(DemoCustomersApi());
             services.AddSingleton(DemoExpensesApi());
+            services.AddSingleton(DemoReservationsApi());
             services.AddSingleton(Substitute.For<IUpdateService>());
             services.AddSingleton(Substitute.For<IAppLifetime>());
             services.AddSingleton<HotelPOS.Desktop.Services.Printing.IPrinterProfiles, HotelPOS.Desktop.Services.Printing.PrinterProfiles>();
@@ -1348,6 +1357,35 @@ public class ScreenRenderingTests
                 var items = customers.Where(c => c.IsActive || call.Arg<CustomerQuery>().IncludeInactive).ToList();
                 return ApiResult<PagedResult<CustomerDto>>.Ok(new PagedResult<CustomerDto> { Items = items, Page = 1, PageSize = 25, TotalCount = items.Count });
             });
+            return api;
+        }
+
+        private static IReservationsApi DemoReservationsApi()
+        {
+            var api = Substitute.For<IReservationsApi>();
+            var day = DateTime.Today;
+            ReservationDto Make(int id, int table, string code, string name, string phone, int party, int hour, ReservationStatus status, string? notes) => new()
+            {
+                Id = id, TableId = table, TableCode = code, SectionName = "Main Hall", CustomerName = name, CustomerPhone = phone, PartySize = party,
+                StartTimeUtc = day.AddHours(hour).ToUniversalTime(), EndTimeUtc = day.AddHours(hour + 2).ToUniversalTime(),
+                Status = status, Notes = notes, CreatedAtUtc = DateTime.UtcNow, RowVersion = "AAAA",
+            };
+            var items = new List<ReservationDto>
+            {
+                Make(1, 1, "T1", "Meera Iyer", "9840012345", 4, 12, ReservationStatus.Seated, "Birthday, needs cake plate"),
+                Make(2, 3, "T3", "Rahul Menon", "9876543210", 2, 13, ReservationStatus.Booked, null),
+                Make(3, 5, "T5", "Anita Desai", "9811122233", 6, 19, ReservationStatus.Booked, "Window seat if possible"),
+                Make(4, 2, "T2", "Karthik Raja", "9790001122", 3, 20, ReservationStatus.Cancelled, "Guest called to cancel"),
+                Make(5, 4, "T4", "Suresh Babu", "9884455667", 5, 21, ReservationStatus.NoShow, null),
+            };
+            api.ListAsync(Arg.Any<ReservationQuery>(), Arg.Any<CancellationToken>())
+                .Returns(ApiResult<PagedResult<ReservationDto>>.Ok(new PagedResult<ReservationDto> { Items = items, Page = 1, PageSize = 50, TotalCount = items.Count }));
+            api.GetAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(call => ApiResult<ReservationDto>.Ok(items.First(r => r.Id == call.Arg<int>())));
+            api.CreateAsync(Arg.Any<CreateReservationRequest>(), Arg.Any<CancellationToken>()).Returns(ApiResult<ReservationDto>.Ok(items[1]));
+            api.UpdateAsync(Arg.Any<int>(), Arg.Any<UpdateReservationRequest>(), Arg.Any<CancellationToken>()).Returns(ApiResult<ReservationDto>.Ok(items[1]));
+            api.CancelAsync(Arg.Any<int>(), Arg.Any<CancelReservationRequest>(), Arg.Any<CancellationToken>()).Returns(ApiResult<ReservationDto>.Ok(items[3]));
+            api.SeatAsync(Arg.Any<int>(), Arg.Any<SeatReservationRequest>(), Arg.Any<CancellationToken>()).Returns(ApiResult<ReservationDto>.Ok(items[0]));
+            api.MarkNoShowAsync(Arg.Any<int>(), Arg.Any<MarkNoShowRequest>(), Arg.Any<CancellationToken>()).Returns(ApiResult<ReservationDto>.Ok(items[4]));
             return api;
         }
 
