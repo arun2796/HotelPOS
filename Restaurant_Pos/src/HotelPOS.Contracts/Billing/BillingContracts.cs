@@ -23,6 +23,7 @@ public static class PaymentMethodCodes
     public const string Cash = "CASH";
     public const string Card = "CARD";
     public const string Upi = "UPI";
+    public const string Wallet = "WALLET";
 }
 
 // Action types an approval token is bound to (POST /api/auth/approval).

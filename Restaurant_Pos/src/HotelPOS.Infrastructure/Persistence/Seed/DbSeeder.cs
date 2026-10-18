@@ -197,9 +197,10 @@ public sealed class DbSeeder
     {
         var defaults = new[]
         {
-            new PaymentMethod("Cash", "CASH", requiresReference: false, sortOrder: 1),
-            new PaymentMethod("Card", "CARD", requiresReference: true, sortOrder: 2),
-            new PaymentMethod("UPI", "UPI", requiresReference: true, sortOrder: 3),
+            new PaymentMethod("Cash", PaymentMethodCodes.Cash, requiresReference: false, sortOrder: 1),
+            new PaymentMethod("Card", PaymentMethodCodes.Card, requiresReference: true, sortOrder: 2),
+            new PaymentMethod("UPI", PaymentMethodCodes.Upi, requiresReference: true, sortOrder: 3),
+            new PaymentMethod("Wallet", PaymentMethodCodes.Wallet, requiresReference: true, sortOrder: 4),
         };
 
         var existing = await _db.PaymentMethods.Select(p => p.Code).ToListAsync(cancellationToken);
