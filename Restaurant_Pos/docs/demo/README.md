@@ -2,13 +2,13 @@
 
 Generated 19 Oct 2026 from the real application (desktop client, browser PWA) against a Development API with the seeded
 demo data on `main` after Phase 22. Nothing is mocked: every picture is a screenshot of a real screen after a real
-action, and every action is recorded with its result in the two test records below. 130 pictures, 125 steps.
+action, and every action is recorded with its result in the two test records below. 127 pictures, 123 steps.
 
 | Chapter | Folder | Client | Signed in as | Record |
 |---|---|---|---|---|
 | 1. Set up the restaurant | `01-admin-setup/` (30) | Desktop (WPF, 1366×800) | admin | `desktop-test-record.md` |
-| 2. Take orders on the floor | `02-waiter-phone/` (38) | Browser PWA, phone 390×844 | waiter1 | `web-test-record.md` |
-| 3. Cook and serve | `03-kitchen-tablet/` (15) | Browser PWA, tablet 1024×768 | kitchen1 | `web-test-record.md` |
+| 2. Take orders on the floor | `02-waiter-phone/` (37) | Browser PWA, phone 390×844 | waiter1 | `web-test-record.md` |
+| 3. Cook and serve | `03-kitchen-tablet/` (13) | Browser PWA, tablet 1024×768 | kitchen1 | `web-test-record.md` |
 | 4. Bill and collect | `04-cashier-desktop/` (24) | Desktop (WPF, 1366×800) | cashier1 | `desktop-test-record.md` |
 | 5. Run the business | `05-manager-desktop/` (23) | Desktop (WPF, 1366×800) | manager1 | `desktop-test-record.md` |
 
@@ -122,17 +122,15 @@ after the bug found in the first pass was fixed the same night; see "What the pa
 | 02 | `02-board-new-tickets.png` | The board: New, Preparing, Ready, with counts and ages. |
 | 03 | `03-board-new-tickets-scrolled.png` | The dine-in and the takeaway tickets (Counter chip instead of a table). |
 | 04 | `04-ticket-detail-pictures.png` | Ticket detail with item pictures. **(re-shot)** |
-| 05 | `05-ticket-detail-pictures-workaround.png` | (superseded by 04) |
-| 06 | `06-ticket-detail-takeaway.png` | A takeaway ticket. |
-| 07 | `07-station-show-pictures.png` | Station settings: pick the station, show pictures on the cards. |
-| 08 | `08-board-thumbnails.png` | The board with thumbnails. **(re-shot)** |
-| 09 | `09-board-thumbnails-workaround.png` | (superseded by 08) |
-| 10 | `10-accepted.png` | Accept. |
-| 11 | `11-preparing.png` | Start preparing. |
-| 12 | `12-ready.png` | Ready: the waiter's phone is told. |
-| 13 | `13-completed.png` | Completed tickets. |
-| 14 | `14-bell-panel.png` | Kitchen notifications. |
-| 15 | `15-board-dark.png` | Dark theme for a dim kitchen. |
+| 05 | `05-ticket-detail-takeaway.png` | A takeaway ticket. |
+| 06 | `06-station-show-pictures.png` | Station settings: pick the station, show pictures on the cards. |
+| 07 | `07-board-thumbnails.png` | The board with thumbnails. **(re-shot)** |
+| 08 | `08-accepted.png` | Accept. |
+| 09 | `09-preparing.png` | Start preparing. |
+| 10 | `10-ready.png` | Ready: the waiter's phone is told. |
+| 11 | `11-completed.png` | Completed tickets. |
+| 12 | `12-bell-panel.png` | Kitchen notifications. |
+| 13 | `13-board-dark.png` | Dark theme for a dim kitchen. |
 
 ## Chapter 4 — Bill and collect (`04-cashier-desktop/`, desktop, cashier1)
 
