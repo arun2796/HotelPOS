@@ -179,6 +179,9 @@ public sealed partial class DashboardViewModel : ViewModelBase, INavigationAware
     [ObservableProperty]
     private string _businessDayText = string.Empty;
 
+    [ObservableProperty]
+    private int _reservationsToday;
+
     // ----- KPI cards (A2)
 
     public ObservableCollection<KpiCard> Cards { get; } = new();
@@ -434,6 +437,7 @@ public sealed partial class DashboardViewModel : ViewModelBase, INavigationAware
         var d = result.Data;
         ErrorMessage = null;
         RefreshCount++;
+        ReservationsToday = d.ReservationsToday;
         BusinessDayText = "Business day " + d.BusinessDay.ToString("ddd d MMM", CultureInfo.CurrentCulture);
         UpdatedText = "Updated " + d.GeneratedAtUtc.ToLocalTime().ToString("HH:mm:ss", CultureInfo.CurrentCulture);
         Replace(Cards, BuildCards(d));

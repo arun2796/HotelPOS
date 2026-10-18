@@ -41,6 +41,7 @@ internal static class ReservationMapping
         EndTimeUtc = r.EndTimeUtc,
         Status = r.Status,
         Notes = r.Notes,
+        RowVersion = RowVersions.Encode(r.RowVersion),
     };
 }
 

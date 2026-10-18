@@ -32,7 +32,9 @@ public sealed class ReportQueries : IReportQueries
               (SELECT COUNT(*) FROM "KitchenOrders" WHERE "Status" IN (1, 2, 3, 4))::int AS "PendingKitchenTickets",
               (SELECT COUNT(*) FROM "Bills" WHERE "Status" IN (1, 2))::int AS "PendingBills",
               (SELECT ROUND(COALESCE(AVG(EXTRACT(EPOCH FROM ("ReadyAt" - "CreatedAt")) / 60), 0)::numeric, 1) FROM "KitchenOrders"
-                 WHERE "ReadyAt" IS NOT NULL AND "CreatedAt" >= {today.FromUtc} AND "CreatedAt" < {today.ToUtc}) AS "AverageTicketMinutes"
+                 WHERE "ReadyAt" IS NOT NULL AND "CreatedAt" >= {today.FromUtc} AND "CreatedAt" < {today.ToUtc}) AS "AverageTicketMinutes",
+              (SELECT COUNT(*) FROM "Reservations"
+                 WHERE "Status" = 1 AND "StartTimeUtc" >= {today.FromUtc} AND "StartTimeUtc" < {today.ToUtc})::int AS "ReservationsToday"
             """).ToListAsync(cancellationToken)).Single();
 
     public async Task<IReadOnlyList<DashboardTopItem>> TopItemsAsync(ReportWindow window, int count, CancellationToken cancellationToken) =>

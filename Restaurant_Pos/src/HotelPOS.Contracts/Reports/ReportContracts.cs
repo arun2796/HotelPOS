@@ -93,6 +93,7 @@ public sealed record DashboardDto
     public int PendingKitchenTickets { get; init; }
     public int PendingBills { get; init; }
     public decimal AverageTicketMinutes { get; init; }
+    public int ReservationsToday { get; init; }
     public IReadOnlyList<DashboardTopItem> TopItems { get; init; } = Array.Empty<DashboardTopItem>();
     public IReadOnlyList<DashboardDayPoint> LastDays { get; init; } = Array.Empty<DashboardDayPoint>();
     public DateTime GeneratedAtUtc { get; init; }

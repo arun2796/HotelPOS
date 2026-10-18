@@ -46,6 +46,7 @@ public sealed record ReservationSummaryDto
     public DateTime EndTimeUtc { get; init; }
     public ReservationStatus Status { get; init; }
     public string? Notes { get; init; }
+    public string RowVersion { get; init; } = string.Empty;
 }
 
 public sealed record CreateReservationRequest

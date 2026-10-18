@@ -60,6 +60,16 @@ public sealed partial class TableTileViewModel : ObservableObject
     [ObservableProperty]
     private bool _isSelected;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasUpcomingReservation), nameof(ReservationText))]
+    private HotelPOS.Contracts.Reservations.ReservationSummaryDto? _upcomingReservation;
+
+    public bool HasUpcomingReservation => UpcomingReservation is not null;
+
+    public string ReservationText => UpcomingReservation is { } res
+        ? $"Reserved {res.StartTimeUtc.ToLocalTime():t} ({res.PartySize})"
+        : string.Empty;
+
     public DateTime StateTimestampUtc { get; private set; }
 
     public bool IsAvailable => Status == TableStatus.Available;
@@ -99,6 +109,7 @@ public sealed partial class TableTileViewModel : ObservableObject
         OccupiedAtUtc = table.OccupiedAtUtc;
         CurrentOrderId = table.CurrentOrderId;
         CurrentOrderNumber = table.CurrentOrderNumber;
+        UpcomingReservation = table.UpcomingReservation;
         RowVersion = table.RowVersion;
         if (stateTimestampUtc > StateTimestampUtc)
         {

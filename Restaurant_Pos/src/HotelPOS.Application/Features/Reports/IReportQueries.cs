@@ -15,6 +15,7 @@ public sealed record DashboardFigures
     public int PendingKitchenTickets { get; init; }
     public int PendingBills { get; init; }
     public decimal AverageTicketMinutes { get; init; }
+    public int ReservationsToday { get; init; }
 }
 
 public sealed record WaiterFigures

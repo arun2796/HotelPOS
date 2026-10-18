@@ -56,7 +56,8 @@ public sealed partial class TableMapViewModel : ViewModelBase, INavigationAware,
         INavigationService navigation,
         IAuthSession session,
         IDialogService dialogs,
-        INotificationService notifications)
+        INotificationService notifications,
+        IReservationsApi? reservationsApi = null)
     {
         _floorApi = floorApi;
         _realtime = realtime;
@@ -65,7 +66,7 @@ public sealed partial class TableMapViewModel : ViewModelBase, INavigationAware,
         var isManager = roles.Contains(Roles.Manager) || roles.Contains(Roles.Admin);
         CanTakeOrders = roles.Contains(Roles.Waiter) || isManager;
         Details = new TableDetailsViewModel(floorApi, ordersApi, drafts, navigation, dialogs, notifications, ApplyTable, RefreshAsync, CanTakeOrders, isManager,
-            roles.Contains(Roles.Cashier));
+            roles.Contains(Roles.Cashier), reservationsApi);
     }
 
     public ObservableCollection<TableMapSectionViewModel> Sections { get; } = new();

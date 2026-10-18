@@ -46,6 +46,7 @@ internal sealed class GetDashboardHandler : IQueryHandler<GetDashboardQuery, Das
             PendingKitchenTickets = figures.PendingKitchenTickets,
             PendingBills = figures.PendingBills,
             AverageTicketMinutes = figures.AverageTicketMinutes,
+            ReservationsToday = figures.ReservationsToday,
             TopItems = topItems,
             LastDays = Enumerable.Range(0, 7).Select(i => today.AddDays(i - 6))
                 .Select(day => new DashboardDayPoint { Day = day, NetSales = byDay.GetValueOrDefault(day) })

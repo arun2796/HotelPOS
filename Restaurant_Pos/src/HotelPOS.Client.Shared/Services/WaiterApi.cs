@@ -103,4 +103,29 @@ public sealed class WaiterApi
     /// <summary>One kitchen ticket with its stage times (accepted, started, ready, served); waiters may read it (controller role list).</summary>
     public Task<ApiResult<KitchenTicketDto>> GetTicketAsync(int ticketId, CancellationToken ct = default) =>
         _api.GetAsync<KitchenTicketDto>($"api/kitchen/orders/{ticketId}", ct);
+
+    public Task<ApiResult<PagedResult<HotelPOS.Contracts.Reservations.ReservationDto>>> GetReservationsAsync(HotelPOS.Contracts.Reservations.ReservationQuery query, CancellationToken ct = default)
+    {
+        var url = new System.Text.StringBuilder("api/reservations?page=").Append(query.Page.ToString(System.Globalization.CultureInfo.InvariantCulture))
+            .Append("&pageSize=").Append(query.PageSize.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+        if (query.TableId is { } tableId)
+            url.Append("&tableId=").Append(tableId.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        if (query.Status is { } status)
+            url.Append("&status=").Append(((int)status).ToString(System.Globalization.CultureInfo.InvariantCulture));
+        if (query.FromUtc is { } fromUtc)
+            url.Append("&fromUtc=").Append(Uri.EscapeDataString(fromUtc.ToString("O")));
+        if (query.ToUtc is { } toUtc)
+            url.Append("&toUtc=").Append(Uri.EscapeDataString(toUtc.ToString("O")));
+        if (!string.IsNullOrWhiteSpace(query.Search))
+            url.Append("&search=").Append(Uri.EscapeDataString(query.Search.Trim()));
+
+        return _api.GetAsync<PagedResult<HotelPOS.Contracts.Reservations.ReservationDto>>(url.ToString(), ct);
+    }
+
+    public Task<ApiResult<HotelPOS.Contracts.Reservations.ReservationDto>> SeatReservationAsync(int reservationId, HotelPOS.Contracts.Reservations.SeatReservationRequest request, CancellationToken ct = default) =>
+        _api.PostAsync<HotelPOS.Contracts.Reservations.ReservationDto>($"api/reservations/{reservationId}/seat", request, null, ct);
+
+    public Task<ApiResult<HotelPOS.Contracts.Reservations.ReservationDto>> CancelReservationAsync(int reservationId, HotelPOS.Contracts.Reservations.CancelReservationRequest request, CancellationToken ct = default) =>
+        _api.PostAsync<HotelPOS.Contracts.Reservations.ReservationDto>($"api/reservations/{reservationId}/cancel", request, null, ct);
 }
