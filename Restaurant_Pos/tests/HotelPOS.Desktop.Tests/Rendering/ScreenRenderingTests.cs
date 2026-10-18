@@ -153,8 +153,14 @@ public class ScreenRenderingTests
             floor.Sections.EditCommand.Execute(null);
             rendered.Add(await RenderScreenAsync(env, shell, "12-admin-floor-sections"));
 
+            await shell.NavigateToAsync(ModuleRegistry.FloorPlan, null);
+            var plan = (FloorEditorViewModel)shell.CurrentPage!;
+            plan.Placed.Should().HaveCount(8);
+            plan.SelectedItem = plan.Placed.Single(i => i.Code == "T02");
+            rendered.Add(await RenderScreenAsync(env, shell, "56-admin-floor-plan"));
+
             await shell.NavigateToAsync(ModuleRegistry.Menu, null);
-            var menu = (MenuAdminViewModel)shell.CurrentPage!;
+            var menu =(MenuAdminViewModel)shell.CurrentPage!;
             menu.Items.SelectedItem = menu.Items.Items[0];
             await menu.Items.EditCommand.ExecuteAsync(null);
             rendered.Add(await RenderScreenAsync(env, shell, "15-admin-menu-items"));
@@ -228,6 +234,11 @@ public class ScreenRenderingTests
             env.Theme.ApplyDensity(ThemeService.Comfort);
 
             var map = (HotelPOS.Desktop.Modules.Tables.TableMapViewModel)waiterShell.CurrentPage!;
+            map.Sections.Single(s => s.Id == 1).UseCanvas.Should().BeTrue("Ground Floor has placed tables");
+            map.Sections.Single(s => s.Id == 2).UseCanvas.Should().BeFalse("First Floor has no floor plan, so it stays a list");
+            map.SelectedFilter = map.Filters.Single(f => f.SectionId == 1);
+            rendered.Add(await RenderScreenAsync(env, waiterShell, "57-table-map-floor-plan"));
+            map.SelectedFilter = map.Filters[0];
             map.SelectTableCommand.Execute(map.AllTables.Single(t => t.Code == "T05"));
             map.Details.DigitCommand.Execute("4");
             rendered.Add(await RenderScreenAsync(env, waiterShell, "13-waiter-table-details"));
@@ -507,7 +518,7 @@ public class ScreenRenderingTests
         }
 
         bindingErrors.Errors.Should().BeEmpty("every binding in the views must point at an existing property");
-        rendered.Should().HaveCount(82);
+        rendered.Should().HaveCount(84);
         // Phase 21: the bundled Inter (Regular/Medium/SemiBold/Bold) is the body font on every Windows version.
         bodyFontFiles.Should().HaveCount(4).And.OnlyContain(f => f.StartsWith("inter-"));
     }
@@ -718,6 +729,7 @@ public class ScreenRenderingTests
             services.AddSingleton(DemoOperationsApi());
             services.AddSingleton(DemoBillingApi());
             services.AddSingleton(DemoReportsApi());
+            services.AddSingleton(DemoFloorLayoutApi());
             services.AddSingleton(DemoPrintApi());
             services.AddSingleton(DemoTemplatesApi());
             services.AddSingleton(DemoCashApi());
@@ -1502,6 +1514,28 @@ public class ScreenRenderingTests
             return api;
         }
 
+        // The floor-plan editor reads the same demo tables as the map: section 1 is placed, the others are in the Unplaced tray.
+        private static IFloorLayoutApi DemoFloorLayoutApi()
+        {
+            var api = Substitute.For<IFloorLayoutApi>();
+            api.GetAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(call =>
+            {
+                var section = DemoMap().Sections.Single(s => s.Id == call.ArgAt<int>(0));
+                return ApiResult<FloorLayoutDto>.Ok(new FloorLayoutDto
+                {
+                    SectionId = section.Id,
+                    SectionName = section.Name,
+                    Tables = section.Tables.Select(t => new FloorTableDto
+                    {
+                        TableId = t.Id, Code = t.Code, Capacity = t.Capacity, Status = t.Status,
+                        PosX = t.PosX, PosY = t.PosY, Width = t.Width, Height = t.Height, Shape = t.Shape, Rotation = t.Rotation,
+                        HasLayout = t.PosX is not null,
+                    }).ToList(),
+                });
+            });
+            return api;
+        }
+
         private static IReportsApi DemoReportsApi()
         {
             var today = new DateOnly(2026, 10, 7);
@@ -1670,6 +1704,13 @@ public class ScreenRenderingTests
                 CurrentOrderNumber = order,
                 IsActive = true,
                 RowVersion = "AAAFow==",
+                // Section 1 has a floor plan (Phase 22 P2): two rows of four, one round table and one rotated; the others are unplaced.
+                PosX = section == 1 ? 24 + ((id - 1) % 4) * 168 : null,
+                PosY = section == 1 ? 24 + ((id - 1) / 4) * 128 : null,
+                Width = section == 1 ? (id == 7 ? 144 : 120) : null,
+                Height = section == 1 ? (id == 7 ? 96 : 80) : null,
+                Shape = section == 1 ? (id == 3 ? TableShape.Round : TableShape.Rectangle) : null,
+                Rotation = section == 1 ? (id == 5 ? 90 : 0) : null,
             };
 
             return new TableMapDto

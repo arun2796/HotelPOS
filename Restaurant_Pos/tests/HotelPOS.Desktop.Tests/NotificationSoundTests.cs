@@ -26,6 +26,8 @@ public sealed class FakeUserPreferences : IUserPreferences
     public IReadOnlyList<int> PinnedItemIds { get; set; } = new List<int>();
 
     public IReadOnlyDictionary<int, int> ItemOrderCounts { get; set; } = new Dictionary<int, int>();
+
+    public string? TableMapMode { get; set; }
 }
 
 /// <summary>Phase 20.2: the new notification kinds, per-terminal sound and toast choices, and the Settings section.</summary>

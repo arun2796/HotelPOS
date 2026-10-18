@@ -55,6 +55,7 @@ public static class AppHost
         services.AddSingleton<IOperationsApi, OperationsApi>();
         services.AddSingleton<IAdminSettingsApi, AdminSettingsApi>();
         services.AddSingleton<IFloorApi, FloorApi>();
+        services.AddSingleton<IFloorLayoutApi, FloorLayoutApi>();
         services.AddSingleton<IMenuApi, MenuApi>();
         services.AddSingleton<IOrdersApi, OrdersApi>();
         services.AddSingleton<ILocalDraftStore, LocalDraftStore>();

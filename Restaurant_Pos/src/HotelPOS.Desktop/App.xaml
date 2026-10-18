@@ -87,6 +87,9 @@
       <DataTemplate DataType="{x:Type admin:SettingsHubViewModel}">
         <admin:SettingsHubView />
       </DataTemplate>
+      <DataTemplate DataType="{x:Type admin:FloorEditorViewModel}">
+        <admin:FloorEditorView />
+      </DataTemplate>
       <DataTemplate DataType="{x:Type admin:FloorViewModel}">
         <admin:FloorView />
       </DataTemplate>

@@ -224,3 +224,15 @@ DTOs. Desktop/web: VM and bUnit tests per surface; rendering counts; `StatusPres
   presence and SQL rows per user. `GET api/staff/on-duty` (new `StaffController`, `ReportsView`) and `DashboardDto.StaffOnDuty`
   share it. The desktop "Staff today" column now shows this list instead of the waiter-sales list; the old `Staff` rows
   (waiter sales from the Waiters report) are still loaded by the view model but no longer displayed.
+
+- **P2 (2026-10-19).** Desktop only. New module `floor-plan` ("Floor plan", Live Operations, Admin, `floor.layout.manage`) with
+  `FloorEditorViewModel` over `IFloorLayoutApi`; the table map reads geometry from the existing `TableDto` fields, so it needs no
+  extra call, and reloads on `FloorLayoutChanged`. Deviations: (a) tables are placed with a **Place** button (next free grid slot),
+  not by dragging from the tray, and a placed table cannot be taken off the plan (the backend save only lists tables; Undo before
+  saving); (b) Round tables use a pill/circle corner radius, not a true ellipse for non-square sizes; (c) **no leave-confirmation**:
+  the shell has no navigation guard (`INavigationAware` only has OnNavigatedTo/From), so only the header shows "Unsaved changes";
+  (d) a bound `RotateTransform` fails inside data templates, so rotation is applied by the `FloorTile.Angle` attached property;
+  (e) the List/Map choice is `IUserPreferences.TableMapMode` (default Map, which is the list anyway for a section with no placed
+  table); (f) the read-only canvas is scaled to the window width by a `Viewbox` (down only), the editor has Zoom and Fit; resize
+  handles act in the tile's own frame; (g) a save refused for a reason other than a lost connection refetches the stored layout
+  and drops the unsaved edits. Desktop rendering screens 82 -> 84 (`56-admin-floor-plan`, `57-table-map-floor-plan`).

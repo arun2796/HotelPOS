@@ -64,6 +64,45 @@ public sealed partial class TableTileViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(HasUpcomingReservation), nameof(ReservationText))]
     private HotelPOS.Contracts.Reservations.ReservationSummaryDto? _upcomingReservation;
 
+    // Floor-plan geometry (Phase 22 P2); null until an administrator places the table.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsPlaced))]
+    private int? _posX;
+
+    [ObservableProperty]
+    private int? _posY;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CornerRadiusValue), nameof(PlanWidth))]
+    private int? _width;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CornerRadiusValue), nameof(PlanHeight))]
+    private int? _height;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CornerRadiusValue))]
+    private TableShape? _shape;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RotationAngle))]
+    private int? _rotation;
+
+    public bool IsPlaced => PosX is not null && PosY is not null;
+
+    public int PlanX => PosX ?? 0;
+
+    public int PlanY => PosY ?? 0;
+
+    public int PlanWidth => Width ?? 120;
+
+    public int PlanHeight => Height ?? 80;
+
+    public double RotationAngle => Rotation ?? 0;
+
+    public System.Windows.CornerRadius CornerRadiusValue =>
+        new(Shape == TableShape.Round ? Math.Min(PlanWidth, PlanHeight) / 2.0 : 8);
+
     public bool HasUpcomingReservation => UpcomingReservation is not null;
 
     public string ReservationText => UpcomingReservation is { } res
@@ -111,6 +150,14 @@ public sealed partial class TableTileViewModel : ObservableObject
         CurrentOrderNumber = table.CurrentOrderNumber;
         UpcomingReservation = table.UpcomingReservation;
         RowVersion = table.RowVersion;
+        PosX = table.PosX;
+        PosY = table.PosY;
+        Width = table.Width;
+        Height = table.Height;
+        Shape = table.Shape;
+        Rotation = table.Rotation;
+        OnPropertyChanged(nameof(PlanX));
+        OnPropertyChanged(nameof(PlanY));
         if (stateTimestampUtc > StateTimestampUtc)
         {
             StateTimestampUtc = stateTimestampUtc;
