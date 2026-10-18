@@ -9,6 +9,7 @@ using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Modules.Orders;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Auth;
+using HotelPOS.Desktop.Services.Configuration;
 using HotelPOS.Desktop.Services.Navigation;
 using HotelPOS.Desktop.Services.Orders;
 using HotelPOS.Desktop.Services.Realtime;
@@ -32,6 +33,38 @@ public sealed partial class TableMapSectionViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _isVisible = true;
+
+    /// <summary>Tables with floor-plan coordinates, drawn on the read-only canvas.</summary>
+    public ObservableCollection<TableTileViewModel> PlacedTables { get; } = new();
+
+    public bool HasPlacedTables => PlacedTables.Count > 0;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowList))]
+    private bool _useCanvas;
+
+    public bool ShowList => !UseCanvas;
+
+    public int CanvasWidth => Math.Max(600, PlacedTables.Count == 0 ? 0 : PlacedTables.Max(t => t.PlanX + t.PlanWidth) + 24);
+
+    public int CanvasHeight => Math.Max(300, PlacedTables.Count == 0 ? 0 : PlacedTables.Max(t => t.PlanY + t.PlanHeight) + 24);
+
+    /// <summary>The canvas replaces the tile list only in Map mode and only when at least one table is placed.</summary>
+    public static bool ShouldUseCanvas(bool mapMode, bool hasPlacedTables) => mapMode && hasPlacedTables;
+
+    public void Refresh(bool mapMode)
+    {
+        PlacedTables.Clear();
+        foreach (var table in Tables.Where(t => t.IsPlaced))
+        {
+            PlacedTables.Add(table);
+        }
+
+        OnPropertyChanged(nameof(HasPlacedTables));
+        OnPropertyChanged(nameof(CanvasWidth));
+        OnPropertyChanged(nameof(CanvasHeight));
+        UseCanvas = ShouldUseCanvas(mapMode, HasPlacedTables);
+    }
 }
 
 public sealed record SectionFilter(int? SectionId, string Name);
@@ -47,6 +80,32 @@ public sealed partial class TableMapViewModel : ViewModelBase, INavigationAware,
     private CancellationTokenSource? _timer;
     private TimeSpan _serverClockOffset;
     private int _refreshing;
+    private readonly IUserPreferences? _preferences;
+
+    public const string ListMode = "List";
+    public const string MapMode = "Map";
+
+    public IReadOnlyList<string> ViewModes { get; } = new[] { ListMode, MapMode };
+
+    /// <summary>"List" or "Map", remembered per terminal. A section without placed tables is shown as a list either way.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsMapMode))]
+    private string _viewMode;
+
+    public bool IsMapMode => ViewMode == MapMode;
+
+    partial void OnViewModeChanged(string value)
+    {
+        if (_preferences is not null)
+        {
+            _preferences.TableMapMode = value;
+        }
+
+        foreach (var section in Sections)
+        {
+            section.Refresh(IsMapMode);
+        }
+    }
 
     public TableMapViewModel(
         IFloorApi floorApi,
@@ -57,8 +116,11 @@ public sealed partial class TableMapViewModel : ViewModelBase, INavigationAware,
         IAuthSession session,
         IDialogService dialogs,
         INotificationService notifications,
-        IReservationsApi? reservationsApi = null)
+        IReservationsApi? reservationsApi = null,
+        IUserPreferences? preferences = null)
     {
+        _preferences = preferences;
+        _viewMode = preferences?.TableMapMode == ListMode ? ListMode : MapMode;
         _floorApi = floorApi;
         _realtime = realtime;
         _navigation = navigation;
@@ -114,6 +176,7 @@ public sealed partial class TableMapViewModel : ViewModelBase, INavigationAware,
         {
             _subscriptions.Add(_realtime.Subscribe<OrderProgressEvent>(progress, e => OnOrderChanged(e.OrderId)));
         }
+        _subscriptions.Add(_realtime.Subscribe<FloorLayoutChangedEvent>(HubEvents.FloorLayoutChanged, change => { _ = RefreshAsync(); }));
         _timer = new CancellationTokenSource();
         _ = RunElapsedTimerAsync(_timer.Token);
         await RefreshAsync();
@@ -194,6 +257,7 @@ public sealed partial class TableMapViewModel : ViewModelBase, INavigationAware,
                 sectionVm.Tables.Add(tile);
             }
 
+            sectionVm.Refresh(IsMapMode);
             Sections.Add(sectionVm);
         }
 

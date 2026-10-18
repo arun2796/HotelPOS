@@ -26,6 +26,7 @@ open at least one screen in it. The sidebar collapses to an icon rail on its own
 | Overview | Cashier home | Cashier | Pending bills, own shift, expected cash, print failures, business day (3.1.1) |
 | Live Operations | Tables | Admin, Manager, Waiter, Cashier | Live table map; occupy tables, take orders |
 | Live Operations | Sections & Tables | Admin, Manager | Set up sections and tables |
+| Live Operations | Floor plan | Admin (`floor.layout.manage`) | Arrange each section's tables on the floor plan (6.6, Phase 22 P2) |
 | Live Operations | My Orders | Admin, Manager, Waiter | Your active orders; ready ones highlighted |
 | Live Operations | Orders | Admin, Manager | Every active order: search, status chips, sort, open the table (3.4, new in Phase 21) |
 | Live Operations | Kitchen Display | Admin, Manager, Kitchen | New / preparing / ready tickets |
@@ -58,8 +59,8 @@ open at least one screen in it. The sidebar collapses to an icon rail on its own
 \* Administrators only. That is 29 screens in the sidebar plus Customers. Where a screen has tabs they are listed in its
 section below (Sections & Tables, Menu, Payments & discounts, Restaurant Settings, Tax Returns). Phase 22 added Expenses
 (Finance group), the Hourly sales and Profit & Loss tabs under Reports and the "Expenses today" dashboard card
-(`docs/phases/phase-22-excluded-features.md` F1–F4). Low stock and the floor-plan drawing of the mock-ups still have no
-data behind them and are not screens.
+(`docs/phases/phase-22-excluded-features.md` F1–F4). Low stock still has no data behind it and is not a screen. The floor-plan drawing of the mock-ups is the **Floor plan**
+editor (Admin, 6.6) and the Map view of the table map (3.2.1) since Phase 22 P2.
 
 After sign-in each person lands on a home screen: Admin and Manager on Dashboard, Kitchen on Kitchen Display, Cashier on the cashier home (shown as "Dashboard"), Waiter on Tables (in the browser and the Android app, on the waiter Home page at /home).
 
@@ -230,6 +231,12 @@ Buttons (each shown only when it applies):
 - **CANCEL ORDER** - asks for a reason ("required once the kitchen has started").
 - Cancel-item icon on a sent line - asks for a reason for the kitchen. Allowed while the kitchen ticket is new or accepted; once preparing only a manager may cancel.
 - Close (X).
+
+**List / Map toggle** (next to the summary, Phase 22 P2): *List* is the tile list described above; *Map* draws every section that
+has placed tables as its floor plan (same tiles: status colour, shape, rotation, upcoming-reservation mark; clicking a tile does
+what clicking a list tile does; the plan is scaled down to fit the window width). A section with no placed table is always shown
+as the list. The choice is remembered on this terminal (`preferences.json`, `TableMapMode`; default Map). The map reloads when
+the server announces `FloorLayoutChanged`.
 
 Source: `Modules/Tables/TableMapView.xaml`, `Modules/Tables/TableDetailsView.xaml`
 
@@ -627,6 +634,20 @@ Controls: refresh, **New section**. Columns: ORDER, NAME, ACTIVE TABLES, STATUS.
 Buttons: **Cancel**, **Save**.
 
 Source: `Modules/Admin/FloorView.xaml`, `Modules/Admin/TablesView.xaml`, `Modules/Admin/SectionsView.xaml`
+
+### 6.6 Floor plan (Phase 22 P2)
+
+Purpose: place each section's tables on a canvas. Admin only (permission `floor.layout.manage`; the sidebar entry sits under Live Operations after Sections & Tables).
+
+Controls: **Section** picker; **Snap to 8-unit grid** (on by default); **Rotate 90°** and **Round / Rectangle** (act on the selected table); **Undo** / **Redo** (Ctrl+Z / Ctrl+Y); **Reset to grid** (every table of the section in rows of six, 120 x 80, 24 apart, rectangles, no rotation); **Zoom** slider (25 % to 200 %) and **Fit**; **Save layout** (enabled only when something changed). The header says "Unsaved changes" or "All changes saved".
+
+Canvas: 1200 x 800 layout units at least (grows with the tables), 1 unit = 1 px at 100 %. Each table is a tile with its code, seats and status colour; Round tables have rounded ends, rotated tables turn about their centre. Drag a tile to move it; the selected tile shows eight handles to resize; the arrow keys nudge the selection by 8. Limits are enforced as you edit: position 0 to 5000, size 40 to 600.
+
+**Unplaced tables** (right): tables of the section that have no position yet, each with **Place** (puts it on the next free grid spot). Tables cannot be removed from the plan once placed (Undo before saving).
+
+Save sends the placed tables of the section; on a refusal (not a connection failure) the stored layout is loaded again. If another terminal saves the same section while there are unsaved edits, a warning appears and the edits stay.
+
+Source: `Modules/Admin/FloorEditorView.xaml`, `Modules/Admin/FloorEditorViewModel.cs`
 
 ### 6.6 Menu
 

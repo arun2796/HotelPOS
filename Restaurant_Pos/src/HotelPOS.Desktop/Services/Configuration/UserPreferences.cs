@@ -20,6 +20,9 @@ public interface IUserPreferences
     IReadOnlyList<int> PinnedItemIds { get; set; }
 
     IReadOnlyDictionary<int, int> ItemOrderCounts { get; set; }
+
+    // Table map presentation on this terminal (Phase 22 P2): "Map" or "List"; null until the user chooses.
+    string? TableMapMode { get; set; }
 }
 
 public sealed class UserPreferences : IUserPreferences
@@ -61,6 +64,16 @@ public sealed class UserPreferences : IUserPreferences
         set
         {
             _model = _model with { ItemOrderCounts = new Dictionary<int, int>(value) };
+            Persist();
+        }
+    }
+
+    public string? TableMapMode
+    {
+        get => _model.TableMapMode;
+        set
+        {
+            _model = _model with { TableMapMode = value };
             Persist();
         }
     }
@@ -115,5 +128,7 @@ public sealed class UserPreferences : IUserPreferences
         public List<int>? PinnedItemIds { get; init; }
 
         public Dictionary<int, int>? ItemOrderCounts { get; init; }
+
+        public string? TableMapMode { get; init; }
     }
 }

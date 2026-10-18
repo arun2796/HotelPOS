@@ -42,6 +42,7 @@ public static class ModuleRegistry
     public const string ClosedBills = "closed-bills";
     public const string Reports = "reports";
     public const string Floor = "floor";
+    public const string FloorPlan = "floor-plan";
     public const string Menu = "menu";
     public const string Discounts = "discounts";
     public const string Users = "users";
@@ -81,6 +82,8 @@ public static class ModuleRegistry
             "Live table map: occupy tables, open orders and follow their status.", typeof(TableMapViewModel)),
         new(Floor, "Sections & Tables", "", "Live Operations", Management, 2,
             "Create sections and tables, capacity and service state.", typeof(FloorViewModel)),
+        new(FloorPlan, "Floor plan", "", "Live Operations", AdminOnly, 22,
+            "Arrange the tables of each section on the floor plan: drag, resize, snap, shape and rotation.", typeof(FloorEditorViewModel)),
         new(MyOrders, "My Orders", "", "Live Operations", new[] { Roles.Admin, Roles.Manager, Roles.Waiter }, 4,
             "Your active orders, with ready orders highlighted.", typeof(MyOrdersViewModel)),
         new(Orders, "Orders", "", "Live Operations", Management, 21,
@@ -176,6 +179,7 @@ public static class ModuleRegistry
         [Import] = Permissions.ImportRun,
         [Reports] = Permissions.ReportsView,
         [Floor] = Permissions.TablesManage,
+        [FloorPlan] = Permissions.FloorLayoutManage,
         [Menu] = Permissions.MenuManage,
         [Audit] = Permissions.AuditView,
         [Users] = Permissions.UsersManage,

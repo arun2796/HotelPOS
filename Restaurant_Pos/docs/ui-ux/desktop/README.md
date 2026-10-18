@@ -105,7 +105,7 @@ month (24), the eight reports and their Excel / PDF exports and dark theme (25�
 | Dashboard dark (`manager/32`) | Same layout; status colours and badges keep their meaning; AA contrast per the token tests | The mock-up has no dark variant | — |
 | Dashboard collapsed (`manager/17-manager-dashboard-collapsed`) | Icon rail like the mock-up's hamburger state; the content takes the width | No group labels on the rail (icons only; tooltips carry the names) | — |
 | Orders (`manager/18-manager-orders`) | The mock-up's Active Orders list as a page: chips, search, sort, status badges, View | Columns CREATED and ELAPSED instead of one Time column; no row "..." menu | — |
-| Sections & Tables (`manager/18-manager-tables-sections`) | Grid with status words, editor on the right, New table | The mock-up draws a floor plan ("Tables & Floor Plan") | No floor-plan geometry (§ 3 Out) |
+| Sections & Tables (`manager/18-manager-tables-sections`) | Grid with status words, editor on the right, New table | The mock-up draws a floor plan ("Tables & Floor Plan") | The floor plan is a separate Admin screen, **Floor plan** (Phase 22 P2), and the Map view of the table map |
 | Menu tabs (`manager/19`) | Categories and Items as the two Menu Management entries of the mock-up, here tabs of one screen (D7) | — | Modifier management stays as it was (D2 bans new modifier UI) |
 
 ## UI/UX issues found in this pass (ordered by severity)

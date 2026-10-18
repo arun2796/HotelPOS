@@ -1154,6 +1154,74 @@
     </Style.Triggers>
   </Style>
 
+  <!-- A table on the floor plan (Phase 22 P2): the same status colours as TableTile, with the shape's corner radius from the
+       tile's CornerRadiusValue. Used by the floor editor and the read-only canvas of the table map. -->
+  <Style x:Key="FloorTileSurface" TargetType="Border">
+    <Setter Property="CornerRadius" Value="{Binding CornerRadiusValue}" />
+    <Setter Property="BorderThickness" Value="1.5" />
+    <Setter Property="Padding" Value="6,4" />
+    <Setter Property="SnapsToDevicePixels" Value="True" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.SuccessText}" />
+    <Setter Property="Background" Value="{DynamicResource Brush.SuccessSoft}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Status.Available}" />
+    <Style.Triggers>
+      <DataTrigger Binding="{Binding Status}" Value="Occupied">
+        <Setter Property="Background" Value="{DynamicResource Brush.InfoSoft}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Status.Occupied}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.InfoText}" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Status}" Value="Ordering">
+        <Setter Property="Background" Value="{DynamicResource Brush.InfoSoft}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Status.Ordering}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.InfoText}" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Status}" Value="Preparing">
+        <Setter Property="Background" Value="{DynamicResource Brush.WarningSoft}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Status.Preparing}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.WarningText}" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Status}" Value="Ready">
+        <Setter Property="Background" Value="{DynamicResource Brush.Status.Ready}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Status.Ready}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.PrimaryText}" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Status}" Value="Billing">
+        <Setter Property="Background" Value="{DynamicResource Brush.WarningSoft}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Status.Billing}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.WarningText}" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Status}" Value="OutOfService">
+        <Setter Property="Background" Value="{DynamicResource Brush.NeutralSoft}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Status.OutOfService}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.NeutralText}" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding IsSelected}" Value="True">
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.TextPrimary}" />
+        <Setter Property="BorderThickness" Value="3" />
+      </DataTrigger>
+    </Style.Triggers>
+  </Style>
+
+  <!-- A clickable floor-plan tile: the surface above in a button (table map canvas). -->
+  <Style x:Key="FloorTileButton" TargetType="Button">
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusVisualStyle" Value="{StaticResource Focus.Visual}" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Border Style="{StaticResource FloorTileSurface}" x:Name="Surface">
+            <ContentPresenter />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Surface" Property="Opacity" Value="0.85" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
   <!-- Status of a table as a badge (table details header): soft tone fill and tone text, Ready solid. -->
   <Style x:Key="TableStatusBadge" TargetType="Border">
     <Setter Property="CornerRadius" Value="{StaticResource Radius.Pill}" />
