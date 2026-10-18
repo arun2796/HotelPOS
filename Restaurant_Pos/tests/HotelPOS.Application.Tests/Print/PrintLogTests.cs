@@ -173,6 +173,7 @@ public class PrintLogTests : PrintScenario
     {
         var s = await FinalizedBillAsync();
         CurrentUser.SignIn(s.Waiter, "waiter1", Roles.Waiter);
+        CurrentUser.DeviceId = null;
         var reserved = (KitchenTicketDocument)(await SendAsync(new ReserveCopyCommand(PrintDocumentType.Kot, s.TicketId,
             new ReserveCopyRequest(), Guid.NewGuid()))).Value;
         var again = (KitchenTicketDocument)(await SendAsync(new ReserveCopyCommand(PrintDocumentType.Kot, s.TicketId,
@@ -189,6 +190,7 @@ public class PrintLogTests : PrintScenario
         (await QueryAsync(db => db.PrintLogs.CountAsync(p => p.DocumentType == PrintDocumentType.Kot))).Should().Be(2, "the PDF for a reserved copy takes no copy of its own");
 
         CurrentUser.SignIn(s.Cashier, "cashier1", Roles.Cashier);
+        CurrentUser.DeviceId = null;
         (await SendAsync(new GetDocumentPdfCommand(PrintDocumentType.Kot, s.TicketId, null, again.PrintLogId))).Error!.Code
             .Should().Be(ErrorCodes.Forbidden, "only the user who reserved the copy (or a manager) may render it");
         (await SendAsync(new GetDocumentPdfCommand(PrintDocumentType.Kot, s.TicketId, null, 987654))).Error!.Code.Should().Be(ErrorCodes.NotFound);

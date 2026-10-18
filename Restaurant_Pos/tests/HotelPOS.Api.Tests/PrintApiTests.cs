@@ -51,7 +51,7 @@ public class PrintApiTests : IClassFixture<ApiFactory>
     public async Task KotPdf_WaiterPrintsTheirOrdersTicket_ThroughReserveOpenComplete_AndOthersAreRefused()
     {
         var waiter = await _factory.CreateAuthenticatedClientAsync("waiter1", ApiFactory.DemoPassword);
-        var ticketId = (await SendOrderAsync(waiter, "T15", "Chicken Biryani")).Tickets.Single().Id;
+        var ticketId = (await SendOrderAsync(waiter, "T12", "Chicken Biryani")).Tickets.Single().Id;
 
         var plain = await waiter.GetAsync($"/api/print/kot/{ticketId}.pdf");
         var reserve = new HttpRequestMessage(HttpMethod.Post, $"/api/print/kot/{ticketId}/copies") { Content = JsonContent.Create(new ReserveCopyRequest(), options: PosJson.Options) };

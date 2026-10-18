@@ -182,6 +182,7 @@ endpoint is `tests/HotelPOS.Api.Tests/authorization-matrix.txt`; `AuthorizationM
 | Method | Route | Roles | Notes |
 |---|---|---|---|
 | GET | `/api/print/kot/{ticketId}` | K, W, M, A | `KitchenTicketDocument` (never prices unless `KotShowPrices`) |
+| GET | `/api/print/kot/{ticketId}.pdf` | K, W, M, A | PDF of the ticket (`paper`, optional `logId`; see the print log notes below) |
 | GET | `/api/print/invoice/{billId}` | C, M, A, W (own order) | `InvoiceDocument` (header, tax breakup, payments, footer, `isCancelled` for voided bills, `copies` from `PrintInvoiceCopies`) |
 | GET | `/api/print/receipt/{paymentId}` | C, M, A | `ReceiptDocument` (refund rows print as REFUND) |
 | POST | `/api/print/reprints` | C, M, A | `{documentType, entityId, reason}` writes `Print.Reprint` to the audit log; the client then fetches and prints the document |
@@ -317,4 +318,5 @@ the object is optional. Since Phase 9 the object may instead carry `approvalToke
   `POST /api/print/kot/{ticketId}/copies` reserve a copy number (copy 2+ is marked DUPLICATE) and return the document;
   `PUT /api/print/copies/{logId}` records the result; `GET /api/print/{type}/{id}/history` lists the copies.
 - `GET /api/print/invoice/{billId}.pdf`, `GET /api/print/receipt/{paymentId}.pdf` — the same document as a PDF.
+- `GET /api/print/kot/{ticketId}.pdf?paper=80&logId=` (K, W, M, A; Phase 22 P6) — the kitchen ticket as a PDF, 80 mm roll by default (`paper` takes the same values as the invoice PDF). With `logId` (a copy reserved by `POST .../copies`, usable only by the user or terminal that reserved it, or a manager) it renders that copy and takes no new number; without it the PDF logs its own copy with output PDF, like the receipt PDF. The browser flow is reserve (`POST kot/{id}/copies`), fetch the PDF with the bearer token, open it in a new tab, then `PUT copies/{logId}`.
 - Report endpoints accept `format=csv|xlsx|pdf`; the audit log export accepts `format=xlsx` (CSV by default).

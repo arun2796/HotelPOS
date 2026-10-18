@@ -7,7 +7,7 @@
    the result. Shown to the roles that may print a KOT today (Waiter, Kitchen, Manager, Admin; same as GET api/print/kot). *@
 @if (Allowed)
 {
-    <button type="button" class="btn @Class" data-testid="print-kot" data-action="print-kot" aria-label="@($"Print KOT {Label}")"
+    <button type="button" class="btn @Class" data-testid="print-kot" aria-label="@($"Print KOT {Label}")"
             @onclick="PrintAsync" disabled="@_busy">
         <Icon Name="receipt" Size="18" /> @(_busy ? "Printing…" : "Print KOT")
     </button>
