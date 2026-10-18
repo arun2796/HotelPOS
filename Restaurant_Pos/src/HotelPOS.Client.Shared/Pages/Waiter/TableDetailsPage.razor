@@ -109,6 +109,19 @@ else
                     <div><dt>Cancelled</dt><dd>@order.CancelReason</dd></div>
                 }
             </dl>
+            @if (order.Tickets.Count > 0)
+            {
+                <h2 class="detail-sub" style="margin-top:12px">Kitchen tickets</h2>
+                <ul class="detail-list" data-testid="order-tickets" style="list-style:none;padding:0">
+                    @foreach (var ticket in order.Tickets)
+                    {
+                        <li class="row between" data-testid="order-ticket">
+                            <span><b>@ticket.TicketNumber</b> <span class="muted small">· @ticket.StationCode</span></span>
+                            <PrintKotButton TicketId="ticket.Id" Label="@ticket.TicketNumber" />
+                        </li>
+                    }
+                </ul>
+            }
             @if (order.Bill is not null)
             {
                 <div class="banner info" style="margin:10px 0 0">Bill requested — the counter has it.</div>
@@ -277,7 +290,7 @@ else
     private bool ShowCancelOrder => CanTakeOrders && _order is { CanModify: true };
     private bool CanCancelLine(OrderItemDto item) => CanTakeOrders && _order is { CanModify: true } && item.Status != OrderItemStatus.Cancelled;
 
-    /// <summary>Only the actions valid now, destructive last (no Hold, no Print KOT: D9).</summary>
+    /// <summary>Only the actions valid now, destructive last (no Hold; Print KOT sits with the order's kitchen tickets, Phase 22 P6).</summary>
     private IReadOnlyList<ActionItem> Actions
     {
         get
