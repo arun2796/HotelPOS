@@ -224,3 +224,14 @@ DTOs. Desktop/web: VM and bUnit tests per surface; rendering counts; `StatusPres
   presence and SQL rows per user. `GET api/staff/on-duty` (new `StaffController`, `ReportsView`) and `DashboardDto.StaffOnDuty`
   share it. The desktop "Staff today" column now shows this list instead of the waiter-sales list; the old `Staff` rows
   (waiter sales from the Waiters report) are still loaded by the view model but no longer displayed.
+- **P3 (2026-10-19).** Web floor map on the waiter Tables page. No JS scaling: tiles are placed in percent of the layout
+  box (`layoutWidth = max(PosX+Width)+24`, same for height), the box keeps the plan's `aspect-ratio`, so inline styles
+  are percentages (`left:7.692%`), not pixels. Small-tile rule chosen: the plan never scales below 0.5 (the box gets
+  `min-width = 0.5 x layoutWidth` inside a horizontally scrolling wrapper), every tile has a 44 px minimum hit area,
+  and a tile narrower than 64 px shows only its code (container query). Default mode uses a tiny `matchMedia` interop
+  (`js/viewport.js`, wired in the Web and Android `index.html`): List under 600 px, Map otherwise; the stored
+  `hotelpos.tables.view-mode` wins. The preference lives on the new `FloorLayoutApi` (GET layout + view mode in
+  `IBrowserStorage`), tested with the fake storage rather than NSubstitute. Layouts load per section only in Map mode;
+  a failed layout call degrades to the list for that section. The Sort control is shown in List mode only. The tile
+  shows the reservation badge as an icon (time and party in the tooltip). The `docs/ui-ux/web` gallery was not
+  regenerated (no screenshots in this step), so its tables row is unchanged.

@@ -19,6 +19,7 @@ public static class ClientServiceCollectionExtensions
         services.AddScoped<WebApiClient>();
         services.AddScoped<WaiterApi>();
         services.AddScoped<KitchenApi>();
+        services.AddScoped<FloorLayoutApi>();
         services.AddScoped<IdempotentSender>();
         services.AddScoped<DraftStore>();
         services.AddScoped<FavouritesStore>();
