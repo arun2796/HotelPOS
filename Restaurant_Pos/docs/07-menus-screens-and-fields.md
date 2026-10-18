@@ -209,6 +209,8 @@ Purpose: the live table map. Opened by Admin, Manager, Waiter, Cashier.
 
 Controls: section filter tabs (All plus each section), summary text, refresh. Each table tile shows code, time since occupied, status line and guests. Legend: Available, Occupied, Ordering, Preparing, Ready, Billing, Out of service. Click a table to open its details panel.
 
+**Waiter Tables in the browser and Android app (Phase 22 P3).** The toolbar has a **List / Map** toggle, kept per device (`hotelpos.tables.view-mode`); until it is used, phones narrower than 600 px start on List and wider screens on Map. **Map** draws each section's placed tables as tiles at the position, size, shape (Round or Rectangle) and rotation set in Sections & Tables, scaled to the screen width (never below half size: the plan then scrolls sideways; tiles keep a 44 px tap target and show only the code when narrow). Tiles use the same status colours as the cards, show the reservation badge, and open the table on tap. Tables without a position are listed under **Not on the map** as normal cards. A section with no placed table shows the list with "No floor plan for this section yet". Status updates live; a saved layout change reloads the plan. **By section / Available first** applies to List only.
+
 #### 3.2.1 Table details panel
 
 Shows table code, status, name, guests, occupied since, and the current order with its batches and lines (item, options, total) and the bill status.

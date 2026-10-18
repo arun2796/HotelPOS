@@ -86,6 +86,8 @@ public sealed class WaiterScreensTests : TestContext
         Services.AddSingleton<IBrowserStorage>(_storage);
         Services.AddSingleton(new WebApiClient(new HttpClient(handler), _host, auth));
         Services.AddSingleton<WaiterApi>();
+        Services.AddSingleton<FloorLayoutApi>();
+        _storage.Items[FloorLayoutApi.ViewModeKey] = FloorLayoutApi.ListMode; // the existing tests exercise the list; map tests live in TablesFloorMapTests
         Services.AddSingleton<WebRealtimeClient>();
         Services.AddSingleton<DraftStore>();
         Services.AddSingleton<FavouritesStore>();

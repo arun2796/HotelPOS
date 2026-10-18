@@ -21,6 +21,7 @@ public static class ClientServiceCollectionExtensions
         services.AddScoped<IPrintApi, PrintApi>();
         services.AddScoped<KotPrinter>();
         services.AddScoped<KitchenApi>();
+        services.AddScoped<FloorLayoutApi>();
         services.AddScoped<IdempotentSender>();
         services.AddScoped<DraftStore>();
         services.AddScoped<FavouritesStore>();

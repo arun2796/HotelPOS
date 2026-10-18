@@ -225,3 +225,14 @@ DTOs. Desktop/web: VM and bUnit tests per surface; rendering counts; `StatusPres
   share it. The desktop "Staff today" column now shows this list instead of the waiter-sales list; the old `Staff` rows
   (waiter sales from the Waiters report) are still loaded by the view model but no longer displayed.
 - 2026-10-19 P6 (Print KOT from the web): `GET api/print/kot/{id}.pdf` renders the KOT document model through a new `IPdfRenderer.Kitchen` (QuestPDF, same switches as the ESC/POS layout; 80 mm default). Deviations: (1) a plain PDF GET takes its own PDF-output copy like the receipt PDF, so the browser passes `logId` of the copy it reserved first (`POST kot/{id}/copies`) and the PDF then takes no extra copy; `PUT copies/{logId}` completes it. (2) Web auth is bearer-token (the cookie only holds the refresh token), so a plain window.open or anchor GET cannot authenticate: the client fetches the PDF bytes with the token (`WebApiClient.GetBytesAsync`) and opens a blob URL via `hotelposPrint.openPdf` (`js/print.js` in the RCL, referenced from the Web and Android index.html). (3) Cashier cannot print a KOT (the existing KOT routes are K, W, M, A); the new route mirrors that. (4) Waiter order page: the button sits in a new Kitchen tickets list on the Details tab, not in the actions list.
+- **P3 (2026-10-19).** Web floor map on the waiter Tables page. No JS scaling: tiles are placed in percent of the layout
+  box (`layoutWidth = max(PosX+Width)+24`, same for height), the box keeps the plan's `aspect-ratio`, so inline styles
+  are percentages (`left:7.692%`), not pixels. Small-tile rule chosen: the plan never scales below 0.5 (the box gets
+  `min-width = 0.5 x layoutWidth` inside a horizontally scrolling wrapper), every tile has a 44 px minimum hit area,
+  and a tile narrower than 64 px shows only its code (container query). Default mode uses a tiny `matchMedia` interop
+  (`js/viewport.js`, wired in the Web and Android `index.html`): List under 600 px, Map otherwise; the stored
+  `hotelpos.tables.view-mode` wins. The preference lives on the new `FloorLayoutApi` (GET layout + view mode in
+  `IBrowserStorage`), tested with the fake storage rather than NSubstitute. Layouts load per section only in Map mode;
+  a failed layout call degrades to the list for that section. The Sort control is shown in List mode only. The tile
+  shows the reservation badge as an icon (time and party in the tooltip). The `docs/ui-ux/web` gallery was not
+  regenerated (no screenshots in this step), so its tables row is unchanged.
