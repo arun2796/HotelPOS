@@ -279,6 +279,8 @@ Controls: station filter (All stations or one station), **Sold out...**, refresh
 Ticket buttons by status: **ACCEPT** (new), **START** (new or accepted), **READY** (preparing), **DONE** and **RECALL** (ready).
 Item pictures (Phase 22): each ticket line carries the menu item's picture URL (`ImageUrl`, null when the item has no picture). The checkbox **Show item pictures** beside **Sold out...** puts a small thumbnail before each line; it is a per-terminal setting, **off by default**, kept with the station choice. In the browser, **Kitchen > Station** has the same device setting, **Show item pictures on tickets** (off by default); the ticket detail pane always shows a larger thumbnail. A picture that fails to load is hidden and the line stays text-only.
 
+**Print KOT (browser and Android app, Phase 22 P6).** The ticket detail pane has a **Print KOT** button, and the waiter's order page (Details tab, **Kitchen tickets** list, one row per ticket) has one beside each ticket. It reserves a print-log copy, opens the ticket PDF (80 mm roll) in a new tab and reports the result; a copy after the first says DUPLICATE. It shows for Waiter, Kitchen, Manager and Admin only. A failure (ticket not found, pop-up blocked) shows an error toast and the log copy is recorded as failed. The Android native print bridge is not part of this step.
+
 #### 4.1.1 Sold-out panel ("Item availability")
 List of menu items with a toggle button per item (mark sold out / available again). Button **Close**.
 

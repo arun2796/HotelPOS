@@ -36,6 +36,60 @@ public sealed class WebApiClient
     public Task<ApiResult<T>> DeleteAsync<T>(string path, CancellationToken cancellationToken = default) =>
         SendAsync<T>(HttpMethod.Delete, path, null, null, cancellationToken);
 
+    /// <summary>A file answer (a PDF) rather than an envelope. Same bearer token and refresh-and-retry as every other call; an error comes back as the usual envelope.</summary>
+    public async Task<ApiResult<byte[]>> GetBytesAsync(string path, CancellationToken cancellationToken = default)
+    {
+        var result = await GetBytesOnceAsync(path, cancellationToken);
+        if (result.StatusCode == HttpStatusCode.Unauthorized && await _auth.RefreshAsync())
+        {
+            result = await GetBytesOnceAsync(path, cancellationToken);
+        }
+
+        if (result.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            await _auth.SignOutLocallyAsync("Your session has ended. Sign in again.");
+        }
+
+        return result;
+    }
+
+    private async Task<ApiResult<byte[]>> GetBytesOnceAsync(string path, CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, _host.Resolve(path));
+        var token = await _auth.GetAccessTokenAsync();
+        if (token is not null)
+        {
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+
+        HttpResponseMessage response;
+        try
+        {
+            response = await _http.SendAsync(request, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            return ApiResult<byte[]>.Fail(ErrorCodes.ConnectionUnavailable, "The server cannot be reached. Check the Wi-Fi and try again.");
+        }
+
+        using (response)
+        {
+            if (response.IsSuccessStatusCode && response.Content.Headers.ContentType?.MediaType == "application/pdf")
+            {
+                return ApiResult<byte[]>.Ok(await response.Content.ReadAsByteArrayAsync(cancellationToken), response.StatusCode);
+            }
+
+            var failed = await ReadAsync<object>(response, cancellationToken);
+            return failed.Success
+                ? ApiResult<byte[]>.Fail(ErrorCodes.ServerError, "The server did not send a PDF.", response.StatusCode)
+                : ApiResult<byte[]>.Fail(failed.ErrorCode, failed.Message, failed.StatusCode, failed.Errors);
+        }
+    }
+
     public async Task<ApiResult<T>> SendAsync<T>(HttpMethod method, string path, object? body, Guid? idempotencyKey, CancellationToken cancellationToken)
     {
         var result = await SendOnceAsync<T>(method, path, body, idempotencyKey, cancellationToken);

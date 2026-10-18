@@ -72,6 +72,7 @@
                 </li>
             }
         </ul>
+        <div style="margin: 8px 0;"><PrintKotButton TicketId="Ticket.Id" Label="@Ticket.TicketNumber" /></div>
         <h3 class="kds-detail-h">Progress</h3>
         <OrderTimeline Status="TimelineStatus" Delayed="Late" ReceivedAtUtc="Ticket.CreatedAtUtc" PreparingAtUtc="Ticket.StartedAtUtc"
                        ReadyAtUtc="Ticket.ReadyAtUtc" ServedAtUtc="Ticket.CompletedAtUtc" />
