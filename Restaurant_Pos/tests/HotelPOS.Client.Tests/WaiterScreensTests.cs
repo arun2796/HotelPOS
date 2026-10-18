@@ -707,6 +707,32 @@ public sealed class WaiterScreensTests : TestContext
         await StopRealtimeAsync();
     }
 
+    // Phase 22 demo pass found that a takeaway order (no table) was redirected to a route that does not exist.
+    [Fact]
+    public async Task Details_ForATakeawayOrder_ShowsTheOrderWithoutLoadingATable()
+    {
+        var handler = new RouteHandler
+        {
+            Respond = r => r.RequestUri!.AbsolutePath switch
+            {
+                "/api/orders/1" => Detail(OrderStatus.Preparing, true, KitchenOrderStatus.Preparing, false) with
+                {
+                    TableId = null, TableCode = "TA-1005", OrderType = HotelPOS.Contracts.Enums.OrderType.Takeaway,
+                },
+                _ => null,
+            },
+        };
+        var page = await RenderDetailsAsync(handler, orderId: 1);
+
+        handler.Calls.Should().NotContain(c => c.StartsWith("GET /api/tables/"), "a takeaway order has no table to load");
+        page.Find(".detail-title").TextContent.Should().Be("Order #1005");
+        page.Find("[data-testid=order-channel]").TextContent.Should().Contain("TA-1005").And.Contain("Takeaway");
+        page.FindAll("[data-action=occupy]").Should().BeEmpty();
+        page.FindAll("[data-action]").Select(e => e.GetAttribute("data-action")).Should().Contain("add-items");
+        Services.GetRequiredService<ShellState>().Title.Should().Be("Order #1005");
+        await StopRealtimeAsync();
+    }
+
     private static T Mark<T>(Action action, T value)
     {
         action();

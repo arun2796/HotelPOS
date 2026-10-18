@@ -24,18 +24,26 @@
 {
     <ErrorState Message="@_error" OnRetry="LoadAsync" />
 }
-else if (_detail is null)
+else if (_detail is null && _order is null)
 {
     <Skeleton Variant="Skeleton.SkeletonVariant.Card" Count="3" Label="Loading" />
 }
 else
 {
-    var table = _detail.Table;
+    // A takeaway or delivery order has no table (Phase 22): _detail stays null and the page shows the order alone.
+    var table = _detail?.Table;
     <div class="card detail-card">
         <div class="row between">
             <div class="grow">
-                <h1 class="detail-title">@(_order is { } head ? $"Order #{head.OrderNumber}" : table.Code)</h1>
-                <div class="muted small">@table.Code@(string.IsNullOrEmpty(table.Name) ? null : $" {table.Name}") · @table.SectionName · @TextFormat.Count(table.Capacity, "seat")</div>
+                <h1 class="detail-title">@(_order is { } head ? $"Order #{head.OrderNumber}" : table!.Code)</h1>
+                @if (table is not null)
+                {
+                    <div class="muted small">@table.Code@(string.IsNullOrEmpty(table.Name) ? null : $" {table.Name}") · @table.SectionName · @TextFormat.Count(table.Capacity, "seat")</div>
+                }
+                else if (_order is { } tableless)
+                {
+                    <div class="muted small" data-testid="order-channel">@tableless.TableCode · @tableless.OrderType@(string.IsNullOrEmpty(tableless.CustomerName) ? null : $" · {tableless.CustomerName}")</div>
+                }
             </div>
             @if (_order is { } status)
             {
@@ -43,16 +51,16 @@ else
             }
             else
             {
-                <StatusBadge Display="StatusPresentation.For(table.Status)" />
+                <StatusBadge Display="StatusPresentation.For(table!.Status)" />
             }
         </div>
-        @if (table.GuestCount is { } guests)
+        @if (table?.GuestCount is { } guests)
         {
-            <div class="muted detail-guests">@TextFormat.Count(guests, "guest")@(table.OccupiedAtUtc is { } since ? $" · since {since.ToLocalTime():HH:mm}" : null)</div>
+            <div class="muted detail-guests">@TextFormat.Count(guests, "guest")@(table!.OccupiedAtUtc is { } since ? $" · since {since.ToLocalTime():HH:mm}" : null)</div>
         }
     </div>
 
-    @if (table.UpcomingReservation is { } res)
+    @if (table?.UpcomingReservation is { } res)
     {
         <div class="card" style="margin-top:10px" data-testid="table-reservation-banner">
             <div class="row between">
@@ -68,7 +76,7 @@ else
                         <div class="muted small">Notes: @res.Notes</div>
                     }
                 </div>
-                @if (table.Status == TableStatus.Available && CanOperateTables && OrderId is null)
+                @if (table!.Status == TableStatus.Available && CanOperateTables && OrderId is null)
                 {
                     <button class="btn primary sm" data-action="seat-reservation" @onclick="SeatReservationAsync" disabled="@_busy">Seat</button>
                 }
@@ -76,7 +84,7 @@ else
         </div>
     }
 
-    @if (table.Status == TableStatus.Available && CanOperateTables && OrderId is null)
+    @if (table is { Status: TableStatus.Available } && CanOperateTables && OrderId is null)
     {
         <div class="card" style="margin-top:10px">
             <h2>Seat guests</h2>
@@ -339,7 +347,25 @@ else
             order = byId.Data;
             if (order.TableId is not { } tid)
             {
-                Navigation.NavigateTo("waiter/orders");
+                // Takeaway / delivery (Phase 22): nothing to load for a table; show the order on its own.
+                if (_order?.Id != order.Id)
+                {
+                    _tickets.Clear();
+                    _ticketsNote = null;
+                    _stages = default;
+                }
+
+                _detail = null;
+                _error = null;
+                _hasDraft = false;
+                _order = order;
+                Shell.Set($"Order #{order.OrderNumber}", $"{order.TableCode} · {order.OrderType}", BackHref);
+                if (_tab == TimelineTab)
+                {
+                    await LoadTicketsAsync();
+                }
+
+                await InvokeAsync(StateHasChanged);
                 return;
             }
             tableId = tid;
