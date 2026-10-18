@@ -147,7 +147,7 @@ endpoint is `tests/HotelPOS.Api.Tests/authorization-matrix.txt`; `AuthorizationM
 | Method | Route | Roles | Notes |
 |---|---|---|---|
 | GET | `/api/kitchen/orders` | K, M, A | `?stationId=&status=` open tickets with items; `serverTimeUtc` for timers |
-| GET | `/api/kitchen/orders/{ticketId}` | K, W, M | |
+| GET | `/api/kitchen/orders/{ticketId}` | K, W, M | Each item has `imageUrl` (nullable): the menu item's picture, same `/images/menu/...` scheme as `MenuItemDto.ImageUrl`; also on the list and completed endpoints. Resolved with one batched lookup per response, no per-item query. |
 | GET | `/api/kitchen/orders/completed` | K, M | `?date=` business day |
 | POST | `/api/kitchen/orders/{ticketId}/accept` | K, M | New -> Accepted |
 | POST | `/api/kitchen/orders/{ticketId}/start` | K, M | Accepted -> Preparing (also allowed from New: implicit accept) |

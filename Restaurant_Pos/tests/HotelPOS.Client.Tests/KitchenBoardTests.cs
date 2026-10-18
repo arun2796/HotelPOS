@@ -88,7 +88,7 @@ public class KitchenBoardTests : TestContext
     {
         Id = id, TicketNumber = $"{1000 + id}-1-MAIN", OrderId = id == 2 ? 7 : id, OrderNumber = 1000 + id, BatchNumber = 1, TableCode = table, WaiterName = "Asha",
         StationId = 1, StationCode = "MAIN", Status = status, CreatedAtUtc = DateTime.UtcNow.AddMinutes(-ageMinutes), ReadyAtUtc = readyAt,
-        Items = new[] { new KitchenTicketItemDto { OrderItemId = id, Name = "Paneer", Quantity = 2, Notes = id == 2 ? "No onion" : null } },
+        Items = new[] { new KitchenTicketItemDto { OrderItemId = id, Name = "Paneer", Quantity = 2, Notes = id == 2 ? "No onion" : null, ImageUrl = id == 1 ? "/images/menu/paneer.jpg" : null } },
     };
 
     // New: T01 (3 min), T04 (22 min, late), T05 (accepted, 1 min); Preparing: T02 (25 min, late); Ready: T03 (12 min old, ready 2 min ago).
@@ -106,12 +106,17 @@ public class KitchenBoardTests : TestContext
         return handler;
     }
 
-    private async Task<IRenderedComponent<KitchenPage>> RenderBoardAsync(KitchenHandler handler)
+    private async Task<IRenderedComponent<KitchenPage>> RenderBoardAsync(KitchenHandler handler, bool showPictures = false)
     {
         var host = new FakeClientHost { ServerBase = new Uri("http://127.0.0.1:1/") };
         var auth = new WebAuthState(new StubTransport(), host);
         await auth.SignInAsync("kitchen1", "x", "WEB-K", DeviceType.Kitchen);
         var storage = new FakeBrowserStorage();
+        if (showPictures)
+        {
+            storage.Items[KitchenApi.ShowPicturesKey] = "1";
+        }
+
         Services.AddSingleton<IClientHost>(host);
         Services.AddSingleton(auth);
         Services.AddSingleton<IBrowserStorage>(storage);
@@ -161,6 +166,31 @@ public class KitchenBoardTests : TestContext
 
         await page.Find("#kds-delayed-filter button").ClickAsync(new MouseEventArgs());
         Tables(page, "New").Should().HaveCount(3);
+        await Services.GetRequiredService<WebRealtimeClient>().StopAsync();
+    }
+
+    [Fact]
+    public async Task ItemPictures_AreOffOnTheCards_ByDefault_ButShownInTheDetailPane()
+    {
+        var page = await RenderBoardAsync(Board());
+        page.FindAll(".ticket .ticket-thumb").Should().BeEmpty("pictures are off by default on the KDS");
+
+        await page.Find("[data-ticket='1'] .ticket-top").ClickAsync(new MouseEventArgs());
+
+        var thumb = page.Find("[data-testid=ticket-detail] .ticket-thumb.large");
+        thumb.GetAttribute("src").Should().Be("http://127.0.0.1:1/images/menu/paneer.jpg");
+        await Services.GetRequiredService<WebRealtimeClient>().StopAsync();
+    }
+
+    [Fact]
+    public async Task ItemPictures_ShowOnTheCards_WhenTheDeviceTurnedThemOn_AndOnlyForItemsWithAPicture()
+    {
+        var page = await RenderBoardAsync(Board(), showPictures: true);
+
+        var thumbs = page.FindAll(".ticket .ticket-thumb");
+        thumbs.Should().ContainSingle();
+        thumbs[0].GetAttribute("src").Should().Be("http://127.0.0.1:1/images/menu/paneer.jpg");
+        thumbs[0].GetAttribute("onerror").Should().NotBeNullOrEmpty("a broken picture hides itself instead of breaking the card");
         await Services.GetRequiredService<WebRealtimeClient>().StopAsync();
     }
 

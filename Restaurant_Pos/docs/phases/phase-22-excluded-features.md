@@ -192,6 +192,14 @@ DTOs. Desktop/web: VM and bUnit tests per surface; rendering counts; `StatusPres
 
 ## 11. Changes during implementation
 
+- **P5 (2026-10-18).** `OrderItem` has no `MenuItem` navigation, so the picture is not a SQL join inside the ticket
+  query: `KitchenTickets.ToDtosAsync` does one extra batched `MenuItems WHERE Id IN (...)` lookup per response (list,
+  detail and completed alike). The count is fixed (+1) however many items or tickets there are, so there is no N+1; no
+  query-counter exists in `DatabaseTestBase`, so this is by construction rather than asserted. Web: the card preference
+  (`hotelpos.kitchen.show-pictures`, off by default) lives on **Kitchen > Station**; the detail pane always shows its
+  larger thumbnail. Desktop: `ClientSettings.ShowTicketPictures` plus a **Show item pictures** checkbox in the KDS
+  header; thumbnails load through `IMenuCache.GetImageFileAsync` (the order builder's cache).
+
 - **F4 (2026-10-18).** No `ProfitLossAsync` SQL: the handler composes `DailySalesAsync` (sales side) with a new
   `ExpensesByCategoryAsync` (live expenses per category, `ExpenseDate` compared as calendar dates, inclusive) in
   `ProfitLossStatement.Compose`, which is pure and unit-tested. The statement is rows of Section / Line / Amount with

@@ -277,6 +277,7 @@ Source: `Modules/Orders/ActiveOrdersView.xaml`, `Modules/Orders/ActiveOrderQueri
 Purpose: large touch tickets for the kitchen. Opened by Admin, Manager, Kitchen.
 Controls: station filter (All stations or one station), **Sold out...**, refresh. Three columns with counts: NEW, PREPARING, READY. A ticket shows table, "+ADD" tag for added items, elapsed time, ticket number, waiter, status, lines with options and notes (cancelled lines struck through). Tickets turn amber after the "warn" minutes and red after the "late" minutes set in Restaurant Settings (default 10 and 20).
 Ticket buttons by status: **ACCEPT** (new), **START** (new or accepted), **READY** (preparing), **DONE** and **RECALL** (ready).
+Item pictures (Phase 22): each ticket line carries the menu item's picture URL (`ImageUrl`, null when the item has no picture). The checkbox **Show item pictures** beside **Sold out...** puts a small thumbnail before each line; it is a per-terminal setting, **off by default**, kept with the station choice. In the browser, **Kitchen > Station** has the same device setting, **Show item pictures on tickets** (off by default); the ticket detail pane always shows a larger thumbnail. A picture that fails to load is hidden and the line stays text-only.
 
 #### 4.1.1 Sold-out panel ("Item availability")
 List of menu items with a toggle button per item (mark sold out / available again). Button **Close**.

@@ -30,6 +30,10 @@ else
         {
             <div class="banner error" style="margin-top:12px">@_error</div>
         }
+        <label class="kds-pictures-toggle" style="display:flex;align-items:center;gap:10px;margin-top:16px;min-height:44px">
+            <input type="checkbox" data-testid="show-pictures" checked="@_showPictures" @onchange="TogglePicturesAsync" />
+            <span>Show item pictures on tickets <span class="muted small">(this device only; the ticket detail always shows them)</span></span>
+        </label>
     </div>
 }
 
@@ -37,11 +41,19 @@ else
     private List<StationDto> _stations = new();
     private int? _stationId;
     private string? _error;
+    private bool _showPictures;
+
+    private async Task TogglePicturesAsync(ChangeEventArgs e)
+    {
+        _showPictures = e.Value is true;
+        await Api.SetShowPicturesAsync(_showPictures);
+    }
 
     protected override async Task OnInitializedAsync()
     {
         Shell.Set("Station", "Choose this tablet's preparation station");
         _stationId = await Api.GetStationPreferenceAsync();
+        _showPictures = await Api.GetShowPicturesAsync();
         var stations = await Api.GetStationsAsync();
         if (stations.Success && stations.Data is { } list)
         {
