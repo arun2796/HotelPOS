@@ -116,6 +116,38 @@ public class DashboardPanelTests
     }
 
     [Fact]
+    public async Task StaffOnDuty_RendersLiveRowsFromTheDashboardDto_AndIsEmptyWhenNobodyIsConnected()
+    {
+        var api = Reports();
+        api.GetDashboardAsync(Arg.Any<CancellationToken>()).Returns(ApiResult<DashboardDto>.Ok(new DashboardDto
+        {
+            BusinessDay = Today, TopItems = Array.Empty<DashboardTopItem>(), LastDays = new List<DashboardDayPoint>(), GeneratedAtUtc = DateTime.UtcNow,
+            StaffOnDuty = new List<StaffOnDutyDto>
+            {
+                new() { UserId = 1, UserName = "Asha", Roles = new[] { "Waiter" }, IsOnline = true, Devices = new[] { "PHONE-1", "TABLET-2" }, ActiveOrders = 2 },
+                new() { UserId = 2, UserName = "Meena", Roles = new[] { "Cashier" }, HasOpenShift = true, ShiftDeviceName = "BILLING-01" },
+            },
+        }));
+        var vm = Build(api, new FakeRealtimeClient(), Session("Manager"), Substitute.For<INavigationService>(), Substitute.For<IDevicesApi>());
+
+        await vm.OnNavigatedToAsync(null);
+
+        vm.HasOnDuty.Should().BeTrue();
+        vm.OnDuty.Select(r => r.Name).Should().Equal("Asha", "Meena");
+        vm.OnDuty[0].Role.Should().Be("Waiter");
+        vm.OnDuty[0].Status.Should().Be("online on PHONE-1, TABLET-2 · 2 active orders");
+        vm.OnDuty[0].Display.Label.Should().Be("Online");
+        vm.OnDuty[1].Status.Should().Be("open shift on BILLING-01");
+        vm.OnDuty[1].IsOnline.Should().BeFalse();
+        vm.Dispose();
+
+        var empty = Build(Reports(), new FakeRealtimeClient(), Session("Manager"), Substitute.For<INavigationService>(), Substitute.For<IDevicesApi>());
+        await empty.OnNavigatedToAsync(null);
+        empty.HasOnDuty.Should().BeFalse();
+        empty.Dispose();
+    }
+
+    [Fact]
     public async Task APanelThatCannotLoad_LeavesTheRestOfTheDashboard()
     {
         var api = Reports();

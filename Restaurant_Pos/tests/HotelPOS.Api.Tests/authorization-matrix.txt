@@ -169,6 +169,7 @@ AM--C  POST   api/shifts/{id:int}/handover
 AM--C  POST   api/shifts/{id:int}/movements
 AM---  POST   api/shifts/{id:int}/reopen
 AM--C  GET    api/shifts/{id:int}/x-report
+AM---  GET    api/staff/on-duty
 AMWKC  GET    api/stations
 A----  POST   api/stations
 A----  DELETE api/stations/{id:int}

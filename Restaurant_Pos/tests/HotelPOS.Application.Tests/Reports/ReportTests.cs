@@ -1,4 +1,5 @@
 using System.Text;
+using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Features.Billing.Commands;
 using HotelPOS.Application.Features.Billing.Queries;
 using HotelPOS.Application.Common.Results;
@@ -239,6 +240,29 @@ public class ReportTests : DatabaseTestBase
         row.AverageTotalMinutes.Should().Be(25m);
         row.LateTickets.Should().Be(1, "25 minutes is over the 20-minute late threshold");
         row.LatePercent.Should().Be(100m);
+    }
+
+    [Fact]
+    public async Task Dashboard_StaffOnDuty_MergesPresenceOpenShiftsAndActiveOrders()
+    {
+        var s = await SetupAsync();
+        await SendAsync(s, s.Tables[1], Line(s.Naan, 1));
+        Fixture.Presence.Entries.Add(new PresenceEntry(s.Cashier, "cashier1", new[] { Roles.Cashier }, Guid.NewGuid(), "BILLING-01", Clock.UtcNow));
+        Fixture.Presence.Entries.Add(new PresenceEntry(s.WaiterTwo, "waiter2", new[] { Roles.Waiter }, null, "PHONE-2", Clock.UtcNow));
+
+        var dashboard = (await SendAsAdminAsync(new GetDashboardQuery())).Value;
+        var direct = (await SendAsAdminAsync(new GetStaffOnDutyQuery())).Value;
+
+        dashboard.StaffOnDuty.Select(r => r.UserId).Should().Equal(direct.Select(r => r.UserId));
+        dashboard.StaffOnDuty.Should().HaveCount(3);
+        var cashier = dashboard.StaffOnDuty.Single(r => r.UserId == s.Cashier);
+        cashier.IsOnline.Should().BeTrue();
+        cashier.HasOpenShift.Should().BeTrue();
+        cashier.ShiftDeviceName.Should().BeNull("the test shift's device id is not a registered device");
+        dashboard.StaffOnDuty.Single(r => r.UserId == s.Waiter).ActiveOrders.Should().Be(1);
+        dashboard.StaffOnDuty.Single(r => r.UserId == s.Waiter).IsOnline.Should().BeFalse();
+        dashboard.StaffOnDuty.Single(r => r.UserId == s.WaiterTwo).Roles.Should().Equal(Roles.Waiter);
+        dashboard.StaffOnDuty.Take(2).Should().OnlyContain(r => r.IsOnline, "online users sort first");
     }
 
     [Fact]

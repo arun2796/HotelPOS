@@ -27,6 +27,17 @@ public sealed record ExpenseCategoryTotal
     public decimal Amount { get; init; }
 }
 
+// Phase 22 P4: one user with an open cash shift and/or active (non-final) orders; roles are comma-joined by the query.
+public sealed record StaffDutyRow
+{
+    public int UserId { get; init; }
+    public string UserName { get; init; } = string.Empty;
+    public string Roles { get; init; } = string.Empty;
+    public bool HasOpenShift { get; init; }
+    public string? ShiftDeviceName { get; init; }
+    public int ActiveOrders { get; init; }
+}
+
 public sealed record WaiterFigures
 {
     public int OrdersToday { get; init; }
@@ -39,6 +50,8 @@ public sealed record WaiterFigures
 // SQL lives in Infrastructure (ReportQueries); every method aggregates in the database.
 public interface IReportQueries
 {
+    Task<IReadOnlyList<StaffDutyRow>> StaffDutyAsync(CancellationToken cancellationToken);
+
     Task<DashboardFigures> DashboardAsync(ReportWindow today, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<DashboardTopItem>> TopItemsAsync(ReportWindow window, int count, CancellationToken cancellationToken);

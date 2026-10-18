@@ -61,3 +61,18 @@ public interface IOnlineDeviceTracker
     // Closes every open real-time connection of the user (deactivated account); returns how many were closed.
     Task<int> DisconnectUserAsync(int userId, CancellationToken cancellationToken = default);
 }
+
+// Phase 22 P4: one live real-time (hub) connection, as the presence snapshot reports it.
+public sealed record PresenceEntry(
+    int UserId,
+    string UserName,
+    IReadOnlyList<string> Roles,
+    Guid? DeviceId,
+    string? DeviceName,
+    DateTime ConnectedSinceUtc);
+
+// Snapshot of who is connected right now. In-memory on the API process: empty after a restart, so it is "live", not attendance.
+public interface IPresenceTracker
+{
+    IReadOnlyList<PresenceEntry> Snapshot();
+}
