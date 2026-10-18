@@ -58,7 +58,7 @@ screens (Users, Roles, Devices, Settings, Licence, Server) were not regenerated.
 | `15-cashier-notifications-bell.png` | Notices panel with the real events of the session. |
 | `16-cashier-notification-preferences.png` | Notifications... dialog (Pop-up / Sound per kind). |
 
-## `manager/` — the management screens as manager1 on ADMIN-01, 16 screens
+## `manager/` — the management screens as manager1 on ADMIN-01, 16 screens (+ 2 Phase 22 renders)
 
 | File | What it shows |
 |---|---|
@@ -77,8 +77,15 @@ screens (Users, Roles, Devices, Settings, Licence, Server) were not regenerated.
 | `29-manager-printers.png` | Printers (Devices group) of ADMIN-01. |
 | `31-manager-command-palette.png` | Command palette (Ctrl+K) with the query "re". |
 | `32-manager-dashboard-dark.png` | The dashboard in the dark theme (same tokens, same status colours). |
+| `58-manager-dashboard-phase22.png` | **Phase 22** dashboard (rendering harness, demo data, 19 Oct 2026): five KPI cards laid out 3 + 2 at 1366 px — the fifth is **Expenses today** with "… after expenses" — and the Hourly sales / Staff today panels further down. |
+| `59-manager-expenses.png` | **Phase 22** Finance → Expenses (rendering harness): date range and category filters, Record expense, void with reason; categories are edited under Settings. |
 
-## `admin/` — 7 admin-only screens, **pre-Phase 21** (16 Oct 2026)
+## `admin/` — 7 admin-only screens, **pre-Phase 21** (16 Oct 2026), plus 2 Phase 22 screens (19 Oct 2026)
+
+Phase 22 (rendering harness, demo data): `56-admin-floor-plan` — the Admin **Floor plan** editor with section picker,
+snap-to-grid, Rotate 90°, Round / Rectangle, Undo / Redo, Reset to grid, zoom + Fit, selection handles on T02 and the
+Unplaced tables tray; `57-admin-table-map-floor-plan` — the Tables map in **Map** mode (List / Map toggle, same tiles
+with live status, reservation mark) as every desktop role sees it.
 
 `21-admin-users`, `22-admin-roles-permissions`, `23-admin-devices`, `28-admin-settings`, `28-admin-settings-notifications`,
 `30-admin-licence`, `30-admin-server`: kept because they are the only pictures of those screens, but they show the old

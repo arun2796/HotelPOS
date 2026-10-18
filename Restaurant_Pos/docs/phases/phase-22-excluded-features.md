@@ -1,6 +1,6 @@
 # Phase 22 — Features excluded from Phase 21 (plan)
 
-Status: Code complete, merged to `main` 2026-10-19 (1ba1439) — Foundations 0.1–0.2, Ordering O1–O4, Billing B1, Finance F1–F4 and Operations P1–P6 built; full suite green; B2 spec written (`phase-22-item-split-spec.md`, owner decision open, B3/B4 unbuilt); release notes in `phase-22-release-notes.md`; open: venue-DB migration rehearsal, galleries, device demo, owner sign-off E1–E11; optional O5/P7 not started · Depends on: Phase 21
+Status: Code complete, merged to `main` 2026-10-19 (1ba1439) — Foundations 0.1–0.2, Ordering O1–O4, Billing B1, Finance F1–F4 and Operations P1–P6 built; full suite green; B2 spec written (`phase-22-item-split-spec.md`, owner decision open, B3/B4 unbuilt); release notes in `phase-22-release-notes.md`; migrations rehearsed on a dev-DB copy (repeat on the venue backup); desktop gallery has the floor plan, dashboard and expenses renders (web gallery not regenerated); open: device demo, owner sign-off E1–E11, B2 decision; optional O5/P7 not started · Depends on: Phase 21
 
 Phase 21 restyled every client without touching the server. Its § 3 "Out" list names the mock-up elements that had no
 data behind them. This phase adds that data: entities, migrations, commands, endpoints and DTOs, then the UI on both
