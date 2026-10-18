@@ -448,14 +448,15 @@ public partial class LiveFlowScreenshots
         }
 
         // Roles & permissions.
-        await StepAsync("Roles & permissions", "Open Roles & Permissions, pick Manager, scroll to the end of the list",
+        await StepAsync("Roles & permissions", "Open Roles & Permissions, pick Manager, scroll to the Reservations and Finance groups",
             "The permission list includes the Phase 22 permissions: reservations.view/manage, expenses.view/manage, floor.layout.manage", async () =>
             {
                 var roles = await DemoOpenAsync<RolesViewModel>(shell, ModuleRegistry.RolesModule, settleMs: 600);
                 roles.SelectedRole = roles.Roles.FirstOrDefault(r => r.RoleName == "Manager") ?? roles.Roles.FirstOrDefault();
                 await Dispatcher.Yield(DispatcherPriority.Background);
                 await DemoShotAsync("roles-permissions");
-                await DemoShotAsync("roles-permissions-end", v => v.ViewportWidth > 400);
+                await DemoShotAsync("roles-permissions-reservations", fraction: 0.38);
+                await DemoShotAsync("roles-permissions-expenses", fraction: 0.58);
                 var wanted = new[] { Permissions.ReservationsView, Permissions.ReservationsManage, Permissions.ExpensesView, Permissions.ExpensesManage, Permissions.FloorLayoutManage };
                 var missing = wanted.Where(k => roles.PermissionItems.All(p => p.Key != k)).ToList();
                 if (missing.Count > 0)
