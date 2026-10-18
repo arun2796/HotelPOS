@@ -34,6 +34,7 @@ public static class HubEvents
     public const string DayEndDue = "DayEndDue";
     public const string ReservationChanged = "ReservationChanged";
     public const string ExpenseChanged = "ExpenseChanged";
+    public const string FloorLayoutChanged = "FloorLayoutChanged";
 }
 
 public static class HubMethods
@@ -88,6 +89,11 @@ public sealed record ReservationChangedEvent : RealtimeEvent
     public Enums.ReservationStatus Status { get; init; }
     public DateTime StartTimeUtc { get; init; }
     public DateTime EndTimeUtc { get; init; }
+}
+
+public sealed record FloorLayoutChangedEvent : RealtimeEvent
+{
+    public int SectionId { get; init; }
 }
 
 public sealed record ExpenseChangedEvent : RealtimeEvent

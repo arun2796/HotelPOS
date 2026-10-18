@@ -25,6 +25,12 @@ internal static class TableMapping
         CurrentOrderId = table.CurrentOrderId,
         CurrentOrderNumber = table.CurrentOrder?.OrderNumber,
         UpcomingReservation = upcomingReservation,
+        PosX = table.PosX,
+        PosY = table.PosY,
+        Width = table.Width,
+        Height = table.Height,
+        Shape = table.Shape,
+        Rotation = table.Rotation,
         RowVersion = RowVersions.Encode(table.RowVersion),
     };
 }

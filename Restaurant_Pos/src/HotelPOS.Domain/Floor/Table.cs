@@ -30,6 +30,17 @@ public sealed class Table : BaseEntity, IHasRowVersion
     public DateTime? OccupiedAt { get; private set; }
     public int? GuestCount { get; private set; }
     public bool IsActive { get; private set; }
+
+    // Floor-plan geometry in layout units (px at 100%). All six are null until the table is placed.
+    public int? PosX { get; private set; }
+    public int? PosY { get; private set; }
+    public int? Width { get; private set; }
+    public int? Height { get; private set; }
+    public TableShape? Shape { get; private set; }
+    public int? Rotation { get; private set; }
+
+    public bool HasLayout => PosX is not null;
+
     public uint RowVersion { get; set; }
 
     public static string NormalizeCode(string code) => code.Trim().ToUpperInvariant();
@@ -61,6 +72,48 @@ public sealed class Table : BaseEntity, IHasRowVersion
         Name = string.IsNullOrWhiteSpace(name) ? null : name.Trim();
         SectionId = sectionId;
         Capacity = capacity;
+    }
+
+    public void SetLayout(int posX, int posY, int width, int height, TableShape shape, int rotation)
+    {
+        if (posX is < FloorLayoutLimits.MinCoordinate or > FloorLayoutLimits.MaxCoordinate
+            || posY is < FloorLayoutLimits.MinCoordinate or > FloorLayoutLimits.MaxCoordinate)
+        {
+            throw new DomainException($"Table {Code}: position must be between {FloorLayoutLimits.MinCoordinate} and {FloorLayoutLimits.MaxCoordinate}.");
+        }
+
+        if (width is < FloorLayoutLimits.MinSize or > FloorLayoutLimits.MaxSize
+            || height is < FloorLayoutLimits.MinSize or > FloorLayoutLimits.MaxSize)
+        {
+            throw new DomainException($"Table {Code}: width and height must be between {FloorLayoutLimits.MinSize} and {FloorLayoutLimits.MaxSize}.");
+        }
+
+        if (!Enum.IsDefined(shape))
+        {
+            throw new DomainException($"Table {Code}: unknown shape.");
+        }
+
+        if (rotation is < 0 or > 359)
+        {
+            throw new DomainException($"Table {Code}: rotation must be between 0 and 359 degrees.");
+        }
+
+        PosX = posX;
+        PosY = posY;
+        Width = width;
+        Height = height;
+        Shape = shape;
+        Rotation = rotation;
+    }
+
+    public void ClearLayout()
+    {
+        PosX = null;
+        PosY = null;
+        Width = null;
+        Height = null;
+        Shape = null;
+        Rotation = null;
     }
 
     public void Occupy(int guestCount, DateTime nowUtc)
