@@ -63,6 +63,7 @@ public static class AppHost
         services.AddSingleton<IBillingApi, BillingApi>();
         services.AddSingleton<ICustomersApi, CustomersApi>();
         services.AddSingleton<IReservationsApi, ReservationsApi>();
+        services.AddSingleton<IExpensesApi, ExpensesApi>();
         services.AddSingleton<ICashApi, CashApi>();
         services.AddSingleton<IGstApi, GstApi>();
         services.AddSingleton<ILicenseApi, LicenseApi>();

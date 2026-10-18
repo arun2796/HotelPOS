@@ -5,6 +5,7 @@ using HotelPOS.Desktop.Modules.Customers;
 using HotelPOS.Desktop.Modules.Cash;
 using HotelPOS.Desktop.Modules.Config;
 using HotelPOS.Desktop.Modules.Dashboard;
+using HotelPOS.Desktop.Modules.Expenses;
 using HotelPOS.Desktop.Modules.Gst;
 using HotelPOS.Desktop.Modules.Kitchen;
 using HotelPOS.Desktop.Modules.Licensing;
@@ -62,6 +63,7 @@ public static class ModuleRegistry
     public const string Import = "import";
     public const string Customers = "customers";
     public const string Reservations = "reservations";
+    public const string Expenses = "expenses";
     public const string Orders = "orders";
     public const string Stations = "stations";
 
@@ -103,6 +105,8 @@ public static class ModuleRegistry
 
         new(Discounts, "Payments & discounts", "", "Finance", Management, 6,
             "Predefined discounts and payment methods.", typeof(BillingSetupViewModel)),
+        new(Expenses, "Expenses", "\uE825", "Finance", Management, 22,
+            "Record, filter and void day-to-day restaurant expenses.", typeof(ExpensesViewModel)),
         new(Shifts, "Cash shifts", "\uE8C7", "Finance", Management, 13,
             "Every cash shift of the day: float, expected, counted and variance; X/Z reports and force close.", typeof(ShiftsViewModel)),
         new(DayEnd, "Day End", "\uE930", "Finance", Management, 13,
@@ -161,6 +165,8 @@ public static class ModuleRegistry
         [ClosedBills] = Permissions.BillingOperate,
         [PrintLog] = Permissions.BillingOperate,
         [Customers] = Permissions.BillingOperate,
+        [Reservations] = Permissions.ReservationsView,
+        [Expenses] = Permissions.ExpensesView,
         [Shifts] = Permissions.ShiftManage,
         [DayEnd] = Permissions.DayEndRun,
         [DayEndHistory] = Permissions.DayEndRun,

@@ -4,6 +4,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:admin="clr-namespace:HotelPOS.Desktop.Modules.Admin"
+             xmlns:expenses="clr-namespace:HotelPOS.Desktop.Modules.Expenses"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance admin:SettingsHubViewModel}"
              d:DesignWidth="1100" d:DesignHeight="700">
@@ -21,5 +22,7 @@
                         Visibility="{Binding DataContext.IsSettingsTab, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}" />
     <admin:TemplateStudioView Grid.Row="1" DataContext="{Binding Templates}"
                               Visibility="{Binding DataContext.IsTemplatesTab, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}" />
+    <expenses:ExpenseCategoriesView Grid.Row="1" DataContext="{Binding Categories}"
+                                    Visibility="{Binding DataContext.IsCategoriesTab, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}" />
   </Grid>
 </UserControl>

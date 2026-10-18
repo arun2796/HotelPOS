@@ -17,7 +17,7 @@ public class NavigationGroupTests
         Keys(groups, "Overview").Should().Equal("dashboard");
         Keys(groups, "Live Operations").Should().Equal("tables", "floor", "my-orders", "orders", "kitchen-display", "kitchen-completed", "billing", "closed-bills", "print-log", "reservations");
         Keys(groups, "Menu Management").Should().Equal("menu");
-        Keys(groups, "Finance").Should().Equal("discounts", "shifts", "day-end", "day-end-history", "period-close", "gst");
+        Keys(groups, "Finance").Should().Equal("discounts", "expenses", "shifts", "day-end", "day-end-history", "period-close", "gst");
         Keys(groups, "Analytics & Reports").Should().Equal("reports");
         Keys(groups, "People").Should().Equal("users", "roles");
         Keys(groups, "Devices").Should().Equal("devices", "printers", "stations");

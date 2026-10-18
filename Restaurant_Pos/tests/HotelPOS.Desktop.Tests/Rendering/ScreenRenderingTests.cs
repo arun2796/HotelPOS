@@ -29,6 +29,8 @@ using HotelPOS.Contracts.Orders;
 using HotelPOS.Contracts.Print;
 using HotelPOS.Contracts.Reports;
 using HotelPOS.Desktop.Modules.Reports;
+using HotelPOS.Contracts.Finance;
+using HotelPOS.Desktop.Modules.Expenses;
 using HotelPOS.Desktop.Modules.Printing;
 using HotelPOS.Desktop.Services.Printing;
 using HotelPOS.Desktop.Modules.Billing;
@@ -451,6 +453,10 @@ public class ScreenRenderingTests
             customers.EditCommand.Execute(null);
             rendered.Add(await RenderScreenAsync(env, setupShell, "73-customers"));
 
+            await setupShell.NavigateToAsync(ModuleRegistry.Expenses, null);
+            var expenses = (ExpensesViewModel)setupShell.CurrentPage!;
+            rendered.Add(await RenderScreenAsync(env, setupShell, "77-expenses"));
+
             await setupShell.NavigateToAsync(ModuleRegistry.Reports, null);
             rendered.Add(await RenderScreenAsync(env, setupShell, "40-reports-daily-sales"));
             ((ReportsViewModel)setupShell.CurrentPage!).SelectedReport = ReportsViewModel.Catalogue.Single(r => r.Key == ReportKeys.ItemSales);
@@ -501,7 +507,7 @@ public class ScreenRenderingTests
         }
 
         bindingErrors.Errors.Should().BeEmpty("every binding in the views must point at an existing property");
-        rendered.Should().HaveCount(81);
+        rendered.Should().HaveCount(82);
         // Phase 21: the bundled Inter (Regular/Medium/SemiBold/Bold) is the body font on every Windows version.
         bodyFontFiles.Should().HaveCount(4).And.OnlyContain(f => f.StartsWith("inter-"));
     }
@@ -719,6 +725,7 @@ public class ScreenRenderingTests
             services.AddSingleton(DemoLicenseApi());
             services.AddSingleton(DemoImportApi());
             services.AddSingleton(DemoCustomersApi());
+            services.AddSingleton(DemoExpensesApi());
             services.AddSingleton(Substitute.For<IUpdateService>());
             services.AddSingleton(Substitute.For<IAppLifetime>());
             services.AddSingleton<HotelPOS.Desktop.Services.Printing.IPrinterProfiles, HotelPOS.Desktop.Services.Printing.PrinterProfiles>();
@@ -1329,6 +1336,42 @@ public class ScreenRenderingTests
                 var items = customers.Where(c => c.IsActive || call.Arg<CustomerQuery>().IncludeInactive).ToList();
                 return ApiResult<PagedResult<CustomerDto>>.Ok(new PagedResult<CustomerDto> { Items = items, Page = 1, PageSize = 25, TotalCount = items.Count });
             });
+            return api;
+        }
+
+        private static IExpensesApi DemoExpensesApi()
+        {
+            var api = Substitute.For<IExpensesApi>();
+            var today = new DateOnly(2026, 10, 7);
+            var categories = new List<ExpenseCategoryDto>
+            {
+                new() { Id = 1, Name = "Kitchen Groceries", Description = "Daily fresh produce & dairy", SortOrder = 1, IsActive = true },
+                new() { Id = 2, Name = "Gas & Utilities", Description = "LPG cylinders & electricity", SortOrder = 2, IsActive = true },
+                new() { Id = 3, Name = "Repairs & Maintenance", Description = "Equipment servicing", SortOrder = 3, IsActive = true },
+                new() { Id = 4, Name = "Staff Welfare", Description = "Staff tea and emergency funds", SortOrder = 4, IsActive = true },
+            };
+            var expenses = new List<ExpenseDto>
+            {
+                new() { Id = 1, ExpenseDate = today, CategoryId = 1, CategoryName = "Kitchen Groceries", Amount = 1250m, PaymentSource = ExpensePaymentSources.CashDrawer, Payee = "Fresh Farms", Notes = "Tomatoes and onions", IsVoid = false, CreatedAtUtc = DateTime.UtcNow, CreatedByUserName = "manager1" },
+                new() { Id = 2, ExpenseDate = today, CategoryId = 2, CategoryName = "Gas & Utilities", Amount = 3400m, PaymentSource = ExpensePaymentSources.BankTransfer, Payee = "Indane Gas", Notes = "2 commercial cylinders", IsVoid = false, CreatedAtUtc = DateTime.UtcNow, CreatedByUserName = "manager1" },
+                new() { Id = 3, ExpenseDate = today.AddDays(-1), CategoryId = 3, CategoryName = "Repairs & Maintenance", Amount = 800m, PaymentSource = ExpensePaymentSources.CashDrawer, Payee = "Quick Fix Plumbing", Notes = "Sink leak repair", IsVoid = false, CreatedAtUtc = DateTime.UtcNow, CreatedByUserName = "admin" },
+                new() { Id = 4, ExpenseDate = today.AddDays(-2), CategoryId = 1, CategoryName = "Kitchen Groceries", Amount = 500m, PaymentSource = ExpensePaymentSources.CashDrawer, Payee = "Local Dairy", Notes = "Wrong entry", IsVoid = true, VoidReason = "Duplicate bill", VoidedAtUtc = DateTime.UtcNow, VoidedByUserId = 1, CreatedAtUtc = DateTime.UtcNow, CreatedByUserName = "manager1" },
+            };
+
+            api.ListCategoriesAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>())
+                .Returns(call => ApiResult<IReadOnlyList<ExpenseCategoryDto>>.Ok(categories.Where(c => c.IsActive || call.Arg<bool>()).ToList()));
+
+            api.ListAsync(Arg.Any<ExpenseFilter>(), Arg.Any<CancellationToken>())
+                .Returns(call =>
+                {
+                    var filter = call.Arg<ExpenseFilter>();
+                    var items = expenses.AsEnumerable();
+                    if (filter.CategoryId.HasValue) items = items.Where(e => e.CategoryId == filter.CategoryId.Value);
+                    if (!filter.IncludeVoid) items = items.Where(e => !e.IsVoid);
+                    var list = (IReadOnlyList<ExpenseDto>)items.ToList();
+                    return ApiResult<IReadOnlyList<ExpenseDto>>.Ok(list);
+                });
+
             return api;
         }
 
