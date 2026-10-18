@@ -1,6 +1,6 @@
 # Phase 22 — Features excluded from Phase 21 (plan)
 
-Status: In progress on `phase-22-excluded-features` — Foundations 0.1–0.2, Ordering O1–O4, Billing B1 and Finance F1–F4 built (2026-10-18); Operations P1–P6, the B2 spec and Verification 22.5 pending · Depends on: Phase 21
+Status: In progress on `phase-22-excluded-features` — Foundations 0.1–0.2, Ordering O1–O4, Billing B1, Finance F1–F4 and Operations P1–P6 built (2026-10-18/19); B2 spec written (`phase-22-item-split-spec.md`, owner decision open); release notes in `phase-22-release-notes.md`; Verification 22.5 in progress (full suite, venue-DB rehearsal, galleries); optional O5/P7 not started · Depends on: Phase 21
 
 Phase 21 restyled every client without touching the server. Its § 3 "Out" list names the mock-up elements that had no
 data behind them. This phase adds that data: entities, migrations, commands, endpoints and DTOs, then the UI on both
@@ -248,3 +248,9 @@ DTOs. Desktop/web: VM and bUnit tests per surface; rendering counts; `StatusPres
   table); (f) the read-only canvas is scaled to the window width by a `Viewbox` (down only), the editor has Zoom and Fit; resize
   handles act in the tile's own frame; (g) a save refused for a reason other than a lost connection refetches the stored layout
   and drops the unsaved edits. Desktop rendering screens 82 -> 84 (`56-admin-floor-plan`, `57-table-map-floor-plan`).
+- **22.5 (2026-10-19).** Verification found that `Phase22_Expenses` created the tables but granted `expenses.view/manage`
+  to nobody, and `DbSeeder` assigns defaults only to roles it creates, so an upgraded venue database would have had the
+  Expenses screen denied for Admin and Manager. Added `Phase22_ExpensePermissions` (idempotent insert for Admin and
+  Manager, same SQL shape as `Phase22_Reservations`). P1's `api/floor/sections/{id}/layout` was moved to
+  `api/sections/{id}/layout` to match the existing section routes before any client used it. Release notes:
+  `phase-22-release-notes.md`; docs 02/03/04/05/07 updated per step.
