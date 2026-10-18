@@ -20,6 +20,7 @@ public static class ReportKeys
     public const string Cancellations = "cancellations";
     public const string Discounts = "discounts";
     public const string Taxes = "taxes";
+    public const string ProfitLoss = "profit-loss";
     public const string Waiters = "staff/waiters";
     public const string Kitchen = "kitchen";
 }
@@ -103,6 +104,9 @@ public sealed record DashboardDto
     public int PendingBills { get; init; }
     public decimal AverageTicketMinutes { get; init; }
     public int ReservationsToday { get; init; }
+
+    // Phase 22 F4: live (non-void) expenses dated the current business day.
+    public decimal ExpensesToday { get; init; }
     public IReadOnlyList<DashboardTopItem> TopItems { get; init; } = Array.Empty<DashboardTopItem>();
     public IReadOnlyList<DashboardDayPoint> LastDays { get; init; } = Array.Empty<DashboardDayPoint>();
     public IReadOnlyList<DashboardHourPoint> HourlyToday { get; init; } = Array.Empty<DashboardHourPoint>();
@@ -226,6 +230,17 @@ public sealed record TaxCollectionRowDto
     public int Bills { get; init; }
     public decimal TaxableAmount { get; init; }
     public decimal TaxAmount { get; init; }
+}
+
+// Phase 22 F4: one line of the "Sales minus expenses" statement. Amounts are magnitudes; the Line text says whether a
+// figure is added or deducted ("Less: Refunds"), so a totals row would be meaningless and the column is NoTotal.
+public sealed record ProfitLossRowDto
+{
+    public string Section { get; init; } = string.Empty;
+    public string Line { get; init; } = string.Empty;
+
+    [NoTotal]
+    public decimal Amount { get; init; }
 }
 
 public sealed record WaiterPerformanceRowDto

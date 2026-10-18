@@ -55,7 +55,7 @@
       </Border>
 
       <!-- KPI cards (A2): comparison only when yesterday's figure exists; AOV says it is derived; occupancy as a bar. -->
-      <controls:KpiStrip x:Name="KpiRow" Grid.Row="2" ItemsSource="{Binding Cards}" Columns="4">
+      <controls:KpiStrip x:Name="KpiRow" Grid.Row="2" ItemsSource="{Binding Cards}" Columns="5">
         <controls:KpiStrip.ItemTemplate>
           <DataTemplate DataType="{x:Type dashboard:KpiCard}">
             <Grid>

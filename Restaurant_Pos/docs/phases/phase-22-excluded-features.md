@@ -1,6 +1,6 @@
 # Phase 22 — Features excluded from Phase 21 (plan)
 
-Status: Planned — audit and plan only, nothing implemented (2026-10-17 on `main` 746336a) · Depends on: Phase 21
+Status: In progress on `phase-22-excluded-features` — Foundations 0.1–0.2, Ordering O1–O4, Billing B1 and Finance F1–F4 built (2026-10-18); Operations P1–P6, the B2 spec and Verification 22.5 pending · Depends on: Phase 21
 
 Phase 21 restyled every client without touching the server. Its § 3 "Out" list names the mock-up elements that had no
 data behind them. This phase adds that data: entities, migrations, commands, endpoints and DTOs, then the UI on both
@@ -192,4 +192,10 @@ DTOs. Desktop/web: VM and bUnit tests per surface; rendering counts; `StatusPres
 
 ## 11. Changes during implementation
 
-(filled while building)
+- **F4 (2026-10-18).** No `ProfitLossAsync` SQL: the handler composes `DailySalesAsync` (sales side) with a new
+  `ExpensesByCategoryAsync` (live expenses per category, `ExpenseDate` compared as calendar dates, inclusive) in
+  `ProfitLossStatement.Compose`, which is pure and unit-tested. The statement is rows of Section / Line / Amount with
+  magnitudes and "Less: …" / "Add: …" labels (no negative numbers); `Amount` is `[NoTotal]` so no export or grid sums
+  the lines. Round off is derived (`Gross − (Subtotal − Discounts + Tax)`) and shown only when non-zero. The dashboard
+  gains `ExpensesToday` and a fifth KPI card (strip widened to five columns) that deep-links to the P&L. Permission is
+  `ReportsView` (it is a report), not `ExpensesView`.

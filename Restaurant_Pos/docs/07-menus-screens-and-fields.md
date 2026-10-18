@@ -56,9 +56,10 @@ open at least one screen in it. The sidebar collapses to an icon rail on its own
 | (not in the sidebar) | Customers | Admin, Manager, Cashier | Customer list used by the bill (5.3). Hidden from the menu in Phase 21 (D3); reached from the command palette or the bill's customer panel |
 
 \* Administrators only. That is 29 screens in the sidebar plus Customers. Where a screen has tabs they are listed in its
-section below (Sections & Tables, Menu, Payments & discounts, Restaurant Settings, Tax Returns). Expenses, Profit & Loss,
-hourly sales, low stock and the floor-plan drawing of the mock-ups have no data behind them and are not screens
-(`docs/phases/phase-21-role-ui-ux-redesign.md` § 3 Out).
+section below (Sections & Tables, Menu, Payments & discounts, Restaurant Settings, Tax Returns). Phase 22 added Expenses
+(Finance group), the Hourly sales and Profit & Loss tabs under Reports and the "Expenses today" dashboard card
+(`docs/phases/phase-22-excluded-features.md` F1–F4). Low stock and the floor-plan drawing of the mock-ups still have no
+data behind them and are not screens.
 
 After sign-in each person lands on a home screen: Admin and Manager on Dashboard, Kitchen on Kitchen Display, Cashier on the cashier home (shown as "Dashboard"), Waiter on Tables (in the browser and the Android app, on the waiter Home page at /home).
 
@@ -181,7 +182,7 @@ KPI cards (manager view, one row): **Today's sales** (settled bills; red/green d
 **Recent activity**: the last eight audit-log rows as sentences ("cashier1 settled bill INV-…"), with live notices prepended as they arrive; **View all** opens the Audit Log. Without the audit permission the widget falls back to the bell feed (D10).
 Then, as before: "Net sales - last 7 days" bars, "Payments today" donut by method with ₹ and percent, "Top items today" (picture or initials, name, quantity, amount), **Kitchen performance today**, **Staff today** and **Terminals** side by side (Terminals lists devices for administrators only, because `api/admin/devices` is administrator-only; a manager sees a placeholder). A panel whose endpoint fails stays empty; the rest of the dashboard is unaffected.
 Tiles (own view, waiter): My orders today (and still open), My sales today (settled bills), Tables I am serving (and guests today).
-Not on the dashboard (no data, plan § 3 Out): hourly sales, expenses, profit & loss, low stock, staff presence.
+Phase 22 added a fifth KPI card, **Expenses today** (live expenses dated the business day; detail "… after expenses"; opens Reports → Profit & Loss), and the **Hourly sales · today** bars (F1). Not on the dashboard: low stock, staff presence (plan P4).
 
 Source: `Modules/Dashboard/DashboardView.xaml`
 

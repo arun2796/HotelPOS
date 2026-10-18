@@ -16,6 +16,15 @@ public sealed record DashboardFigures
     public int PendingBills { get; init; }
     public decimal AverageTicketMinutes { get; init; }
     public int ReservationsToday { get; init; }
+    public decimal ExpensesToday { get; init; }
+}
+
+// Phase 22 F4: live expenses summed per category for a range of business days (ExpenseDate is a calendar date, so the
+// range is From..To inclusive with no shift).
+public sealed record ExpenseCategoryTotal
+{
+    public string Category { get; init; } = string.Empty;
+    public decimal Amount { get; init; }
 }
 
 public sealed record WaiterFigures
@@ -53,6 +62,8 @@ public interface IReportQueries
     Task<IReadOnlyList<DiscountRowDto>> DiscountsAsync(ReportWindow window, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<TaxCollectionRowDto>> TaxesAsync(ReportWindow window, CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<ExpenseCategoryTotal>> ExpensesByCategoryAsync(ReportWindow window, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<WaiterPerformanceRowDto>> WaitersAsync(ReportWindow window, CancellationToken cancellationToken);
 

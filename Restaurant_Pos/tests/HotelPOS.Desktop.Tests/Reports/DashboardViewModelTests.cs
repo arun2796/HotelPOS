@@ -117,7 +117,11 @@ public class DashboardViewModelTests
 
         await vm.OnNavigatedToAsync(null);
 
-        vm.Cards.Select(c => c.Title).Should().Equal("Today's sales", "Orders today", "Average order value", "Occupied tables");
+        vm.Cards.Select(c => c.Title).Should().Equal("Today's sales", "Orders today", "Average order value", "Occupied tables", "Expenses today");
+        vm.Cards[4].Value.Should().Be("0.00");
+        vm.Cards[4].Detail.Should().Be("none recorded yet", "Phase 22 F4: no expenses in the fixture");
+        vm.Cards[4].Module.Should().Be(ModuleRegistry.Reports);
+        vm.Cards[4].Parameter.Should().Be(ReportKeys.ProfitLoss);
         vm.Cards[0].Delta.Should().BeApproximately(12.0, 0.01);
         vm.Cards[0].Detail.Should().Be("vs 38,259.00 yesterday");
         vm.Cards[0].Module.Should().Be(ModuleRegistry.Reports);

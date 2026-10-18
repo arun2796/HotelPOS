@@ -197,6 +197,7 @@ All `GET`, roles A/M, params `from`, `to` (business days, default today, at most
 /api/reports/payments           /api/reports/cancellations
 /api/reports/discounts          /api/reports/taxes
 /api/reports/staff/waiters      /api/reports/kitchen
+/api/reports/sales/hourly       /api/reports/profit-loss   (Phase 22: 24 zero-filled business hours; "sales minus expenses" statement)
 ```
 
 ### 3.10 Admin operations (Phase 9, 10)

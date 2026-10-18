@@ -134,6 +134,7 @@ AM---  GET    api/reports/discounts
 AM---  GET    api/reports/kitchen
 AMWKC  GET    api/reports/my-day
 AM---  GET    api/reports/payments
+AM---  GET    api/reports/profit-loss
 AM---  GET    api/reports/sales/categories
 AM---  GET    api/reports/sales/daily
 AM---  GET    api/reports/sales/hourly

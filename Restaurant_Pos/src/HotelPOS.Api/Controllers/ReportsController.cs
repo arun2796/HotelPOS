@@ -78,6 +78,12 @@ public sealed class ReportsController : ApiControllerBase
     public Task<IActionResult> Taxes([FromQuery] ReportQuery query, CancellationToken cancellationToken) =>
         ReportAsync(query, "taxes", new GetTaxesReportQuery(query), cancellationToken);
 
+    // Phase 22 F4: "Sales minus expenses" for the range; same JSON/CSV/XLSX/PDF delivery as every other report.
+    [HttpGet("profit-loss")]
+    [Authorize(Policy = Permissions.ReportsView)]
+    public Task<IActionResult> ProfitLoss([FromQuery] ReportQuery query, CancellationToken cancellationToken) =>
+        ReportAsync(query, "profit-loss", new GetProfitLossReportQuery(query), cancellationToken);
+
     [HttpGet("staff/waiters")]
     [Authorize(Policy = Permissions.ReportsView)]
     public Task<IActionResult> Waiters([FromQuery] ReportQuery query, CancellationToken cancellationToken) =>
@@ -106,6 +112,7 @@ public sealed class ReportsController : ApiControllerBase
         ["cancellations"] = "Cancellations",
         ["discounts"] = "Discounts",
         ["taxes"] = "Tax collection",
+        ["profit-loss"] = "Profit & Loss (sales minus expenses)",
         ["waiters"] = "Waiter performance",
         ["kitchen"] = "Kitchen performance",
     };

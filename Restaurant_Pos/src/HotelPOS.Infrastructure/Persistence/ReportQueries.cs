@@ -34,7 +34,9 @@ public sealed class ReportQueries : IReportQueries
               (SELECT ROUND(COALESCE(AVG(EXTRACT(EPOCH FROM ("ReadyAt" - "CreatedAt")) / 60), 0)::numeric, 1) FROM "KitchenOrders"
                  WHERE "ReadyAt" IS NOT NULL AND "CreatedAt" >= {today.FromUtc} AND "CreatedAt" < {today.ToUtc}) AS "AverageTicketMinutes",
               (SELECT COUNT(*) FROM "Reservations"
-                 WHERE "Status" = 1 AND "StartTimeUtc" >= {today.FromUtc} AND "StartTimeUtc" < {today.ToUtc})::int AS "ReservationsToday"
+                 WHERE "Status" = 1 AND "StartTimeUtc" >= {today.FromUtc} AND "StartTimeUtc" < {today.ToUtc})::int AS "ReservationsToday",
+              (SELECT COALESCE(SUM("Amount"), 0) FROM "Expenses"
+                 WHERE NOT "IsVoid" AND "ExpenseDate" = {today.From}) AS "ExpensesToday"
             """).ToListAsync(cancellationToken)).Single();
 
     public async Task<IReadOnlyList<DashboardTopItem>> TopItemsAsync(ReportWindow window, int count, CancellationToken cancellationToken) =>
@@ -223,6 +225,18 @@ public sealed class ReportQueries : IReportQueries
             WHERE b."Status" = {BillSettled} AND b."SettledAt" >= {window.FromUtc} AND b."SettledAt" < {window.ToUtc}
             GROUP BY bi."TaxRatePercent"
             ORDER BY bi."TaxRatePercent"
+            """).ToListAsync(cancellationToken);
+
+    // Phase 22 F4: ExpenseDate is a calendar date chosen by the user, so the window's business days are compared as
+    // dates (inclusive), not as the UTC instants the bill queries use. Voided expenses never count.
+    public async Task<IReadOnlyList<ExpenseCategoryTotal>> ExpensesByCategoryAsync(ReportWindow window, CancellationToken cancellationToken) =>
+        await _db.Database.SqlQuery<ExpenseCategoryTotal>($"""
+            SELECT c."Name" AS "Category", COALESCE(SUM(e."Amount"), 0) AS "Amount"
+            FROM "Expenses" e
+            JOIN "ExpenseCategories" c ON c."Id" = e."CategoryId"
+            WHERE NOT e."IsVoid" AND e."ExpenseDate" >= {window.From} AND e."ExpenseDate" <= {window.To}
+            GROUP BY c."Name", c."SortOrder"
+            ORDER BY c."SortOrder", c."Name"
             """).ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyList<WaiterPerformanceRowDto>> WaitersAsync(ReportWindow window, CancellationToken cancellationToken) =>

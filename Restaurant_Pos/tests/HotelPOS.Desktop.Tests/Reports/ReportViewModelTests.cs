@@ -60,6 +60,33 @@ public sealed class ReportViewModelTests
         vm.SummaryText.Should().Contain("2 rows");
     }
 
+    // Phase 22 F4: the P&L is a statement, so the grid shows its lines as money but never a totals row.
+    [Fact]
+    public async Task ProfitLoss_LoadsAsAStatement_WithoutATotalsRow()
+    {
+        var api = Substitute.For<IReportsApi>();
+        api.GetRowsAsync<ProfitLossRowDto>(ReportKeys.ProfitLoss, Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+            .Returns(ApiResult<List<ProfitLossRowDto>>.Ok(new List<ProfitLossRowDto>
+            {
+                new() { Section = "Sales", Line = "Net sales", Amount = 1105.5m },
+                new() { Section = "Expenses", Line = "Less: Total expenses", Amount = 595.5m },
+                new() { Section = "Result", Line = "Profit (net sales minus expenses)", Amount = 510m },
+            }));
+        var system = Substitute.For<ISystemApi>();
+        system.GetPublicSettingsAsync(Arg.Any<CancellationToken>()).Returns(ApiResult<List<SettingDto>>.Ok(new List<SettingDto>()));
+        var vm = new ReportsViewModel(api, system, Substitute.For<IFilePicker>(), Substitute.For<INotificationService>());
+
+        await vm.OnNavigatedToAsync(ReportKeys.ProfitLoss);
+
+        vm.SelectedReport.Title.Should().Be("Profit & Loss");
+        vm.Table!.Columns.Cast<System.Data.DataColumn>().Select(c => c.ColumnName).Should().Equal("Section", "Line", "Amount");
+        vm.Table.Rows.Count.Should().Be(3);
+        vm.Table.Rows[2]["Amount"].Should().Be("510.00");
+        vm.NumericColumns.Should().Contain("Amount");
+        vm.Totals.Should().BeEmpty("a statement's lines must not be summed");
+        vm.SummaryText.Should().StartWith("Profit & Loss");
+    }
+
     [Fact]
     public async Task Dashboard_ReloadsOnceForABurstOfEvents_AndShowsTilesForManagers()
     {
@@ -96,9 +123,11 @@ public sealed class ReportViewModelTests
 
         vm.RefreshCount.Should().Be(2, "the initial load plus one debounced reload for the burst");
         vm.IsManagerView.Should().BeTrue();
-        vm.Cards.Should().HaveCount(4, "Phase 21: sales, orders, average order value, occupied tables");
+        vm.Cards.Should().HaveCount(5, "Phase 21: sales, orders, average order value, occupied tables; Phase 22 F4: expenses today");
         vm.Cards[0].Value.Should().Be("12,345.00");
         vm.Cards[3].Value.Should().Be("4 / 15");
+        vm.Cards[4].Title.Should().Be("Expenses today");
+        vm.Cards[4].Parameter.Should().Be(ReportKeys.ProfitLoss, "the card deep-links to the P&L report");
         vm.TopItems.Should().ContainSingle().Which.Name.Should().Be("Biryani");
         vm.DayBars.Should().HaveCount(7);
         vm.DayBars[^1].Height.Should().Be(1);

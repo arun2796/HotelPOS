@@ -501,6 +501,11 @@ public sealed partial class DashboardViewModel : ViewModelBase, INavigationAware
                 ModuleRegistry.Reports, ReportKeys.DailySales),
             new KpiCard("Occupied tables", $"{d.ActiveTables} / {d.TotalTables}", $"{occupancy * 100:0}% occupancy", "table", StatusTone.Warning,
                 ModuleRegistry.Tables, Progress: occupancy),
+
+            // Phase 22 F4: today's live expenses; the detail is "sales minus expenses" so far, the card opens the P&L.
+            new KpiCard("Expenses today", Money.Format(d.ExpensesToday),
+                d.ExpensesToday == 0 ? "none recorded yet" : $"{Money.Format(d.TodaySales - d.ExpensesToday)} after expenses", "shopping-bag",
+                StatusTone.Neutral, ModuleRegistry.Reports, ReportKeys.ProfitLoss),
         };
     }
 

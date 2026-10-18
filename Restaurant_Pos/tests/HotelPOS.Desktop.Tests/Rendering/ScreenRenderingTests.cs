@@ -1518,6 +1518,7 @@ public class ScreenRenderingTests
                 PendingKitchenTickets = 5,
                 PendingBills = 3,
                 AverageTicketMinutes = 14.2m,
+                ExpensesToday = 6450m,
                 TopItems = new[]
                 {
                     new DashboardTopItem { ItemName = "Chicken Biryani", Quantity = 38, Amount = 9880m },
