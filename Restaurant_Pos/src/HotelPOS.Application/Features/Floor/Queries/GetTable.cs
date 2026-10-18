@@ -52,6 +52,16 @@ internal sealed class GetTableHandler : IQueryHandler<GetTableQuery, TableDetail
                 .FirstOrDefaultAsync(cancellationToken);
         }
 
-        return new TableDetailDto { Table = TableMapping.ToDto(table), CurrentOrder = currentOrder, ServerTimeUtc = serverTime };
+        var upcoming = await _db.Reservations.AsNoTracking()
+            .Where(r => r.TableId == table.Id
+                && r.Status == ReservationStatus.Booked
+                && r.StartTimeUtc <= serverTime.AddMinutes(HotelPOS.Contracts.Reservations.ReservationLimits.ReservedSoonWindowMinutes)
+                && r.EndTimeUtc >= serverTime)
+            .OrderBy(r => r.StartTimeUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var upcomingDto = upcoming is null ? null : HotelPOS.Application.Features.Reservations.ReservationMapping.ToSummaryDto(upcoming, table.Code);
+
+        return new TableDetailDto { Table = TableMapping.ToDto(table, upcomingDto), CurrentOrder = currentOrder, ServerTimeUtc = serverTime };
     }
 }

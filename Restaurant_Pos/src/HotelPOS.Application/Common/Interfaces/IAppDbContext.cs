@@ -32,6 +32,7 @@ public interface IAppDbContext
     DbSet<PaymentMethod> PaymentMethods { get; }
     DbSet<Section> Sections { get; }
     DbSet<Table> Tables { get; }
+    DbSet<Reservation> Reservations { get; }
     DbSet<Category> Categories { get; }
     DbSet<Tax> Taxes { get; }
     DbSet<ModifierGroup> ModifierGroups { get; }

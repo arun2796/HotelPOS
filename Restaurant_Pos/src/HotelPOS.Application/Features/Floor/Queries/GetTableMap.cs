@@ -46,6 +46,20 @@ internal sealed class GetTableMapHandler : IQueryHandler<GetTableMapQuery, Table
             .Where(t => includeInactive || t.IsActive)
             .ToListAsync(cancellationToken);
 
+        var windowEnd = serverTime.AddMinutes(HotelPOS.Contracts.Reservations.ReservationLimits.ReservedSoonWindowMinutes);
+        var upcomingReservations = await _db.Reservations.AsNoTracking()
+            .Where(r => r.Status == HotelPOS.Contracts.Enums.ReservationStatus.Booked
+                && r.StartTimeUtc <= windowEnd
+                && r.EndTimeUtc >= serverTime)
+            .OrderBy(r => r.StartTimeUtc)
+            .ToListAsync(cancellationToken);
+
+        var upcomingByTable = upcomingReservations
+            .GroupBy(r => r.TableId)
+            .ToDictionary(
+                g => g.Key,
+                g => HotelPOS.Application.Features.Reservations.ReservationMapping.ToSummaryDto(g.First()));
+
         var bySection = tables.ToLookup(t => t.SectionId);
         return new TableMapDto
         {
@@ -58,7 +72,7 @@ internal sealed class GetTableMapHandler : IQueryHandler<GetTableMapQuery, Table
                 IsActive = s.IsActive,
                 Tables = bySection[s.Id]
                     .OrderBy(t => t.Code, StringComparer.Ordinal)
-                    .Select(t => TableMapping.ToDto(t, s.Name))
+                    .Select(t => TableMapping.ToDto(t, s.Name, upcomingByTable.GetValueOrDefault(t.Id)))
                     .ToList(),
             }).ToList(),
         };

@@ -140,4 +140,10 @@ public static class AuditActions
     public const string ImportUndone = "Import.Undone";
     public const string DayEndReopened = "DayEnd.Reopened";
     public const string NonTillCollectionRecorded = "DayEnd.NonTillCollectionRecorded";
+
+    public const string ReservationCreated = "Reservation.Created";
+    public const string ReservationUpdated = "Reservation.Updated";
+    public const string ReservationCancelled = "Reservation.Cancelled";
+    public const string ReservationSeated = "Reservation.Seated";
+    public const string ReservationNoShow = "Reservation.NoShow";
 }

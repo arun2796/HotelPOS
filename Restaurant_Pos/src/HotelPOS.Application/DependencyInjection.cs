@@ -18,6 +18,7 @@ using HotelPOS.Application.Features.Menu;
 using HotelPOS.Application.Features.Orders;
 using HotelPOS.Application.Features.Print;
 using HotelPOS.Application.Features.Reports;
+using HotelPOS.Application.Features.Reservations;
 using HotelPOS.Application.Features.Security;
 using HotelPOS.Application.Features.Templates;
 using HotelPOS.Application.Features.Shifts;
@@ -61,6 +62,7 @@ public static class DependencyInjection
         services.AddScoped<FloorSections>();
         services.AddScoped<FloorTables>();
         services.AddScoped<TableEvents>();
+        services.AddScoped<ReservationEvents>();
         services.AddScoped<MenuChanges>();
         services.AddScoped<MenuCategories>();
         services.AddScoped<MenuItems>();

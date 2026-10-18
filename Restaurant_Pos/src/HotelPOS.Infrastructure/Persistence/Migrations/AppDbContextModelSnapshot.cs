@@ -1199,6 +1199,89 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                     b.ToTable("Customers", (string)null);
                 });
 
+            modelBuilder.Entity("HotelPOS.Domain.Floor.Reservation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CancelReason")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime?>("CancelledAtUtc")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("CustomerName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("CustomerPhone")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<DateTime>("EndTimeUtc")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("PartySize")
+                        .HasColumnType("integer");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<DateTime?>("SeatedAtUtc")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<DateTime>("StartTimeUtc")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TableId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int?>("UpdatedBy")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StartTimeUtc");
+
+                    b.HasIndex("TableId");
+
+                    b.HasIndex("TableId", "Status", "StartTimeUtc", "EndTimeUtc");
+
+                    b.ToTable("Reservations", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Reservations_PartySize", "\"PartySize\" BETWEEN 1 AND 50");
+
+                            t.HasCheckConstraint("CK_Reservations_Status", "\"Status\" IN (1, 2, 3, 4)");
+
+                            t.HasCheckConstraint("CK_Reservations_TimeRange", "\"EndTimeUtc\" > \"StartTimeUtc\"");
+                        });
+                });
+
             modelBuilder.Entity("HotelPOS.Domain.Floor.Section", b =>
                 {
                     b.Property<int>("Id")
@@ -2604,6 +2687,17 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                         .HasForeignKey("RecordedBy")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("HotelPOS.Domain.Floor.Reservation", b =>
+                {
+                    b.HasOne("HotelPOS.Domain.Floor.Table", "Table")
+                        .WithMany()
+                        .HasForeignKey("TableId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Table");
                 });
 
             modelBuilder.Entity("HotelPOS.Domain.Floor.Table", b =>

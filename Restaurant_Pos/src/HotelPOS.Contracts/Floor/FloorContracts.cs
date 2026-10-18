@@ -42,6 +42,8 @@ public sealed record TableDto
 
     public int? CurrentOrderNumber { get; init; }
 
+    public Reservations.ReservationSummaryDto? UpcomingReservation { get; init; }
+
     public string RowVersion { get; init; } = string.Empty;
 }
 

@@ -43,3 +43,32 @@ internal sealed class TableConfiguration : IEntityTypeConfiguration<Table>
             .OnDelete(DeleteBehavior.Restrict);
     }
 }
+
+internal sealed class ReservationConfiguration : IEntityTypeConfiguration<Reservation>
+{
+    public void Configure(EntityTypeBuilder<Reservation> builder)
+    {
+        builder.ToTable("Reservations", t =>
+        {
+            t.HasCheckConstraint("CK_Reservations_Status", ConfigurationHelpers.EnumCheck<ReservationStatus>("Status"));
+            t.HasCheckConstraint("CK_Reservations_PartySize", $"\"PartySize\" BETWEEN {HotelPOS.Contracts.Reservations.ReservationLimits.MinPartySize} AND {HotelPOS.Contracts.Reservations.ReservationLimits.MaxPartySize}");
+            t.HasCheckConstraint("CK_Reservations_TimeRange", "\"EndTimeUtc\" > \"StartTimeUtc\"");
+        });
+
+        builder.Property(r => r.CustomerName).HasMaxLength(HotelPOS.Contracts.Reservations.ReservationLimits.CustomerNameMaxLength).IsRequired();
+        builder.Property(r => r.CustomerPhone).HasMaxLength(HotelPOS.Contracts.Reservations.ReservationLimits.CustomerPhoneMaxLength).IsRequired();
+        builder.Property(r => r.Notes).HasMaxLength(HotelPOS.Contracts.Reservations.ReservationLimits.NotesMaxLength);
+        builder.Property(r => r.CancelReason).HasMaxLength(HotelPOS.Contracts.Reservations.ReservationLimits.CancelReasonMaxLength);
+        builder.Property(r => r.RowVersion).IsRowVersion();
+
+        builder.HasIndex(r => r.TableId);
+        builder.HasIndex(r => new { r.TableId, r.Status, r.StartTimeUtc, r.EndTimeUtc });
+        builder.HasIndex(r => r.StartTimeUtc);
+
+        builder.HasOne(r => r.Table)
+            .WithMany()
+            .HasForeignKey(r => r.TableId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+

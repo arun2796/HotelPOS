@@ -130,6 +130,13 @@ AM---  GET    api/reports/sales/items
 AM---  GET    api/reports/sales/monthly
 AM---  GET    api/reports/staff/waiters
 AM---  GET    api/reports/taxes
+AMW-C  GET    api/reservations
+AMW-C  POST   api/reservations
+AMW-C  GET    api/reservations/{id:int}
+AMW-C  PUT    api/reservations/{id:int}
+AMW-C  POST   api/reservations/{id:int}/cancel
+AMW-C  POST   api/reservations/{id:int}/no-show
+AMW-C  POST   api/reservations/{id:int}/seat
 A----  GET    api/roles
 A----  GET    api/roles/permissions
 A----  GET    api/roles/{id:int}/permissions

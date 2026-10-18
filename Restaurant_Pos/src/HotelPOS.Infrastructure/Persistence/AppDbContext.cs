@@ -38,6 +38,7 @@ public sealed class AppDbContext : DbContext, IAppDbContext
     public DbSet<PaymentMethod> PaymentMethods => Set<PaymentMethod>();
     public DbSet<Section> Sections => Set<Section>();
     public DbSet<Table> Tables => Set<Table>();
+    public DbSet<Reservation> Reservations => Set<Reservation>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Tax> Taxes => Set<Tax>();
     public DbSet<ModifierGroup> ModifierGroups => Set<ModifierGroup>();

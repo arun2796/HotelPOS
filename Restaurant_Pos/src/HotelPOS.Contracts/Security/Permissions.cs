@@ -14,6 +14,9 @@ public static class Permissions
     public const string TablesOperate = "tables.operate";
     public const string TablesManage = "tables.manage";
 
+    public const string ReservationsView = "reservations.view";
+    public const string ReservationsManage = "reservations.manage";
+
     public const string MenuView = "menu.view";
     public const string MenuManage = "menu.manage";
     public const string MenuAvailability = "menu.availability";
@@ -45,6 +48,7 @@ public static class Permissions
     {
         UsersManage, RolesManage, SettingsManage, DevicesManage, AuditView, BackupManage, ServerManage,
         TablesView, TablesOperate, TablesManage,
+        ReservationsView, ReservationsManage,
         MenuView, MenuManage, MenuAvailability,
         OrdersCreate, OrdersEditAny, OrdersCancelAny,
         KitchenOperate,
