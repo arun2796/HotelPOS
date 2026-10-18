@@ -98,7 +98,7 @@ inventory, delivery dispatch/riders, online ordering channels, web admin pages.
 | # | Step | Size |
 |---|---|---|
 | B1 | Wallet: `PaymentMethodCodes.Wallet`, seed row, release note (existing DBs: admin adds it in Billing setup) | 0.1 / – / – / 0.2 |
-| B2 | Item split spec (rounding, discount share, tax per sibling, void/reopen with siblings) — written and approved before code | 0.5 (doc) |
+| B2 | Item split spec (rounding, discount share, tax per sibling, void/reopen with siblings) — written and approved before code. Draft: `phase-22-item-split-spec.md` (2026-10-18, awaiting owner decision § 6) | 0.5 (doc) |
 | B3 | Item split backend: `SplitBill`, `SplitIndex` + index migration, completion = all siblings settled, `VoidBill`/`ReopenBill` sibling rules, invoice numbering unchanged | 3 / – / – / 2 |
 | B4 | Item split UI: "Split items" picker in the cashier workspace, sibling bills in the queue ("#1016-A/B"), print suffix; web order details shows sibling bill status | – / 2 / 1 / 0.5 |
 
