@@ -330,10 +330,36 @@ public sealed partial class ExpensesViewModel : ViewModelBase, INavigationAware,
     [ObservableProperty]
     private bool _isCategoriesDrawerOpen;
 
-    partial void OnFromDateChanged(DateTime? value) => _ = LoadAsync();
-    partial void OnToDateChanged(DateTime? value) => _ = LoadAsync();
-    partial void OnSelectedCategoryFilterChanged(CategoryFilterOption? value) => _ = LoadAsync();
-    partial void OnIncludeVoidChanged(bool value) => _ = LoadAsync();
+    // A filter change made by the user reloads; changes the load itself makes (re-selecting the category option after
+    // the list is rebuilt) or a quick filter setting both dates must not, or the screen reloads forever (found by the
+    // demo pass: thousands of /api/expenses calls per minute, port exhaustion on the terminal).
+    private bool _suppressReload;
+
+    partial void OnFromDateChanged(DateTime? value) => ReloadForFilter();
+    partial void OnToDateChanged(DateTime? value) => ReloadForFilter();
+    partial void OnSelectedCategoryFilterChanged(CategoryFilterOption? value) => ReloadForFilter();
+    partial void OnIncludeVoidChanged(bool value) => ReloadForFilter();
+
+    private void ReloadForFilter()
+    {
+        if (!_suppressReload)
+        {
+            _ = LoadAsync();
+        }
+    }
+
+    private void SetFilter(Action apply)
+    {
+        _suppressReload = true;
+        try
+        {
+            apply();
+        }
+        finally
+        {
+            _suppressReload = false;
+        }
+    }
 
     public Task OnNavigatedToAsync(object? parameter) => LoadAsync();
 
@@ -354,13 +380,26 @@ public sealed partial class ExpensesViewModel : ViewModelBase, INavigationAware,
                 _allCategories.AddRange(catResult.Data);
 
                 var selectedCatId = SelectedCategoryFilter?.Id;
-                CategoryFilters.Clear();
-                CategoryFilters.Add(new CategoryFilterOption(null, "All categories"));
-                foreach (var c in _allCategories.Where(c => c.IsActive).OrderBy(c => c.SortOrder).ThenBy(c => c.Name))
+                var options = new List<CategoryFilterOption> { new(null, "All categories") };
+                options.AddRange(_allCategories.Where(c => c.IsActive).OrderBy(c => c.SortOrder).ThenBy(c => c.Name)
+                    .Select(c => new CategoryFilterOption(c.Id, c.Name)));
+                if (!options.Select(o => (o.Id, o.Name)).SequenceEqual(CategoryFilters.Select(o => (o.Id, o.Name))))
                 {
-                    CategoryFilters.Add(new CategoryFilterOption(c.Id, c.Name));
+                    SetFilter(() =>
+                    {
+                        CategoryFilters.Clear();
+                        foreach (var option in options)
+                        {
+                            CategoryFilters.Add(option);
+                        }
+
+                        SelectedCategoryFilter = CategoryFilters.FirstOrDefault(f => f.Id == selectedCatId) ?? CategoryFilters[0];
+                    });
                 }
-                SelectedCategoryFilter = CategoryFilters.FirstOrDefault(f => f.Id == selectedCatId) ?? CategoryFilters[0];
+                else if (SelectedCategoryFilter is null)
+                {
+                    SetFilter(() => SelectedCategoryFilter = CategoryFilters[0]);
+                }
             }
 
             // 2. Query expenses
@@ -408,25 +447,27 @@ public sealed partial class ExpensesViewModel : ViewModelBase, INavigationAware,
     }
 
     [RelayCommand]
-    private void QuickFilterToday()
-    {
-        FromDate = DateTime.Today;
-        ToDate = DateTime.Today;
-    }
+    private void QuickFilterToday() => QuickFilter(DateTime.Today, DateTime.Today);
 
     [RelayCommand]
     private void QuickFilterThisMonth()
     {
         var today = DateTime.Today;
-        FromDate = new DateTime(today.Year, today.Month, 1);
-        ToDate = today;
+        QuickFilter(new DateTime(today.Year, today.Month, 1), today);
     }
 
     [RelayCommand]
-    private void QuickFilterLast30Days()
+    private void QuickFilterLast30Days() => QuickFilter(DateTime.Today.AddDays(-29), DateTime.Today);
+
+    // Both dates change together, one reload.
+    private void QuickFilter(DateTime from, DateTime to)
     {
-        ToDate = DateTime.Today;
-        FromDate = DateTime.Today.AddDays(-29);
+        SetFilter(() =>
+        {
+            FromDate = from;
+            ToDate = to;
+        });
+        _ = LoadAsync();
     }
 
     [RelayCommand]

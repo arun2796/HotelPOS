@@ -103,6 +103,38 @@ public sealed class ExpensesViewModelTests
         vm.SummaryText.Should().Contain("1 voided");
     }
 
+    // Demo pass 2026-10-19: the load re-selected the category option it had just rebuilt, which fired the
+    // filter-changed reload, which rebuilt the options… thousands of /api/expenses calls per minute.
+    [Fact]
+    public async Task ExpensesViewModel_LoadsOnce_PerNavigationAndPerFilterChange()
+    {
+        var api = Substitute.For<IExpensesApi>();
+        var session = CreateSession(Roles.Manager, Permissions.ExpensesView, Permissions.ExpensesManage);
+        api.ListCategoriesAsync(includeInactive: true, Arg.Any<CancellationToken>())
+            .Returns(ApiResult<IReadOnlyList<ExpenseCategoryDto>>.Ok(new List<ExpenseCategoryDto>
+            {
+                new() { Id = 1, Name = "Food Supplies", IsActive = true, SortOrder = 1 },
+            }));
+        api.ListAsync(Arg.Any<ExpenseFilter>(), Arg.Any<CancellationToken>())
+            .Returns(ApiResult<IReadOnlyList<ExpenseDto>>.Ok(new List<ExpenseDto>()));
+
+        using var vm = new ExpensesViewModel(api, Substitute.For<IDialogService>(), Substitute.For<INotificationService>(), Substitute.For<IRealtimeClient>(), session);
+        await vm.OnNavigatedToAsync(null);
+        await Task.Delay(200);
+
+        await api.Received(1).ListAsync(Arg.Any<ExpenseFilter>(), Arg.Any<CancellationToken>());
+        vm.SelectedCategoryFilter.Should().NotBeNull().And.Match<CategoryFilterOption>(o => o.Id == null, "'All categories' is selected by default");
+
+        vm.SelectedCategoryFilter = vm.CategoryFilters[1];
+        await Task.Delay(200);
+        await api.Received(2).ListAsync(Arg.Any<ExpenseFilter>(), Arg.Any<CancellationToken>());
+        vm.SelectedCategoryFilter!.Id.Should().Be(1, "a user's choice survives the reload");
+
+        vm.QuickFilterLast30DaysCommand.Execute(null);
+        await Task.Delay(200);
+        await api.Received(3).ListAsync(Arg.Any<ExpenseFilter>(), Arg.Any<CancellationToken>());
+    }
+
     [Fact]
     public async Task ExpensesViewModel_RecordNewExpense_SavesAndRefreshes()
     {

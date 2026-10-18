@@ -30,9 +30,11 @@ public static class ClientHostExtensions
         new(host.ServerBase, relativePath.TrimStart('/'));
 
     /// <summary>Menu pictures come back as "/images/menu/x.jpg"; inside a native WebView that would point at the page's own origin.</summary>
+    // Only an http(s) URL is already absolute: Uri.TryCreate(…, Absolute) also accepts "/images/menu/x.jpg" as a
+    // file path on Linux-style parsing, which turned every menu picture into file:///images/… in the browser.
     public static string? ImageUrl(this IClientHost host, string? imageUrl) =>
         string.IsNullOrEmpty(imageUrl) ? null
-        : Uri.TryCreate(imageUrl, UriKind.Absolute, out var absolute) ? absolute.ToString()
+        : Uri.TryCreate(imageUrl, UriKind.Absolute, out var absolute) && absolute.Scheme is "http" or "https" ? absolute.ToString()
         : host.Resolve(imageUrl).ToString();
 }
 

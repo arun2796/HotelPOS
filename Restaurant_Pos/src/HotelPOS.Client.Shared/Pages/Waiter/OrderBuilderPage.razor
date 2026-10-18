@@ -457,6 +457,47 @@ else
             }
         }
 
+        // Phase 22 O2: a held order is a server-side Draft (listed under My orders → Held on every phone and on the
+        // desktop); only an empty cart, an append, or a failed call keeps the draft on this phone alone.
+        if (!IsAppend && !_cart.IsEmpty && (_orderType != OrderType.Delivery || IsDeliveryDetailsComplete))
+        {
+            _sending = true;
+            try
+            {
+                _pendingKey ??= IdempotentSender.NewKey();
+                await PersistAsync();
+                var key = _pendingKey.Value;
+                var held = await Sender.SendAsync(key, (k, ct) => Api.CreateOrderAsync(new CreateOrderRequest
+                {
+                    OrderType = _orderType,
+                    TableId = _orderType == OrderType.DineIn ? TableId : null,
+                    CustomerName = _orderType == OrderType.Delivery ? _customerName : null,
+                    CustomerPhone = _orderType == OrderType.Delivery ? _customerPhone : null,
+                    DeliveryAddress = _orderType == OrderType.Delivery ? _deliveryAddress : null,
+                    DeliveryNotes = _orderType == OrderType.Delivery ? _deliveryNotes : null,
+                    GuestCount = _cart.Guests,
+                    Notes = _cart.Notes,
+                    Items = _cart.ToInputs(),
+                    Submit = false,
+                }, k, ct));
+                if (held.Success && held.Data is { } draft)
+                {
+                    _pendingKey = null;
+                    _cart.Clear();
+                    await Drafts.RemoveAsync(DraftKey);
+                    Toasts.Success($"Order #{draft.OrderNumber} held. Find it under My orders → Held.");
+                    Navigation.NavigateTo("my-orders");
+                    return;
+                }
+
+                Toasts.Info(held.IsTransient ? "Offline: draft kept on this phone until the connection is back." : held.Message);
+            }
+            finally
+            {
+                _sending = false;
+            }
+        }
+
         await PersistAsync();
         Toasts.Info(_cart.IsEmpty ? "Nothing to keep." : "Draft kept on this phone.");
         Navigation.NavigateTo(TableId.HasValue && _orderType == OrderType.DineIn ? $"tables/{TableId.Value}" : "my-orders");
