@@ -11,8 +11,9 @@ Branch `phase-22-excluded-features`, 2026-10-19. Read together with `docs/ops/04
   in Ordering while a draft is held.
 - **Reservations.** Live Operations → Reservations (list + form); table badge "reserved soon" on the desktop map and
   the waiter's table cards; Seat / Cancel / No-show; dashboard count. Table status itself never changes to "Reserved".
-- **Wallet payment method.** `WALLET` (reference required) is seeded on new databases. **Existing databases:** add it
-  once in Billing setup → Payment methods (code `WALLET`, reference required); reports group it like any method.
+- **Wallet payment method.** `WALLET` (reference required) is added by the seeder on the first API start after the
+  upgrade, together with the six expense categories (both are added only when missing, so a venue's own edits stand).
+  Reports group it like any method; disable it in Billing setup → Payment methods if the venue does not take wallets.
 - **Hourly sales.** Reports → Hourly sales (24 business hours, zero-filled) and a bar chart on the dashboard.
 - **Expenses and Profit & Loss.** Finance → Expenses (record, filter, void; categories in Settings; optional link to a
   drawer pay-out so cash is not counted twice; read-only once the period is closed). Reports → Profit & Loss
