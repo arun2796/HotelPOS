@@ -110,6 +110,7 @@ endpoint is `tests/HotelPOS.Api.Tests/authorization-matrix.txt`; `AuthorizationM
 | POST | `/api/tables/{id}/occupy` | A, W, C, M | `{guestCount, rowVersion}` Available -> Occupied |
 | POST | `/api/tables/{id}/release` | A, W, C, M | Occupied (no order) -> Available; with order: Manager only |
 | POST | `/api/tables/{id}/out-of-service` / `in-service` | A, M | |
+| GET / PUT | `/api/floor/sections/{id}/layout` | GET: * (`tables.view`); PUT: A (`floor.layout.manage`) | Phase 22 floor plan: active tables of the section with `posX/posY/width/height/shape/rotation` (nullable, `hasLayout`); PUT `{items:[{tableId,posX,posY,width,height,shape,rotation}]}` saves the listed tables (each must belong to the section) and publishes `FloorLayoutChanged` |
 
 ### 3.4 Menu (Phase 3)
 

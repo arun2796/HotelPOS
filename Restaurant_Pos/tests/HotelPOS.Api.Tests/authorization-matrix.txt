@@ -61,6 +61,8 @@ AM---  POST   api/expenses/categories/{id:int}/deactivate
 AM---  GET    api/expenses/{id:int}
 AM---  PUT    api/expenses/{id:int}
 AM---  POST   api/expenses/{id:int}/void
+AMWKC  GET    api/floor/sections/{id:int}/layout
+A----  PUT    api/floor/sections/{id:int}/layout
 AM---  GET    api/gst/gstr1
 AM---  GET    api/gst/gstr1/json
 AM---  GET    api/gst/gstr3b

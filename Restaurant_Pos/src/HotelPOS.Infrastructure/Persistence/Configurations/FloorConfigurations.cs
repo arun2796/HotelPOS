@@ -25,6 +25,11 @@ internal sealed class TableConfiguration : IEntityTypeConfiguration<Table>
             t.HasCheckConstraint("CK_Tables_Status", ConfigurationHelpers.EnumCheck<TableStatus>("Status"));
             t.HasCheckConstraint("CK_Tables_Capacity", $"\"Capacity\" BETWEEN {FloorLimits.MinCapacity} AND {FloorLimits.MaxCapacity}");
             t.HasCheckConstraint("CK_Tables_GuestCount", "\"GuestCount\" IS NULL OR \"GuestCount\" > 0");
+            t.HasCheckConstraint("CK_Tables_Layout",
+                "(\"PosX\" IS NULL AND \"PosY\" IS NULL AND \"Width\" IS NULL AND \"Height\" IS NULL AND \"Shape\" IS NULL AND \"Rotation\" IS NULL) OR "
+                + $"(\"PosX\" BETWEEN {FloorLayoutLimits.MinCoordinate} AND {FloorLayoutLimits.MaxCoordinate} AND \"PosY\" BETWEEN {FloorLayoutLimits.MinCoordinate} AND {FloorLayoutLimits.MaxCoordinate} "
+                + $"AND \"Width\" BETWEEN {FloorLayoutLimits.MinSize} AND {FloorLayoutLimits.MaxSize} AND \"Height\" BETWEEN {FloorLayoutLimits.MinSize} AND {FloorLayoutLimits.MaxSize} "
+                + "AND \"Shape\" IN (1, 2) AND \"Rotation\" BETWEEN 0 AND 359)");
         });
         builder.Property(t => t.Code).HasMaxLength(FloorLimits.CodeMaxLength).IsRequired();
         builder.HasIndex(t => t.Code).IsUnique();
