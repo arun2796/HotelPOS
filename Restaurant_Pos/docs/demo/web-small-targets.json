@@ -1,0 +1,287 @@
+{
+ "02-waiter-phone/01-sign-in.png": [],
+ "02-waiter-phone/02-home-kpis.png": [],
+ "02-waiter-phone/03-tables-list.png": [
+  {
+   "tag": "button",
+   "cls": "segment on",
+   "text": "List",
+   "w": 45,
+   "h": 48
+  }
+ ],
+ "02-waiter-phone/04-tables-list-reservation-badge.png": [
+  {
+   "tag": "button",
+   "cls": "segment on",
+   "text": "List",
+   "w": 45,
+   "h": 48
+  }
+ ],
+ "02-waiter-phone/05-tables-map-ground-floor.png": [
+  {
+   "tag": "button",
+   "cls": "segment ",
+   "text": "List",
+   "w": 45,
+   "h": 48
+  },
+  {
+   "tag": "button",
+   "cls": "floor-tile st-preparing ",
+   "text": "T01",
+   "w": 60,
+   "h": 44
+  },
+  {
+   "tag": "button",
+   "cls": "floor-tile st-occupied ",
+   "text": "T02",
+   "w": 60,
+   "h": 44
+  },
+  {
+   "tag": "button",
+   "cls": "floor-tile st-occupied ",
+   "text": "T03",
+   "w": 60,
+   "h": 44
+  },
+  {
+   "tag": "button",
+   "cls": "floor-tile st-billing ",
+   "text": "T04",
+   "w": 60,
+   "h": 44
+  },
+  {
+   "tag": "button",
+   "cls": "floor-tile st-available ",
+   "text": "T05",
+   "w": 60,
+   "h": 44
+  },
+  {
+   "tag": "button",
+   "cls": "floor-tile st-billing ",
+   "text": "T06",
+   "w": 60,
+   "h": 44
+  },
+  {
+   "tag": "button",
+   "cls": "floor-tile st-occupied ",
+   "text": "T07",
+   "w": 60,
+   "h": 44
+  },
+  {
+   "tag": "button",
+   "cls": "floor-tile st-billing ",
+   "text": "T08",
+   "w": 60,
+   "h": 44
+  }
+ ],
+ "02-waiter-phone/06-tables-map-other-section.png": [
+  {
+   "tag": "button",
+   "cls": "segment ",
+   "text": "List",
+   "w": 45,
+   "h": 48
+  },
+  {
+   "tag": "button",
+   "cls": "floor-tile st-preparing ",
+   "text": "O01\n2",
+   "w": 71,
+   "h": 46
+  },
+  {
+   "tag": "button",
+   "cls": "floor-tile st-preparing ",
+   "text": "O02\n2",
+   "w": 71,
+   "h": 46
+  },
+  {
+   "tag": "button",
+   "cls": "floor-tile st-billing ",
+   "text": "O03\n2",
+   "w": 71,
+   "h": 46
+  },
+  {
+   "tag": "button",
+   "cls": "floor-tile st-available ",
+   "text": "O04\n2",
+   "w": 71,
+   "h": 46
+  }
+ ],
+ "02-waiter-phone/07-table-details-reservation.png": [],
+ "02-waiter-phone/08-table-seated.png": [],
+ "02-waiter-phone/09-order-type-chips.png": [],
+ "02-waiter-phone/10-order-search.png": [],
+ "02-waiter-phone/11-favourites.png": [],
+ "02-waiter-phone/12-item-options-note.png": [],
+ "02-waiter-phone/13-cart.png": [],
+ "02-waiter-phone/14-review-sheet.png": [],
+ "02-waiter-phone/15-sent-to-kitchen.png": [],
+ "02-waiter-phone/16-order-kitchen-tickets.png": [],
+ "02-waiter-phone/17-print-kot-pressed.png": [],
+ "02-waiter-phone/19-order-items.png": [],
+ "02-waiter-phone/20-takeaway-builder.png": [],
+ "02-waiter-phone/21-takeaway-sent.png": [],
+ "02-waiter-phone/22-draft-saved.png": [],
+ "02-waiter-phone/23-held-tab-empty.png": [],
+ "02-waiter-phone/24-held-tab.png": [],
+ "02-waiter-phone/25-held-resumed.png": [],
+ "02-waiter-phone/26-held-resumed-sent.png": [],
+ "02-waiter-phone/27-my-orders.png": [],
+ "02-waiter-phone/28-takeaway-details.png": [
+  {
+   "tag": "a",
+   "cls": "",
+   "text": "Go to the start",
+   "w": 101,
+   "h": 19
+  }
+ ],
+ "02-waiter-phone/29-bell-panel.png": [
+  {
+   "tag": "a",
+   "cls": "",
+   "text": "Go to the start",
+   "w": 101,
+   "h": 19
+  }
+ ],
+ "02-waiter-phone/30-settings.png": [
+  {
+   "tag": "input",
+   "cls": "",
+   "text": "checkbox",
+   "w": 20,
+   "h": 20
+  },
+  {
+   "tag": "input",
+   "cls": "",
+   "text": "checkbox",
+   "w": 20,
+   "h": 20
+  },
+  {
+   "tag": "input",
+   "cls": "",
+   "text": "checkbox",
+   "w": 20,
+   "h": 20
+  },
+  {
+   "tag": "input",
+   "cls": "",
+   "text": "checkbox",
+   "w": 20,
+   "h": 20
+  },
+  {
+   "tag": "input",
+   "cls": "",
+   "text": "checkbox",
+   "w": 20,
+   "h": 20
+  },
+  {
+   "tag": "input",
+   "cls": "",
+   "text": "checkbox",
+   "w": 20,
+   "h": 20
+  },
+  {
+   "tag": "input",
+   "cls": "",
+   "text": "checkbox",
+   "w": 20,
+   "h": 20
+  },
+  {
+   "tag": "input",
+   "cls": "",
+   "text": "checkbox",
+   "w": 20,
+   "h": 20
+  },
+  {
+   "tag": "input",
+   "cls": "",
+   "text": "checkbox",
+   "w": 20,
+   "h": 20
+  },
+  {
+   "tag": "input",
+   "cls": "",
+   "text": "checkbox",
+   "w": 20,
+   "h": 20
+  },
+  {
+   "tag": "input",
+   "cls": "",
+   "text": "checkbox",
+   "w": 20,
+   "h": 20
+  },
+  {
+   "tag": "input",
+   "cls": "",
+   "text": "checkbox",
+   "w": 20,
+   "h": 20
+  }
+ ],
+ "02-waiter-phone/31-tables-dark.png": [
+  {
+   "tag": "button",
+   "cls": "segment on",
+   "text": "List",
+   "w": 45,
+   "h": 48
+  }
+ ],
+ "03-kitchen-tablet/01-sign-in.png": [],
+ "03-kitchen-tablet/02-board-new-tickets.png": [],
+ "03-kitchen-tablet/03-board-new-tickets-scrolled.png": [],
+ "03-kitchen-tablet/04-ticket-detail-pictures.png": [],
+ "03-kitchen-tablet/05-ticket-detail-pictures-workaround.png": [],
+ "03-kitchen-tablet/06-ticket-detail-takeaway.png": [],
+ "03-kitchen-tablet/07-station-show-pictures.png": [
+  {
+   "tag": "input",
+   "cls": "",
+   "text": "checkbox",
+   "w": 22,
+   "h": 22
+  }
+ ],
+ "03-kitchen-tablet/08-board-thumbnails.png": [],
+ "03-kitchen-tablet/09-board-thumbnails-workaround.png": [],
+ "03-kitchen-tablet/10-accepted.png": [],
+ "03-kitchen-tablet/11-preparing.png": [],
+ "03-kitchen-tablet/12-ready.png": [],
+ "03-kitchen-tablet/13-completed.png": [],
+ "03-kitchen-tablet/14-bell-panel.png": [],
+ "03-kitchen-tablet/15-board-dark.png": [],
+ "02-waiter-phone/32-my-orders-ready.png": [],
+ "02-waiter-phone/33-served.png": [],
+ "02-waiter-phone/34-bill-requested.png": [],
+ "02-waiter-phone/35-bell-ready.png": [],
+ "02-waiter-phone/36-offline-banner.png": [],
+ "02-waiter-phone/37-offline-my-orders.png": [],
+ "02-waiter-phone/38-back-online.png": []
+}

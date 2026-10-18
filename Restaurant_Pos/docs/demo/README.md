@@ -2,12 +2,13 @@
 
 Generated 19 Oct 2026 from the real application (desktop client, browser PWA) against a Development API with the seeded
 demo data on `main` after Phase 22. Nothing is mocked: every picture is a screenshot of a real screen after a real
-action, and every action is recorded with its result in the two test records below. 127 pictures, 123 steps.
+action, and every action is recorded with its result in the two test records below. 129 pictures, 123 steps, all
+passing after the fixes listed at the end.
 
 | Chapter | Folder | Client | Signed in as | Record |
 |---|---|---|---|---|
-| 1. Set up the restaurant | `01-admin-setup/` (30) | Desktop (WPF, 1366×800) | admin | `desktop-test-record.md` |
-| 2. Take orders on the floor | `02-waiter-phone/` (37) | Browser PWA, phone 390×844 | waiter1 | `web-test-record.md` |
+| 1. Set up the restaurant | `01-admin-setup/` (31) | Desktop (WPF, 1366×800) | admin | `desktop-test-record.md` |
+| 2. Take orders on the floor | `02-waiter-phone/` (38) | Browser PWA, phone 390×844 | waiter1 | `web-test-record.md` |
 | 3. Cook and serve | `03-kitchen-tablet/` (13) | Browser PWA, tablet 1024×768 | kitchen1 | `web-test-record.md` |
 | 4. Bill and collect | `04-cashier-desktop/` (24) | Desktop (WPF, 1366×800) | cashier1 | `desktop-test-record.md` |
 | 5. Run the business | `05-manager-desktop/` (23) | Desktop (WPF, 1366×800) | manager1 | `desktop-test-record.md` |
@@ -46,30 +47,31 @@ after the bug found in the first pass was fixed the same night; see "What the pa
 | 04 | `04-users-new-dialog.png` | Adding a waiter takes a name, a username and a role. |
 | 05 | `05-users-created.png` | The new user appears at once and can sign in on a phone. |
 | 06 | `06-roles-permissions.png` | Roles & permissions: each role is a set of permissions grouped by area (tables, menu, orders, kitchen, billing, cash, finance, reports, administration). |
-| 07 | `07-roles-permissions-end.png` | Scrolled to the end of the list: the reservations, expenses and floor-plan permissions added in Phase 22. **(re-shot)** |
-| 08 | `08-devices.png` | Devices: every terminal, phone and tablet that has signed in, with its kind, status and licence seat. |
-| 09 | `09-sections-tab.png` | Sections & Tables: the dining areas. |
-| 10 | `10-tables-editor.png` | A table has a code, a name, a capacity and a section. |
-| 11 | `11-tables-tab.png` | All tables of the restaurant with their live status. |
-| 12 | `12-floor-plan-section.png` | Floor plan: the tables of a section on a canvas, placed on a grid by default. |
-| 13 | `13-floor-plan-tile-selected.png` | Select a table to move or resize it with the handles; snap-to-grid keeps it tidy. |
-| 14 | `14-floor-plan-rotated.png` | Rotate 90° and switch between rectangle and round. |
-| 15 | `15-floor-plan-saved.png` | Save: every terminal and phone gets the new plan immediately. |
-| 16 | `16-menu-categories.png` | Menu: categories in display order. |
-| 17 | `17-menu-items.png` | Items with price, tax, kitchen station and availability. |
-| 18 | `18-menu-item-editor.png` | Editing an item: price, tax, station, picture. |
-| 19 | `19-menu-item-editor-modifiers.png` | Modifier groups attach to an item (sizes, extras, spice level). |
-| 20 | `20-menu-modifiers.png` | The modifier library. |
-| 21 | `21-payments-discounts.png` | Payment methods (Cash, Card, UPI, Wallet) and the discount presets with their approval rules. |
-| 22 | `22-restaurant-settings.png` | Restaurant settings: name, address, GSTIN, business-day start, rounding, kitchen warnings. |
-| 23 | `23-printers.png` | Printers per terminal: receipt, kitchen stations, test print. |
-| 24 | `24-expense-categories.png` | Expense categories used by the Expenses screen and the Profit & Loss report. |
-| 25 | `25-licence.png` | Licence: seats, expiry, activation. |
-| 26 | `26-server.png` | Server: version, health, hosting, self-update. |
-| 27 | `27-backup.png` | Backups: create, schedule, restore. |
-| 28 | `28-audit-log.png` | Audit log: who changed what, when, from which terminal. |
-| 29 | `29-command-palette.png` | Ctrl+K jumps to any screen, table or menu item. |
-| 30 | `30-dashboard-dark.png` | The same application in the dark theme. |
+| 07 | `07-roles-permissions-reservations.png` | Further down: the reservation and floor-plan permissions added in Phase 22. **(re-shot)** |
+| 08 | `08-roles-permissions-expenses.png` | And the expenses permissions. **(re-shot)** |
+| 09 | `09-devices.png` | Devices: every terminal, phone and tablet that has signed in, with its kind, status and licence seat. |
+| 10 | `10-sections-tab.png` | Sections & Tables: the dining areas. |
+| 11 | `11-tables-editor.png` | A table has a code, a name, a capacity and a section. |
+| 12 | `12-tables-tab.png` | All tables of the restaurant with their live status. |
+| 13 | `13-floor-plan-section.png` | Floor plan: the tables of a section on a canvas, placed on a grid by default. **(re-shot)** |
+| 14 | `14-floor-plan-tile-selected.png` | Select a table to move or resize it with the handles; snap-to-grid keeps it tidy. **(re-shot)** |
+| 15 | `15-floor-plan-rotated.png` | Rotate 90° and switch between rectangle and round. **(re-shot)** |
+| 16 | `16-floor-plan-saved.png` | Save: every terminal and phone gets the new plan immediately. **(re-shot)** |
+| 17 | `17-menu-categories.png` | Menu: categories in display order. |
+| 18 | `18-menu-items.png` | Items with price, tax, kitchen station and availability. |
+| 19 | `19-menu-item-editor.png` | Editing an item: price, tax, station, picture. |
+| 20 | `20-menu-item-editor-modifiers.png` | Modifier groups attach to an item (sizes, extras, spice level). |
+| 21 | `21-menu-modifiers.png` | The modifier library. |
+| 22 | `22-payments-discounts.png` | Payment methods (Cash, Card, UPI, Wallet) and the discount presets with their approval rules. |
+| 23 | `23-restaurant-settings.png` | Restaurant settings: name, address, GSTIN, business-day start, rounding, kitchen warnings. |
+| 24 | `24-printers.png` | Printers per terminal: receipt, kitchen stations, test print. |
+| 25 | `25-expense-categories.png` | Expense categories used by the Expenses screen and the Profit & Loss report. |
+| 26 | `26-licence.png` | Licence: seats, expiry, activation. |
+| 27 | `27-server.png` | Server: version, health, hosting, self-update. |
+| 28 | `28-backup.png` | Backups: create, schedule, restore. |
+| 29 | `29-audit-log.png` | Audit log: who changed what, when, from which terminal. |
+| 30 | `30-command-palette.png` | Ctrl+K jumps to any screen, table or menu item. |
+| 31 | `31-dashboard-dark.png` | The same application in the dark theme. |
 
 ## Chapter 2 — Take orders on the floor (`02-waiter-phone/`, phone, waiter1)
 
