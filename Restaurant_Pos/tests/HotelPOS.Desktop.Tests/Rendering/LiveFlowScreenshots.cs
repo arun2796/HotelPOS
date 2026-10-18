@@ -66,7 +66,7 @@ public sealed class LiveScreensFactAttribute : FactAttribute
 // HOTELPOS_LIVE_SCREENS_ROLES ("cashier", "admin" or "cashier,admin"), HOTELPOS_LIVE_SCREENS_DIR (output folder).
 // Run it on its own (--filter): like ScreenRenderingTests it creates the WPF Application, and a process can hold one.
 // The cashier part creates a new order and bill on T02 and opens, pays out of and closes a shift on BILLING-01.
-public class LiveFlowScreenshots
+public partial class LiveFlowScreenshots
 {
     private const int Width = 1366;
     private const int Height = 800;
@@ -119,6 +119,11 @@ public class LiveFlowScreenshots
                 if (roles.Contains("admin", StringComparer.OrdinalIgnoreCase))
                 {
                     await AdminFlowAsync();
+                }
+
+                if (roles.Contains("demo", StringComparer.OrdinalIgnoreCase))
+                {
+                    await DemoFlowAsync();
                 }
 
                 if (roles.Any(r => r.StartsWith("functions", StringComparison.OrdinalIgnoreCase)))
@@ -1408,7 +1413,7 @@ public class LiveFlowScreenshots
     }
 
     // scrollToEnd: scrolls the matching ScrollViewers to their end first, for content that sits below the fold at 800 px.
-    private async Task RenderAsync(Terminal terminal, string name, Func<ScrollViewer, bool>? scrollToEnd = null)
+    private async Task RenderAsync(Terminal terminal, string name, Func<ScrollViewer, bool>? scrollToEnd = null, double? scrollFraction = null)
     {
         var window = new MainWindow { DataContext = terminal.Main };
         var root = (FrameworkElement)window.Content;
@@ -1430,6 +1435,18 @@ public class LiveFlowScreenshots
             foreach (var viewer in Descendants(host).OfType<ScrollViewer>().Where(v => v.ScrollableHeight > 0 && scrollToEnd(v)).ToList())
             {
                 viewer.ScrollToEnd();
+            }
+
+            host.UpdateLayout();
+            await Dispatcher.Yield(DispatcherPriority.ContextIdle);
+            host.UpdateLayout();
+        }
+
+        if (scrollFraction is { } fraction)
+        {
+            foreach (var viewer in Descendants(host).OfType<ScrollViewer>().Where(v => v.ScrollableHeight > 0 && v.ViewportWidth > 400).ToList())
+            {
+                viewer.ScrollToVerticalOffset(viewer.ScrollableHeight * fraction);
             }
 
             host.UpdateLayout();
@@ -1552,7 +1569,7 @@ public class LiveFlowScreenshots
         });
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();
-        if (!thread.Join(TimeSpan.FromMinutes(12)))
+        if (!thread.Join(TimeSpan.FromMinutes(60)))
         {
             throw new TimeoutException("The live capture did not finish within 12 minutes.");
         }
