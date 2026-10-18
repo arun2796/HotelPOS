@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace HotelPOS.Api.Controllers;
 
-[Route("api/floor/sections")]
+[Route("api/sections")]
 [Authorize]
 public sealed class FloorLayoutController : ApiControllerBase
 {

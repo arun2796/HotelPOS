@@ -198,7 +198,7 @@ DTOs. Desktop/web: VM and bUnit tests per surface; rendering counts; `StatusPres
   `Code` (tables have no `SortOrder`), 6 per row, 120x80 rectangles, 24-unit gap and margin
   (`x = 24 + col*144`, `y = 24 + row*104`); inactive and later-created tables stay unplaced. The migration also
   inserts `floor.layout.manage` for the Admin role (role permissions live in the `RolePermissions` table; Admin is
-  `Permissions.All` in code, so no Manager grant). Route is `api/floor/sections/{id}/layout` (new
+  `Permissions.All` in code, so no Manager grant). Route is `api/sections/{id}/layout` (new
   `FloorLayoutController`), GET uses `tables.view`, so waiters can read it. `PUT` saves only the listed tables and
   returns the refreshed layout; the event payload is `FloorLayoutChangedEvent { SectionId }`. Audit action
   `Floor.LayoutSaved` on the Section entity.
