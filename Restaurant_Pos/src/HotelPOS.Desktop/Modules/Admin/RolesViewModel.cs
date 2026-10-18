@@ -143,7 +143,8 @@ public sealed partial class RolesViewModel : ViewModelBase, INavigationAware, IR
         });
     }
 
-    private static IReadOnlyList<(string Key, string Group, string Label)> GetStandardPermissionDefinitions() => new[]
+    // Public so a test can assert it covers every key in Permissions.All.
+    public static IReadOnlyList<(string Key, string Group, string Label)> GetStandardPermissionDefinitions() => new[]
     {
         (Permissions.TablesView, "Tables", "View floor plan and tables"),
         (Permissions.TablesOperate, "Tables", "Occupy and release tables"),
@@ -159,6 +160,11 @@ public sealed partial class RolesViewModel : ViewModelBase, INavigationAware, IR
 
         (Permissions.KitchenOperate, "Kitchen", "Manage tickets on Kitchen Display"),
 
+        // Phase 22. A permission missing here is invisible on this page and is stripped from a role on save.
+        (Permissions.ReservationsView, "Reservations", "See reservations and the reserved-soon table badge"),
+        (Permissions.ReservationsManage, "Reservations", "Take, seat, cancel and no-show reservations"),
+        (Permissions.FloorLayoutManage, "Tables", "Edit the floor plan (table positions and shapes)"),
+
         (Permissions.BillingOperate, "Billing", "Claim bills, add payments, close orders"),
         (Permissions.BillingDiscount, "Billing", "Apply discounts to invoices"),
         (Permissions.BillingVoid, "Billing", "Void bills"),
@@ -167,6 +173,9 @@ public sealed partial class RolesViewModel : ViewModelBase, INavigationAware, IR
         (Permissions.ShiftOperate, "Cash", "Open and close own cash shift"),
         (Permissions.ShiftManage, "Cash", "View and close any shift, set up the cash drawer"),
         (Permissions.DayEndRun, "Cash", "Run the day-end close"),
+
+        (Permissions.ExpensesView, "Finance", "See expenses and expense categories"),
+        (Permissions.ExpensesManage, "Finance", "Record, edit and void expenses; manage categories"),
 
         (Permissions.ReportsView, "Management", "View sales and operational reports"),
         (Permissions.AuditView, "Management", "View system audit trail"),
