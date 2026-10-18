@@ -126,6 +126,7 @@ AMWKC  GET    api/reports/my-day
 AM---  GET    api/reports/payments
 AM---  GET    api/reports/sales/categories
 AM---  GET    api/reports/sales/daily
+AM---  GET    api/reports/sales/hourly
 AM---  GET    api/reports/sales/items
 AM---  GET    api/reports/sales/monthly
 AM---  GET    api/reports/staff/waiters

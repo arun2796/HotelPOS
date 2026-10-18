@@ -12,6 +12,7 @@ public static class ReportLimits
 public static class ReportKeys
 {
     public const string DailySales = "sales/daily";
+    public const string HourlySales = "sales/hourly";
     public const string MonthlySales = "sales/monthly";
     public const string ItemSales = "sales/items";
     public const string CategorySales = "sales/categories";
@@ -81,6 +82,14 @@ public sealed record DashboardDayPoint
     public decimal NetSales { get; init; }
 }
 
+public sealed record DashboardHourPoint
+{
+    public int Hour { get; init; }
+    public string Label { get; init; } = string.Empty;
+    public decimal NetSales { get; init; }
+    public int Bills { get; init; }
+}
+
 public sealed record DashboardDto
 {
     public DateOnly BusinessDay { get; init; }
@@ -96,6 +105,7 @@ public sealed record DashboardDto
     public int ReservationsToday { get; init; }
     public IReadOnlyList<DashboardTopItem> TopItems { get; init; } = Array.Empty<DashboardTopItem>();
     public IReadOnlyList<DashboardDayPoint> LastDays { get; init; } = Array.Empty<DashboardDayPoint>();
+    public IReadOnlyList<DashboardHourPoint> HourlyToday { get; init; } = Array.Empty<DashboardHourPoint>();
     public DateTime GeneratedAtUtc { get; init; }
 }
 
@@ -108,6 +118,19 @@ public sealed record WaiterDashboardDto
     public int TablesServing { get; init; }
     public int CoversToday { get; init; }
     public DateTime GeneratedAtUtc { get; init; }
+}
+
+public sealed record HourlySalesRowDto
+{
+    public string Hour { get; init; } = string.Empty;
+    public int Bills { get; init; }
+    public int Covers { get; init; }
+    public decimal Subtotal { get; init; }
+    public decimal Discounts { get; init; }
+    public decimal Tax { get; init; }
+    public decimal GrossSales { get; init; }
+    public decimal Refunds { get; init; }
+    public decimal NetSales { get; init; }
 }
 
 public sealed record DailySalesRowDto

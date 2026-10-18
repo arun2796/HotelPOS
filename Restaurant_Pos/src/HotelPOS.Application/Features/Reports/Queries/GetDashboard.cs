@@ -33,6 +33,7 @@ internal sealed class GetDashboardHandler : IQueryHandler<GetDashboardQuery, Das
         var topItems = await _queries.TopItemsAsync(window, 5, cancellationToken);
         var week = await _queries.DailySalesAsync(ReportRanges.Window(calendar, today.AddDays(-6), today), cancellationToken);
         var byDay = week.ToDictionary(r => r.Day, r => r.NetSales);
+        var hourly = await _queries.HourlySalesAsync(window, cancellationToken);
 
         return new DashboardDto
         {
@@ -51,6 +52,13 @@ internal sealed class GetDashboardHandler : IQueryHandler<GetDashboardQuery, Das
             LastDays = Enumerable.Range(0, 7).Select(i => today.AddDays(i - 6))
                 .Select(day => new DashboardDayPoint { Day = day, NetSales = byDay.GetValueOrDefault(day) })
                 .ToList(),
+            HourlyToday = hourly.Select((h, i) => new DashboardHourPoint
+            {
+                Hour = i,
+                Label = h.Hour,
+                NetSales = h.NetSales,
+                Bills = h.Bills,
+            }).ToList(),
             GeneratedAtUtc = _clock.UtcNow,
         };
     }

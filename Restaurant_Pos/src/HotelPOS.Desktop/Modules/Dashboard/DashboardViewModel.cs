@@ -62,6 +62,8 @@ public sealed record DeviceRow(string Name, string Kind, string Status, bool IsO
 
 public sealed record DayBar(string Label, string Amount, double Height, bool IsToday, string CompactAmount = "");
 
+public sealed record HourBar(string Label, string Amount, double Height, bool IsPeak, string CompactAmount = "");
+
 // One payment method in today's split: ColorIndex picks the chart colour (Brush.Chart.N).
 public sealed record ChartSlice(string Label, string AmountText, string PercentText, int ColorIndex, Geometry Shape);
 
@@ -274,6 +276,11 @@ public sealed partial class DashboardViewModel : ViewModelBase, INavigationAware
 
     public ObservableCollection<DayBar> DayBars { get; } = new();
 
+    public ObservableCollection<HourBar> HourlyBars { get; } = new();
+
+    [ObservableProperty]
+    private string _peakHourText = string.Empty;
+
     public ObservableCollection<ChartSlice> PaymentSlices { get; } = new();
 
     [ObservableProperty]
@@ -451,6 +458,15 @@ public sealed partial class DashboardViewModel : ViewModelBase, INavigationAware
             max == 0 ? 0 : (double)(p.NetSales / max),
             p.Day == d.BusinessDay,
             p.NetSales == 0 ? string.Empty : Money.Compact(p.NetSales))));
+        var maxHourly = d.HourlyToday.Count == 0 ? 0m : d.HourlyToday.Max(h => h.NetSales);
+        var peakPoint = maxHourly > 0 ? d.HourlyToday.FirstOrDefault(h => h.NetSales == maxHourly) : null;
+        PeakHourText = peakPoint is not null ? $"Peak: {peakPoint.Label} ({Money.Format(peakPoint.NetSales)})" : string.Empty;
+        Replace(HourlyBars, d.HourlyToday.Select(h => new HourBar(
+            h.Hour switch { 0 => "12a", 12 => "12p", < 12 => $"{h.Hour}a", _ => $"{h.Hour - 12}p" },
+            Money.Format(h.NetSales),
+            maxHourly == 0 ? 0 : (double)(h.NetSales / maxHourly),
+            maxHourly > 0 && h.NetSales == maxHourly,
+            h.NetSales == 0 ? string.Empty : Money.Compact(h.NetSales))));
         OnPropertyChanged(nameof(HasTopItems));
 
         // Each panel below is optional: the dashboard stays intact when one endpoint is unavailable.

@@ -31,6 +31,7 @@ public sealed partial class ReportsViewModel : ViewModelBase, INavigationAware
     public static readonly IReadOnlyList<ReportDefinition> Catalogue = new[]
     {
         new ReportDefinition(ReportKeys.DailySales, "Daily sales", "Bills, covers, discounts, tax and net sales per business day"),
+        new ReportDefinition(ReportKeys.HourlySales, "Hourly sales", "Net sales, bills and covers per business hour"),
         new ReportDefinition(ReportKeys.MonthlySales, "Monthly sales", "The same figures per month of a year", IsMonthly: true),
         new ReportDefinition(ReportKeys.ItemSales, "Item sales", "Quantity and amount per menu item"),
         new ReportDefinition(ReportKeys.CategorySales, "Category sales", "Quantity and amount per category"),
@@ -183,6 +184,7 @@ public sealed partial class ReportsViewModel : ViewModelBase, INavigationAware
             var loaded = SelectedReport.Key switch
             {
                 ReportKeys.DailySales => await LoadAsync(_api.GetRowsAsync<DailySalesRowDto>(ReportKeys.DailySales, from, to)),
+                ReportKeys.HourlySales => await LoadAsync(_api.GetRowsAsync<HourlySalesRowDto>(ReportKeys.HourlySales, from, to)),
                 ReportKeys.MonthlySales => await LoadAsync(_api.GetMonthlyAsync(Year)),
                 ReportKeys.ItemSales => await LoadAsync(_api.GetRowsAsync<ItemSalesRowDto>(ReportKeys.ItemSales, from, to)),
                 ReportKeys.CategorySales => await LoadAsync(_api.GetRowsAsync<CategorySalesRowDto>(ReportKeys.CategorySales, from, to)),

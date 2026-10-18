@@ -37,6 +37,11 @@ public sealed class ReportsController : ApiControllerBase
     public Task<IActionResult> DailySales([FromQuery] ReportQuery query, CancellationToken cancellationToken) =>
         ReportAsync(query, "daily-sales", new GetDailySalesReportQuery(query), cancellationToken);
 
+    [HttpGet("sales/hourly")]
+    [Authorize(Policy = Permissions.ReportsView)]
+    public Task<IActionResult> HourlySales([FromQuery] ReportQuery query, CancellationToken cancellationToken) =>
+        ReportAsync(query, "hourly-sales", new GetHourlySalesReportQuery(query), cancellationToken);
+
     [HttpGet("sales/monthly")]
     [Authorize(Policy = Permissions.ReportsView)]
     public async Task<IActionResult> MonthlySales([FromQuery] int? year, [FromQuery] string? format, CancellationToken cancellationToken) =>
@@ -94,6 +99,7 @@ public sealed class ReportsController : ApiControllerBase
     private static readonly IReadOnlyDictionary<string, string> Titles = new Dictionary<string, string>
     {
         ["daily-sales"] = "Daily sales",
+        ["hourly-sales"] = "Hourly sales",
         ["item-sales"] = "Item sales",
         ["category-sales"] = "Category sales",
         ["payments"] = "Payments",

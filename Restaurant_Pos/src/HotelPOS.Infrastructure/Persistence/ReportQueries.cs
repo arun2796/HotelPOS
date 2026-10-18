@@ -78,6 +78,54 @@ public sealed class ReportQueries : IReportQueries
             ORDER BY 1
             """).ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<HourlySalesRowDto>> HourlySalesAsync(ReportWindow window, CancellationToken cancellationToken)
+    {
+        var rows = await _db.Database.SqlQuery<HourlySalesRowDto>($"""
+            SELECT to_char((b."SettledAt" + make_interval(mins => {window.ShiftMinutes})) AT TIME ZONE 'UTC', 'HH24:00') AS "Hour",
+                   COUNT(*)::int AS "Bills",
+                   COALESCE(SUM(o."GuestCount"), 0)::int AS "Covers",
+                   COALESCE(SUM(b."Subtotal"), 0) AS "Subtotal",
+                   COALESCE(SUM(b."DiscountAmount"), 0) AS "Discounts",
+                   COALESCE(SUM(b."TaxAmount"), 0) AS "Tax",
+                   COALESCE(SUM(b."GrandTotal"), 0) AS "GrossSales",
+                   COALESCE(SUM(b."RefundedAmount"), 0) AS "Refunds",
+                   COALESCE(SUM(b."GrandTotal" - b."RefundedAmount"), 0) AS "NetSales"
+            FROM "Bills" b
+            JOIN "Orders" o ON o."Id" = b."OrderId"
+            WHERE b."Status" = {BillSettled} AND b."SettledAt" >= {window.FromUtc} AND b."SettledAt" < {window.ToUtc}
+            GROUP BY 1
+            ORDER BY 1
+            """).ToListAsync(cancellationToken);
+
+        var byHour = rows.ToDictionary(r => r.Hour);
+        var result = new List<HourlySalesRowDto>(24);
+        for (var h = 0; h < 24; h++)
+        {
+            var label = $"{h:00}:00";
+            if (byHour.TryGetValue(label, out var existing))
+            {
+                result.Add(existing);
+            }
+            else
+            {
+                result.Add(new HourlySalesRowDto
+                {
+                    Hour = label,
+                    Bills = 0,
+                    Covers = 0,
+                    Subtotal = 0m,
+                    Discounts = 0m,
+                    Tax = 0m,
+                    GrossSales = 0m,
+                    Refunds = 0m,
+                    NetSales = 0m,
+                });
+            }
+        }
+
+        return result;
+    }
+
     public async Task<IReadOnlyList<MonthlySalesRowDto>> MonthlySalesAsync(ReportWindow window, CancellationToken cancellationToken) =>
         await _db.Database.SqlQuery<MonthlySalesRowDto>($"""
             SELECT to_char((b."SettledAt" + make_interval(mins => {window.ShiftMinutes})) AT TIME ZONE 'UTC', 'YYYY-MM') AS "Month",

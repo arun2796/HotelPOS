@@ -38,6 +38,8 @@ public interface IReportQueries
 
     Task<IReadOnlyList<DailySalesRowDto>> DailySalesAsync(ReportWindow window, CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<HourlySalesRowDto>> HourlySalesAsync(ReportWindow window, CancellationToken cancellationToken);
+
     Task<IReadOnlyList<MonthlySalesRowDto>> MonthlySalesAsync(ReportWindow window, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<ItemSalesRowDto>> ItemSalesAsync(ReportWindow window, CancellationToken cancellationToken);

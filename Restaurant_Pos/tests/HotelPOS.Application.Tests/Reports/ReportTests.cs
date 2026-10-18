@@ -88,6 +88,32 @@ public class ReportTests : DatabaseTestBase
     }
 
     [Fact]
+    public async Task HourlySales_ZeroFillsAll24Hours_AndReconcilesWithDailySales()
+    {
+        var s = await SetupAsync();
+        var calendar = await Get<IBusinessDays>().GetAsync();
+        var day = calendar.DayOf(Clock.UtcNow);
+
+        var first = await SettledBillAsync(s, s.Tables[0], Line(s.Biryani, 2));
+        await RefundAsync(s, first, 100m);
+        Clock.Advance(TimeSpan.FromHours(1));
+        await SettledBillAsync(s, s.Tables[1], Line(s.Naan, 4));
+
+        var daily = (await SendAsAdminAsync(new GetDailySalesReportQuery(new ReportQuery { From = day, To = day }))).Value.Single();
+        var hourly = (await SendAsAdminAsync(new GetHourlySalesReportQuery(new ReportQuery { From = day, To = day }))).Value;
+
+        hourly.Should().HaveCount(24);
+        var expectedHours = Enumerable.Range(0, 24).Select(h => $"{h:D2}:00");
+        hourly.Select(h => h.Hour).Should().Equal(expectedHours);
+        hourly.Sum(h => h.NetSales).Should().Be(daily.NetSales);
+        hourly.Sum(h => h.Bills).Should().Be(daily.Bills);
+
+        var dashboard = (await SendAsAdminAsync(new GetDashboardQuery())).Value;
+        dashboard.HourlyToday.Should().HaveCount(24);
+        dashboard.HourlyToday.Sum(h => h.NetSales).Should().Be(daily.NetSales);
+    }
+
+    [Fact]
     public async Task ItemAndCategorySales_CountOnlyBilledItems_AndShareAddsUpTo100()
     {
         var s = await SetupAsync();
