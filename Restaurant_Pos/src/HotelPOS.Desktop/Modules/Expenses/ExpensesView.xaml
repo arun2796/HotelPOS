@@ -76,7 +76,7 @@
 
       <!-- Summary -->
       <TextBlock Grid.Column="9" Text="{Binding SummaryText}" Style="{StaticResource Text.Caption}" FontSize="13"
-                 HorizontalAlignment="Right" VerticalAlignment="Center" Margin="16,0" TextTrimming="CharacterEllipsis" />
+                 HorizontalAlignment="Right" VerticalAlignment="Center" Margin="16,0" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
 
       <!-- Reload button -->
       <Button Grid.Column="10" Command="{Binding LoadCommand}" ToolTip="Reload from server" VerticalAlignment="Center">
