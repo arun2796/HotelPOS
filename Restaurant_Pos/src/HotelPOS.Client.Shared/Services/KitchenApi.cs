@@ -8,6 +8,7 @@ namespace HotelPOS.Client.Services;
 public sealed class KitchenApi
 {
     public const string StationKey = "hotelpos.kitchen.station";
+    public const string ShowPicturesKey = "hotelpos.kitchen.show-pictures";
 
     private readonly WebApiClient _api;
     private readonly IBrowserStorage _storage;
@@ -39,6 +40,11 @@ public sealed class KitchenApi
 
     public async ValueTask<int?> GetStationPreferenceAsync() =>
         int.TryParse(await _storage.GetAsync(StationKey), out var id) ? id : null;
+
+    /// <summary>Phase 22 P5: "Show item pictures on tickets" for this device. Off until someone turns it on (E10); the detail pane always shows them.</summary>
+    public async ValueTask<bool> GetShowPicturesAsync() => await _storage.GetAsync(ShowPicturesKey) == "1";
+
+    public ValueTask SetShowPicturesAsync(bool show) => show ? _storage.SetAsync(ShowPicturesKey, "1") : _storage.RemoveAsync(ShowPicturesKey);
 
     public ValueTask SetStationPreferenceAsync(int? stationId) =>
         stationId is { } id ? _storage.SetAsync(StationKey, id.ToString(System.Globalization.CultureInfo.InvariantCulture)) : _storage.RemoveAsync(StationKey);

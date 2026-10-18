@@ -3,6 +3,7 @@
 @using HotelPOS.Contracts.Orders
 @using HotelPOS.Contracts.Presentation
 @inject KitchenApi Api
+@inject IClientHost Host
 @* Phase 21.2 K4: ticket detail. Right drawer on a monitor (>= 1024 px), bottom sheet on a tablet. Guests and order notes come
    from GET api/orders/{id}; when that is unavailable the pane shows the ticket alone. Prices are never shown (D9). *@
 <DetailPane Open="true" Title="@($"{Ticket.TableCode} · order #{Ticket.OrderNumber}")" Subtitle="@($"{Ticket.TicketNumber} · {Ticket.WaiterName}")" OnClose="OnClose">
@@ -53,7 +54,13 @@
             @foreach (var line in Ticket.Items)
             {
                 <li class="@(line.IsCancelled ? "cancelled" : null)">
-                    <div class="ticket-line"><b class="ticket-qty">@line.Quantity ×</b> <span class="ticket-name">@line.Name</span></div>
+                    <div class="ticket-line">
+                        @if (ShowPictures && Host.ImageUrl(line.ImageUrl) is { } src)
+                        {
+                            <img class="ticket-thumb large" src="@src" alt="" loading="lazy" width="56" height="56" onerror="this.style.display='none'" />
+                        }
+                        <b class="ticket-qty">@line.Quantity ×</b> <span class="ticket-name">@line.Name</span>
+                    </div>
                     @if (line.Modifiers.Count > 0)
                     {
                         <div class="ticket-mods muted">@string.Join(", ", line.Modifiers)</div>
@@ -78,6 +85,9 @@
     [Parameter, EditorRequired] public KitchenTicketDto Ticket { get; set; } = default!;
     [Parameter] public DateTime Now { get; set; } = DateTime.UtcNow;
     [Parameter] public bool Late { get; set; }
+
+    /// <summary>On by default in the detail pane (E10); the per-device preference only governs the cards.</summary>
+    [Parameter] public bool ShowPictures { get; set; } = true;
     [Parameter] public EventCallback OnClose { get; set; }
 
     private OrderStatus TimelineStatus => Ticket.Status switch

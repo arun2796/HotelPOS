@@ -61,14 +61,22 @@
           <ItemsControl ItemsSource="{Binding Lines}" Focusable="False">
             <ItemsControl.ItemTemplate>
               <DataTemplate DataType="{x:Type kitchen:TicketLine}">
-                <StackPanel Margin="0,2">
-                  <TextBlock x:Name="LineText" Text="{Binding Text}" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap"
-                             Foreground="{DynamicResource Brush.TextPrimary}" />
-                  <TextBlock Text="{Binding Modifiers}" Margin="18,0,0,0" FontSize="14" Foreground="{DynamicResource Brush.TextSecondary}" TextWrapping="Wrap"
-                             Visibility="{Binding HasModifiers, Converter={StaticResource BoolToVisibility}}" />
-                  <TextBlock Text="{Binding Notes}" Margin="18,0,0,0" FontSize="14" FontStyle="Italic" Foreground="{DynamicResource Brush.Warning}" TextWrapping="Wrap"
-                             Visibility="{Binding HasNotes, Converter={StaticResource BoolToVisibility}}" />
-                </StackPanel>
+                <DockPanel Margin="0,2">
+                  <Border DockPanel.Dock="Left" Width="36" Height="36" CornerRadius="6" Margin="0,0,10,0" VerticalAlignment="Top" ClipToBounds="True"
+                          Visibility="{Binding HasPicture, Converter={StaticResource BoolToVisibility}}">
+                    <Border.Background>
+                      <ImageBrush ImageSource="{Binding ImageFile, Converter={StaticResource ImageFile}}" Stretch="UniformToFill" />
+                    </Border.Background>
+                  </Border>
+                  <StackPanel>
+                    <TextBlock x:Name="LineText" Text="{Binding Text}" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap"
+                               Foreground="{DynamicResource Brush.TextPrimary}" />
+                    <TextBlock Text="{Binding Modifiers}" Margin="18,0,0,0" FontSize="14" Foreground="{DynamicResource Brush.TextSecondary}" TextWrapping="Wrap"
+                               Visibility="{Binding HasModifiers, Converter={StaticResource BoolToVisibility}}" />
+                    <TextBlock Text="{Binding Notes}" Margin="18,0,0,0" FontSize="14" FontStyle="Italic" Foreground="{DynamicResource Brush.Warning}" TextWrapping="Wrap"
+                               Visibility="{Binding HasNotes, Converter={StaticResource BoolToVisibility}}" />
+                  </StackPanel>
+                </DockPanel>
                 <DataTemplate.Triggers>
                   <DataTrigger Binding="{Binding IsCancelled}" Value="True">
                     <Setter TargetName="LineText" Property="TextDecorations" Value="Strikethrough" />
@@ -157,7 +165,7 @@
     </Grid.ColumnDefinitions>
 
     <Grid Grid.ColumnSpan="5" Margin="0,0,0,12">
-      <ListBox Style="{StaticResource ChipList}" ItemsSource="{Binding Stations}" SelectedItem="{Binding SelectedStation}" Margin="0,0,280,0">
+      <ListBox Style="{StaticResource ChipList}" ItemsSource="{Binding Stations}" SelectedItem="{Binding SelectedStation}" Margin="0,0,440,0">
         <ListBox.ItemTemplate>
           <DataTemplate DataType="{x:Type kitchen:StationFilter}">
             <TextBlock Text="{Binding Name}" />
@@ -165,6 +173,7 @@
         </ListBox.ItemTemplate>
       </ListBox>
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+        <CheckBox Content="Show item pictures" IsChecked="{Binding ShowPictures}" VerticalAlignment="Center" Margin="0,0,12,0" MinHeight="40" />
         <Button Content="Sold out…" Command="{Binding OpenSoldOutCommand}" MinWidth="120" />
         <Button Command="{Binding RefreshListCommand}" Margin="8,0,0,0" ToolTip="Reload from the server">
           <TextBlock Text="&#xE72C;" Style="{StaticResource Text.Icon}" />
