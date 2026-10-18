@@ -210,3 +210,10 @@ DTOs. Desktop/web: VM and bUnit tests per surface; rendering counts; `StatusPres
   the lines. Round off is derived (`Gross − (Subtotal − Discounts + Tax)`) and shown only when non-zero. The dashboard
   gains `ExpensesToday` and a fifth KPI card (strip widened to five columns) that deep-links to the P&L. Permission is
   `ReportsView` (it is a report), not `ExpensesView`.
+- **P4 (2026-10-18).** `IPresenceTracker.Snapshot()` (Application) is implemented by `HubPresenceTracker` (Api), an adapter over
+  `ConnectionTracker`. One SQL (`ReportQueries.StaffDutyAsync`) returns users with an open cash shift (status 1) and/or
+  orders in a non-final status (not 9, 10, 11) - "active orders" are all currently open orders of the waiter, not only
+  those submitted today (same definition as the My day `OpenOrders`). `StaffOnDutyMerge.Compose` (pure, unit-tested) merges
+  presence and SQL rows per user. `GET api/staff/on-duty` (new `StaffController`, `ReportsView`) and `DashboardDto.StaffOnDuty`
+  share it. The desktop "Staff today" column now shows this list instead of the waiter-sales list; the old `Staff` rows
+  (waiter sales from the Waiters report) are still loaded by the view model but no longer displayed.

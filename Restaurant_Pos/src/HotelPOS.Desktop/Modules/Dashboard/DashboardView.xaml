@@ -313,7 +313,7 @@
         <Border Style="{StaticResource Admin.Panel}">
           <StackPanel>
             <TextBlock Text="Staff &amp; Terminals" Style="{StaticResource Admin.PanelTitle}" />
-            <TextBlock Text="Waiters with orders today · terminals registered on the server." Style="{StaticResource Text.Caption}" TextWrapping="Wrap" />
+            <TextBlock Text="Connected, on a cash shift or serving orders · terminals registered on the server." Style="{StaticResource Text.Caption}" TextWrapping="Wrap" />
             <Grid Margin="0,12,0,0">
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
@@ -322,25 +322,31 @@
               </Grid.ColumnDefinitions>
               <StackPanel>
                 <TextBlock Text="STAFF TODAY" Style="{StaticResource Admin.ColumnLabel}" />
-                <TextBlock Text="No orders yet today." Style="{StaticResource Text.Caption}" Margin="0,8,0,0"
-                           Visibility="{Binding HasStaff, Converter={StaticResource InverseBoolToVisibility}}" />
-                <ItemsControl ItemsSource="{Binding Staff}" Focusable="False">
+                <TextBlock Text="Live connections, not attendance." Style="{StaticResource Text.Caption}" Margin="0,4,0,0" TextWrapping="Wrap" />
+                <TextBlock Text="Nobody connected" Style="{StaticResource Text.Caption}" Margin="0,8,0,0"
+                           Visibility="{Binding HasOnDuty, Converter={StaticResource InverseBoolToVisibility}}" />
+                <ItemsControl ItemsSource="{Binding OnDuty}" Focusable="False">
                   <ItemsControl.ItemTemplate>
-                    <DataTemplate DataType="{x:Type dashboard:StaffRow}">
+                    <DataTemplate DataType="{x:Type dashboard:DutyRow}">
                       <Grid Margin="0,8,0,0">
                         <Grid.ColumnDefinitions>
                           <ColumnDefinition Width="Auto" />
                           <ColumnDefinition Width="*" />
+                          <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <Border Style="{StaticResource Admin.Avatar}">
                           <TextBlock Text="{Binding Initials}" FontWeight="SemiBold" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
-                          <TextBlock Text="{Binding Name}" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
-                          <TextBlock Style="{StaticResource Text.Caption}">
-                            <Run Text="{Binding Orders, Mode=OneWay}" /><Run Text=" orders · " /><Run Text="{Binding Sales, Mode=OneWay}" />
-                          </TextBlock>
+                          <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding Name}" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
+                            <Border Style="{StaticResource Chip.Neutral}" Margin="6,0,0,0">
+                              <TextBlock Text="{Binding Role}" />
+                            </Border>
+                          </StackPanel>
+                          <TextBlock Text="{Binding Status}" Style="{StaticResource Text.Caption}" TextTrimming="CharacterEllipsis" />
                         </StackPanel>
+                        <controls:StatusBadge Grid.Column="2" Display="{Binding Display}" Margin="8,0,0,0" />
                       </Grid>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>

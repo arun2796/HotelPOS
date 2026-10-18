@@ -192,6 +192,7 @@ All `GET`, roles A/M, params `from`, `to` (business days, default today, at most
 (UTF-8 with BOM, `text/csv` attachment, totals row at the end).
 
 ```
+/api/staff/on-duty              (Phase 22 P4, ReportsView: users merged from live hub connections, open cash shifts and active orders; presence, not attendance; also on the dashboard as StaffOnDuty)
 /api/reports/dashboard          /api/reports/my-day   (any signed-in user: own orders, sales and tables today)
 /api/reports/sales/daily        /api/reports/sales/monthly?year=
 /api/reports/sales/items        /api/reports/sales/categories

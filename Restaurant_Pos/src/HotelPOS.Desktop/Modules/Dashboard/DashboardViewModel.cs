@@ -55,6 +55,14 @@ public sealed record StaffRow(string Name, string Orders, string Sales)
     public string Initials => Dashboard.Initials.Of(Name);
 }
 
+// Phase 22 P4: one user on the Staff today card. Status is built from live connection, open shift and active orders.
+public sealed record DutyRow(string Name, string Role, string Status, bool IsOnline)
+{
+    public string Initials => Dashboard.Initials.Of(Name);
+
+    public StatusDisplay Display => IsOnline ? new StatusDisplay("Online", StatusTone.Success, "signal") : new StatusDisplay("Not connected", StatusTone.Neutral, "wifi-off");
+}
+
 public sealed record DeviceRow(string Name, string Kind, string Status, bool IsOnline)
 {
     public StatusDisplay Display => IsOnline ? new StatusDisplay("Online", StatusTone.Success, "signal") : new StatusDisplay("Offline", StatusTone.Danger, "wifi-off");
@@ -253,6 +261,9 @@ public sealed partial class DashboardViewModel : ViewModelBase, INavigationAware
 
     public ObservableCollection<StaffRow> Staff { get; } = new();
 
+    // Phase 22 P4: live connections + open shifts + active orders from DashboardDto.StaffOnDuty (presence, not attendance).
+    public ObservableCollection<DutyRow> OnDuty { get; } = new();
+
     public ObservableCollection<DeviceRow> Devices { get; } = new();
 
     [ObservableProperty]
@@ -267,6 +278,8 @@ public sealed partial class DashboardViewModel : ViewModelBase, INavigationAware
     public bool HasKitchen => KitchenStations.Count > 0;
 
     public bool HasStaff => Staff.Count > 0;
+
+    public bool HasOnDuty => OnDuty.Count > 0;
 
     public bool HasDevices => Devices.Count > 0;
 
@@ -468,6 +481,8 @@ public sealed partial class DashboardViewModel : ViewModelBase, INavigationAware
             maxHourly > 0 && h.NetSales == maxHourly,
             h.NetSales == 0 ? string.Empty : Money.Compact(h.NetSales))));
         OnPropertyChanged(nameof(HasTopItems));
+        Replace(OnDuty, d.StaffOnDuty.Select(BuildDutyRow));
+        OnPropertyChanged(nameof(HasOnDuty));
 
         // Each panel below is optional: the dashboard stays intact when one endpoint is unavailable.
         await LoadActiveOrdersAsync();
@@ -681,6 +696,27 @@ public sealed partial class DashboardViewModel : ViewModelBase, INavigationAware
         Replace(KitchenStations, rows.Select(r => new KitchenStationRow(r.Station, r.Tickets.ToString(CultureInfo.CurrentCulture),
             $"{r.AveragePrepMinutes:0.#} min", $"{r.LatePercent:0.#}%", r.LateTickets > 0)));
         OnPropertyChanged(nameof(HasKitchen));
+    }
+
+    public static DutyRow BuildDutyRow(StaffOnDutyDto s)
+    {
+        var parts = new List<string>();
+        if (s.IsOnline)
+        {
+            parts.Add(s.Devices.Count == 0 ? "online" : "online on " + string.Join(", ", s.Devices));
+        }
+
+        if (s.HasOpenShift)
+        {
+            parts.Add(string.IsNullOrEmpty(s.ShiftDeviceName) ? "open shift" : "open shift on " + s.ShiftDeviceName);
+        }
+
+        if (s.ActiveOrders > 0)
+        {
+            parts.Add(s.ActiveOrders.ToString(CultureInfo.CurrentCulture) + (s.ActiveOrders == 1 ? " active order" : " active orders"));
+        }
+
+        return new DutyRow(s.UserName, string.Join(", ", s.Roles), string.Join(" · ", parts), s.IsOnline);
     }
 
     private async Task LoadStaffAsync(DateOnly day)

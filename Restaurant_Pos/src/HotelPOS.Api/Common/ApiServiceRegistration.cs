@@ -64,6 +64,7 @@ public static class ApiServiceRegistration
             .AddJsonProtocol(options => PosJson.Apply(options.PayloadSerializerOptions));
         services.AddSingleton<ConnectionTracker>();
         services.AddSingleton<IOnlineDeviceTracker>(sp => sp.GetRequiredService<ConnectionTracker>());
+        services.AddSingleton<IPresenceTracker, HubPresenceTracker>();
         services.AddSingleton<IRealtimeNotifier, SignalRRealtimeNotifier>();
         services.AddSingleton<DayEndReminderState>();
         services.AddScoped<DayEndReminder>();
