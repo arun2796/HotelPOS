@@ -90,6 +90,7 @@ public partial class LiveFlowScreenshots
         header.AppendLine("|---|---------|------|--------|----------|--------------------|------------|-------|");
         await File.WriteAllTextAsync(RecordPath, header.ToString());
 
+        _demoIssues.Add("FIXED on main (a3691bf): the Expenses screen reloaded itself in an endless loop after every load (re-selecting the rebuilt category filter option re-fired the filter-changed reload), exhausting the API connections; in the first three demo runs it first showed as the Record expense step taking 105-118 s and the API then going unreachable (screenshot 20-expense-recorded.png of the pre-fix run, then 21-x-report-failed.png with the status bar on Reconnecting). This pass runs on the fixed code");
         var chapters = (System.Environment.GetEnvironmentVariable("HOTELPOS_DEMO_CHAPTERS") ?? "admin,cashier,manager").Split(',');
         if (chapters.Contains("admin"))
         {
@@ -1125,7 +1126,6 @@ public partial class LiveFlowScreenshots
                 return null;
             });
 
-            await DemoRecoverAsync("recording an expense", terminal);
         }
 
         await StepAsync("X report", "Press X report in the shift bar", "The mid-shift report opens", async () =>
@@ -1403,16 +1403,16 @@ public partial class LiveFlowScreenshots
                 return null;
             });
 
-            await StepAsync("Audit log filter", "Open Audit Log, filter user cashier1, action 'Bill.'", "Only the cashier's bill actions are listed", async () =>
+            await StepAsync("Audit log filter", "Open Audit Log, filter user cashier1, action Bill.DiscountApplied (the action filter is an exact match)", "Only the cashier's bill actions are listed", async () =>
             {
                 var audit = await DemoOpenAsync<AuditLogsViewModel>(shell, ModuleRegistry.Audit, settleMs: 800);
                 audit.UserFilter = "cashier1";
-                audit.ActionFilter = "Bill.";
+                audit.ActionFilter = "Bill.DiscountApplied";
                 await audit.SearchCommand.ExecuteAsync(null);
                 audit.SelectedEntry = audit.AuditEntries.FirstOrDefault();
                 await DemoShotAsync("audit-log-filter");
                 Check(audit.AuditEntries.Count > 0, "the filter found no entries");
-                Check(audit.AuditEntries.All(e => e.Action.StartsWith("Bill.", StringComparison.OrdinalIgnoreCase)), "an entry outside the filter is listed");
+                Check(audit.AuditEntries.All(e => e.Action.Equals("Bill.DiscountApplied", StringComparison.OrdinalIgnoreCase)), "an entry outside the filter is listed");
                 return $"{audit.AuditEntries.Count} entries.";
             });
 
