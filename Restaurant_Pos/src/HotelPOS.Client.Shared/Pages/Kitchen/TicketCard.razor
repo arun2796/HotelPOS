@@ -1,6 +1,7 @@
 @using HotelPOS.Contracts.Enums
 @using HotelPOS.Contracts.Kitchen
-@* Phase 21.2 K3: one kitchen ticket. No prices, no pictures. Tapping the card opens the detail; the big buttons never do. *@
+@inject IClientHost Host
+@* Phase 21.2 K3: one kitchen ticket. No prices; pictures only when this device turned them on (Phase 22 P5). Tapping the card opens the detail; the big buttons never do. *@
 <article class="ticket @TimingClass @(Selected ? "selected" : null)" data-ticket="@Ticket.Id" data-status="@Ticket.Status">
     <div class="ticket-top" role="button" tabindex="0" aria-label="@($"Details of {Ticket.TableCode}, order {Ticket.OrderNumber}")" @onclick="() => OnOpen.InvokeAsync(Ticket)" @onkeydown="OnKey">
         <div class="ticket-id">
@@ -34,7 +35,13 @@
         @foreach (var line in Ticket.Items)
         {
             <li class="@(line.IsCancelled ? "cancelled" : null)">
-                <div class="ticket-line"><b class="ticket-qty">@line.Quantity ×</b> <span class="ticket-name">@line.Name</span></div>
+                <div class="ticket-line">
+                    @if (ShowPictures && Host.ImageUrl(line.ImageUrl) is { } src)
+                    {
+                        <img class="ticket-thumb" src="@src" alt="" loading="lazy" width="40" height="40" onerror="this.style.display='none'" />
+                    }
+                    <b class="ticket-qty">@line.Quantity ×</b> <span class="ticket-name">@line.Name</span>
+                </div>
                 @if (line.Modifiers.Count > 0)
                 {
                     <div class="ticket-mods muted">@string.Join(", ", line.Modifiers)</div>
@@ -66,6 +73,7 @@
     [Parameter] public int Warn { get; set; } = KitchenRules.DefaultWarnMinutes;
     [Parameter] public int Late { get; set; } = KitchenRules.DefaultLateMinutes;
     [Parameter] public bool ShowStation { get; set; }
+    [Parameter] public bool ShowPictures { get; set; }
     [Parameter] public bool Busy { get; set; }
     [Parameter] public bool Selected { get; set; }
     [Parameter] public EventCallback<KitchenTicketDto> OnOpen { get; set; }

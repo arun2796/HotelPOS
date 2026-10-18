@@ -144,6 +144,7 @@ public static class AuditActions
     public const string ReservationCreated = "Reservation.Created";
     public const string ReservationUpdated = "Reservation.Updated";
     public const string ReservationCancelled = "Reservation.Cancelled";
+    public const string FloorLayoutSaved = "Floor.LayoutSaved";
     public const string ReservationSeated = "Reservation.Seated";
     public const string ReservationNoShow = "Reservation.NoShow";
 

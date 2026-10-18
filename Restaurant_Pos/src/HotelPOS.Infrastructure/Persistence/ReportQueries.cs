@@ -39,6 +39,21 @@ public sealed class ReportQueries : IReportQueries
                  WHERE NOT "IsVoid" AND "ExpenseDate" = {today.From}) AS "ExpensesToday"
             """).ToListAsync(cancellationToken)).Single();
 
+    // Phase 22 P4: users with an open cash shift (status 1) and/or orders not yet completed or cancelled (not 9, 10, 11).
+    public async Task<IReadOnlyList<StaffDutyRow>> StaffDutyAsync(CancellationToken cancellationToken) =>
+        await _db.Database.SqlQuery<StaffDutyRow>($"""
+            SELECT u."Id" AS "UserId", u."DisplayName" AS "UserName",
+                   COALESCE((SELECT string_agg(r."Name", ',' ORDER BY r."Name") FROM "UserRoles" ur JOIN "Roles" r ON r."Id" = ur."RoleId"
+                               WHERE ur."UserId" = u."Id"), '') AS "Roles",
+                   EXISTS (SELECT 1 FROM "CashShifts" s WHERE s."CashierUserId" = u."Id" AND s."Status" = 1) AS "HasOpenShift",
+                   (SELECT d."Name" FROM "CashShifts" s JOIN "Devices" d ON d."Id" = s."DeviceId"
+                      WHERE s."CashierUserId" = u."Id" AND s."Status" = 1 ORDER BY s."OpenedAt" DESC LIMIT 1) AS "ShiftDeviceName",
+                   (SELECT COUNT(*) FROM "Orders" o WHERE o."WaiterId" = u."Id" AND o."Status" NOT IN (9, 10, 11))::int AS "ActiveOrders"
+            FROM "Users" u
+            WHERE EXISTS (SELECT 1 FROM "CashShifts" s WHERE s."CashierUserId" = u."Id" AND s."Status" = 1)
+               OR EXISTS (SELECT 1 FROM "Orders" o WHERE o."WaiterId" = u."Id" AND o."Status" NOT IN (9, 10, 11))
+            """).ToListAsync(cancellationToken);
+
     public async Task<IReadOnlyList<DashboardTopItem>> TopItemsAsync(ReportWindow window, int count, CancellationToken cancellationToken) =>
         await _db.Database.SqlQuery<DashboardTopItem>($"""
             SELECT bi."ItemName" AS "ItemName", SUM(bi."Quantity")::int AS "Quantity", SUM(bi."LineSubtotal") AS "Amount"

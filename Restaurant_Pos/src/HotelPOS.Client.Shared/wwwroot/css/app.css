@@ -208,7 +208,9 @@ label.toggle { min-height: var(--touch); cursor: pointer; }
 .ticket.late { border-color: var(--danger); }
 .ticket-table { font-size: 24px; font-weight: 700; margin-right: 8px; }
 .ticket-lines { margin-top: 8px; font-size: 17px; }
-.ticket-line { padding: 2px 0; }
+.ticket-line { padding: 2px 0; display: flex; align-items: center; gap: 8px; }
+.ticket-thumb { width: 40px; height: 40px; flex: none; border-radius: 8px; object-fit: cover; background: var(--surface-subtle); }
+.ticket-thumb.large { width: 56px; height: 56px; border-radius: 10px; }
 /* The one line the cook must not miss: amber 700 on white (5.0:1), bright amber in dark mode, bold, not italic. */
 .ticket-note { margin-left: 24px; color: var(--warning-text); font-weight: 600; font-size: 15px; }
 .ticket-note::before { content: "✎ "; }

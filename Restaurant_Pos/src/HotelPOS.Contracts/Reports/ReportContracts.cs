@@ -110,6 +110,9 @@ public sealed record DashboardDto
     public IReadOnlyList<DashboardTopItem> TopItems { get; init; } = Array.Empty<DashboardTopItem>();
     public IReadOnlyList<DashboardDayPoint> LastDays { get; init; } = Array.Empty<DashboardDayPoint>();
     public IReadOnlyList<DashboardHourPoint> HourlyToday { get; init; } = Array.Empty<DashboardHourPoint>();
+
+    // Phase 22 P4: live hub connections + open cash shifts + waiters with active orders, merged per user (not attendance).
+    public IReadOnlyList<StaffOnDutyDto> StaffOnDuty { get; init; } = Array.Empty<StaffOnDutyDto>();
     public DateTime GeneratedAtUtc { get; init; }
 }
 
@@ -274,4 +277,19 @@ public sealed record KitchenPerformanceRowDto
 
     [NoTotal]
     public decimal LatePercent { get; init; }
+}
+
+// Phase 22 P4: one row per user seen by any of the three sources. "Online" is a live SignalR connection (lost on an API
+// restart, can flap on phones) - it is presence, not attendance.
+public sealed record StaffOnDutyDto
+{
+    public int UserId { get; init; }
+    public string UserName { get; init; } = string.Empty;
+    public IReadOnlyList<string> Roles { get; init; } = Array.Empty<string>();
+    public bool IsOnline { get; init; }
+    public IReadOnlyList<string> Devices { get; init; } = Array.Empty<string>();
+    public DateTime? ConnectedSinceUtc { get; init; }
+    public bool HasOpenShift { get; init; }
+    public string? ShiftDeviceName { get; init; }
+    public int ActiveOrders { get; init; }
 }

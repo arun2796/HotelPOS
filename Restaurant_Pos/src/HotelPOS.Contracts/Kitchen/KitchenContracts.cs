@@ -36,6 +36,9 @@ public sealed record KitchenTicketItemDto
     public string? Notes { get; init; }
     public IReadOnlyList<string> Modifiers { get; init; } = Array.Empty<string>();
     public bool IsCancelled { get; init; }
+
+    // The menu item's picture URL (same scheme as MenuItemDto.ImageUrl); null when the item has none.
+    public string? ImageUrl { get; init; }
 }
 
 public sealed record KitchenTicketListDto

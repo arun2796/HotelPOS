@@ -1473,6 +1473,9 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                     b.Property<int?>("GuestCount")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("Height")
+                        .HasColumnType("integer");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
@@ -1483,6 +1486,15 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("OccupiedAt")
                         .HasColumnType("timestamp(3) with time zone");
 
+                    b.Property<int?>("PosX")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("PosY")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("Rotation")
+                        .HasColumnType("integer");
+
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -1492,6 +1504,9 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                     b.Property<int>("SectionId")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("Shape")
+                        .HasColumnType("integer");
+
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
@@ -1499,6 +1514,9 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp(3) with time zone");
 
                     b.Property<int?>("UpdatedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("Width")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
@@ -1515,6 +1533,8 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("CK_Tables_Capacity", "\"Capacity\" BETWEEN 1 AND 50");
 
                             t.HasCheckConstraint("CK_Tables_GuestCount", "\"GuestCount\" IS NULL OR \"GuestCount\" > 0");
+
+                            t.HasCheckConstraint("CK_Tables_Layout", "(\"PosX\" IS NULL AND \"PosY\" IS NULL AND \"Width\" IS NULL AND \"Height\" IS NULL AND \"Shape\" IS NULL AND \"Rotation\" IS NULL) OR (\"PosX\" BETWEEN 0 AND 5000 AND \"PosY\" BETWEEN 0 AND 5000 AND \"Width\" BETWEEN 40 AND 600 AND \"Height\" BETWEEN 40 AND 600 AND \"Shape\" IN (1, 2) AND \"Rotation\" BETWEEN 0 AND 359)");
 
                             t.HasCheckConstraint("CK_Tables_Status", "\"Status\" IN (1, 2, 3, 4, 5, 6, 7)");
                         });

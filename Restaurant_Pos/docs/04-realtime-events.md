@@ -66,6 +66,7 @@ it receives only its station's ticket events; `LeaveStation` puts it back. The c
 | `PrintFailed` | the reporting device + Admin, Manager roles | `PrintFailedEvent` (documentType, documentId, copyNumber, output, error, deviceName) | a terminal reported a reserved print copy as failed (queued after commit) | 20 |
 | `PaymentFailed` | the paying device only | `PaymentFailedEvent` (billId, code, message) | a payment was rejected for a validation or concurrency reason; nothing was saved | 20 |
 | `DayEndDue` | Admin, Manager roles | `DayEndDueEvent` (businessDay, reminderTime) | the `DayEndReminderTime` setting (default 23:00) passed and the business day is not closed; once per business day | 20 |
+| `FloorLayoutChanged` | all connected clients | `FloorLayoutChangedEvent` (sectionId) | an Admin saved a section's floor layout (queued after commit); clients reload `GET /api/sections/{id}/layout` | 22 |
 
 Event names are constants in `HotelPOS.Contracts.Realtime.HubEvents`. Phase 13 resync: the shift bar reloads
 `GET /api/shifts/current` on reconnect; screens re-read on navigation.

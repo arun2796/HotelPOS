@@ -159,6 +159,8 @@ AM---  POST   api/sections
 AM---  DELETE api/sections/{id:int}
 AMWKC  GET    api/sections/{id:int}
 AM---  PUT    api/sections/{id:int}
+AMWKC  GET    api/sections/{id:int}/layout
+A----  PUT    api/sections/{id:int}/layout
 AMWKC  GET    api/settings
 AM---  GET    api/shifts
 AM--C  POST   api/shifts
@@ -170,6 +172,7 @@ AM--C  POST   api/shifts/{id:int}/handover
 AM--C  POST   api/shifts/{id:int}/movements
 AM---  POST   api/shifts/{id:int}/reopen
 AM--C  GET    api/shifts/{id:int}/x-report
+AM---  GET    api/staff/on-duty
 AMWKC  GET    api/stations
 A----  POST   api/stations
 A----  DELETE api/stations/{id:int}

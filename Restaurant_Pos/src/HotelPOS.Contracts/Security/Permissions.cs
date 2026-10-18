@@ -13,6 +13,7 @@ public static class Permissions
     public const string TablesView = "tables.view";
     public const string TablesOperate = "tables.operate";
     public const string TablesManage = "tables.manage";
+    public const string FloorLayoutManage = "floor.layout.manage";
 
     public const string ReservationsView = "reservations.view";
     public const string ReservationsManage = "reservations.manage";
@@ -50,7 +51,7 @@ public static class Permissions
     public static IReadOnlyList<string> All { get; } = new[]
     {
         UsersManage, RolesManage, SettingsManage, DevicesManage, AuditView, BackupManage, ServerManage,
-        TablesView, TablesOperate, TablesManage,
+        TablesView, TablesOperate, TablesManage, FloorLayoutManage,
         ReservationsView, ReservationsManage,
         MenuView, MenuManage, MenuAvailability,
         OrdersCreate, OrdersEditAny, OrdersCancelAny,

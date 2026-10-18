@@ -40,7 +40,7 @@ Last updated: 2026-10-14
 | Entity | Key columns |
 |---|---|
 | `Sections` | `Name` (unique), `SortOrder`, `IsActive` |
-| `Tables` | `Code` (unique, e.g. T01), `Name?`, `SectionId`, `Capacity`, `Status` (enum, stored), `CurrentOrderId?`, `OccupiedAt?`, `GuestCount?`, `IsActive`, `RowVersion` |
+| `Tables` | `Code` (unique, e.g. T01), `Name?`, `SectionId`, `Capacity`, `Status` (enum, stored), `CurrentOrderId?`, `OccupiedAt?`, `GuestCount?`, `IsActive`, `PosX?`, `PosY?`, `Width?`, `Height?` (layout units = px at 100%), `Shape?` (1 Rectangle, 2 Round), `Rotation?` (0-359; all six null or all set, `CK_Tables_Layout`; Phase 22), `RowVersion` |
 
 ### 2.3 Menu (Phase 3)
 

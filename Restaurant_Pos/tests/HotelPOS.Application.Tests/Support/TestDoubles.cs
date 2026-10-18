@@ -117,3 +117,12 @@ public sealed class RecordingConnectionTracker : IOnlineDeviceTracker
 
     public void Reset() => DisconnectedUsers.Clear();
 }
+
+public sealed class FakePresenceTracker : IPresenceTracker
+{
+    public List<PresenceEntry> Entries { get; } = new();
+
+    public IReadOnlyList<PresenceEntry> Snapshot() => Entries.ToList();
+
+    public void Reset() => Entries.Clear();
+}

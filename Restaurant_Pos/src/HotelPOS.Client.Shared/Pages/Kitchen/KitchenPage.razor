@@ -64,7 +64,7 @@ else
                     }
                     @foreach (var ticket in tickets)
                     {
-                        <TicketCard @key="ticket.Id" Ticket="ticket" Now="Now" Warn="_warn" Late="_late" ShowStation="_stationId is null"
+                        <TicketCard @key="ticket.Id" Ticket="ticket" Now="Now" Warn="_warn" Late="_late" ShowStation="_stationId is null" ShowPictures="_showPictures"
                                     Busy="_busyTicket == ticket.Id" Selected="_selectedId == ticket.Id" OnOpen="t => _selectedId = t.Id" OnAct="ActAsync" />
                     }
                 </section>
@@ -85,6 +85,7 @@ else
     private List<KitchenTicketDto>? _tickets;
     private IReadOnlyList<StationDto> _stations = new List<StationDto>();
     private int? _stationId;
+    private bool _showPictures;
     private int _warn = KitchenRules.DefaultWarnMinutes;
     private int _late = KitchenRules.DefaultLateMinutes;
     private string? _error;
@@ -142,6 +143,7 @@ else
         Realtime.Reconnected += RefreshAsync;
 
         _stationId = await Api.GetStationPreferenceAsync();
+        _showPictures = await Api.GetShowPicturesAsync();
         await Realtime.JoinStationAsync(_stationId);
 
         var stations = await Api.GetStationsAsync();

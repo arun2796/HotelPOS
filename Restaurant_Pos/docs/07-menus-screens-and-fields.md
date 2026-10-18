@@ -182,7 +182,7 @@ KPI cards (manager view, one row): **Today's sales** (settled bills; red/green d
 **Recent activity**: the last eight audit-log rows as sentences ("cashier1 settled bill INV-…"), with live notices prepended as they arrive; **View all** opens the Audit Log. Without the audit permission the widget falls back to the bell feed (D10).
 Then, as before: "Net sales - last 7 days" bars, "Payments today" donut by method with ₹ and percent, "Top items today" (picture or initials, name, quantity, amount), **Kitchen performance today**, **Staff today** and **Terminals** side by side (Terminals lists devices for administrators only, because `api/admin/devices` is administrator-only; a manager sees a placeholder). A panel whose endpoint fails stays empty; the rest of the dashboard is unaffected.
 Tiles (own view, waiter): My orders today (and still open), My sales today (settled bills), Tables I am serving (and guests today).
-Phase 22 added a fifth KPI card, **Expenses today** (live expenses dated the business day; detail "… after expenses"; opens Reports → Profit & Loss), and the **Hourly sales · today** bars (F1). Not on the dashboard: low stock, staff presence (plan P4).
+Phase 22 added a fifth KPI card, **Expenses today** (live expenses dated the business day; detail "… after expenses"; opens Reports → Profit & Loss), and the **Hourly sales · today** bars (F1). The **Staff today** column now lists live presence (P4): name, role chip, online with device names / open shift / active orders, "Nobody connected" when empty, captioned "Live connections, not attendance" (hub presence is in-memory: empty after an API restart, can flap on phones); it comes from `DashboardDto.StaffOnDuty` (`GET api/staff/on-duty`). Not on the dashboard: low stock.
 
 Source: `Modules/Dashboard/DashboardView.xaml`
 
@@ -277,6 +277,7 @@ Source: `Modules/Orders/ActiveOrdersView.xaml`, `Modules/Orders/ActiveOrderQueri
 Purpose: large touch tickets for the kitchen. Opened by Admin, Manager, Kitchen.
 Controls: station filter (All stations or one station), **Sold out...**, refresh. Three columns with counts: NEW, PREPARING, READY. A ticket shows table, "+ADD" tag for added items, elapsed time, ticket number, waiter, status, lines with options and notes (cancelled lines struck through). Tickets turn amber after the "warn" minutes and red after the "late" minutes set in Restaurant Settings (default 10 and 20).
 Ticket buttons by status: **ACCEPT** (new), **START** (new or accepted), **READY** (preparing), **DONE** and **RECALL** (ready).
+Item pictures (Phase 22): each ticket line carries the menu item's picture URL (`ImageUrl`, null when the item has no picture). The checkbox **Show item pictures** beside **Sold out...** puts a small thumbnail before each line; it is a per-terminal setting, **off by default**, kept with the station choice. In the browser, **Kitchen > Station** has the same device setting, **Show item pictures on tickets** (off by default); the ticket detail pane always shows a larger thumbnail. A picture that fails to load is hidden and the line stays text-only.
 
 #### 4.1.1 Sold-out panel ("Item availability")
 List of menu items with a toggle button per item (mark sold out / available again). Button **Close**.

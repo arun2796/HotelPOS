@@ -110,6 +110,7 @@ endpoint is `tests/HotelPOS.Api.Tests/authorization-matrix.txt`; `AuthorizationM
 | POST | `/api/tables/{id}/occupy` | A, W, C, M | `{guestCount, rowVersion}` Available -> Occupied |
 | POST | `/api/tables/{id}/release` | A, W, C, M | Occupied (no order) -> Available; with order: Manager only |
 | POST | `/api/tables/{id}/out-of-service` / `in-service` | A, M | |
+| GET / PUT | `/api/sections/{id}/layout` | GET: * (`tables.view`); PUT: A (`floor.layout.manage`) | Phase 22 floor plan: active tables of the section with `posX/posY/width/height/shape/rotation` (nullable, `hasLayout`); PUT `{items:[{tableId,posX,posY,width,height,shape,rotation}]}` saves the listed tables (each must belong to the section) and publishes `FloorLayoutChanged` |
 
 ### 3.4 Menu (Phase 3)
 
@@ -147,7 +148,7 @@ endpoint is `tests/HotelPOS.Api.Tests/authorization-matrix.txt`; `AuthorizationM
 | Method | Route | Roles | Notes |
 |---|---|---|---|
 | GET | `/api/kitchen/orders` | K, M, A | `?stationId=&status=` open tickets with items; `serverTimeUtc` for timers |
-| GET | `/api/kitchen/orders/{ticketId}` | K, W, M | |
+| GET | `/api/kitchen/orders/{ticketId}` | K, W, M | Each item has `imageUrl` (nullable): the menu item's picture, same `/images/menu/...` scheme as `MenuItemDto.ImageUrl`; also on the list and completed endpoints. Resolved with one batched lookup per response, no per-item query. |
 | GET | `/api/kitchen/orders/completed` | K, M | `?date=` business day |
 | POST | `/api/kitchen/orders/{ticketId}/accept` | K, M | New -> Accepted |
 | POST | `/api/kitchen/orders/{ticketId}/start` | K, M | Accepted -> Preparing (also allowed from New: implicit accept) |
@@ -191,6 +192,7 @@ All `GET`, roles A/M, params `from`, `to` (business days, default today, at most
 (UTF-8 with BOM, `text/csv` attachment, totals row at the end).
 
 ```
+/api/staff/on-duty              (Phase 22 P4, ReportsView: users merged from live hub connections, open cash shifts and active orders; presence, not attendance; also on the dashboard as StaffOnDuty)
 /api/reports/dashboard          /api/reports/my-day   (any signed-in user: own orders, sales and tables today)
 /api/reports/sales/daily        /api/reports/sales/monthly?year=
 /api/reports/sales/items        /api/reports/sales/categories

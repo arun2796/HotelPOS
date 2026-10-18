@@ -129,6 +129,27 @@ public class KitchenTests : DatabaseTestBase
     }
 
     [Fact]
+    public async Task TicketItems_CarryTheMenuItemPictureUrl_AndNullWhenTheItemHasNone()
+    {
+        var s = await SetupAsync();
+        await QueryAsync(async db =>
+        {
+            (await db.MenuItems.SingleAsync(m => m.Id == s.Biryani)).SetImage("biryani.jpg");
+            return await db.SaveChangesAsync();
+        });
+        var order = await SendAsync(s, Line(s.Biryani, 1), Line(s.Kulfi, 1));
+
+        var list = await SendAsAdminAsync(new ListKitchenTicketsQuery(new KitchenTicketQuery()));
+
+        var items = list.Value.Tickets.Single(t => t.OrderId == order.Id).Items;
+        items.Single(i => i.Name == "Chicken Biryani").ImageUrl.Should().Be(MenuImageRoutes.UrlFor("biryani.jpg"));
+        items.Single(i => i.Name == "Kulfi").ImageUrl.Should().BeNull();
+        var ticketId = list.Value.Tickets.Single(t => t.OrderId == order.Id).Id;
+        var detail = await SendAsAdminAsync(new GetKitchenTicketQuery(ticketId));
+        detail.Value.Items.Single(i => i.Name == "Chicken Biryani").ImageUrl.Should().Be("/images/menu/biryani.jpg");
+    }
+
+    [Fact]
     public async Task CancellingAnOrder_CancelsItsOpenTickets()
     {
         var s = await SetupAsync();
