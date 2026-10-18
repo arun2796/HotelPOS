@@ -188,7 +188,7 @@ DTOs. Desktop/web: VM and bUnit tests per surface; rendering counts; `StatusPres
 - [ ] Kitchen tickets show pictures when enabled; the kitchen query count does not grow with items (no N+1).
 - [ ] A waiter on a desktop browser prints a KOT PDF and the print log records the copy.
 - [ ] (If B3–B4 are built) siblings sum to the original bill; GST register totals unchanged.
-- [ ] Full suite green; migrations applied to a venue-copy database; docs and release notes updated.
+- [ ] Full suite green (2026-10-19: Domain 413, Application 287, Api 203, Client 224, Desktop 452 + 2 skipped, 0 failed); docs and release notes updated; **migrations on a venue-copy database still to rehearse** (needs the owner's backup).
 
 ## 11. Changes during implementation
 
