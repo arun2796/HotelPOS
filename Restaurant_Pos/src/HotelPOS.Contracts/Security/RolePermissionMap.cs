@@ -16,6 +16,7 @@ public static class RolePermissionMap
             Permissions.KitchenOperate,
             Permissions.BillingOperate, Permissions.BillingDiscount, Permissions.BillingVoid, Permissions.BillingRefund,
             Permissions.ReportsView,
+            Permissions.ExpensesView, Permissions.ExpensesManage,
             Permissions.ShiftOperate, Permissions.ShiftManage, Permissions.DayEndRun,
             Permissions.GstView, Permissions.ImportRun,
         },

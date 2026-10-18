@@ -41,6 +41,9 @@ public static class Permissions
     public const string GstView = "gst.view";
     public const string PeriodClose = "period.close";
 
+    public const string ExpensesView = "expenses.view";
+    public const string ExpensesManage = "expenses.manage";
+
     public const string LicenseManage = "license.manage";
     public const string ImportRun = "import.run";
 
@@ -54,6 +57,7 @@ public static class Permissions
         KitchenOperate,
         BillingOperate, BillingDiscount, BillingVoid, BillingRefund,
         ReportsView,
+        ExpensesView, ExpensesManage,
         ShiftOperate, ShiftManage, DayEndRun,
         GstView, PeriodClose,
         LicenseManage, ImportRun,

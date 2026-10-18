@@ -146,4 +146,12 @@ public static class AuditActions
     public const string ReservationCancelled = "Reservation.Cancelled";
     public const string ReservationSeated = "Reservation.Seated";
     public const string ReservationNoShow = "Reservation.NoShow";
+
+    public const string ExpenseCreated = "Expense.Created";
+    public const string ExpenseUpdated = "Expense.Updated";
+    public const string ExpenseVoided = "Expense.Voided";
+    public const string ExpenseCategoryCreated = "ExpenseCategory.Created";
+    public const string ExpenseCategoryUpdated = "ExpenseCategory.Updated";
+    public const string ExpenseCategoryActivated = "ExpenseCategory.Activated";
+    public const string ExpenseCategoryDeactivated = "ExpenseCategory.Deactivated";
 }

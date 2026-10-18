@@ -61,6 +61,8 @@ public interface IAppDbContext
     DbSet<Customer> Customers { get; }
     DbSet<ImportBatch> ImportBatches { get; }
     DbSet<ImportEntry> ImportEntries { get; }
+    DbSet<HotelPOS.Domain.Finance.Expense> Expenses { get; }
+    DbSet<HotelPOS.Domain.Finance.ExpenseCategory> ExpenseCategories { get; }
 
     DatabaseFacade Database { get; }
 

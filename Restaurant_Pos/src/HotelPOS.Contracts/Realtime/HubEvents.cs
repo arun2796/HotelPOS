@@ -33,6 +33,7 @@ public static class HubEvents
     public const string PaymentFailed = "PaymentFailed";
     public const string DayEndDue = "DayEndDue";
     public const string ReservationChanged = "ReservationChanged";
+    public const string ExpenseChanged = "ExpenseChanged";
 }
 
 public static class HubMethods
@@ -87,4 +88,12 @@ public sealed record ReservationChangedEvent : RealtimeEvent
     public Enums.ReservationStatus Status { get; init; }
     public DateTime StartTimeUtc { get; init; }
     public DateTime EndTimeUtc { get; init; }
+}
+
+public sealed record ExpenseChangedEvent : RealtimeEvent
+{
+    public int ExpenseId { get; init; }
+    public DateOnly ExpenseDate { get; init; }
+    public decimal Amount { get; init; }
+    public string ChangeType { get; init; } = string.Empty;
 }

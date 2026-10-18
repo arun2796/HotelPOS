@@ -51,6 +51,16 @@ AM--C  GET    api/discounts
 AM---  POST   api/discounts
 AM---  DELETE api/discounts/{id:int}
 AM---  PUT    api/discounts/{id:int}
+AM---  GET    api/expenses
+AM---  POST   api/expenses
+AM---  GET    api/expenses/categories
+AM---  POST   api/expenses/categories
+AM---  PUT    api/expenses/categories/{id:int}
+AM---  POST   api/expenses/categories/{id:int}/activate
+AM---  POST   api/expenses/categories/{id:int}/deactivate
+AM---  GET    api/expenses/{id:int}
+AM---  PUT    api/expenses/{id:int}
+AM---  POST   api/expenses/{id:int}/void
 AM---  GET    api/gst/gstr1
 AM---  GET    api/gst/gstr1/json
 AM---  GET    api/gst/gstr3b

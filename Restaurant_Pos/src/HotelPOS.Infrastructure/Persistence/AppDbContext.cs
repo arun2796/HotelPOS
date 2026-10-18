@@ -3,6 +3,7 @@ using HotelPOS.Domain.Administration;
 using HotelPOS.Domain.Billing;
 using HotelPOS.Domain.Cash;
 using HotelPOS.Domain.Customers;
+using HotelPOS.Domain.Finance;
 using HotelPOS.Domain.Licensing;
 using HotelPOS.Domain.Gst;
 using HotelPOS.Domain.Floor;
@@ -67,6 +68,8 @@ public sealed class AppDbContext : DbContext, IAppDbContext
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<ImportBatch> ImportBatches => Set<ImportBatch>();
     public DbSet<ImportEntry> ImportEntries => Set<ImportEntry>();
+    public DbSet<Expense> Expenses => Set<Expense>();
+    public DbSet<ExpenseCategory> ExpenseCategories => Set<ExpenseCategory>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
