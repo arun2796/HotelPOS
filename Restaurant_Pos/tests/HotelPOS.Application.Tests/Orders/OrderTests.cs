@@ -227,6 +227,107 @@ public class OrderTests : DatabaseTestBase
         retry.Outcome.Should().Be(IdempotencyOutcome.Started);
     }
 
+    [Fact]
+    public async Task Create_TakeawayOrder_WithoutTable_Succeeds_AndLabelsWithOrderNumber()
+    {
+        var s = await SetupAsync();
+        await AsWaiterAsync(s.WaiterA);
+
+        var result = await SendAsync(new CreateOrderCommand(new CreateOrderRequest
+        {
+            OrderType = OrderType.Takeaway,
+            TableId = null,
+            GuestCount = 1,
+            Submit = true,
+            Items = new[] { Line(s.Biryani, 1, s.Spicy) },
+        }));
+
+        result.IsSuccess.Should().BeTrue(result.Error?.Message);
+        var order = result.Value;
+        order.OrderType.Should().Be(OrderType.Takeaway);
+        order.TableId.Should().BeNull();
+        order.TableCode.Should().Be($"TA-{order.OrderNumber}");
+
+        // Table on floor remains untouched
+        var table = await TableAsync(s.TableId);
+        table.CurrentOrderId.Should().BeNull();
+        table.Status.Should().Be(TableStatus.Available);
+
+        // Tickets carry synthetic label
+        var tickets = await QueryAsync(db => db.KitchenOrders.Where(k => k.OrderId == order.Id).ToListAsync());
+        tickets.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task Create_TakeawayWithTable_OrDineInWithoutTable_FailsValidation()
+    {
+        var s = await SetupAsync();
+        await AsWaiterAsync(s.WaiterA);
+
+        var takeawayWithTable = await SendAsync(new CreateOrderCommand(new CreateOrderRequest
+        {
+            OrderType = OrderType.Takeaway,
+            TableId = s.TableId,
+            GuestCount = 1,
+            Items = new[] { Line(s.Biryani, 1, s.Spicy) },
+        }));
+
+        var dineInWithoutTable = await SendAsync(new CreateOrderCommand(new CreateOrderRequest
+        {
+            OrderType = OrderType.DineIn,
+            TableId = null,
+            GuestCount = 2,
+            Items = new[] { Line(s.Biryani, 1, s.Spicy) },
+        }));
+
+        takeawayWithTable.Error!.Code.Should().Be(ErrorCodes.ValidationError);
+        takeawayWithTable.Error.Details.Should().Contain(d => string.Equals(d.Field, "TableId", StringComparison.OrdinalIgnoreCase) && d.Message.Contains("Takeaway and delivery orders must not specify a table"));
+
+        dineInWithoutTable.Error!.Code.Should().Be(ErrorCodes.ValidationError);
+        dineInWithoutTable.Error.Details.Should().Contain(d => string.Equals(d.Field, "TableId", StringComparison.OrdinalIgnoreCase) && d.Message.Contains("Select a table"));
+    }
+
+    [Fact]
+    public async Task Create_DeliveryOrder_ValidatesCustomerInfo_AndSetsSyntheticLabel()
+    {
+        var s = await SetupAsync();
+        await AsWaiterAsync(s.WaiterA);
+
+        var missingCustomer = await SendAsync(new CreateOrderCommand(new CreateOrderRequest
+        {
+            OrderType = OrderType.Delivery,
+            TableId = null,
+            GuestCount = 1,
+            Items = new[] { Line(s.Biryani, 1, s.Spicy) },
+        }));
+
+        missingCustomer.Error!.Code.Should().Be(ErrorCodes.ValidationError);
+        missingCustomer.Error.Details.Should().Contain(d => string.Equals(d.Field, "CustomerName", StringComparison.OrdinalIgnoreCase) && d.Message.Contains("Customer name is required"));
+
+        var validDelivery = await SendAsync(new CreateOrderCommand(new CreateOrderRequest
+        {
+            OrderType = OrderType.Delivery,
+            TableId = null,
+            CustomerName = "Arun",
+            CustomerPhone = "9876543210",
+            DeliveryAddress = "42 Ocean Drive, Chennai",
+            DeliveryNotes = "Leave at gate",
+            GuestCount = 1,
+            Submit = true,
+            Items = new[] { Line(s.Biryani, 1, s.Spicy) },
+        }));
+
+        validDelivery.IsSuccess.Should().BeTrue(validDelivery.Error?.Message);
+        var order = validDelivery.Value;
+        order.OrderType.Should().Be(OrderType.Delivery);
+        order.TableId.Should().BeNull();
+        order.TableCode.Should().Be($"DL-{order.OrderNumber}");
+        order.CustomerName.Should().Be("Arun");
+        order.CustomerPhone.Should().Be("9876543210");
+        order.DeliveryAddress.Should().Be("42 Ocean Drive, Chennai");
+        order.DeliveryNotes.Should().Be("Leave at gate");
+    }
+
     private sealed record Setup(int TableId, int Naan, int Biryani, int Spicy, int ExtraRaita, int WaiterA, int WaiterB, int Manager);
 
     private async Task<Setup> SetupAsync()

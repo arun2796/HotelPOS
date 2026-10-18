@@ -41,6 +41,8 @@
   <Geometry x:Key="Icon.swap">M4 8h14 M14 4l4 4-4 4 M20 16H6 M10 12l-4 4 4 4</Geometry>
   <Geometry x:Key="Icon.undo">M9 14L4 9l5-5 M4 9h10a6 6 0 0 1 0 12h-3</Geometry>
   <Geometry x:Key="Icon.utensils">M7 3v8 M4 3v5a3 3 0 0 0 6 0V3 M7 11v10 M17 21V3c-3 1-4 4-4 8h4</Geometry>
+  <Geometry x:Key="Icon.shopping-bag">M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z M3 6h18 M16 10a4 4 0 0 1-8 0</Geometry>
+  <Geometry x:Key="Icon.truck">M1 3h15v13H1z M16 8h4l3 3v5h-7z M3 18.5a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0-5 0 M16 18.5a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0-5 0</Geometry>
   <Geometry x:Key="Icon.info">M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z M12 11v5 M12 8h.01</Geometry>
   <Geometry x:Key="Icon.image">M4 5h16v14H4z M4 16l5-5 4 4 3-3 4 4 M9 9h.01</Geometry>
 </ResourceDictionary>

@@ -86,7 +86,7 @@
 
         var orders = await Api.GetActiveOrdersAsync();
         var myTableIds = orders.Success && orders.Data is { } list
-            ? list.Where(o => o.WaiterId == Auth.User?.Id).Select(o => o.TableId).ToHashSet()
+            ? list.Where(o => o.WaiterId == Auth.User?.Id && o.TableId.HasValue).Select(o => o.TableId!.Value).ToHashSet()
             : new HashSet<int>();
         _mine = tables.Where(t => t.Status != TableStatus.Available && myTableIds.Contains(t.Id)).ToList();
         _loading = false;

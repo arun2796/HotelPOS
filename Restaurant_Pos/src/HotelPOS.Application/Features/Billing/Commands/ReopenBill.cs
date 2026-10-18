@@ -84,7 +84,7 @@ internal sealed class ReopenBillHandler : ICommandHandler<ReopenBillCommand, Bil
             step: async scope =>
             {
                 var (bill, order, table) = (scope.Bill, scope.Order, scope.Table);
-                var tableBefore = table.Status;
+                var tableBefore = table?.Status;
                 bill.Reopen(request.Reason ?? "Reopened for changes", _clock.UtcNow);
                 order.ReopenFromBill();
                 var tickets = await _kitchen.LoadTicketsAsync(order.Id, cancellationToken);
@@ -99,7 +99,7 @@ internal sealed class ReopenBillHandler : ICommandHandler<ReopenBillCommand, Bil
                 });
                 _afterCommit.Enqueue(() => _events.PublishBillUpdatedAsync(bill, BillChangeTypes.Reopened));
                 _afterCommit.Enqueue(() => _events.PublishOrderUpdatedAsync(order, OrderChangeTypes.BillReopened));
-                if (table.Status != tableBefore)
+                if (table != null && table.Status != tableBefore)
                 {
                     _afterCommit.Enqueue(() => _tableEvents.PublishStatusAsync(table, order.OrderNumber));
                 }

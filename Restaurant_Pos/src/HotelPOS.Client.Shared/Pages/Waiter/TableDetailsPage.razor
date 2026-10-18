@@ -300,7 +300,12 @@ else
             }
 
             order = byId.Data;
-            tableId = order.TableId;
+            if (order.TableId is not { } tid)
+            {
+                Navigation.NavigateTo("waiter/orders");
+                return;
+            }
+            tableId = tid;
         }
 
         var result = await Api.GetTableAsync(tableId);

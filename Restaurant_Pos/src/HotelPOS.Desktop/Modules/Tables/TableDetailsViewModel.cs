@@ -339,7 +339,10 @@ public sealed partial class TableDetailsViewModel : ViewModelBase
             var result = await _ordersApi.CancelAsync(order.Id, new CancelOrderRequest { Reason = reason });
             if (result.Success)
             {
-                _drafts.Delete(order.TableId);
+                if (order.TableId is { } tid)
+                {
+                    _drafts.Delete(tid);
+                }
                 _notifications.Success($"Order #{order.OrderNumber} cancelled.");
                 await _refreshMap();
             }

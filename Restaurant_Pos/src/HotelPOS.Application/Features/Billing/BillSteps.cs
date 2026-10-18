@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HotelPOS.Application.Features.Billing;
 
-internal sealed record BillScope(Bill Bill, Order Order, Table Table);
+internal sealed record BillScope(Bill Bill, Order Order, Table? Table);
 
 // Loading and reading steps shared by the billing commands and queries.
 internal sealed class BillSteps
@@ -44,7 +44,7 @@ internal sealed class BillSteps
 
         var order = await _db.Orders.Include(o => o.Table).Include(o => o.Items).ThenInclude(i => i.Modifiers)
             .FirstAsync(o => o.Id == bill.OrderId, cancellationToken);
-        return new BillScope(bill, order, order.Table!);
+        return new BillScope(bill, order, order.Table);
     }
 
     public Task<bool> RoundOffAsync(CancellationToken cancellationToken) =>

@@ -2144,6 +2144,22 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                     b.Property<int?>("CreatedBy")
                         .HasColumnType("integer");
 
+                    b.Property<string>("CustomerName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("CustomerPhone")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("DeliveryAddress")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("DeliveryNotes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<int>("GuestCount")
                         .HasColumnType("integer");
 
@@ -2158,6 +2174,11 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
                         .HasDefaultValueSql("nextval('\"OrderNumbers\"')");
+
+                    b.Property<int>("OrderType")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
 
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
@@ -2174,7 +2195,7 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("SubmittedAt")
                         .HasColumnType("timestamp(3) with time zone");
 
-                    b.Property<int>("TableId")
+                    b.Property<int?>("TableId")
                         .HasColumnType("integer");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -2191,18 +2212,22 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                     b.HasIndex("OrderNumber")
                         .IsUnique();
 
+                    b.HasIndex("OrderType");
+
                     b.HasIndex("Status");
 
                     b.HasIndex("TableId")
                         .IsUnique()
                         .HasDatabaseName("IX_Orders_TableId_Active")
-                        .HasFilter("\"Status\" NOT IN (9, 10, 11)");
+                        .HasFilter("\"TableId\" IS NOT NULL AND \"Status\" NOT IN (9, 10, 11)");
 
                     b.HasIndex("WaiterId", "CreatedAt");
 
                     b.ToTable("Orders", null, t =>
                         {
                             t.HasCheckConstraint("CK_Orders_GuestCount", "\"GuestCount\" > 0");
+
+                            t.HasCheckConstraint("CK_Orders_OrderType", "\"OrderType\" IN (1, 2, 3)");
 
                             t.HasCheckConstraint("CK_Orders_Status", "\"Status\" IN (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)");
                         });
@@ -2770,8 +2795,7 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                     b.HasOne("HotelPOS.Domain.Floor.Table", "Table")
                         .WithMany()
                         .HasForeignKey("TableId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("HotelPOS.Domain.Identity.User", null)
                         .WithMany()

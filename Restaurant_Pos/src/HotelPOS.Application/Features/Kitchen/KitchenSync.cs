@@ -2,6 +2,7 @@ using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Features.Floor;
 using HotelPOS.Contracts.Enums;
+using HotelPOS.Contracts.Orders;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Contracts.Security;
 using HotelPOS.Domain.Floor;
@@ -31,33 +32,34 @@ public sealed class KitchenSync
     public Task<List<KitchenOrder>> LoadTicketsAsync(int orderId, CancellationToken cancellationToken) =>
         _db.KitchenOrders.Include(k => k.Items).Where(k => k.OrderId == orderId).ToListAsync(cancellationToken);
 
-    public KitchenChange Recompute(Order order, IReadOnlyCollection<KitchenOrder> tickets, Table table)
+    public KitchenChange Recompute(Order order, IReadOnlyCollection<KitchenOrder> tickets, Table? table)
     {
         var orderBefore = order.Status;
-        var tableBefore = table.Status;
+        var tableBefore = table?.Status ?? TableStatus.Available;
         if (OrderStatusDeriver.Derive(tickets.Select(t => t.Status)) is { } derived)
         {
             order.ApplyKitchenStatus(derived, _clock.UtcNow);
         }
 
-        if (table.CurrentOrderId == order.Id || ReferenceEquals(table.CurrentOrder, order))
+        if (table != null && (table.CurrentOrderId == order.Id || ReferenceEquals(table.CurrentOrder, order)))
         {
             table.FollowKitchen(order.Status, tickets.Any(t => t.Status == KitchenOrderStatus.Ready));
         }
 
-        return new KitchenChange(orderBefore, order.Status, tableBefore, table.Status);
+        return new KitchenChange(orderBefore, order.Status, tableBefore, table?.Status ?? TableStatus.Available);
     }
 
     // Call after the commit. At most one event per kind, so a single kitchen tap never floods the terminals.
     public async Task PublishAsync(
         Order order,
-        Table table,
+        Table? table,
         KitchenChange change,
         IEnumerable<KitchenOrder> created,
         IEnumerable<KitchenOrder> updated,
         IReadOnlyCollection<string> newlyReady)
     {
         var now = _clock.UtcNow;
+        var tableCode = table?.Code ?? OrderChannels.TableLabel(order.OrderType, order.OrderNumber, null);
         foreach (var ticket in created)
         {
             await _realtime.PublishAsync(HubEvents.KitchenTicketCreated, new KitchenTicketCreatedEvent
@@ -68,7 +70,7 @@ public sealed class KitchenSync
                 TicketId = ticket.Id,
                 TicketNumber = ticket.TicketNumber,
                 OrderId = order.Id,
-                TableCode = table.Code,
+                TableCode = tableCode,
                 StationId = ticket.PreparationStationId,
                 ItemCount = ticket.Items.Where(i => !i.IsCancelled).Sum(i => i.Quantity),
             }, new RealtimeAudience { StationIds = new[] { ticket.PreparationStationId }, Roles = new[] { Roles.Kitchen } }, CancellationToken.None);
@@ -84,7 +86,7 @@ public sealed class KitchenSync
                 TicketId = ticket.Id,
                 TicketNumber = ticket.TicketNumber,
                 OrderId = order.Id,
-                TableCode = table.Code,
+                TableCode = tableCode,
                 StationId = ticket.PreparationStationId,
                 Status = ticket.Status,
             }, new RealtimeAudience
@@ -129,13 +131,13 @@ public sealed class KitchenSync
             }
         }
 
-        if (change.TableAfter != change.TableBefore)
+        if (table != null && change.TableAfter != change.TableBefore)
         {
             await _tableEvents.PublishStatusAsync(table, order.OrderNumber);
         }
     }
 
-    private Task PublishProgressAsync(string eventName, Order order, Table table, RealtimeAudience audience, IReadOnlyCollection<string> readyTickets) =>
+    private Task PublishProgressAsync(string eventName, Order order, Table? table, RealtimeAudience audience, IReadOnlyCollection<string> readyTickets) =>
         _realtime.PublishAsync(eventName, new OrderProgressEvent
         {
             OccurredAtUtc = _clock.UtcNow,
@@ -143,8 +145,8 @@ public sealed class KitchenSync
             EntityVersion = RowVersions.Encode(order.RowVersion),
             OrderId = order.Id,
             OrderNumber = order.OrderNumber,
-            TableId = table.Id,
-            TableCode = table.Code,
+            TableId = table?.Id,
+            TableCode = table?.Code ?? OrderChannels.TableLabel(order.OrderType, order.OrderNumber, null),
             WaiterId = order.WaiterId,
             Status = order.Status,
             ReadyTicketNumbers = readyTickets.ToList(),

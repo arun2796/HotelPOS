@@ -89,7 +89,7 @@ internal sealed class VoidBillHandler : ICommandHandler<VoidBillCommand, BillDet
                 }
 
                 order.Cancel(_bills.UserId, request.Reason, now);
-                if (table.CurrentOrderId == order.Id)
+                if (table != null && table.CurrentOrderId == order.Id)
                 {
                     table.DetachOrder(keepGuestsSeated: false);
                 }
@@ -104,8 +104,11 @@ internal sealed class VoidBillHandler : ICommandHandler<VoidBillCommand, BillDet
                     ApprovedBy = approvedBy,
                 });
                 _afterCommit.Enqueue(() => _events.PublishBillUpdatedAsync(bill, BillChangeTypes.Voided));
-                _afterCommit.Enqueue(() => _events.PublishOrderCancelledAsync(order, table.Code));
-                _afterCommit.Enqueue(() => _tableEvents.PublishStatusAsync(table));
+                _afterCommit.Enqueue(() => _events.PublishOrderCancelledAsync(order, table?.Code ?? bill.TableCode));
+                if (table != null)
+                {
+                    _afterCommit.Enqueue(() => _tableEvents.PublishStatusAsync(table));
+                }
                 _afterCommit.Enqueue(() => _events.PublishTicketsAsync(order, table, openTickets));
                 return null;
             },

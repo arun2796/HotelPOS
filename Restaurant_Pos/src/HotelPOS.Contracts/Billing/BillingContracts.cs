@@ -117,7 +117,7 @@ public sealed record BillDetailDto
     public string? InvoiceNumber { get; init; }
     public int OrderId { get; init; }
     public int OrderNumber { get; init; }
-    public int TableId { get; init; }
+    public int? TableId { get; init; }
     public string TableCode { get; init; } = string.Empty;
     public int WaiterId { get; init; }
     public string WaiterName { get; init; } = string.Empty;

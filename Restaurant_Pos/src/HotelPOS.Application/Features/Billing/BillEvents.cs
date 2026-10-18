@@ -106,7 +106,7 @@ internal sealed class BillEvents
             Reason = order.CancelReason,
         }, OrderWatchers with { UserIds = new[] { order.WaiterId } }, CancellationToken.None);
 
-    public Task PublishPaymentCompletedAsync(Bill bill, Order order, Table table) =>
+    public Task PublishPaymentCompletedAsync(Bill bill, Order order, Table? table) =>
         _realtime.PublishAsync(HubEvents.PaymentCompleted, new PaymentCompletedEvent
         {
             OccurredAtUtc = _clock.UtcNow,
@@ -114,15 +114,15 @@ internal sealed class BillEvents
             EntityVersion = RowVersions.Encode(bill.RowVersion),
             BillId = bill.Id,
             OrderId = order.Id,
-            TableId = table.Id,
-            TableCode = table.Code,
+            TableId = table?.Id,
+            TableCode = bill.TableCode,
             InvoiceNumber = bill.InvoiceNumber,
             GrandTotal = bill.GrandTotal,
         }, RealtimeAudience.ForRoles(Roles.Cashier, Roles.Waiter, Roles.Manager, Roles.Admin), CancellationToken.None);
 
-    public Task PublishTicketsAsync(Order order, Table table, IReadOnlyCollection<KitchenOrder> tickets) =>
+    public Task PublishTicketsAsync(Order order, Table? table, IReadOnlyCollection<KitchenOrder> tickets) =>
         tickets.Count == 0
             ? Task.CompletedTask
-            : _kitchen.PublishAsync(order, table, new KitchenChange(order.Status, order.Status, table.Status, table.Status),
+            : _kitchen.PublishAsync(order, table, new KitchenChange(order.Status, order.Status, table?.Status ?? HotelPOS.Contracts.Enums.TableStatus.Available, table?.Status ?? HotelPOS.Contracts.Enums.TableStatus.Available),
                 Array.Empty<KitchenOrder>(), tickets, Array.Empty<string>());
 }

@@ -159,7 +159,7 @@ internal sealed class BillWorkflow
             ticket.CloseOnSettle(_bills.UserId, now);
         }
 
-        if (table.CurrentOrderId == order.Id)
+        if (table != null && table.CurrentOrderId == order.Id)
         {
             table.DetachOrder(keepGuestsSeated: false);
         }
@@ -175,7 +175,10 @@ internal sealed class BillWorkflow
         });
 
         _afterCommit.Enqueue(() => _events.PublishPaymentCompletedAsync(bill, order, table));
-        _afterCommit.Enqueue(() => _tableEvents.PublishStatusAsync(table));
+        if (table != null)
+        {
+            _afterCommit.Enqueue(() => _tableEvents.PublishStatusAsync(table));
+        }
         _afterCommit.Enqueue(() => _events.PublishOrderUpdatedAsync(order, order.Status == OrderStatus.Completed ? OrderChangeTypes.Completed : OrderChangeTypes.Paid));
         _afterCommit.Enqueue(() => _events.PublishTicketsAsync(order, table, closed));
     }
