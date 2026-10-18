@@ -61,10 +61,9 @@ public static class StatusPresentation
 
     public static StatusDisplay For(OrderType type) => type switch
     {
-        OrderType.DineIn => new("Dine-in", StatusTone.Info, "utensils"),
         OrderType.Takeaway => new("Takeaway", StatusTone.Warning, "shopping-bag"),
         OrderType.Delivery => new("Delivery", StatusTone.Success, "truck"),
-        _ => throw Unmapped(type),
+        _ => new("Dine-in", StatusTone.Info, "utensils"),
     };
 
     public static StatusDisplay For(KitchenOrderStatus status) => status switch

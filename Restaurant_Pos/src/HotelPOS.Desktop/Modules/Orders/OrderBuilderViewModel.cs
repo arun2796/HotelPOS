@@ -19,12 +19,13 @@ using HotelPOS.Desktop.Services.Ui;
 namespace HotelPOS.Desktop.Modules.Orders;
 
 public sealed record OrderBuilderContext(
-    int TableId,
+    int? TableId,
     string TableCode,
     OrderBuilderMode Mode,
     int GuestCount,
     int? OrderId = null,
-    int? OrderNumber = null);
+    int? OrderNumber = null,
+    OrderType OrderType = OrderType.DineIn);
 
 public sealed partial class MenuTileViewModel : ObservableObject
 {
@@ -144,6 +145,61 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
     [ObservableProperty]
     private string _noteText = string.Empty;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Title), nameof(IsDelivery), nameof(IsTakeaway), nameof(IsDineIn))]
+    private OrderType _orderType = OrderType.DineIn;
+
+    [ObservableProperty]
+    private string _customerName = string.Empty;
+
+    [ObservableProperty]
+    private string _customerPhone = string.Empty;
+
+    [ObservableProperty]
+    private string _deliveryAddress = string.Empty;
+
+    [ObservableProperty]
+    private string _deliveryNotes = string.Empty;
+
+    [ObservableProperty]
+    private bool _isDeliveryDetailsOpen;
+
+    public bool IsDineIn => OrderType == OrderType.DineIn;
+    public bool IsTakeaway => OrderType == OrderType.Takeaway;
+    public bool IsDelivery => OrderType == OrderType.Delivery;
+
+    public bool IsDeliveryComplete =>
+        !string.IsNullOrWhiteSpace(CustomerName) &&
+        !string.IsNullOrWhiteSpace(CustomerPhone) &&
+        !string.IsNullOrWhiteSpace(DeliveryAddress);
+
+    public string DeliverySummaryText => IsDeliveryComplete
+        ? $"{CustomerName} · {CustomerPhone}"
+        : "Add delivery details *";
+
+    [RelayCommand]
+    private void SelectOrderType(string? typeName)
+    {
+        if (Enum.TryParse<OrderType>(typeName, true, out var type))
+        {
+            OrderType = type;
+            if (type == OrderType.Delivery && !IsDeliveryComplete)
+            {
+                IsDeliveryDetailsOpen = true;
+            }
+        }
+    }
+
+    [RelayCommand]
+    private void OpenDeliveryDetails() => IsDeliveryDetailsOpen = true;
+
+    [RelayCommand]
+    private void CloseDeliveryDetails()
+    {
+        IsDeliveryDetailsOpen = false;
+        OnPropertyChanged(nameof(DeliverySummaryText));
+    }
+
     public OrderBuilderMode Mode => _context.Mode;
 
     public bool IsAppendMode => Mode == OrderBuilderMode.AppendItems;
@@ -156,7 +212,12 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
     {
         OrderBuilderMode.AppendItems => $"{_context.TableCode} · Adding to order #{_context.OrderNumber}",
         OrderBuilderMode.EditDraft => $"{_context.TableCode} · Draft order #{_context.OrderNumber}",
-        _ => $"{_context.TableCode} · New order",
+        _ => OrderType switch
+        {
+            OrderType.Takeaway => string.IsNullOrEmpty(_context.TableCode) ? "Takeaway · New order" : $"{_context.TableCode} · Takeaway",
+            OrderType.Delivery => string.IsNullOrEmpty(_context.TableCode) ? "Delivery · New order" : $"{_context.TableCode} · Delivery",
+            _ => $"{_context.TableCode} · New order",
+        },
     };
 
     public string GuestText => GuestCount == 1 ? "1 guest" : $"{GuestCount} guests";
@@ -178,6 +239,7 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
         if (parameter is OrderBuilderContext context)
         {
             _context = context;
+            OrderType = context.OrderType;
         }
 
         GuestCount = Math.Max(1, _context.GuestCount);
@@ -336,7 +398,9 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
     private void DecreaseGuests() => GuestCount = Math.Max(GuestCount - 1, 1);
 
     [RelayCommand]
-    private Task BackAsync() => _navigation.NavigateToAsync(ModuleRegistry.Tables, _context.TableId);
+    private Task BackAsync() => _context.TableId.HasValue
+        ? _navigation.NavigateToAsync(ModuleRegistry.Tables, _context.TableId.Value)
+        : _navigation.NavigateToAsync(ModuleRegistry.Tables);
 
     private bool CanSend() => !IsSending;
 
@@ -386,10 +450,23 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
 
     private Task<SendOutcome<OrderDetailDto>> CreateAsync(bool submit)
     {
+        if (OrderType == OrderType.Delivery && submit && !IsDeliveryComplete)
+        {
+            ErrorMessage = "Customer name, phone and delivery address are required for delivery.";
+            IsDeliveryDetailsOpen = true;
+            return Task.FromResult(new SendOutcome<OrderDetailDto>(SendStatus.Rejected,
+                ApiResult<OrderDetailDto>.Fail(ErrorCodes.ValidationError, ErrorMessage)));
+        }
+
         var key = EnsurePendingKey();
         var request = new CreateOrderRequest
         {
-            TableId = _context.TableId,
+            OrderType = OrderType,
+            TableId = OrderType == OrderType.DineIn ? _context.TableId : null,
+            CustomerName = OrderType == OrderType.Delivery ? CustomerName : null,
+            CustomerPhone = OrderType == OrderType.Delivery ? CustomerPhone : null,
+            DeliveryAddress = OrderType == OrderType.Delivery ? DeliveryAddress : null,
+            DeliveryNotes = OrderType == OrderType.Delivery ? DeliveryNotes : null,
             GuestCount = GuestCount,
             Items = Cart.Select(c => c.ToInput()).ToList(),
             Submit = submit,
@@ -437,12 +514,20 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
                     RecordOrdered();
                 }
 
-                _drafts.Delete(_context.TableId);
+                var draftKey = _context.TableId ?? (OrderType == OrderType.Delivery ? -2 : -1);
+                _drafts.Delete(draftKey);
                 var order = outcome.Data!;
                 _notifications.Success(submit
                     ? IsAppendMode ? $"Added items sent for order #{order.OrderNumber}." : $"Order #{order.OrderNumber} sent to the kitchen."
                     : $"Draft saved as order #{order.OrderNumber}.");
-                await _navigation.NavigateToAsync(ModuleRegistry.Tables, _context.TableId);
+                if (_context.TableId.HasValue && OrderType == OrderType.DineIn)
+                {
+                    await _navigation.NavigateToAsync(ModuleRegistry.Tables, _context.TableId.Value);
+                }
+                else
+                {
+                    await _navigation.NavigateToAsync(ModuleRegistry.Orders);
+                }
                 return;
 
             case SendStatus.Rejected:
@@ -512,7 +597,8 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
         try
         {
             Cart.Clear();
-            var local = _drafts.Load(_context.TableId);
+            var draftKey = _context.TableId ?? (OrderType == OrderType.Delivery ? -2 : -1);
+            var local = _drafts.Load(draftKey);
             if (local is not null && local.Mode == _context.Mode && local.OrderId == _context.OrderId)
             {
                 GuestCount = Math.Max(1, local.GuestCount);
@@ -587,20 +673,21 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
 
     private void SaveLocalDraft()
     {
-        if (_restoring || _context.TableId == 0)
+        var draftKey = _context.TableId ?? (OrderType == OrderType.Delivery ? -2 : -1);
+        if (_restoring || draftKey == 0)
         {
             return;
         }
 
         if (Cart.Count == 0 && _pendingKey is null)
         {
-            _drafts.Delete(_context.TableId);
+            _drafts.Delete(draftKey);
             return;
         }
 
         _drafts.Save(new LocalDraft
         {
-            TableId = _context.TableId,
+            TableId = draftKey,
             TableCode = _context.TableCode,
             Mode = _context.Mode,
             OrderId = _context.OrderId,

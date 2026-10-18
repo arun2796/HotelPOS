@@ -5,6 +5,7 @@ using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Kitchen;
+using HotelPOS.Contracts.Orders;
 using HotelPOS.Domain.Common;
 using HotelPOS.Domain.Kitchen;
 using Microsoft.EntityFrameworkCore;
@@ -103,7 +104,13 @@ internal sealed class KitchenTickets
         OrderId = ticket.OrderId,
         OrderNumber = ticket.Order?.OrderNumber ?? 0,
         BatchNumber = ticket.BatchNumber,
-        TableCode = ticket.Order?.Table?.Code ?? string.Empty,
+        TableCode = ticket.Order is null
+            ? string.Empty
+            : OrderChannels.TableLabel(ticket.Order.OrderType, ticket.Order.OrderNumber, ticket.Order.Table?.Code),
+        OrderType = ticket.Order?.OrderType ?? OrderType.DineIn,
+        CustomerName = ticket.Order?.CustomerName,
+        CustomerPhone = ticket.Order?.CustomerPhone,
+        DeliveryAddress = ticket.Order?.DeliveryAddress,
         WaiterName = waiterName,
         StationId = ticket.PreparationStationId,
         StationCode = stationCode,

@@ -58,6 +58,19 @@ public sealed partial class TicketCardViewModel : ObservableObject
 
     public int Id => Ticket.Id;
 
+    public OrderType OrderType => Ticket.OrderType;
+
+    public bool IsTakeaway => Ticket.OrderType == OrderType.Takeaway;
+
+    public bool IsDelivery => Ticket.OrderType == OrderType.Delivery;
+
+    public bool HasDeliveryInfo => IsDelivery && (!string.IsNullOrWhiteSpace(Ticket.CustomerName) || !string.IsNullOrWhiteSpace(Ticket.DeliveryAddress));
+
+    public string DeliveryRecipient => string.Join(" · ",
+        new[] { Ticket.CustomerName, Ticket.CustomerPhone }.Where(s => !string.IsNullOrWhiteSpace(s)));
+
+    public string DeliveryAddress => Ticket.DeliveryAddress ?? string.Empty;
+
     public bool IsAddBatch => Ticket.BatchNumber > 1;
 
     public string StatusText => Ticket.Status.ToString();

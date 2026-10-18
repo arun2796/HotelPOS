@@ -35,14 +35,25 @@
       </Button>
     </Grid>
 
-    <ListBox Grid.Row="1" Style="{StaticResource ChipList}" ItemsSource="{Binding Filters}" SelectedItem="{Binding SelectedFilter}"
-             AutomationProperties.Name="Order status">
-      <ListBox.ItemTemplate>
-        <DataTemplate DataType="{x:Type orders:OrderStatusFilter}">
-          <TextBlock Text="{Binding Text}" />
-        </DataTemplate>
-      </ListBox.ItemTemplate>
-    </ListBox>
+    <StackPanel Grid.Row="1" Margin="0,0,0,12">
+      <ListBox Style="{StaticResource ChipList}" ItemsSource="{Binding ChannelFilters}" SelectedItem="{Binding SelectedChannelFilter}"
+               Margin="0,0,0,8" AutomationProperties.Name="Order channel">
+        <ListBox.ItemTemplate>
+          <DataTemplate DataType="{x:Type orders:OrderChannelFilter}">
+            <TextBlock Text="{Binding Text}" />
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+
+      <ListBox Style="{StaticResource ChipList}" ItemsSource="{Binding Filters}" SelectedItem="{Binding SelectedFilter}"
+               AutomationProperties.Name="Order status">
+        <ListBox.ItemTemplate>
+          <DataTemplate DataType="{x:Type orders:OrderStatusFilter}">
+            <TextBlock Text="{Binding Text}" />
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </StackPanel>
 
     <Border Grid.Row="2" Style="{StaticResource Banner.Error}" Margin="0,0,0,12"
             Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibility}}">
@@ -67,6 +78,7 @@
         <DataGrid.Columns>
           <DataGridTextColumn Header="#" Binding="{Binding Order.OrderNumber}" Width="64" ElementStyle="{StaticResource Text.GridNumber}" />
           <DataGridTextColumn Header="TABLE" Binding="{Binding Order.TableCode}" Width="72" />
+          <DataGridTextColumn Header="CHANNEL" Binding="{Binding ChannelText}" Width="80" />
           <DataGridTextColumn Header="WAITER" Binding="{Binding Order.WaiterName}" Width="1.2*" MinWidth="100" ElementStyle="{StaticResource Text.GridTrim}" />
           <DataGridTextColumn Header="ITEMS" Binding="{Binding Order.ItemCount}" Width="64" ElementStyle="{StaticResource Text.GridNumber}" />
           <DataGridTextColumn Header="TOTAL" Binding="{Binding TotalText}" Width="104" ElementStyle="{StaticResource Text.GridNumber}"

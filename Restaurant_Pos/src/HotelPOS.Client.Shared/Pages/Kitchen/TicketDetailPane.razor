@@ -25,6 +25,23 @@
         }
         @if (_order is { } order)
         {
+            @if (order.OrderType is OrderType.Takeaway or OrderType.Delivery)
+            {
+                <div class="kds-channel" data-testid="channel-badge" style="margin-bottom: 8px;">
+                    <StatusBadge Display="StatusPresentation.For(order.OrderType)" />
+                </div>
+            }
+            @if (order.OrderType == OrderType.Delivery)
+            {
+                <div class="banner info" data-testid="delivery-info" style="margin-bottom: 8px;">
+                    <div><b>Deliver to:</b> @order.CustomerName (@order.CustomerPhone)</div>
+                    <div>@order.DeliveryAddress</div>
+                    @if (!string.IsNullOrWhiteSpace(order.DeliveryNotes))
+                    {
+                        <div class="muted small">Note: @order.DeliveryNotes</div>
+                    }
+                </div>
+            }
             <div class="kds-guests" data-testid="guests"><Icon Name="users" Size="18" /> @order.GuestCount @(order.GuestCount == 1 ? "guest" : "guests")</div>
             @if (!string.IsNullOrWhiteSpace(order.Notes))
             {

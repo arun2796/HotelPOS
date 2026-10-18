@@ -4,6 +4,14 @@
 <article class="ticket @TimingClass @(Selected ? "selected" : null)" data-ticket="@Ticket.Id" data-status="@Ticket.Status">
     <div class="ticket-top" role="button" tabindex="0" aria-label="@($"Details of {Ticket.TableCode}, order {Ticket.OrderNumber}")" @onclick="() => OnOpen.InvokeAsync(Ticket)" @onkeydown="OnKey">
         <div class="ticket-id">
+            @if (Ticket.OrderType == OrderType.Takeaway)
+            {
+                <span class="chip primary ticket-channel">Counter</span>
+            }
+            else if (Ticket.OrderType == OrderType.Delivery)
+            {
+                <span class="chip warning ticket-channel">Delivery</span>
+            }
             <span class="ticket-table">@Ticket.TableCode</span>
             @if (ShowStation && !string.IsNullOrEmpty(Ticket.StationCode))
             {

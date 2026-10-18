@@ -1,6 +1,7 @@
 @page "/my-orders"
 @attribute [Authorize]
 @implements IDisposable
+@using HotelPOS.Contracts.Enums
 @using HotelPOS.Contracts.Orders
 @using HotelPOS.Contracts.Realtime
 @inject WebAuthState Auth
@@ -14,6 +15,21 @@
 <OfflineBanner>Offline — order states may be out of date until the connection is back.</OfflineBanner>
 
 <Tabs Items="TabItems" Selected="@_tab" SelectedChanged="SelectTabAsync" />
+
+<div class="channel-chips" data-testid="channel-chips" style="display: flex; gap: 8px; margin: 12px 0; overflow-x: auto;">
+    <button type="button" class="filter-chip @(_channelFilter == null ? "on" : null)" @onclick="() => FilterChannel(null)">
+        All @(CountForChannel(null) is { } c0 ? $"({c0})" : null)
+    </button>
+    <button type="button" class="filter-chip @(_channelFilter == OrderType.DineIn ? "on" : null)" @onclick="() => FilterChannel(OrderType.DineIn)">
+        Dine-In @(CountForChannel(OrderType.DineIn) is { } c1 ? $"({c1})" : null)
+    </button>
+    <button type="button" class="filter-chip @(_channelFilter == OrderType.Takeaway ? "on" : null)" @onclick="() => FilterChannel(OrderType.Takeaway)">
+        Takeaway @(CountForChannel(OrderType.Takeaway) is { } c2 ? $"({c2})" : null)
+    </button>
+    <button type="button" class="filter-chip @(_channelFilter == OrderType.Delivery ? "on" : null)" @onclick="() => FilterChannel(OrderType.Delivery)">
+        Delivery @(CountForChannel(OrderType.Delivery) is { } c3 ? $"({c3})" : null)
+    </button>
+</div>
 
 @if (_tab == ActiveTab)
 {
@@ -31,9 +47,9 @@
     }
     else
     {
-        <div class="page-sub" data-testid="orders-summary">@TextFormat.Count(_orders.Count, "active order") · ready ones first</div>
+        <div class="page-sub" data-testid="orders-summary">@TextFormat.Count(VisibleOrders.Count(), "active order") · ready ones first</div>
         <div class="stack" data-testid="active-orders">
-            @foreach (var order in _orders)
+            @foreach (var order in VisibleOrders)
             {
                 var o = order;
                 <OrderCard Order="o" Elapsed="@Elapsed(o)" OnClick="() => Open(o)" />
@@ -57,9 +73,9 @@ else
     }
     else
     {
-        <div class="page-sub">@TextFormat.Count(_completed.Count, "order") today · newest first</div>
+        <div class="page-sub">@TextFormat.Count(VisibleCompleted.Count(), "order") today · newest first</div>
         <div class="stack" data-testid="completed-orders">
-            @foreach (var order in _completed)
+            @foreach (var order in VisibleCompleted)
             {
                 var o = order;
                 <OrderCard Order="o" Elapsed="@null" ShowProgress="false" OnClick="() => OpenCompleted(o)" />
@@ -77,9 +93,30 @@ else
     private string? _error;
     private string? _completedError;
     private string _tab = ActiveTab;
+    private OrderType? _channelFilter;
     private readonly List<IDisposable> _subscriptions = new();
     private CancellationTokenSource? _debounce;
     private Timer? _tick;
+
+    private IEnumerable<OrderSummaryDto> VisibleOrders =>
+        (_orders ?? new List<OrderSummaryDto>())
+        .Where(o => _channelFilter == null || o.OrderType == _channelFilter);
+
+    private IEnumerable<OrderSummaryDto> VisibleCompleted =>
+        (_completed ?? new List<OrderSummaryDto>())
+        .Where(o => _channelFilter == null || o.OrderType == _channelFilter);
+
+    private int? CountForChannel(OrderType? type)
+    {
+        var list = _tab == ActiveTab ? _orders : _completed;
+        if (list is null) return null;
+        return type is null ? list.Count : list.Count(o => o.OrderType == type);
+    }
+
+    private void FilterChannel(OrderType? type)
+    {
+        _channelFilter = type;
+    }
 
     private IReadOnlyList<TabItem> TabItems => new[]
     {

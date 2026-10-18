@@ -43,9 +43,9 @@ public static class ActiveOrderQueries
             || order.WaiterName.Contains(text, StringComparison.OrdinalIgnoreCase);
     }
 
-    public static IReadOnlyList<OrderSummaryDto> Apply(IEnumerable<OrderSummaryDto> orders, OrderStatus? status, string? search, OrderSort sort)
+    public static IReadOnlyList<OrderSummaryDto> Apply(IEnumerable<OrderSummaryDto> orders, OrderStatus? status, string? search, OrderSort sort, OrderType? channel = null)
     {
-        var filtered = orders.Where(o => (status is null || o.Status == status) && Matches(o, search));
+        var filtered = orders.Where(o => (status is null || o.Status == status) && (channel is null || o.OrderType == channel) && Matches(o, search));
         return (sort switch
         {
             OrderSort.Oldest => filtered.OrderBy(Since),

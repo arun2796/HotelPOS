@@ -90,7 +90,7 @@ internal sealed class BillSteps
         }
 
         var order = await _db.Orders.AsNoTracking().Where(o => o.Id == bill.OrderId)
-            .Select(o => new { o.OrderNumber, o.TableId, o.GuestCount })
+            .Select(o => new { o.OrderNumber, o.TableId, o.GuestCount, o.OrderType })
             .FirstAsync(cancellationToken);
         var userIds = new[] { bill.WaiterId, bill.SettledBy, bill.DiscountApprovedBy, bill.ClaimedByUserId }
             .Where(u => u is not null).Select(u => u!.Value)
@@ -118,6 +118,7 @@ internal sealed class BillSteps
             OrderNumber = order.OrderNumber,
             TableId = order.TableId,
             TableCode = bill.TableCode,
+            OrderType = order.OrderType,
             WaiterId = bill.WaiterId,
             WaiterName = Name(bill.WaiterId) ?? string.Empty,
             GuestCount = order.GuestCount,
@@ -202,6 +203,7 @@ internal sealed class BillSteps
             b.InvoiceNumber,
             b.OrderId,
             OrderNumber = _db.Orders.Where(o => o.Id == b.OrderId).Select(o => o.OrderNumber).FirstOrDefault(),
+            OrderType = _db.Orders.Where(o => o.Id == b.OrderId).Select(o => o.OrderType).FirstOrDefault(),
             b.TableCode,
             WaiterName = _db.Users.Where(u => u.Id == b.WaiterId).Select(u => u.DisplayName).FirstOrDefault(),
             b.Status,
@@ -228,6 +230,7 @@ internal sealed class BillSteps
                 OrderId = r.OrderId,
                 OrderNumber = r.OrderNumber,
                 TableCode = r.TableCode,
+                OrderType = r.OrderType,
                 WaiterName = r.WaiterName ?? string.Empty,
                 Status = r.Status,
                 PaymentStatus = r.PaymentStatus,

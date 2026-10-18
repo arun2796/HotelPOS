@@ -14,6 +14,25 @@
     }
     else
     {
+        <div class="picker-group" data-testid="picker-channels">
+            <div class="picker-head">Channels (no table)</div>
+            <div class="picker-grid">
+                <button type="button" class="picker-table" data-testid="picker-takeaway" style="background: var(--info);" @onclick="PickTakeaway">
+                    <span style="display: flex; align-items: center; gap: 6px;">
+                        <Icon Name="shopping-bag" Size="18" />
+                        <b>Takeaway</b>
+                    </span>
+                    <span class="small">Counter pick-up</span>
+                </button>
+                <button type="button" class="picker-table" data-testid="picker-delivery" style="background: var(--warning);" @onclick="PickDelivery">
+                    <span style="display: flex; align-items: center; gap: 6px;">
+                        <Icon Name="truck" Size="18" />
+                        <b>Delivery</b>
+                    </span>
+                    <span class="small">Customer address</span>
+                </button>
+            </div>
+        </div>
         <div class="picker-group" data-testid="picker-available">
             <div class="picker-head">Available</div>
             @if (_available.Count == 0)
@@ -96,5 +115,17 @@
     {
         await OnClose.InvokeAsync();
         Navigation.NavigateTo($"tables/{table.Id}/order");
+    }
+
+    private async Task PickTakeaway()
+    {
+        await OnClose.InvokeAsync();
+        Navigation.NavigateTo("orders/new?type=takeaway");
+    }
+
+    private async Task PickDelivery()
+    {
+        await OnClose.InvokeAsync();
+        Navigation.NavigateTo("orders/new?type=delivery");
     }
 }

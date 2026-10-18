@@ -36,6 +36,17 @@ public sealed partial class BillQueueItemViewModel : ObservableObject
 
     public string TotalText => Money.Format(Bill.GrandTotal);
 
+    public OrderType OrderType => Bill.OrderType;
+
+    public bool IsNonDineIn => Bill.OrderType != OrderType.DineIn;
+
+    public string ChannelBadge => Bill.OrderType switch
+    {
+        OrderType.Takeaway => "Takeaway",
+        OrderType.Delivery => "Delivery",
+        _ => string.Empty
+    };
+
     public string StatusText => Bill.Status == BillStatus.Finalized
         ? Bill.PaidAmount > 0 ? $"Part paid · {Money.Format(Bill.GrandTotal - Bill.PaidAmount)} due" : $"Invoice {Bill.InvoiceNumber}"
         : "Waiting";

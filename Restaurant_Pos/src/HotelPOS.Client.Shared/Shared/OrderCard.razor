@@ -1,11 +1,17 @@
 @* Phase 21 W5: one order on the My orders / Home lists: number, table, StatusBadge, elapsed, items, guests, total and the
    four-step kitchen progress derived from OrderStatus (OrderTimeline). The list DTO carries no stage times, so the steps
    show no clock values here; the details page fetches them from the kitchen tickets. *@
+@using HotelPOS.Contracts.Enums
 @using HotelPOS.Contracts.Orders
+@using HotelPOS.Contracts.Presentation
 
 <button type="button" class="card order-card @(Order.Status == OrderStatus.Ready ? "ready" : null)" data-testid="order-card" data-status="@Order.Status" @onclick="OnClick">
     <div class="order-card-head">
         <b class="order-card-title">#@Order.OrderNumber · @Order.TableCode</b>
+        @if (Order.OrderType is OrderType.Takeaway or OrderType.Delivery)
+        {
+            <StatusBadge Display="StatusPresentation.For(Order.OrderType)" />
+        }
         @if (!string.IsNullOrEmpty(Elapsed))
         {
             <span class="order-card-elapsed muted small num-tab"><Icon Name="clock" Size="14" /> @Elapsed</span>

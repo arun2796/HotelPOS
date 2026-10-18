@@ -35,6 +35,19 @@ public sealed record OrderRow(OrderSummaryDto Order, string ElapsedText, string 
     public string ItemCountText => Plural.Count(Order.ItemCount, "item");
 
     public string GuestsText => Plural.Count(Order.GuestCount, "guest");
+
+    public OrderType OrderType => Order.OrderType;
+
+    public bool IsTakeaway => Order.OrderType == OrderType.Takeaway;
+
+    public bool IsDelivery => Order.OrderType == OrderType.Delivery;
+
+    public string ChannelText => Order.OrderType switch
+    {
+        OrderType.Takeaway => "Takeaway",
+        OrderType.Delivery => "Delivery",
+        _ => "Dine-In",
+    };
 }
 
 public abstract partial class OrderListViewModelBase : ViewModelBase, INavigationAware, IRefreshable, IDisposable

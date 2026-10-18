@@ -1,10 +1,14 @@
 @page "/tables/{TableId:int}/order"
 @page "/tables/{TableId:int}/order/{OrderId:int}/add"
+@page "/orders/new"
+@page "/orders/{OrderId:int}/add"
 @attribute [Authorize]
 @implements IDisposable
+@using HotelPOS.Contracts.Enums
 @using HotelPOS.Contracts.Floor
 @using HotelPOS.Contracts.Menu
 @using HotelPOS.Contracts.Orders
+@using HotelPOS.Contracts.Presentation
 @using HotelPOS.Contracts.Realtime
 @inject WebAuthState Auth
 @inject WaiterApi Api
@@ -40,6 +44,27 @@ else
     @if (_restoredDraft)
     {
         <div class="banner info">Unsent items from earlier were restored.</div>
+    }
+
+    @if (!IsAppend)
+    {
+        <div class="channel-chips" data-testid="channel-chips" style="display: flex; gap: 8px; margin-bottom: 12px; overflow-x: auto;">
+            <button type="button" class="filter-chip @(_orderType == OrderType.DineIn ? "on" : null)" @onclick="() => SetOrderType(OrderType.DineIn)">
+                <Icon Name="users" Size="16" /> Dine-In @(_tableCode is not null ? $"({_tableCode})" : null)
+            </button>
+            <button type="button" class="filter-chip @(_orderType == OrderType.Takeaway ? "on" : null)" @onclick="() => SetOrderType(OrderType.Takeaway)">
+                <Icon Name="shopping-bag" Size="16" /> Takeaway
+            </button>
+            <button type="button" class="filter-chip @(_orderType == OrderType.Delivery ? "on" : null)" @onclick="() => SetOrderType(OrderType.Delivery)">
+                <Icon Name="truck" Size="16" /> Delivery
+            </button>
+            @if (_orderType == OrderType.Delivery)
+            {
+                <button type="button" class="btn small @(IsDeliveryDetailsComplete ? "outline" : "warning")" data-testid="open-delivery-details" @onclick="() => _showDeliverySheet = true">
+                    <Icon Name="truck" Size="14" /> @(IsDeliveryDetailsComplete ? $"{_customerName} ({_customerPhone})" : "Add delivery details *")
+                </button>
+            }
+        </div>
     }
 
     <SearchBox Id="menu-search" @bind-Value="SearchText" Placeholder="Search dishes (name or code)" AriaLabel="Search items" />
@@ -129,9 +154,59 @@ else
                       OnConfirm="r => ConfirmOptions(options, r)" OnClose="() => _options = null" />
 }
 
+@if (_showDeliverySheet)
+{
+    <BottomSheet Open="true" Title="Delivery details" OnClose="() => _showDeliverySheet = false">
+        <div class="form-fields" style="display: flex; flex-direction: column; gap: 12px;">
+            <label class="field">
+                <span>Customer Name *</span>
+                <input class="input" type="text" data-testid="delivery-name" @bind="_customerName" placeholder="Recipient's full name" required />
+            </label>
+            <label class="field">
+                <span>Phone Number *</span>
+                <input class="input" type="tel" data-testid="delivery-phone" @bind="_customerPhone" placeholder="Mobile number" required />
+            </label>
+            <label class="field">
+                <span>Delivery Address *</span>
+                <textarea class="input" data-testid="delivery-address" @bind="_deliveryAddress" placeholder="Street, building, flat number" rows="3" required></textarea>
+            </label>
+            <label class="field">
+                <span>Delivery Notes</span>
+                <input class="input" type="text" data-testid="delivery-notes" @bind="_deliveryNotes" placeholder="Landmark, gate instructions..." />
+            </label>
+        </div>
+        <div class="sheet-actions" style="margin-top: 16px;">
+            <button type="button" class="btn primary block" data-testid="save-delivery-details" @onclick="() => _showDeliverySheet = false">Save details</button>
+        </div>
+    </BottomSheet>
+}
+
 @code {
-    [Parameter] public int TableId { get; set; }
+    [Parameter] public int? TableId { get; set; }
     [Parameter] public int? OrderId { get; set; }
+    [SupplyParameterFromQuery] public string? Type { get; set; }
+
+    private OrderType _orderType = OrderType.DineIn;
+    private string? _customerName;
+    private string? _customerPhone;
+    private string? _deliveryAddress;
+    private string? _deliveryNotes;
+    private bool _showDeliverySheet;
+
+    private bool IsDeliveryDetailsComplete =>
+        !string.IsNullOrWhiteSpace(_customerName) &&
+        !string.IsNullOrWhiteSpace(_customerPhone) &&
+        !string.IsNullOrWhiteSpace(_deliveryAddress);
+
+    private void SetOrderType(OrderType type)
+    {
+        _orderType = type;
+        if (type == OrderType.Delivery && !IsDeliveryDetailsComplete)
+        {
+            _showDeliverySheet = true;
+        }
+        SetTitle();
+    }
 
     private readonly OrderComposer _cart = new();
     private MenuDto? _menu;
@@ -185,21 +260,41 @@ else
         set { _cart.Guests = value; SetTitle(); _ = PersistAsync(); }
     }
 
+    private int DraftKey => TableId ?? (_orderType == OrderType.Delivery ? -2 : -1);
+
     private void SetTitle()
     {
-        var what = IsAppend ? "Add items" : "New order";
+        var what = IsAppend ? "Add items" : _orderType == OrderType.Takeaway ? "Takeaway" : _orderType == OrderType.Delivery ? "Delivery" : "New order";
         var title = _tableCode is null ? what : $"{_tableCode} · {what}";
-        Shell.Set(title, IsAppend ? null : TextFormat.Count(_cart.Guests, "guest"), $"tables/{TableId}");
+        var backUrl = TableId.HasValue ? $"tables/{TableId.Value}" : "my-orders";
+        Shell.Set(title, IsAppend ? null : TextFormat.Count(_cart.Guests, "guest"), backUrl);
     }
 
     protected override async Task OnInitializedAsync()
     {
+        if (!string.IsNullOrEmpty(Type))
+        {
+            if (Type.Equals("takeaway", StringComparison.OrdinalIgnoreCase))
+            {
+                _orderType = OrderType.Takeaway;
+            }
+            else if (Type.Equals("delivery", StringComparison.OrdinalIgnoreCase))
+            {
+                _orderType = OrderType.Delivery;
+                _showDeliverySheet = true;
+            }
+        }
+        else if (!TableId.HasValue)
+        {
+            _orderType = OrderType.Takeaway;
+        }
+
         SetTitle();
         await Realtime.StartAsync();
         _menuSubscription = Realtime.Subscribe<MenuChangedEvent>(HubEvents.MenuChanged, changed => { Api.InvalidateMenu(); _ = InvokeAsync(LoadAsync); });
 
         await Favourites.LoadAsync();
-        var draft = await Drafts.LoadAsync(TableId);
+        var draft = await Drafts.LoadAsync(DraftKey);
         if (draft is not null && draft.OrderId == OrderId)
         {
             _cart.LoadDraft(draft);
@@ -207,13 +302,16 @@ else
             _restoredDraft = !_cart.IsEmpty;
         }
 
-        var table = await Api.GetTableAsync(TableId);
-        if (table.Success && table.Data is { } detail)
+        if (TableId.HasValue)
         {
-            _tableCode = detail.Table.Code;
-            if (!IsAppend && draft is null && detail.Table.GuestCount is { } guests)
+            var table = await Api.GetTableAsync(TableId.Value);
+            if (table.Success && table.Data is { } detail)
             {
-                _cart.Guests = guests;
+                _tableCode = detail.Table.Code;
+                if (!IsAppend && draft is null && detail.Table.GuestCount is { } guests)
+                {
+                    _cart.Guests = guests;
+                }
             }
         }
 
@@ -303,18 +401,25 @@ else
     }
 
     private ValueTask PersistAsync() => _cart.IsEmpty && _pendingKey is null
-        ? Drafts.RemoveAsync(TableId)
-        : Drafts.SaveAsync(_cart.ToDraft(TableId, OrderId, _pendingKey));
+        ? Drafts.RemoveAsync(DraftKey)
+        : Drafts.SaveAsync(_cart.ToDraft(DraftKey, OrderId, _pendingKey));
 
     private async Task SaveDraftAndBackAsync()
     {
         await PersistAsync();
         Toasts.Info(_cart.IsEmpty ? "Nothing to keep." : "Draft kept on this phone.");
-        Navigation.NavigateTo($"tables/{TableId}");
+        Navigation.NavigateTo(TableId.HasValue && _orderType == OrderType.DineIn ? $"tables/{TableId.Value}" : "my-orders");
     }
 
     private async Task SendAsync()
     {
+        if (_orderType == OrderType.Delivery && !IsDeliveryDetailsComplete)
+        {
+            Toasts.Error("Customer name, phone, and delivery address are required.");
+            _showDeliverySheet = true;
+            return;
+        }
+
         _sending = true;
         try
         {
@@ -327,7 +432,12 @@ else
                 ? await Sender.SendAsync(key, (k, ct) => Api.AppendItemsAsync(OrderId!.Value, new AppendOrderItemsRequest { Items = _cart.ToInputs() }, k, ct))
                 : await Sender.SendAsync(key, (k, ct) => Api.CreateOrderAsync(new CreateOrderRequest
                 {
-                    TableId = TableId,
+                    OrderType = _orderType,
+                    TableId = _orderType == OrderType.DineIn ? TableId : null,
+                    CustomerName = _orderType == OrderType.Delivery ? _customerName : null,
+                    CustomerPhone = _orderType == OrderType.Delivery ? _customerPhone : null,
+                    DeliveryAddress = _orderType == OrderType.Delivery ? _deliveryAddress : null,
+                    DeliveryNotes = _orderType == OrderType.Delivery ? _deliveryNotes : null,
                     GuestCount = _cart.Guests,
                     Notes = _cart.Notes,
                     Items = _cart.ToInputs(),
@@ -341,9 +451,9 @@ else
                 await Favourites.RecordOrderedAsync(_cart.Lines.Select(l => l.MenuItemId));
                 _cart.Clear();
                 _review = false;
-                await Drafts.RemoveAsync(TableId);
+                await Drafts.RemoveAsync(DraftKey);
                 Toasts.Success(IsAppend ? $"Added items sent for order #{order.OrderNumber}." : $"Order #{order.OrderNumber} sent to the kitchen.");
-                Navigation.NavigateTo($"tables/{TableId}");
+                Navigation.NavigateTo(TableId.HasValue && _orderType == OrderType.DineIn ? $"tables/{TableId.Value}" : "my-orders");
                 return;
             }
 
@@ -357,7 +467,10 @@ else
                     await Api.GetOrderAsync(OrderId!.Value);
                 }
 
-                await Api.GetTableAsync(TableId);
+                if (TableId.HasValue)
+                {
+                    await Api.GetTableAsync(TableId.Value);
+                }
                 await LoadAsync();
             }
             else if (result.IsTransient)

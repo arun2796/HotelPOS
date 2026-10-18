@@ -6,6 +6,7 @@ using HotelPOS.Contracts.Floor;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Contracts.Security;
 using HotelPOS.Desktop.Modules.Common;
+using HotelPOS.Desktop.Modules.Orders;
 using HotelPOS.Desktop.Services.Api;
 using HotelPOS.Desktop.Services.Auth;
 using HotelPOS.Desktop.Services.Navigation;
@@ -39,6 +40,7 @@ public sealed partial class TableMapViewModel : ViewModelBase, INavigationAware,
 {
     private readonly IFloorApi _floorApi;
     private readonly IRealtimeClient _realtime;
+    private readonly INavigationService _navigation;
     private readonly Dictionary<int, TableTileViewModel> _tiles = new();
     private readonly List<IDisposable> _subscriptions = new();
     private int? _selectAfterLoad;
@@ -58,10 +60,11 @@ public sealed partial class TableMapViewModel : ViewModelBase, INavigationAware,
     {
         _floorApi = floorApi;
         _realtime = realtime;
+        _navigation = navigation;
         var roles = session.User?.Roles ?? Array.Empty<string>();
         var isManager = roles.Contains(Roles.Manager) || roles.Contains(Roles.Admin);
-        var canTakeOrders = roles.Contains(Roles.Waiter) || isManager;
-        Details = new TableDetailsViewModel(floorApi, ordersApi, drafts, navigation, dialogs, notifications, ApplyTable, RefreshAsync, canTakeOrders, isManager,
+        CanTakeOrders = roles.Contains(Roles.Waiter) || isManager;
+        Details = new TableDetailsViewModel(floorApi, ordersApi, drafts, navigation, dialogs, notifications, ApplyTable, RefreshAsync, CanTakeOrders, isManager,
             roles.Contains(Roles.Cashier));
     }
 
@@ -85,6 +88,18 @@ public sealed partial class TableMapViewModel : ViewModelBase, INavigationAware,
     public DateTime ServerNowUtc => DateTime.UtcNow + _serverClockOffset;
 
     public IReadOnlyCollection<TableTileViewModel> AllTables => _tiles.Values;
+
+    public bool CanTakeOrders { get; }
+
+    [RelayCommand]
+    private Task NewTakeawayOrderAsync() =>
+        _navigation.NavigateToPageAsync<OrderBuilderViewModel>(
+            new OrderBuilderContext(null, string.Empty, OrderBuilderMode.NewOrder, 1, OrderType: OrderType.Takeaway));
+
+    [RelayCommand]
+    private Task NewDeliveryOrderAsync() =>
+        _navigation.NavigateToPageAsync<OrderBuilderViewModel>(
+            new OrderBuilderContext(null, string.Empty, OrderBuilderMode.NewOrder, 1, OrderType: OrderType.Delivery));
 
     public async Task OnNavigatedToAsync(object? parameter)
     {
