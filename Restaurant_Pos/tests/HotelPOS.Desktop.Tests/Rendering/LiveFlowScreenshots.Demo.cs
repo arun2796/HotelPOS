@@ -154,6 +154,7 @@ public partial class LiveFlowScreenshots
         }
         finally
         {
+            await StopRecordingAsync();
             if (_demoTerminal is { } terminal)
             {
                 _demoTerminal = null;
@@ -173,6 +174,7 @@ public partial class LiveFlowScreenshots
 
     private async Task DemoShotAsync(string name, Func<System.Windows.Controls.ScrollViewer, bool>? scrollToEnd = null, double? fraction = null)
     {
+        EnsureRecording();
         var file = $"{++_demoShotNo:00}-{name}";
         await RenderAsync(_demoTerminal!, file, scrollToEnd, fraction);
         _stepShots.Add(file + ".png");
@@ -181,6 +183,7 @@ public partial class LiveFlowScreenshots
     private async Task StepAsync(string step, string action, string expected, Func<Task<string?>> body)
     {
         _stepShots.Clear();
+        var recordStart = _recorder?.Now ?? 0;
         var watch = Stopwatch.StartNew();
         var result = "Pass";
         var notes = "";
@@ -244,6 +247,7 @@ public partial class LiveFlowScreenshots
         }
 
         await RecordAsync(_demoChapter, step, action, expected, result, string.Join("<br>", _stepShots), notes);
+        await MarkStepAsync(_demoStepNo, step, result, recordStart);
     }
 
     private async Task RecordAsync(string chapter, string step, string action, string expected, string result, string shots, string notes)
@@ -1279,7 +1283,12 @@ public partial class LiveFlowScreenshots
                     var item = reservations.SelectedReservation ?? throw new DemoCheckException("no reservation selected");
                     ClearToasts();
                     await reservations.SeatCommand.ExecuteAsync(item);
-                    await Task.Delay(500);
+                    // The list reloads after the command; under load (video recording) that takes more than half a second.
+                    for (var wait = 0; wait < 12 && reservations.Reservations.FirstOrDefault(r => r.CustomerName == guest)?.Status != ReservationStatus.Seated; wait++)
+                    {
+                        await Task.Delay(500);
+                    }
+
                     reservations.SelectedReservation = reservations.Reservations.FirstOrDefault(r => r.CustomerName == guest);
                     await DemoShotAsync("reservation-seated");
                     Check(reservations.SelectedReservation?.Status == ReservationStatus.Seated, $"status is {reservations.SelectedReservation?.Status}");

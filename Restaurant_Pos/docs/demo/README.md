@@ -231,5 +231,14 @@ Smaller UI/UX notes (clipped columns, chips, stale demo data, slow steps) are li
    `artifacts/demo-video/` (gitignored); `narration-script.md` there lists every spoken line. `VOICE="Microsoft David Desktop"`
    and `RATE=-1` change the voice and pace; delete `artifacts/demo-video/work` to rebuild from scratch.
 
+6. Narrated videos of the LIVE application (no still pictures; `artifacts/demo-video-live/`): the same two harnesses record
+   themselves while they drive the app and pause after each step for its narration (`docs/ui-ux/tools/demo-narration.json`,
+   simple English, one line per step). From the Playwright scratch folder: `node <repo>/docs/ui-ux/tools/demo-video-live.mjs --prepare`
+   (speaks the lines, writes `work/durations.json`), then the desktop run with `HOTELPOS_DEMO_RECORD=<out>/record`
+   `HOTELPOS_DEMO_NARRATION=<out>/work/durations.json` `HOTELPOS_FFMPEG=<ffmpeg.exe>` added to step 2, then the web run with
+   `RECORD_DIR=<out>/record HOTELPOS_DEMO_NARRATION=…` added to step 3, then `node …/demo-video-live.mjs` to cut and join
+   (`01-admin.mp4` … `05-manager.mp4`, `HotelPOS-full-walkthrough.mp4`, `narration-script.md`). Tables DP1/DP2 must be free
+   before the manager chapter (its reservation is seated on one of them): settle their bills and cancel stale bookings first.
+
 Android: the same PWA pages run inside the Android app (`docs/ops/09-android-app.md`); phone screenshots for the video
 are best taken on the device itself after the owner's device test.

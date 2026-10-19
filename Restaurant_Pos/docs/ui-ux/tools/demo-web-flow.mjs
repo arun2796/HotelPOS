@@ -36,6 +36,27 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? 'Admin@1234';
 const MIN_TARGET = 48;
 const WF = '02-waiter-phone';
 const KF = '03-kitchen-tablet';
+
+// ---------------- video recording (RECORD_DIR) ----------------
+// With RECORD_DIR set, both pages are recorded (Playwright recordVideo, waiter 780x1688, kitchen 1024x768), a pointer
+// is drawn where the script taps, and after every step the run pauses for the step's narration
+// (HOTELPOS_DEMO_NARRATION = JSON { "<folder>/<step slug>": seconds }) so the result stays on screen while the voice
+// explains it. RECORD_DIR/web-record.json lists the two video files and every step with its start/end second in its
+// page's video; docs/ui-ux/tools/demo-video-live.mjs cuts the chapters from that.
+const RECORD = process.env.RECORD_DIR ?? null;
+const NARRATION = (() => { const f = process.env.HOTELPOS_DEMO_NARRATION; return f && fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')) : {}; })();
+const stepKey = (folder, name) => folder + '/' + name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+const marks = [];
+const videoT0 = {};
+const POINTER = `(() => { if (window.top !== window) return; const d = document.createElement('div');
+  d.style.cssText = 'position:fixed;z-index:2147483647;width:26px;height:26px;margin:-13px 0 0 -13px;pointer-events:none;border-radius:50%;background:rgba(220,38,38,.55);border:3px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.35);transition:transform .08s;display:none';
+  const add = () => document.documentElement.appendChild(d);
+  document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', add) : add();
+  const mv = e => { d.style.display = 'block'; d.style.left = e.clientX + 'px'; d.style.top = e.clientY + 'px'; };
+  document.addEventListener('mousemove', mv, true);
+  document.addEventListener('mousedown', e => { mv(e); d.style.transform = 'scale(.6)'; }, true);
+  document.addEventListener('mouseup', () => { d.style.transform = 'scale(1)'; }, true);
+  document.addEventListener('touchstart', e => { const t = e.touches[0]; if (t) mv(t); }, true); })();`;
 for (const f of [WF, KF]) {
   fs.rmSync(path.join(OUT, f), { recursive: true, force: true });
   fs.mkdirSync(path.join(OUT, f), { recursive: true });
@@ -136,6 +157,13 @@ async function step(chapter, stepName, action, expected, page, folder, shotName,
     try { file = await shot(page, folder, shotName, shotOpts); } catch (e) { notes += ` [screenshot failed: ${String(e.message).split('\n')[0]}]`; }
   }
   rows.push({ n: stepNo, chapter, step: stepName, action, expected, result, file, notes: notes.trim() });
+  if (RECORD) {
+    const role = page === w ? 'waiter' : 'kitchen';
+    const key = stepKey(folder, stepName);
+    const included = typeof NARRATION[key] === 'number';
+    if (included) await page.waitForTimeout(NARRATION[key] * 1000 + 800).catch(() => {});
+    marks.push({ n: stepNo, chapter, step: stepName, key, role, start: (t0 - videoT0[role]) / 1000, end: (Date.now() - videoT0[role]) / 1000, result, included });
+  }
   log(`step ${stepNo} ${result} ${stepName}${file ? ' -> ' + file : ''} (${Date.now() - t0} ms)`);
 }
 const bold = (p, sel, opts) => p.locator(sel).first().waitFor({ timeout: 10000, ...opts });
@@ -326,13 +354,18 @@ const PICTURE_ITEMS = [['Chicken Biryani', 38, '#d98a2b'], ['Butter Naan', 42, '
 }
 
 const common = { serviceWorkers: 'block', deviceScaleFactor: 2, hasTouch: true, colorScheme: 'light', locale: 'en-IN', timezoneId: 'Asia/Kolkata' };
-const waiterCtx = await browser.newContext({ ...common, viewport: { width: 390, height: 844 }, isMobile: true, storageState: stateFor('waiter') });
-const kitchenCtx = await browser.newContext({ ...common, viewport: { width: 1024, height: 768 }, storageState: stateFor('kitchen') });
+const waiterCtx = await browser.newContext({ ...common, viewport: { width: 390, height: 844 }, isMobile: true, storageState: stateFor('waiter'),
+  ...(RECORD ? { recordVideo: { dir: path.join(RECORD, 'waiter'), size: { width: 780, height: 1688 } } } : {}) });
+const kitchenCtx = await browser.newContext({ ...common, viewport: { width: 1024, height: 768 }, storageState: stateFor('kitchen'),
+  ...(RECORD ? { recordVideo: { dir: path.join(RECORD, 'kitchen'), size: { width: 1024, height: 768 } } } : {}) });
+if (RECORD) { await waiterCtx.addInitScript(POINTER); await kitchenCtx.addInitScript(POINTER); }
 // (web-flow.mjs rewrote /app/_content/ to /_content/ for builds before 20.11; on current builds that breaks the CSS, so it is gone.)
 const hubSockets = [];
 await waiterCtx.routeWebSocket(/\/hub/, ws => { ws.connectToServer(); hubSockets.push(ws); });
 const w = await waiterCtx.newPage();
+videoT0.waiter = Date.now();
 const k = await kitchenCtx.newPage();
+videoT0.kitchen = Date.now();
 for (const [role, p] of [['waiter', w], ['kitchen', k]]) {
   p.setDefaultTimeout(15000);
   p.on('console', m => { if (m.type() === 'error') consoleErrors.push({ role, url: p.url(), text: m.text().slice(0, 400) }); });
@@ -806,7 +839,13 @@ try {
   await waiterCtx.setOffline(false).catch(() => {});
   await saveState(waiterCtx, 'waiter').catch(() => {});
   await saveState(kitchenCtx, 'kitchen').catch(() => {});
+  const videos = RECORD ? { waiter: w.video(), kitchen: k.video() } : null;
   await browser.close();
+  if (videos) {
+    const paths = { waiter: await videos.waiter.path(), kitchen: await videos.kitchen.path() };
+    fs.writeFileSync(path.join(RECORD, 'web-record.json'), JSON.stringify({ videos: paths, steps: marks }, null, 1));
+    log(`recorded ${marks.length} steps -> ${paths.waiter}, ${paths.kitchen}`);
+  }
 
   // ---- device clean-up: deactivate the WEB-* terminals this run's browser profiles registered ----
   const cleanup = [];
