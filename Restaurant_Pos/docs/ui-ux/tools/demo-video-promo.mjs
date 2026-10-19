@@ -19,6 +19,11 @@ const PROMO = path.join(OUT, 'promo');
 const ONLY = process.env.ROLES ? process.env.ROLES.split(',').map(s => s.trim()) : ['1', '2', '3', '4', '5'];
 const MAX_LEAD = 8;
 const LEVEL = Number(process.env.MUSIC_LEVEL ?? '0.16');
+// THEME colours the role and app videos; FULL_THEME (default: the same) colours the full walkthrough.
+const THEME = process.env.THEME ?? 'navy';
+const FULL_THEME = process.env.FULL_THEME ?? THEME;
+const themes = [...new Set([THEME, FULL_THEME])];
+const sfx = t => t === 'navy' ? '' : `-${t}`;
 
 const narration = JSON.parse(fs.readFileSync(path.join(here, 'demo-narration.json'), 'utf8'));
 delete narration._comment;
@@ -96,49 +101,55 @@ const titleOf = s => s.step.replace(/\s*\(.*?\)\s*/g, ' ').replace(/\s+/g, ' ').
 
 // ---------------------------------------------------------------- frames
 
-const frames = [
-  { png: path.join(WORK, 'promo-opening.png'), html: promoCardHtml({ eyebrow: 'Restaurant point of sale', headline: 'HotelPOS', sub: OPENING.sub, pills: OPENING.bullets.length ? ['Administrator', 'Waiter', 'Kitchen', 'Cashier', 'Manager'] : [] }) },
-  { png: path.join(WORK, 'promo-closing.png'), html: promoCardHtml({ eyebrow: 'What runs underneath', headline: CLOSING.heading, sub: CLOSING.sub, pills: CLOSING.bullets, small: true }) },
-];
-for (const a of Object.values(APPS)) frames.push({ png: path.join(WORK, `promo-${a.id}.png`), html: promoCardHtml({ eyebrow: a.eyebrow, headline: a.headline, sub: a.sub, pills: a.pills }) });
-for (const ch of chapters) {
-  const card = cards[ch.n];
-  frames.push({ png: path.join(WORK, `promo-${card.id}.png`), html: promoCardHtml({ eyebrow: `Chapter ${ch.n} · ${ch.r.title}`, headline: ch.r.role, sub: `${ch.r.client} · ${ch.steps.length} steps`, pills: ch.r.duties, small: true }) });
-  ch.steps.forEach((s, i) => {
-    const size = s.crop ? { w: s.srcW, h: s.srcH } : sizeOf(s.src);
-    s.no = i + 1;
-    s.box = fitBox(size.w, size.h, s.kind);
-    s.caption = narration[s.key];
-    s.png = path.join(WORK, `promo-${wavId(s.key)}.png`);
-    frames.push({ png: s.png, html: promoFrameHtml({ eyebrow: `${ch.r.role} · ${ch.r.title}`, headline: titleOf(s), box: s.box, subtitle: s.caption, title: `HotelPOS · ${ch.r.role}` }) });
-  });
+const frames = [];
+for (const theme of themes) {
+  const x = sfx(theme);
+  frames.push({ png: path.join(WORK, `promo-opening${x}.png`), html: promoCardHtml({ theme, eyebrow: 'Restaurant point of sale', headline: 'HotelPOS', sub: OPENING.sub, pills: ['Administrator', 'Waiter', 'Kitchen', 'Cashier', 'Manager'] }) });
+  frames.push({ png: path.join(WORK, `promo-closing${x}.png`), html: promoCardHtml({ theme, eyebrow: 'What runs underneath', headline: CLOSING.heading, sub: CLOSING.sub, pills: CLOSING.bullets, small: true }) });
+  for (const a of Object.values(APPS)) frames.push({ png: path.join(WORK, `promo-${a.id}${x}.png`), html: promoCardHtml({ theme, eyebrow: a.eyebrow, headline: a.headline, sub: a.sub, pills: a.pills }) });
+  for (const ch of chapters) {
+    const card = cards[ch.n];
+    frames.push({ png: path.join(WORK, `promo-${card.id}${x}.png`), html: promoCardHtml({ theme, eyebrow: `Chapter ${ch.n} · ${ch.r.title}`, headline: ch.r.role, sub: `${ch.r.client} · ${ch.steps.length} steps`, pills: ch.r.duties, small: true }) });
+    ch.steps.forEach((s, i) => {
+      const size = s.crop ? { w: s.srcW, h: s.srcH } : sizeOf(s.src);
+      s.no = i + 1;
+      s.box = fitBox(size.w, size.h, s.kind);
+      s.caption = narration[s.key];
+      s.png ??= {};
+      s.png[theme] = path.join(WORK, `promo-${wavId(s.key)}${x}.png`);
+      frames.push({ png: s.png[theme], html: promoFrameHtml({ theme, eyebrow: `${ch.r.role} · ${ch.r.title}`, headline: titleOf(s), box: s.box, subtitle: s.caption, title: `HotelPOS · ${ch.r.role}` }) });
+    });
+  }
 }
 console.log(`rendered ${await renderFrames(frames)} new frames`);
 
 // ---------------------------------------------------------------- clips and outputs
 
 let encoded = 0;
-const still = id => { const mp4 = path.join(WORK, `promo-${id}.mp4`); if (clipPromoStill(path.join(WORK, `promo-${id}.png`), path.join(WORK, `${id}.wav`), mp4)) encoded++; return mp4; };
+const still = (id, theme) => { const x = sfx(theme); const mp4 = path.join(WORK, `promo-${id}${x}.mp4`); if (clipPromoStill(path.join(WORK, `promo-${id}${x}.png`), path.join(WORK, `${id}.wav`), mp4)) encoded++; return mp4; };
 const chapterClips = {};
-for (const ch of chapters) {
-  const clips = [still(cards[ch.n].id)];
-  for (const s of ch.steps) {
-    const wav = path.join(WORK, `${wavId(s.key)}.wav`);
-    const speech = seconds[wavId(s.key)];
-    let start = s.start;
-    let len = s.end - s.start;
-    if (len > speech + MAX_LEAD) { start = s.end - (speech + MAX_LEAD); len = speech + MAX_LEAD; }
-    if (len < speech + 0.5) len = speech + 0.5;
-    const mp4 = path.join(WORK, `promo-${wavId(s.key)}.mp4`);
-    if (clipPromo(s.src, Math.max(0, start), len, s.png, wav, mp4, s.box, s.crop)) encoded++;
-    clips.push(mp4);
+for (const theme of themes) {
+  chapterClips[theme] = {};
+  for (const ch of chapters) {
+    const clips = [still(cards[ch.n].id, theme)];
+    for (const s of ch.steps) {
+      const wav = path.join(WORK, `${wavId(s.key)}.wav`);
+      const speech = seconds[wavId(s.key)];
+      let start = s.start;
+      let len = s.end - s.start;
+      if (len > speech + MAX_LEAD) { start = s.end - (speech + MAX_LEAD); len = speech + MAX_LEAD; }
+      if (len < speech + 0.5) len = speech + 0.5;
+      const mp4 = path.join(WORK, `promo-${wavId(s.key)}${sfx(theme)}.mp4`);
+      if (clipPromo(s.src, Math.max(0, start), len, s.png[theme], wav, mp4, s.box, s.crop)) encoded++;
+      clips.push(mp4);
+    }
+    chapterClips[theme][ch.n] = clips;
   }
-  chapterClips[ch.n] = clips;
 }
 console.log(`encoded ${encoded} new clips`);
 
 const music = process.env.MUSIC ?? path.join(WORK, 'music-bed.wav');
-const totalLen = Object.values(chapterClips).flat().reduce((a, c) => a + duration(c), 0) + 60;
+const totalLen = Object.values(chapterClips[THEME]).flat().reduce((a, c) => a + duration(c), 0) + 60;
 if (!process.env.MUSIC && (!fs.existsSync(music) || duration(music) < totalLen)) { writeMusic(music, totalLen); console.log(`music bed ${fmt(totalLen)}`); }
 
 function finish(clips, name) {
@@ -152,15 +163,15 @@ function finish(clips, name) {
 const summary = [];
 for (const ch of chapters) {
   const out = path.join(PROMO, `${ch.r.file}.mp4`);
-  summary.push(`${path.basename(out).padEnd(32)} ${ch.r.role.padEnd(14)} ${String(ch.steps.length).padStart(3)} steps  ${fmt(finish(chapterClips[ch.n], out))}`);
+  summary.push(`${path.basename(out).padEnd(32)} ${ch.r.role.padEnd(14)} ${String(ch.steps.length).padStart(3)} steps  ${fmt(finish(chapterClips[THEME][ch.n], out))}`);
 }
 for (const a of Object.values(APPS)) {
-  const have = a.chapters.filter(n => chapterClips[n]);
+  const have = a.chapters.filter(n => chapterClips[THEME][n]);
   if (!have.length) continue;
   const out = path.join(PROMO, 'apps', `${a.file}.mp4`);
-  summary.push(`apps/${path.basename(out).padEnd(27)} ${a.headline.padEnd(14)} ${fmt(finish([still(a.id), ...have.flatMap(n => chapterClips[n])], out))}`);
+  summary.push(`apps/${path.basename(out).padEnd(27)} ${a.headline.padEnd(14)} ${fmt(finish([still(a.id, THEME), ...have.flatMap(n => chapterClips[THEME][n])], out))}`);
 }
 const full = path.join(PROMO, 'HotelPOS-full-walkthrough.mp4');
-const fullLen = finish([still('opening'), ...chapters.flatMap(ch => chapterClips[ch.n]), still('closing')], full);
+const fullLen = finish([still('opening', FULL_THEME), ...chapters.flatMap(ch => chapterClips[FULL_THEME][ch.n]), still('closing', FULL_THEME)], full);
 for (const s of summary) console.log(s);
-console.log(`${path.basename(full).padEnd(32)} ${fmt(fullLen)}  (${(fs.statSync(full).size / 1048576).toFixed(0)} MB) -> ${PROMO}`);
+console.log(`${path.basename(full).padEnd(32)} ${fmt(fullLen)}  (${(fs.statSync(full).size / 1048576).toFixed(0)} MB, theme ${FULL_THEME}) -> ${PROMO}`);

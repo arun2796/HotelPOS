@@ -41,6 +41,27 @@ export const PROMO_CSS = `
   .brand b { color: #2dd4bf; }
 `;
 
+// Scene themes: navy is the reference look; emerald uses the HotelPOS green with a diagonal light sweep.
+export const THEMES = {
+  navy: '',
+  emerald: `
+    html, body { background: #04100c; }
+    .bg { background:
+        linear-gradient(115deg, transparent 38%, rgba(134,239,172,.10) 50%, transparent 62%),
+        radial-gradient(900px 540px at 16% 20%, rgba(22,163,74,.46), transparent 65%),
+        radial-gradient(800px 500px at 86% 84%, rgba(20,184,166,.36), transparent 65%),
+        linear-gradient(180deg, #06140f 0%, #071a14 55%, #04100c 100%); }
+    .grid { opacity: .12; background-image: linear-gradient(rgba(134,239,172,.35) 1px, transparent 1px), linear-gradient(90deg, rgba(134,239,172,.35) 1px, transparent 1px); }
+    .eyebrow, .brand b { color: #4ade80; }
+    .headline b, .card h1 b { background: linear-gradient(90deg, #4ade80, #2dd4bf); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .mock { background: #0a1f17; box-shadow: 0 40px 90px rgba(0,0,0,.62), 0 0 0 1px rgba(134,239,172,.2), 0 0 140px rgba(74,222,128,.16); }
+    .mock .bar { background: #0d2a1f; }
+    .phone { box-shadow: 0 40px 90px rgba(0,0,0,.62), 0 0 0 10px #0a1f17, 0 0 0 12px rgba(134,239,172,.3), 0 0 140px rgba(74,222,128,.16); }
+    .pill { border-color: rgba(134,239,172,.32); background: rgba(6,20,15,.72); }
+  `,
+};
+const css = theme => PROMO_CSS + (THEMES[theme] ?? '');
+
 // Headline with the last word accented ("Floor plan: save" -> "Floor plan: <b>save.</b>").
 export function accentLast(text) {
   const t = String(text).trim().replace(/\.$/, '') + '.';
@@ -58,12 +79,12 @@ export function fitBox(srcW, srcH, kind) {
   return { x: Math.round((1920 - w) / 2), y: kind === 'phone' ? 196 : 236, w, h, kind };
 }
 
-export function promoFrameHtml({ eyebrow, headline, box, subtitle, title }) {
+export function promoFrameHtml({ eyebrow, headline, box, subtitle, title, theme = 'navy' }) {
   const mock = box.kind === 'phone'
     ? `<div class="mock phone" style="left:${box.x}px;top:${box.y}px;width:${box.w}px;height:${box.h}px"></div>`
     : `<div class="mock" style="left:${box.x}px;top:${box.y - 36}px;width:${box.w}px;height:${box.h + 36}px">
          <div class="bar"><i style="background:#f87171"></i><i style="background:#fbbf24"></i><i style="background:#34d399"></i><span>${esc(title ?? 'HotelPOS')}</span></div></div>`;
-  return `<!doctype html><html><head><meta charset="utf-8"><style>${PROMO_CSS}</style></head><body>
+  return `<!doctype html><html><head><meta charset="utf-8"><style>${css(theme)}</style></head><body>
     <div class="bg"></div><div class="grid"></div><div class="brand">Hotel<b>POS</b></div>
     <div class="eyebrow">${esc(eyebrow)}</div><div class="headline">${accentLast(headline)}</div>
     ${mock}
@@ -71,8 +92,8 @@ export function promoFrameHtml({ eyebrow, headline, box, subtitle, title }) {
   </body></html>`;
 }
 
-export function promoCardHtml({ eyebrow, headline, sub, pills = [], small = false }) {
-  return `<!doctype html><html><head><meta charset="utf-8"><style>${PROMO_CSS}</style></head><body>
+export function promoCardHtml({ eyebrow, headline, sub, pills = [], small = false, theme = 'navy' }) {
+  return `<!doctype html><html><head><meta charset="utf-8"><style>${css(theme)}</style></head><body>
     <div class="bg"></div><div class="grid"></div><div class="brand">Hotel<b>POS</b></div>
     <div class="card"><div class="eyebrow">${esc(eyebrow)}</div><h1>${accentLast(headline)}</h1>${sub ? `<h2>${esc(sub)}</h2>` : ''}
       <div class="pills">${pills.map(p => `<span class="pill${small ? ' small' : ''}">${esc(p)}</span>`).join('')}</div></div>

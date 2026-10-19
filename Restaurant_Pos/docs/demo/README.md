@@ -244,7 +244,8 @@ Smaller UI/UX notes (clipped columns, chips, stale demo data, slow steps) are li
    accent word, the app in a window or phone mockup, subtitle + voice, a quiet synthesized music bed ducked under the voice):
    after steps 1–3 of item 6, `node <repo>/docs/ui-ux/tools/demo-video-promo.mjs` writes `<out>/promo/01-admin.mp4` …
    `05-manager.mp4`, one video per app under `promo/apps/` (desktop, phone, kitchen tablet) and the full walkthrough.
-   `MUSIC=<file>` swaps in a licensed track, `MUSIC_LEVEL` (default 0.16) sets how loud it is under the voice.
+   `MUSIC=<file>` swaps in a licensed track, `MUSIC_LEVEL` (default 0.16) sets how loud it is under the voice. `THEME` (navy, emerald) colours the role and app videos;
+   `FULL_THEME` colours the full walkthrough on its own (the owner chose emerald for it).
 
 Android: the same PWA pages run inside the Android app (`docs/ops/09-android-app.md`); phone screenshots for the video
 are best taken on the device itself after the owner's device test.
