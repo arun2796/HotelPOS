@@ -544,7 +544,8 @@ public partial class LiveFlowScreenshots
                 ResizeMode = ResizeMode.NoResize,
                 Left = 0,
                 Top = 0,
-                Width = 1368,
+                // Wider than ShellViewModel.AutoCollapseBelowWidth so the sidebar keeps its labels (HOTELPOS_DEMO_WINDOW_WIDTH overrides).
+                Width = double.TryParse(System.Environment.GetEnvironmentVariable("HOTELPOS_DEMO_WINDOW_WIDTH"), out var w) ? w : 1456,
                 Height = 800,
                 Topmost = true,
                 ShowInTaskbar = false,
