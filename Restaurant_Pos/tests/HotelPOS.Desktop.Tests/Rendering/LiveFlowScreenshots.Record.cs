@@ -23,7 +23,7 @@ public partial class LiveFlowScreenshots
     private static readonly string? RecordDirectory = System.Environment.GetEnvironmentVariable("HOTELPOS_DEMO_RECORD");
     private static readonly Dictionary<string, double> NarrationSeconds = LoadNarrationSeconds();
 
-    private DemoRecorder? _recorder;
+    private IDemoRecorder? _recorder;
     private readonly List<StepMark> _marks = new();
 
     private sealed record StepMark(int N, string Chapter, string Step, string Key, double Start, double End, string Result, bool Included);
@@ -61,7 +61,8 @@ public partial class LiveFlowScreenshots
         }
 
         Directory.CreateDirectory(RecordDirectory);
-        _recorder = new DemoRecorder(_demoTerminal, Path.Combine(RecordDirectory, _folder + ".mp4"));
+        var mp4 = Path.Combine(RecordDirectory, _folder + ".mp4");
+        _recorder = ScreenMode ? new ScreenRecorder(_demoTerminal, mp4) : new DemoRecorder(_demoTerminal, mp4);
         Note("recording " + _folder + ".mp4");
     }
 
@@ -93,14 +94,14 @@ public partial class LiveFlowScreenshots
         _recorder = null;
         await recorder.DisposeAsync();
         var json = JsonSerializer.Serialize(
-            new { video = _folder + ".mp4", fps = DemoRecorder.Fps, steps = _marks },
+            new { video = _folder + ".mp4", fps = ScreenMode ? 15 : DemoRecorder.Fps, steps = _marks },
             new JsonSerializerOptions { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
         await File.WriteAllTextAsync(Path.Combine(RecordDirectory!, _folder + ".json"), json);
         Note($"recorded {_marks.Count} steps, {recorder.Now:0.0} s");
         _marks.Clear();
     }
 
-    private sealed class DemoRecorder : IAsyncDisposable
+    private sealed class DemoRecorder : IDemoRecorder
     {
         public const int Fps = 10;
 

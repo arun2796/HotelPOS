@@ -48,6 +48,22 @@ const NARRATION = (() => { const f = process.env.HOTELPOS_DEMO_NARRATION; return
 const stepKey = (folder, name) => folder + '/' + name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 const marks = [];
 const videoT0 = {};
+// While recording, every click first glides the pointer to the element (the overlay follows the mouse), so the video
+// shows a hand moving instead of the pointer jumping.
+const installGlide = (page) => {
+  const proto = Object.getPrototypeOf(page.locator('body'));
+  const glide = async (locator) => {
+    try {
+      await locator.scrollIntoViewIfNeeded({ timeout: 2000 });
+      const box = await locator.boundingBox({ timeout: 2000 });
+      if (box) await locator.page().mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 12 });
+    } catch { /* the click itself reports a real problem */ }
+  };
+  for (const name of ['click', 'fill', 'check', 'selectOption', 'tap']) {
+    const original = proto[name];
+    proto[name] = async function (...args) { await glide(this); return original.apply(this, args); };
+  }
+};
 const POINTER = `(() => { if (window.top !== window) return; const d = document.createElement('div');
   d.style.cssText = 'position:fixed;z-index:2147483647;width:26px;height:26px;margin:-13px 0 0 -13px;pointer-events:none;border-radius:50%;background:rgba(220,38,38,.55);border:3px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.35);transition:transform .08s;display:none';
   const add = () => document.documentElement.appendChild(d);
@@ -364,6 +380,7 @@ const hubSockets = [];
 await waiterCtx.routeWebSocket(/\/hub/, ws => { ws.connectToServer(); hubSockets.push(ws); });
 const w = await waiterCtx.newPage();
 videoT0.waiter = Date.now();
+if (RECORD) installGlide(w);
 const k = await kitchenCtx.newPage();
 videoT0.kitchen = Date.now();
 for (const [role, p] of [['waiter', w], ['kitchen', k]]) {

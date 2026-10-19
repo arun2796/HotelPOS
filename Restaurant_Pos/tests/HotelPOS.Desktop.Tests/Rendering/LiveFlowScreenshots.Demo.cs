@@ -79,6 +79,13 @@ public partial class LiveFlowScreenshots
 
     private async Task DemoFlowAsync()
     {
+        if (ScreenMode)
+        {
+            BecomeDpiAware();
+        }
+
+        H.Log = Note;
+
         Directory.CreateDirectory(OutputDirectory);
         var header = new StringBuilder();
         header.AppendLine("# HotelPOS desktop client - demo test record");
@@ -218,7 +225,7 @@ public partial class LiveFlowScreenshots
             {
                 if (_demoTerminal?.Dialogs.Current is { } dialog)
                 {
-                    dialog.CancelCommand.Execute(null);
+                    await H.RunAsync(dialog.CancelCommand, null);
                 }
             }
             catch
@@ -313,22 +320,22 @@ public partial class LiveFlowScreenshots
                 index++;
                 if (answer?.Approver is not null)
                 {
-                    dialog.ApproverUsername = answer.Approver;
+                    await H.SetAsync(dialog, "ApproverUsername", answer.Approver);
                 }
 
                 if (answer?.Input is not null)
                 {
-                    dialog.Input = answer.Input;
+                    await H.SetAsync(dialog, "Input", answer.Input);
                 }
 
                 await DemoShotAsync(index == 1 ? dialogShot : $"{dialogShot}-{index}");
                 if (answer is null)
                 {
-                    dialog.CancelCommand.Execute(null);
+                    await H.RunAsync(dialog.CancelCommand, null);
                 }
                 else
                 {
-                    dialog.ConfirmCommand.Execute(null);
+                    await H.RunAsync(dialog.ConfirmCommand, null);
                 }
             }
         }
@@ -346,13 +353,14 @@ public partial class LiveFlowScreenshots
             {
                 var navigator = terminal.Get<IAppNavigator>();
                 await navigator.ShowLoginAsync();
+                EnsureRecording();
                 var login = (LoginViewModel)terminal.Main.CurrentScreen!;
                 await WaitUntilAsync(() => login.ServerState != ServerState.Checking && login.ServerState != ServerState.Unknown, TimeSpan.FromSeconds(15), "server check");
-                login.Username = username;
-                login.Password = password;
+                await H.SetAsync(login, "Username", username);
+                await H.SetAsync(login, "Password", password);
                 await DemoShotAsync(loginShot);
                 Check(login.ServerState == ServerState.Reachable, $"server state is {login.ServerState}");
-                await login.LoginCommand.ExecuteAsync(null);
+                await H.RunAsync(login.LoginCommand, null);
                 Check(terminal.Main.CurrentScreen is ShellViewModel, $"{username} could not sign in: {login.ErrorMessage}");
                 shell = (ShellViewModel)terminal.Main.CurrentScreen!;
                 await WaitUntilAsync(() => terminal.Realtime.Status == ConnectionStatus.Connected, TimeSpan.FromSeconds(30), "realtime connected");
@@ -365,7 +373,10 @@ public partial class LiveFlowScreenshots
         where T : class
     {
         Check(shell.NavItems.Any(n => n.Key == module), $"module '{module}' is not in the sidebar of this user");
-        await shell.NavigateToAsync(module, parameter);
+        if (!await H.NavAsync(shell, module) || parameter is not null)
+        {
+            await shell.NavigateToAsync(module, parameter);
+        }
         await Dispatcher.Yield(DispatcherPriority.Background);
         await Task.Delay(settleMs);
         var page = shell.CurrentPage as T;
@@ -405,7 +416,7 @@ public partial class LiveFlowScreenshots
         await StepAsync("Users list", "Open Users", "The staff accounts are listed", async () =>
         {
             users = await DemoOpenAsync<UsersViewModel>(shell, ModuleRegistry.Users, settleMs: 800);
-            users.SelectedUser = users.Users.FirstOrDefault(u => u.Username == "waiter1") ?? users.Users.FirstOrDefault();
+            await H.SetAsync(users, "SelectedUser", users.Users.FirstOrDefault(u => u.Username == "waiter1") ?? users.Users.FirstOrDefault());
             await DemoShotAsync("users-list");
             Check(users.Users.Count >= 5, $"{users.Users.Count} users listed");
             return $"{users.Users.Count} users.";
@@ -423,14 +434,14 @@ public partial class LiveFlowScreenshots
                 }
 
                 userName = $"demo.waiter{n}";
-                users.SelectedUser = null;
-                users.NewUserCommand.Execute(null);
-                users.Editor.Username = userName;
-                users.Editor.DisplayName = "Kavya (Demo waiter)";
-                users.Editor.Password = "Pass@123";
+                await H.SetAsync(users, "SelectedUser", null);
+                await H.RunAsync(users.NewUserCommand, null);
+                await H.SetAsync(users.Editor, "Username", userName);
+                await H.SetAsync(users.Editor, "DisplayName", "Kavya (Demo waiter)");
+                await H.SetAsync(users.Editor, "Password", "Pass@123");
                 foreach (var role in users.Editor.Roles)
                 {
-                    role.IsSelected = role.Name == "Waiter";
+                    await H.SetAsync(role, "IsSelected", role.Name == "Waiter");
                 }
 
                 await DemoShotAsync("users-new-dialog");
@@ -440,9 +451,9 @@ public partial class LiveFlowScreenshots
 
             await StepAsync("Create user", "Press Create user", "The editor closes and the new account is in the list", async () =>
             {
-                await DemoDriveAsync(users.SaveUserCommand.ExecuteAsync(null), "users-create-dialog");
+                await DemoDriveAsync(H.RunAsync(users.SaveUserCommand, null), "users-create-dialog");
                 var error = users.Editor.IsOpen ? users.Editor.ErrorMessage : null;
-                users.SelectedUser = users.Users.FirstOrDefault(u => u.Username == userName);
+                await H.SetAsync(users, "SelectedUser", users.Users.FirstOrDefault(u => u.Username == userName));
                 await Task.Delay(300);
                 await DemoShotAsync("users-created");
                 Check(!users.Editor.IsOpen, "the editor stayed open: " + error);
@@ -456,7 +467,7 @@ public partial class LiveFlowScreenshots
             "The permission list includes the Phase 22 permissions: reservations.view/manage, expenses.view/manage, floor.layout.manage", async () =>
             {
                 var roles = await DemoOpenAsync<RolesViewModel>(shell, ModuleRegistry.RolesModule, settleMs: 600);
-                roles.SelectedRole = roles.Roles.FirstOrDefault(r => r.RoleName == "Manager") ?? roles.Roles.FirstOrDefault();
+                await H.SetAsync(roles, "SelectedRole", roles.Roles.FirstOrDefault(r => r.RoleName == "Manager") ?? roles.Roles.FirstOrDefault());
                 await Dispatcher.Yield(DispatcherPriority.Background);
                 await DemoShotAsync("roles-permissions");
                 await DemoShotAsync("roles-permissions-reservations", fraction: 0.38);
@@ -475,7 +486,7 @@ public partial class LiveFlowScreenshots
         await StepAsync("Devices", "Open Devices", "The registered terminals are listed with their online state", async () =>
         {
             var devices = await DemoOpenAsync<DevicesViewModel>(shell, ModuleRegistry.Devices, settleMs: 800);
-            devices.SelectedDevice = devices.Devices.FirstOrDefault(d => d.Name == terminal.Settings.Current.DeviceName) ?? devices.Devices.FirstOrDefault();
+            await H.SetAsync(devices, "SelectedDevice", devices.Devices.FirstOrDefault(d => d.Name == terminal.Settings.Current.DeviceName) ?? devices.Devices.FirstOrDefault());
             await DemoShotAsync("devices");
             Check(devices.Devices.Count > 0, "no devices listed");
             return $"{devices.Devices.Count} devices.";
@@ -486,18 +497,18 @@ public partial class LiveFlowScreenshots
         await StepAsync("Sections", "Open Sections & Tables, Sections tab (create the demo section when it is not there)", "The Demo Patio section is listed", async () =>
         {
             floor = await DemoOpenAsync<FloorViewModel>(shell, ModuleRegistry.Floor);
-            floor.SelectedTab = FloorViewModel.SectionsTab;
+            await H.SetAsync(floor, "SelectedTab", FloorViewModel.SectionsTab);
             await floor.Sections.LoadAsync();
             if (floor.Sections.Sections.All(s => s.Name != DemoSection))
             {
-                floor.Sections.NewSectionCommand.Execute(null);
-                floor.Sections.Editor.Name = DemoSection;
-                await floor.Sections.SaveSectionCommand.ExecuteAsync(null);
+                await H.RunAsync(floor.Sections.NewSectionCommand, null);
+                await H.SetAsync(floor.Sections.Editor, "Name", DemoSection);
+                await H.RunAsync(floor.Sections.SaveSectionCommand, null);
                 Check(!floor.Sections.Editor.IsOpen, "create section: " + floor.Sections.Editor.ErrorMessage);
                 await floor.Sections.LoadAsync();
             }
 
-            floor.Sections.SelectedSection = floor.Sections.Sections.FirstOrDefault(s => s.Name == DemoSection);
+            await H.SetAsync(floor.Sections, "SelectedSection", floor.Sections.Sections.FirstOrDefault(s => s.Name == DemoSection));
             await Task.Delay(300);
             await DemoShotAsync("sections-tab");
             Check(floor.Sections.Sections.Any(s => s.Name == DemoSection), "Demo Patio is not listed");
@@ -508,7 +519,7 @@ public partial class LiveFlowScreenshots
         {
             await StepAsync("Tables", "Tables tab: add table DP1 in the editor (DP2 too, quietly), save", "DP1 and DP2 are listed under Demo Patio", async () =>
             {
-                floor.SelectedTab = FloorViewModel.TablesTab;
+                await H.SetAsync(floor, "SelectedTab", FloorViewModel.TablesTab);
                 await floor.Tables.LoadAsync();
                 async Task EnsureAsync(string code, string name, bool capture)
                 {
@@ -517,33 +528,33 @@ public partial class LiveFlowScreenshots
                     {
                         if (capture)
                         {
-                            floor.Tables.SelectedRow = existing;
-                            floor.Tables.EditCommand.Execute(null);
+                            await H.SetAsync(floor.Tables, "SelectedRow", existing);
+                            await H.RunAsync(floor.Tables.EditCommand, null);
                             await DemoShotAsync("tables-editor");
-                            floor.Tables.CancelEditCommand.Execute(null);
+                            await H.RunAsync(floor.Tables.CancelEditCommand, null);
                         }
 
                         return;
                     }
 
-                    floor.Tables.NewTableCommand.Execute(null);
-                    floor.Tables.Editor.Code = code;
-                    floor.Tables.Editor.Name = name;
-                    floor.Tables.Editor.Section = floor.Tables.Editor.Sections.First(s => s.Name == DemoSection);
-                    floor.Tables.Editor.Capacity = "4";
+                    await H.RunAsync(floor.Tables.NewTableCommand, null);
+                    await H.SetAsync(floor.Tables.Editor, "Code", code);
+                    await H.SetAsync(floor.Tables.Editor, "Name", name);
+                    await H.SetAsync(floor.Tables.Editor, "Section", floor.Tables.Editor.Sections.First(s => s.Name == DemoSection));
+                    await H.SetAsync(floor.Tables.Editor, "Capacity", "4");
                     if (capture)
                     {
                         await DemoShotAsync("tables-editor");
                     }
 
-                    await floor.Tables.SaveTableCommand.ExecuteAsync(null);
+                    await H.RunAsync(floor.Tables.SaveTableCommand, null);
                     Check(!floor.Tables.Editor.IsOpen, $"create {code}: {floor.Tables.Editor.ErrorMessage}");
                     await floor.Tables.LoadAsync();
                 }
 
                 await EnsureAsync(DemoTable1, "Patio 1", true);
                 await EnsureAsync(DemoTable2, "Patio 2", false);
-                floor.Tables.SelectedRow = floor.Tables.Tables.FirstOrDefault(t => t.Table.Code == DemoTable1);
+                await H.SetAsync(floor.Tables, "SelectedRow", floor.Tables.Tables.FirstOrDefault(t => t.Table.Code == DemoTable1));
                 await Task.Delay(300);
                 await DemoShotAsync("tables-tab");
                 Check(floor.Tables.Tables.Any(t => t.Table.Code == DemoTable1) && floor.Tables.Tables.Any(t => t.Table.Code == DemoTable2), "DP1/DP2 are not both listed");
@@ -556,12 +567,12 @@ public partial class LiveFlowScreenshots
         await StepAsync("Floor plan: section", "Open Floor plan, pick Demo Patio, place its tables on the canvas", "Both demo tables sit on the canvas", async () =>
         {
             plan = await DemoOpenAsync<FloorEditorViewModel>(shell, ModuleRegistry.FloorPlan, settleMs: 600);
-            plan.SelectedSection = plan.Sections.FirstOrDefault(s => s.Name == DemoSection);
+            await H.SetAsync(plan, "SelectedSection", plan.Sections.FirstOrDefault(s => s.Name == DemoSection));
             Check(plan.SelectedSection is not null, "Demo Patio is not offered in the floor plan");
             await plan.LoadLayoutAsync();
             foreach (var item in plan.Unplaced.ToList())
             {
-                plan.PlaceCommand.Execute(item);
+                await H.RunAsync(plan.PlaceCommand, item);
             }
 
             plan.Select(null);
@@ -588,8 +599,8 @@ public partial class LiveFlowScreenshots
                 var tile = plan.SelectedItem!;
                 var rotation = tile.Rotation;
                 var shape = tile.Shape;
-                plan.RotateCommand.Execute(null);
-                plan.ToggleShapeCommand.Execute(null);
+                await H.RunAsync(plan.RotateCommand, null);
+                await H.RunAsync(plan.ToggleShapeCommand, null);
                 plan.Nudge(16, 16);
                 await Dispatcher.Yield(DispatcherPriority.Background);
                 await DemoShotAsync("floor-plan-rotated");
@@ -602,7 +613,7 @@ public partial class LiveFlowScreenshots
             await StepAsync("Floor plan: save", "Press Save", "The layout is stored, the editor reports all changes saved", async () =>
             {
                 ClearToasts();
-                await plan.SaveCommand.ExecuteAsync(null);
+                await H.RunAsync(plan.SaveCommand, null);
                 await Dispatcher.Yield(DispatcherPriority.Background);
                 await DemoShotAsync("floor-plan-saved");
                 Check(!plan.IsDirty, "still dirty: " + plan.ErrorMessage);
@@ -624,10 +635,10 @@ public partial class LiveFlowScreenshots
         {
             await StepAsync("Menu items", "Items tab, select an item that has a picture", "The items are listed with the selected item's detail", async () =>
             {
-                menu.SelectedTab = menu.Tabs.Single(t => t.Title == "Items");
+                await H.SetAsync(menu, "SelectedTab", menu.Tabs.Single(t => t.Title == "Items"));
                 await menu.SelectedTab.LoadAsync();
                 await Task.Delay(500);
-                menu.Items.SelectedItem = menu.Items.Items.FirstOrDefault(i => i.ImageUrl is not null) ?? menu.Items.Items.FirstOrDefault();
+                await H.SetAsync(menu.Items, "SelectedItem", menu.Items.Items.FirstOrDefault(i => i.ImageUrl is not null) ?? menu.Items.Items.FirstOrDefault());
                 await DemoShotAsync("menu-items");
                 Check(menu.Items.Items.Count > 0, "no items listed");
                 return $"{menu.Items.Items.Count} items.";
@@ -636,19 +647,19 @@ public partial class LiveFlowScreenshots
             await StepAsync("Menu item editor", "Press Edit on the selected item", "The editor opens with the picture, price and modifier groups", async () =>
             {
                 Check(menu.Items.SelectedItem is not null, "no item selected");
-                await menu.Items.EditCommand.ExecuteAsync(null);
+                await H.RunAsync(menu.Items.EditCommand, null);
                 await Task.Delay(500);
                 await DemoShotAsync("menu-item-editor");
                 await DemoShotAsync("menu-item-editor-modifiers", v => v.ViewportWidth < 600);
                 Check(!menu.Items.Editor.IsNew, "the editor did not open on the item");
                 var hasPicture = menu.Items.Editor.HasPicture;
-                menu.Items.CancelEditCommand.Execute(null);
+                await H.RunAsync(menu.Items.CancelEditCommand, null);
                 return hasPicture ? "Item has a picture." : "Item has no picture (none uploaded in this database).";
             });
 
             await StepAsync("Menu modifiers", "Modifiers tab", "The modifier groups are listed", async () =>
             {
-                menu.SelectedTab = menu.Tabs.Single(t => t.Title == "Modifiers");
+                await H.SetAsync(menu, "SelectedTab", menu.Tabs.Single(t => t.Title == "Modifiers"));
                 await menu.SelectedTab.LoadAsync();
                 await Task.Delay(500);
                 await DemoShotAsync("menu-modifiers");
@@ -660,7 +671,7 @@ public partial class LiveFlowScreenshots
         await StepAsync("Payments & discounts", "Open Payments & discounts", "The payment methods include Wallet", async () =>
         {
             var setup = await DemoOpenAsync<BillingSetupViewModel>(shell, ModuleRegistry.Discounts, settleMs: 800);
-            setup.SelectedTab = BillingSetupViewModel.DiscountsTab;
+            await H.SetAsync(setup, "SelectedTab", BillingSetupViewModel.DiscountsTab);
             await Task.Delay(300);
             await DemoShotAsync("payments-discounts");
             Check(setup.Methods.Any(m => m.Code == PaymentMethodCodes.Wallet), "no Wallet payment method; methods: " + string.Join(", ", setup.Methods.Select(m => m.Code)));
@@ -690,7 +701,7 @@ public partial class LiveFlowScreenshots
             await hub.Categories.LoadAsync();
             if (hub.Categories.Categories.Count > 0)
             {
-                hub.Categories.SelectedCategory = hub.Categories.Categories.First();
+                await H.SetAsync(hub.Categories, "SelectedCategory", hub.Categories.Categories.First());
             }
 
             await DemoShotAsync("expense-categories");
@@ -723,7 +734,7 @@ public partial class LiveFlowScreenshots
         await StepAsync("Audit log", "Open Audit Log", "Entries are listed, newest first", async () =>
         {
             var audit = await DemoOpenAsync<AuditLogsViewModel>(shell, ModuleRegistry.Audit, settleMs: 800);
-            audit.SelectedEntry = audit.AuditEntries.FirstOrDefault();
+            await H.SetAsync(audit, "SelectedEntry", audit.AuditEntries.FirstOrDefault());
             await DemoShotAsync("audit-log");
             Check(audit.AuditEntries.Count > 0, "no audit entries");
             return $"{audit.AuditEntries.Count} entries on the page.";
@@ -733,32 +744,26 @@ public partial class LiveFlowScreenshots
         {
             await DemoOpenAsync<DashboardViewModel>(shell, ModuleRegistry.Dashboard, settleMs: 600);
             ClearToasts();
-            await shell.OpenPaletteCommand.ExecuteAsync(null);
-            shell.Palette.Query = "re";
+            await H.RunAsync(shell.OpenPaletteCommand, null);
+            await H.SetAsync(shell.Palette, "Query", "re");
             await Dispatcher.Yield(DispatcherPriority.Background);
             await DemoShotAsync("command-palette");
             var count = shell.Palette.Results.Count;
-            shell.Palette.CloseCommand.Execute(null);
+            await H.RunAsync(shell.Palette.CloseCommand, null);
             Check(count > 0, "the palette found nothing for 're'");
             return $"{count} results.";
         });
 
         await StepAsync("Dark theme", "Switch the theme to dark on the dashboard", "The dashboard re-renders in the dark theme", async () =>
         {
-            terminal.Theme.Apply(ThemeService.Dark);
-            try
-            {
-                await DemoShotAsync("dashboard-dark");
-            }
-            finally
-            {
-                terminal.Theme.Apply(ThemeService.Light);
-            }
-
+            await H.RunAsync(shell.ToggleThemeCommand, null);
+            await Task.Delay(400);
+            await DemoShotAsync("dashboard-dark");
             return null;
         });
 
         await terminal.Get<IAppNavigator>().LogoutAsync();
+        terminal.Theme.Apply(ThemeService.Light);
     }
 
     // ---------------------------------------------------------------- shared API preparation
@@ -910,14 +915,14 @@ public partial class LiveFlowScreenshots
                 return "A shift was already open on this terminal; reused.";
             }
 
-            await shell.ShiftBar.OpenShiftCommand.ExecuteAsync(null);
+            await H.RunAsync(shell.ShiftBar.OpenShiftCommand, null);
             var panel = shell.ShiftBar.Panel as ShiftCountPanelViewModel;
             Check(panel is not null, "the open-shift panel did not open");
             FillSheet(panel!.Sheet, 3000m);
             await DemoShotAsync("open-shift");
-            await panel.ConfirmCommand.ExecuteAsync(null);
+            await H.RunAsync(panel.ConfirmCommand, null);
             Check(shell.ShiftBar.Shift is not null, "shift not opened: " + panel.ErrorMessage);
-            shell.ShiftBar.ClosePanelCommand.Execute(null);
+            await H.RunAsync(shell.ShiftBar.ClosePanelCommand, null);
             return "Shift opened with a float of 3,000.";
         });
 
@@ -935,12 +940,12 @@ public partial class LiveFlowScreenshots
 
         await StepAsync("Queue: Takeaway chip", "Select the Takeaway channel chip", "Only takeaway bills are listed, labelled TA-nnnn", async () =>
         {
-            workspace!.SelectChannelFilterCommand.Execute(OrderType.Takeaway);
+            await H.RunAsync(workspace!.SelectChannelFilterCommand, OrderType.Takeaway);
             await Task.Delay(300);
             await Dispatcher.Yield(DispatcherPriority.Background);
             await DemoShotAsync("queue-takeaway");
             var all = workspace.Bills.ToList();
-            workspace.SelectChannelFilterCommand.Execute(null);
+            await H.RunAsync(workspace.SelectChannelFilterCommand, null);
             Check(all.Count > 0 && all.All(b => b.TableCode.StartsWith("TA-", StringComparison.Ordinal)), "the takeaway chip lists: " + string.Join(", ", all.Select(b => b.TableCode)));
             return string.Join(", ", all.Select(b => b.TableCode));
         });
@@ -949,7 +954,12 @@ public partial class LiveFlowScreenshots
         await StepAsync("Workspace with a bill", $"Select the {TableCode} bill", "The order and the payment column open for the bill", async () =>
         {
             var card = workspace!.Bills.FirstOrDefault(b => b.TableCode == TableCode) ?? throw new DemoCheckException($"no {TableCode} bill in the queue");
-            await workspace.SelectAsync(card);
+            if (!await H.ClickItemAsync(card))
+            {
+                await workspace.SelectAsync(card);
+            }
+
+            await WaitUntilAsync(() => workspace.Detail is not null, TimeSpan.FromSeconds(10), "bill opens", throwOnTimeout: false);
             bill = workspace.Detail;
             await Dispatcher.Yield(DispatcherPriority.Background);
             await DemoShotAsync("workspace-bill");
@@ -959,15 +969,15 @@ public partial class LiveFlowScreenshots
 
         await StepAsync("Discount", "Open Discount, enter 5 % for a regular guest, apply", "The bill shows the discount", async () =>
         {
-            await bill!.ShowDiscountCommand.ExecuteAsync(null);
-            bill.ManualValue = "5";
-            bill.ManualReason = "Regular guest";
+            await H.RunAsync(bill!.ShowDiscountCommand, null);
+            await H.SetAsync(bill, "ManualValue", "5");
+            await H.SetAsync(bill, "ManualReason", "Regular guest");
             await DemoShotAsync("discount");
-            await GuardedAsync(terminal, bill.ApplyManualCommand.ExecuteAsync(null), "discount");
+            await GuardedAsync(terminal, H.RunAsync(bill.ApplyManualCommand, null), "discount");
             var applied = bill.HasDiscount;
             if (bill.IsPanelOpen)
             {
-                bill.ClosePanelCommand.Execute(null);
+                await H.RunAsync(bill.ClosePanelCommand, null);
             }
 
             Check(applied, "discount not applied: " + bill.PanelError);
@@ -976,8 +986,8 @@ public partial class LiveFlowScreenshots
 
         await StepAsync("Finalize", "Finalize and print the invoice", "An invoice number is issued; the invoice print to the unreachable printer fails and shows in the print queue", async () =>
         {
-            await bill!.FinalizeCommand.ExecuteAsync(null);
-            bill.ClosePanelCommand.Execute(null);
+            await H.RunAsync(bill!.FinalizeCommand, null);
+            await H.RunAsync(bill.ClosePanelCommand, null);
             await WaitUntilAsync(() => printQueue.FailedCount > 0, TimeSpan.FromSeconds(40), "invoice print failure", throwOnTimeout: false);
             await DemoShotAsync("finalized");
             Check(bill.Bill?.InvoiceNumber is not null, "no invoice number: " + bill.ErrorMessage);
@@ -986,7 +996,7 @@ public partial class LiveFlowScreenshots
 
         await StepAsync("Cash payment (F2)", "Press F2 and type a rounded-up tender", "The cash panel opens with the change shown", async () =>
         {
-            bill!.PayHotkeyCommand.Execute("F2");
+            await H.RunAsync(bill!.PayHotkeyCommand, "F2");
             Check(bill.Payment is { IsCash: true }, "F2 did not open the cash payment");
             bill.Payment!.TenderedText = Money.Format(Math.Ceiling(bill.Bill!.BalanceDue / 500m) * 500m);
             notifications.Items.Clear();
@@ -996,18 +1006,18 @@ public partial class LiveFlowScreenshots
 
         await StepAsync("Split payment", "Choose Split: cash for about half, card (with reference) for the rest, confirm", "The bill is paid", async () =>
         {
-            bill!.PaySplitCommand.Execute(null);
+            await H.RunAsync(bill!.PaySplitCommand, null);
             var payment = bill.Payment ?? throw new DemoCheckException("the payment panel did not open");
             var balance = bill.Bill!.BalanceDue;
             var cashPart = Math.Max(10m, Math.Floor(balance / 2m / 10m) * 10m);
-            payment.AddLineCommand.Execute(payment.Methods.Single(m => m.Code == PaymentMethodCodes.Cash));
-            payment.Lines[0].AmountText = Money.Format(cashPart);
-            payment.AddLineCommand.Execute(payment.Methods.Single(m => m.Code == PaymentMethodCodes.Card));
-            payment.Lines[1].AmountText = Money.Format(balance - cashPart);
-            payment.Lines[1].Reference = "VISA 4421 - APPR 071519";
+            await H.RunAsync(payment.AddLineCommand, payment.Methods.Single(m => m.Code == PaymentMethodCodes.Cash));
+            await H.SetAsync(payment.Lines[0], "AmountText", Money.Format(cashPart));
+            await H.RunAsync(payment.AddLineCommand, payment.Methods.Single(m => m.Code == PaymentMethodCodes.Card));
+            await H.SetAsync(payment.Lines[1], "AmountText", Money.Format(balance - cashPart));
+            await H.SetAsync(payment.Lines[1], "Reference", "VISA 4421 - APPR 071519");
             notifications.Items.Clear();
             await DemoShotAsync("split-payment");
-            await GuardedAsync(terminal, bill.ConfirmPaymentCommand.ExecuteAsync(null), "split-payment");
+            await GuardedAsync(terminal, H.RunAsync(bill.ConfirmPaymentCommand, null), "split-payment");
             Check(bill.IsPaid || bill.IsDonePanel, "split payment not completed: " + bill.PanelError);
             return $"Cash {Money.Format(cashPart)} + card {Money.Format(balance - cashPart)}.";
         });
@@ -1015,12 +1025,17 @@ public partial class LiveFlowScreenshots
         BillDetailViewModel? takeawayBill = null;
         await StepAsync("Wallet payment", "Select the takeaway bill, choose the Wallet method, type the wallet reference", "The Wallet panel asks for the reference and is ready to confirm", async () =>
         {
-            await workspace!.SelectFilterCommand.ExecuteAsync(QueueFilter.All);
+            await H.RunAsync(workspace!.SelectFilterCommand, QueueFilter.All);
             var card = workspace.Bills.FirstOrDefault(b => b.OrderType == OrderType.Takeaway) ?? throw new DemoCheckException("no takeaway bill in the queue");
-            await workspace.SelectAsync(card);
+            if (!await H.ClickItemAsync(card))
+            {
+                await workspace.SelectAsync(card);
+            }
+
+            await WaitUntilAsync(() => workspace.Detail is not null, TimeSpan.FromSeconds(10), "bill opens", throwOnTimeout: false);
             takeawayBill = workspace.Detail ?? throw new DemoCheckException("the takeaway bill did not open");
             var wallet = takeawayBill.Methods.FirstOrDefault(m => m.Code == PaymentMethodCodes.Wallet) ?? throw new DemoCheckException("the bill offers no Wallet method");
-            takeawayBill.PayWithCommand.Execute(wallet);
+            await H.RunAsync(takeawayBill.PayWithCommand, wallet);
             Check(takeawayBill.Payment is not null, "the payment panel did not open for Wallet");
             takeawayBill.Payment!.Reference = "WALLET-PAYTM-93021";
             notifications.Items.Clear();
@@ -1031,7 +1046,7 @@ public partial class LiveFlowScreenshots
 
         await StepAsync("Paid state", "Confirm the Wallet payment", "The bill is PAID", async () =>
         {
-            await GuardedAsync(terminal, takeawayBill!.ConfirmPaymentCommand.ExecuteAsync(null), "wallet-paid");
+            await GuardedAsync(terminal, H.RunAsync(takeawayBill!.ConfirmPaymentCommand, null), "wallet-paid");
             await Dispatcher.Yield(DispatcherPriority.Background);
             await DemoShotAsync("paid");
             Check(takeawayBill.IsPaid || takeawayBill.IsDonePanel, "wallet payment not completed: " + takeawayBill.PanelError);
@@ -1041,7 +1056,7 @@ public partial class LiveFlowScreenshots
         await StepAsync("Print receipt", "Press Print receipt (no receipt printer is set up on this terminal)", "A warning toast explains there is no receipt printer", async () =>
         {
             notifications.Items.Clear();
-            await takeawayBill!.PrintReceiptCommand.ExecuteAsync(null);
+            await H.RunAsync(takeawayBill!.PrintReceiptCommand, null);
             await Dispatcher.Yield(DispatcherPriority.Background);
             await DemoShotAsync("print-receipt-warning");
             Check(notifications.Items.Count > 0, "no toast after Print receipt");
@@ -1051,11 +1066,11 @@ public partial class LiveFlowScreenshots
         await StepAsync("Queue: Paid chip", "Select the Paid chip in the queue", "Today's two paid bills are listed", async () =>
         {
             notifications.Items.Clear();
-            await workspace!.SelectFilterCommand.ExecuteAsync(QueueFilter.Paid);
+            await H.RunAsync(workspace!.SelectFilterCommand, QueueFilter.Paid);
             await Dispatcher.Yield(DispatcherPriority.Background);
             await DemoShotAsync("queue-paid-chip");
             var count = workspace.Bills.Count;
-            await workspace.SelectFilterCommand.ExecuteAsync(QueueFilter.All);
+            await H.RunAsync(workspace.SelectFilterCommand, QueueFilter.All);
             Check(count >= 2, $"{count} paid bills listed");
             return $"{count} paid bills.";
         });
@@ -1063,7 +1078,7 @@ public partial class LiveFlowScreenshots
         await StepAsync("Closed bills", "Open Closed Bills", "The settled bills are listed with the payments of the selected one", async () =>
         {
             var closed = await DemoOpenAsync<ClosedBillsViewModel>(shell, ModuleRegistry.ClosedBills, settleMs: 700);
-            closed.SelectedBill = closed.Bills.FirstOrDefault(b => b.Bill.OrderType == OrderType.Takeaway) ?? closed.Bills.FirstOrDefault();
+            await H.SetAsync(closed, "SelectedBill", closed.Bills.FirstOrDefault(b => b.Bill.OrderType == OrderType.Takeaway) ?? closed.Bills.FirstOrDefault());
             await Dispatcher.Yield(DispatcherPriority.Background);
             await Task.Delay(500);
             await DemoShotAsync("closed-bills");
@@ -1084,15 +1099,15 @@ public partial class LiveFlowScreenshots
         await StepAsync("Pay-out", "Billing, Pay in/out: pay out 450 for vegetables", "The pay-out is recorded", async () =>
         {
             await DemoOpenAsync<CashierWorkspaceViewModel>(shell, ModuleRegistry.Billing);
-            shell.ShiftBar.PayInOutCommand.Execute(null);
+            await H.RunAsync(shell.ShiftBar.PayInOutCommand, null);
             var movement = shell.ShiftBar.Panel as CashMovementPanelViewModel ?? throw new DemoCheckException("the pay in/out panel did not open (no open shift?)");
-            movement.SelectedType = movement.Types.Single(t => t.Type == CashMovementType.PayOut);
-            movement.AmountText = "450";
-            movement.Reason = "Vegetables from the market";
+            await H.SetAsync(movement, "SelectedType", movement.Types.Single(t => t.Type == CashMovementType.PayOut));
+            await H.SetAsync(movement, "AmountText", "450");
+            await H.SetAsync(movement, "Reason", "Vegetables from the market");
             await DemoShotAsync("pay-out");
-            await GuardedAsync(terminal, movement.ConfirmCommand.ExecuteAsync(null), "pay-out");
+            await GuardedAsync(terminal, H.RunAsync(movement.ConfirmCommand, null), "pay-out");
             var recorded = shell.ShiftBar.Panel is null;
-            shell.ShiftBar.ClosePanelCommand.Execute(null);
+            await H.RunAsync(shell.ShiftBar.ClosePanelCommand, null);
             Check(recorded, "pay-out not recorded: " + movement.ErrorMessage);
             return null;
         });
@@ -1109,13 +1124,13 @@ public partial class LiveFlowScreenshots
         {
             await StepAsync("Record expense dialog", "Press Record expense, choose a category, amount, payee, notes", "The editor opens with the details filled in", async () =>
             {
-                expenses.NewExpenseCommand.Execute(null);
+                await H.RunAsync(expenses.NewExpenseCommand, null);
                 Check(expenses.Editor.IsOpen, "the expense editor did not open");
-                expenses.Editor.SelectedCategory = expenses.Editor.CategoryChoices.FirstOrDefault();
-                expenses.Editor.Amount = "850";
-                expenses.Editor.Payee = "Sri Ganesh Vegetables";
-                expenses.Editor.Notes = "Weekly vegetables (demo)";
-                expenses.Editor.SelectedPaymentSource = expenses.Editor.PaymentSources.FirstOrDefault(s => s.Code != ExpensePaymentSources.CashDrawer) ?? expenses.Editor.PaymentSources.First();
+                await H.SetAsync(expenses.Editor, "SelectedCategory", expenses.Editor.CategoryChoices.FirstOrDefault());
+                await H.SetAsync(expenses.Editor, "Amount", "850");
+                await H.SetAsync(expenses.Editor, "Payee", "Sri Ganesh Vegetables");
+                await H.SetAsync(expenses.Editor, "Notes", "Weekly vegetables (demo)");
+                await H.SetAsync(expenses.Editor, "SelectedPaymentSource", expenses.Editor.PaymentSources.FirstOrDefault(s => s.Code != ExpensePaymentSources.CashDrawer) ?? expenses.Editor.PaymentSources.First());
                 await DemoShotAsync("expense-record-dialog");
                 Check(expenses.Editor.SelectedCategory is not null, "no category to choose");
                 return null;
@@ -1123,7 +1138,7 @@ public partial class LiveFlowScreenshots
 
             await StepAsync("Expense recorded", "Press Record expense", "The editor closes and the expense is in the list", async () =>
             {
-                await expenses.SaveEditorCommand.ExecuteAsync(null);
+                await H.RunAsync(expenses.SaveEditorCommand, null);
                 await Task.Delay(400);
                 await DemoShotAsync("expense-recorded");
                 Check(!expenses.Editor.IsOpen, "the editor stayed open: " + expenses.Editor.ErrorMessage);
@@ -1136,10 +1151,10 @@ public partial class LiveFlowScreenshots
         await StepAsync("X report", "Press X report in the shift bar", "The mid-shift report opens", async () =>
         {
             await DemoOpenAsync<CashierWorkspaceViewModel>(shell, ModuleRegistry.Billing);
-            await shell.ShiftBar.XReportCommand.ExecuteAsync(null);
+            await H.RunAsync(shell.ShiftBar.XReportCommand, null);
             Check(shell.ShiftBar.Panel is ShiftReportPanelViewModel, "the X report panel did not open");
             await DemoShotAsync("x-report");
-            shell.ShiftBar.ClosePanelCommand.Execute(null);
+            await H.RunAsync(shell.ShiftBar.ClosePanelCommand, null);
             return null;
         });
 
@@ -1147,23 +1162,23 @@ public partial class LiveFlowScreenshots
         {
             await DemoOpenAsync<CashierHomeViewModel>(shell, ModuleRegistry.CashierHome);
             notifications.Items.Clear();
-            shell.ToggleNoticesCommand.Execute(null);
+            await H.RunAsync(shell.ToggleNoticesCommand, null);
             await DemoShotAsync("notifications-bell");
-            shell.ToggleNoticesCommand.Execute(null);
+            await H.RunAsync(shell.ToggleNoticesCommand, null);
             return null;
         });
 
         await StepAsync("Close shift", "Close shift with the drawer counted 50 short and a reason", "The shift is closed", async () =>
         {
-            await shell.ShiftBar.CloseShiftCommand.ExecuteAsync(null);
+            await H.RunAsync(shell.ShiftBar.CloseShiftCommand, null);
             var panel = shell.ShiftBar.Panel as ShiftCountPanelViewModel ?? throw new DemoCheckException("the close-shift panel did not open");
             FillSheet(panel.Sheet, (panel.Sheet.Expected ?? 3000m) - 50m);
-            panel.Reason = "Change given twice";
+            await H.SetAsync(panel, "Reason", "Change given twice");
             await DemoShotAsync("close-shift");
-            await GuardedAsync(terminal, panel.ConfirmCommand.ExecuteAsync(null), "close-shift");
+            await GuardedAsync(terminal, H.RunAsync(panel.ConfirmCommand, null), "close-shift");
             var closed = shell.ShiftBar.Shift is null;
             await DemoShotAsync("close-shift-z-report");
-            shell.ShiftBar.ClosePanelCommand.Execute(null);
+            await H.RunAsync(shell.ShiftBar.ClosePanelCommand, null);
             Check(closed, "shift not closed: " + panel.ErrorMessage);
             return null;
         });
@@ -1207,7 +1222,7 @@ public partial class LiveFlowScreenshots
             {
                 var orders = await DemoOpenAsync<ActiveOrdersViewModel>(shell, ModuleRegistry.Orders, settleMs: 800);
                 var takeaway = orders.Rows.FirstOrDefault(r => r.Order.OrderType == OrderType.Takeaway);
-                orders.SelectedRow = takeaway ?? orders.Rows.FirstOrDefault();
+                await H.SetAsync(orders, "SelectedRow", takeaway ?? orders.Rows.FirstOrDefault());
                 await Dispatcher.Yield(DispatcherPriority.Background);
                 await DemoShotAsync("orders");
                 Check(orders.Rows.Count > 0, "no active orders");
@@ -1229,12 +1244,12 @@ public partial class LiveFlowScreenshots
             {
                 await StepAsync("New reservation form", "Press New reservation, pick table DP1, guest, party and time", "The form opens with the details filled in", async () =>
                 {
-                    reservations.NewReservationCommand.Execute(null);
+                    await H.RunAsync(reservations.NewReservationCommand, null);
                     Check(reservations.Editor.IsOpen, "the reservation form did not open");
-                    reservations.Editor.SelectedTable = reservations.Editor.TableChoices.FirstOrDefault(t => t.Display.Contains(DemoTable1)) ?? reservations.Editor.TableChoices.FirstOrDefault();
-                    reservations.Editor.CustomerName = guest;
-                    reservations.Editor.CustomerPhone = "9840099001";
-                    reservations.Editor.PartySize = 4;
+                    await H.SetAsync(reservations.Editor, "SelectedTable", reservations.Editor.TableChoices.FirstOrDefault(t => t.Display.Contains(DemoTable1)) ?? reservations.Editor.TableChoices.FirstOrDefault());
+                    await H.SetAsync(reservations.Editor, "CustomerName", guest);
+                    await H.SetAsync(reservations.Editor, "CustomerPhone", "9840099001");
+                    await H.SetAsync(reservations.Editor, "PartySize", 4);
                     var start = DateTime.Now.AddMinutes(20);
                     start = new DateTime(start.Year, start.Month, start.Day, start.Hour, start.Minute / 5 * 5, 0);
                     var end = start.AddMinutes(60);
@@ -1244,10 +1259,10 @@ public partial class LiveFlowScreenshots
                         end = start.AddMinutes(60);
                     }
 
-                    reservations.Editor.Date = DateTime.Today;
-                    reservations.Editor.StartTime = start.ToString("HH:mm", CultureInfo.InvariantCulture);
-                    reservations.Editor.EndTime = end.ToString("HH:mm", CultureInfo.InvariantCulture);
-                    reservations.Editor.Notes = "Window seat, birthday (demo)";
+                    await H.SetAsync(reservations.Editor, "Date", DateTime.Today);
+                    await H.SetAsync(reservations.Editor, "StartTime", start.ToString("HH:mm", CultureInfo.InvariantCulture));
+                    await H.SetAsync(reservations.Editor, "EndTime", end.ToString("HH:mm", CultureInfo.InvariantCulture));
+                    await H.SetAsync(reservations.Editor, "Notes", "Window seat, birthday (demo)");
                     await DemoShotAsync("reservation-new-form");
                     Check(reservations.Editor.SelectedTable is not null, "no table to choose");
                     return $"{reservations.Editor.SelectedTable!.Display} at {reservations.Editor.StartTime}.";
@@ -1256,13 +1271,13 @@ public partial class LiveFlowScreenshots
                 await StepAsync("Reservation created", "Press Create reservation", "The form closes and the reservation is in the list as Booked", async () =>
                 {
                     ClearToasts();
-                    await reservations.SaveReservationCommand.ExecuteAsync(null);
+                    await H.RunAsync(reservations.SaveReservationCommand, null);
                     if (reservations.Editor.IsOpen)
                     {
                         var error = reservations.Editor.ErrorMessage;
                         // A leftover booking of an earlier run may overlap: try the other demo table.
-                        reservations.Editor.SelectedTable = reservations.Editor.TableChoices.FirstOrDefault(t => t.Display.Contains(DemoTable2)) ?? reservations.Editor.SelectedTable;
-                        await reservations.SaveReservationCommand.ExecuteAsync(null);
+                        await H.SetAsync(reservations.Editor, "SelectedTable", reservations.Editor.TableChoices.FirstOrDefault(t => t.Display.Contains(DemoTable2)) ?? reservations.Editor.SelectedTable);
+                        await H.RunAsync(reservations.SaveReservationCommand, null);
                         if (reservations.Editor.IsOpen)
                         {
                             await DemoShotAsync("reservation-create-error");
@@ -1270,7 +1285,7 @@ public partial class LiveFlowScreenshots
                         }
                     }
 
-                    reservations.SelectedReservation = reservations.Reservations.FirstOrDefault(r => r.CustomerName == guest);
+                    await H.SetAsync(reservations, "SelectedReservation", reservations.Reservations.FirstOrDefault(r => r.CustomerName == guest));
                     await Dispatcher.Yield(DispatcherPriority.Background);
                     await DemoShotAsync("reservation-created");
                     Check(reservations.SelectedReservation is not null, "the new reservation is not in the list");
@@ -1282,14 +1297,14 @@ public partial class LiveFlowScreenshots
                 {
                     var item = reservations.SelectedReservation ?? throw new DemoCheckException("no reservation selected");
                     ClearToasts();
-                    await reservations.SeatCommand.ExecuteAsync(item);
+                    await H.RunAsync(reservations.SeatCommand, item);
                     // The list reloads after the command; under load (video recording) that takes more than half a second.
                     for (var wait = 0; wait < 12 && reservations.Reservations.FirstOrDefault(r => r.CustomerName == guest)?.Status != ReservationStatus.Seated; wait++)
                     {
                         await Task.Delay(500);
                     }
 
-                    reservations.SelectedReservation = reservations.Reservations.FirstOrDefault(r => r.CustomerName == guest);
+                    await H.SetAsync(reservations, "SelectedReservation", reservations.Reservations.FirstOrDefault(r => r.CustomerName == guest));
                     await DemoShotAsync("reservation-seated");
                     Check(reservations.SelectedReservation?.Status == ReservationStatus.Seated, $"status is {reservations.SelectedReservation?.Status}");
                     return $"Table {item.TableCode} occupied (released again at the end).";
@@ -1299,7 +1314,7 @@ public partial class LiveFlowScreenshots
             await StepAsync("Tables: Map mode", "Open Tables and switch to Map", "Sections with a saved floor plan show the canvas", async () =>
             {
                 var map = await DemoOpenAsync<TableMapViewModel>(shell, ModuleRegistry.Tables, settleMs: 800);
-                map.ViewMode = TableMapViewModel.MapMode;
+                await H.SetAsync(map, "ViewMode", TableMapViewModel.MapMode);
                 await Dispatcher.Yield(DispatcherPriority.Background);
                 await Task.Delay(300);
                 await DemoShotAsync("tables-map");
@@ -1310,7 +1325,7 @@ public partial class LiveFlowScreenshots
             await StepAsync("Tables: List mode", "Switch to List", "All sections show tile lists", async () =>
             {
                 var map = (TableMapViewModel)shell.CurrentPage!;
-                map.ViewMode = TableMapViewModel.ListMode;
+                await H.SetAsync(map, "ViewMode", TableMapViewModel.ListMode);
                 await Dispatcher.Yield(DispatcherPriority.Background);
                 await Task.Delay(300);
                 await DemoShotAsync("tables-list");
@@ -1330,8 +1345,8 @@ public partial class LiveFlowScreenshots
             async Task RunReportAsync(string key, string shot, Func<ReportsViewModel, string?>? extra = null)
             {
                 reports ??= await DemoOpenAsync<ReportsViewModel>(shell, ModuleRegistry.Reports, settleMs: 600);
-                reports.SelectedReport = ReportsViewModel.Catalogue.Single(r => r.Key == key);
-                await reports.RunCommand.ExecuteAsync(null);
+                await H.SetAsync(reports, "SelectedReport", ReportsViewModel.Catalogue.Single(r => r.Key == key));
+                await H.RunAsync(reports.RunCommand, null);
                 await Dispatcher.Yield(DispatcherPriority.Background);
                 await Task.Delay(300);
                 await DemoShotAsync(shot);
@@ -1380,7 +1395,7 @@ public partial class LiveFlowScreenshots
                 ClearToasts();
                 var before = Directory.GetFiles(exports, "*.xlsx").Length;
                 await DemoShotAsync("report-export-excel-before");
-                await reports!.ExportExcelCommand.ExecuteAsync(null);
+                await H.RunAsync(reports!.ExportExcelCommand, null);
                 await DemoShotAsync("report-export-excel-saved");
                 Check(Directory.GetFiles(exports, "*.xlsx").Length >= Math.Max(1, before), "no .xlsx was written");
                 return "The Windows Save dialog itself is stubbed in the harness and cannot be captured.";
@@ -1389,7 +1404,7 @@ public partial class LiveFlowScreenshots
             await StepAsync("Save PDF", "Press Save PDF", "A PDF is written and the Saved toast appears", async () =>
             {
                 ClearToasts();
-                await reports!.SavePdfCommand.ExecuteAsync(null);
+                await H.RunAsync(reports!.SavePdfCommand, null);
                 await DemoShotAsync("report-save-pdf");
                 Check(Directory.GetFiles(exports, "*.pdf").Length > 0, "no .pdf was written");
                 return null;
@@ -1405,9 +1420,9 @@ public partial class LiveFlowScreenshots
             await StepAsync("GST current month", "Open Tax Returns for the current month and run", "The month's GST summary loads", async () =>
             {
                 var gst = await DemoOpenAsync<GstHubViewModel>(shell, ModuleRegistry.Gst, settleMs: 600);
-                gst.Year = DateTime.Today.Year;
-                gst.Month = DateTime.Today.Month;
-                await gst.RunCommand.ExecuteAsync(null);
+                await H.SetAsync(gst, "Year", DateTime.Today.Year);
+                await H.SetAsync(gst, "Month", DateTime.Today.Month);
+                await H.RunAsync(gst.RunCommand, null);
                 await Task.Delay(300);
                 await DemoShotAsync("gst-current-month");
                 return null;
@@ -1416,10 +1431,10 @@ public partial class LiveFlowScreenshots
             await StepAsync("Audit log filter", "Open Audit Log, filter user cashier1, action Bill.DiscountApplied (the action filter is an exact match)", "Only the cashier's bill actions are listed", async () =>
             {
                 var audit = await DemoOpenAsync<AuditLogsViewModel>(shell, ModuleRegistry.Audit, settleMs: 800);
-                audit.UserFilter = "cashier1";
-                audit.ActionFilter = "Bill.DiscountApplied";
-                await audit.SearchCommand.ExecuteAsync(null);
-                audit.SelectedEntry = audit.AuditEntries.FirstOrDefault();
+                await H.SetAsync(audit, "UserFilter", "cashier1");
+                await H.SetAsync(audit, "ActionFilter", "Bill.DiscountApplied");
+                await H.RunAsync(audit.SearchCommand, null);
+                await H.SetAsync(audit, "SelectedEntry", audit.AuditEntries.FirstOrDefault());
                 await DemoShotAsync("audit-log-filter");
                 Check(audit.AuditEntries.Count > 0, "the filter found no entries");
                 Check(audit.AuditEntries.All(e => e.Action.Equals("Bill.DiscountApplied", StringComparison.OrdinalIgnoreCase)), "an entry outside the filter is listed");
@@ -1430,20 +1445,14 @@ public partial class LiveFlowScreenshots
             {
                 await DemoOpenAsync<DashboardViewModel>(shell, ModuleRegistry.Dashboard, settleMs: 1200);
                 ClearToasts();
-                terminal.Theme.Apply(ThemeService.Dark);
-                try
-                {
-                    await DemoShotAsync("dashboard-dark");
-                }
-                finally
-                {
-                    terminal.Theme.Apply(ThemeService.Light);
-                }
-
+                await H.RunAsync(shell.ToggleThemeCommand, null);
+                await Task.Delay(400);
+                await DemoShotAsync("dashboard-dark");
                 return null;
             });
 
             await terminal.Get<IAppNavigator>().LogoutAsync();
+            terminal.Theme.Apply(ThemeService.Light);
         }
         finally
         {
