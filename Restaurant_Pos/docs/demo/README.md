@@ -240,5 +240,11 @@ Smaller UI/UX notes (clipped columns, chips, stale demo data, slow steps) are li
    (`01-admin.mp4` … `05-manager.mp4`, `HotelPOS-full-walkthrough.mp4`, `narration-script.md`). Tables DP1/DP2 must be free
    before the manager chapter (its reservation is seated on one of them): settle their bills and cancel stale bookings first.
 
+7. Promo-style edition of the live videos (design after the owner's BillingHub reference clip: dark scenes, headline with an
+   accent word, the app in a window or phone mockup, subtitle + voice, a quiet synthesized music bed ducked under the voice):
+   after steps 1–3 of item 6, `node <repo>/docs/ui-ux/tools/demo-video-promo.mjs` writes `<out>/promo/01-admin.mp4` …
+   `05-manager.mp4`, one video per app under `promo/apps/` (desktop, phone, kitchen tablet) and the full walkthrough.
+   `MUSIC=<file>` swaps in a licensed track, `MUSIC_LEVEL` (default 0.16) sets how loud it is under the voice.
+
 Android: the same PWA pages run inside the Android app (`docs/ops/09-android-app.md`); phone screenshots for the video
 are best taken on the device itself after the owner's device test.
