@@ -226,5 +226,10 @@ Smaller UI/UX notes (clipped columns, chips, stale demo data, slow steps) are li
 4. Afterwards deactivate the `SCREENS-*` / `WEB-*` terminals the runs registered (Admin → Devices) so they do not
    use licence seats.
 
+5. Narrated videos (one MP4 per role + `HotelPOS-full-walkthrough.mp4`, about 13 min, with a Windows voice reading the
+   narration column): from the Playwright scratch folder, `node <repo>/docs/ui-ux/tools/demo-video.mjs` writes them to
+   `artifacts/demo-video/` (gitignored); `narration-script.md` there lists every spoken line. `VOICE="Microsoft David Desktop"`
+   and `RATE=-1` change the voice and pace; delete `artifacts/demo-video/work` to rebuild from scratch.
+
 Android: the same PWA pages run inside the Android app (`docs/ops/09-android-app.md`); phone screenshots for the video
 are best taken on the device itself after the owner's device test.
