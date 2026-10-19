@@ -51,11 +51,12 @@ public partial class LiveFlowScreenshots
         {
             var button = Live ? FindCommandButton(command, parameter) : null;
             Trace($"run {command.GetType().Name} live={Live} button={button?.GetType().Name ?? "none"} visuals={Visuals().Count()}");
+            // The click is processed while ClickAsync still waits, so the execution task to compare against is read first.
+            var before = (command as IAsyncRelayCommand)?.ExecutionTask;
             if (button is not null && await ClickAsync(button))
             {
                 if (command is IAsyncRelayCommand async)
                 {
-                    var before = async.ExecutionTask;
                     var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(3);
                     while (ReferenceEquals(async.ExecutionTask, before) && DateTime.UtcNow < deadline)
                     {

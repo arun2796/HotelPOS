@@ -209,6 +209,15 @@ public partial class LiveFlowScreenshots
         {
             result = "Fail";
             notes = ex is DemoCheckException ? ex.Message : $"{ex.GetType().Name}: {ex.Message}";
+            if (ex is not DemoCheckException)
+            {
+                Note($"{step}: {ex}");
+                var frame = ex.StackTrace?.Split('\n').Select(l => l.Trim()).FirstOrDefault(l => l.Contains("HotelPOS", StringComparison.Ordinal));
+                if (frame is not null)
+                {
+                    notes += " @ " + frame;
+                }
+            }
             try
             {
                 if (_stepShots.Count == 0 && _demoTerminal is not null)
