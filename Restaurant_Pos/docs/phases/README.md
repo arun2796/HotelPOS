@@ -1,6 +1,6 @@
 # Phase Roadmap
 
-Last updated: 2026-10-15
+Last updated: 2026-10-20
 
 Each phase ends with a working, demonstrable system increment. Later phases only add; they never
 require rewriting earlier ones. Reference documents (`docs/00`–`06`) describe the target design; phase
@@ -19,19 +19,19 @@ documents say what to build, in which order, and how to verify it.
 | 6 | [Billing & Payments](phase-06-billing-and-payments.md) | 5 | Bill request queue, discounts, tax, finalize/invoice, split payments, multi-counter safety, void/refund | Done (2026-10-07) |
 | 7 | [Printing](phase-07-printing.md) | 5, 6 | KOT, invoice, receipt via thermal/Windows/network printers behind `IPrintService` | Done (2026-10-07) |
 | 8 | [Reports & Dashboard](phase-08-reports-and-dashboard.md) | 6 | Sales, items, payments, cancellations, discounts, taxes, staff and kitchen performance; dashboard | Done (2026-10-08) |
-| 9 | [Security & Audit](phase-09-security-and-audit.md) | 1–6 | Editable permissions, lockout, rate limiting, device management, audit viewer, hardening | In progress (open items: phase doc § 15) |
-| 10 | [Production Readiness](phase-10-production-readiness.md) | all | Windows Service hosting, installers, backup/recovery, monitoring, LAN/firewall docs, go-live checklist | In progress (open items: phase doc § 15) |
-| 11 | [UI Design System](phase-11-ui-design-system.md) | 10 | BillingHub look and shell: tokens, MaterialDesign base, Mica, dark mode, command palette, hubs, KPI/report controls, charts, touch density | In progress (code complete; manual demo open) |
+| 9 | [Security & Audit](phase-09-security-and-audit.md) | 1–6 | Editable permissions, lockout, rate limiting, device management, audit viewer, hardening | Code complete (§ 15 server items closed 2026-10-15; two-machine demo open) |
+| 10 | [Production Readiness](phase-10-production-readiness.md) | all | Windows Service hosting, installers, backup/recovery, monitoring, LAN/firewall docs, go-live checklist | Code complete (installers 0.1.0 built 2026-10-19; clean-VM install test `docs/ops/10` and venue load test open) |
+| 11 | [UI Design System](phase-11-ui-design-system.md) | 10 | BillingHub look and shell: tokens, MaterialDesign base, Mica, dark mode, command palette, hubs, KPI/report controls, charts, touch density | Code complete (manual demo open) |
 | 12 | [CQRS Application Layer](phase-12-cqrs-application-layer.md) | 11 | MediatR commands/queries with logging, permission, validation, transaction and audit behaviours; thin controllers | Done (2026-10-14) |
-| 13 | [Shifts, Cash & Day End](phase-13-shifts-cash-and-day-end.md) | 12 | Cashier shifts, float and denominations, pay-in/out, X/Z reports, Day End with lock | In progress (code complete; manual demo open) |
-| 14 | [Templates, PDF & Excel](phase-14-templates-pdf-excel.md) | 12 | One render model, Template Studio, PDF and Excel exports, print log with DUPLICATE | In progress (code complete; manual demo open) |
-| 15 | [GST Reports & Period Close](phase-15-gst-reports-and-period-close.md) | 13, 14 | GSTR-1 JSON, GSTR-3B, HSN/SAC summary, B2B GSTIN, month/year lock | In progress (code complete; offline-tool check and manual demo open) |
-| 16 | [Licensing, Updates & Import](phase-16-licensing-updates-import.md) | 10 | Machine-locked licence and trial, LAN auto-update, menu/customer import | In progress (code complete; manual demo open) |
-| 17 | [Enterprise UI Refresh](phase-17-enterprise-ui-refresh.md) | 11, 16 | Light green enterprise look on every screen and dialog; presentation only, behaviour unchanged | In progress (code complete; manual demo open) |
-| 18 | [Web Clients for Waiter and Kitchen](phase-18-web-clients-waiter-kitchen.md) | 9, 12, 16, 17 | Blazor PWA served by the API under /app: waiter on phones, kitchen on tablets; same backend, no new business logic | In progress (code complete; device demo open) |
-| 19 | [Android App for Waiter and Kitchen](phase-19-android-app.md) | 18 | .NET MAUI Blazor Hybrid host for the same Razor pages; signed APK, server page, SecureStorage tokens | In progress (code complete; device demo open) |
-| 20 | [Enterprise Product Transformation](phase-20-enterprise-transformation.md) | 11–19 | Role-aware notifications on every client, surfaced live events, role homes and dashboard panels, web polish, HTTPS by default; audit of the owner's master prompt | In progress (code complete 2026-10-16; device demo § 11 open; D1–D4 deferred) |
-| 21 | [Role-based UI/UX Redesign](phase-21-role-ui-ux-redesign.md) | 17–20 | Waiter, kitchen, cashier and admin clients restyled to the owner's mock-ups (`docs/design/reference`) on one design system; presentation only | Implemented on branch `phase-21-role-ui-ux` (2026-10-17; D1–D11 § 4; galleries regenerated; owner review pending) |
+| 13 | [Shifts, Cash & Day End](phase-13-shifts-cash-and-day-end.md) | 12 | Cashier shifts, float and denominations, pay-in/out, X/Z reports, Day End with lock | Code complete (manual demo open) |
+| 14 | [Templates, PDF & Excel](phase-14-templates-pdf-excel.md) | 12 | One render model, Template Studio, PDF and Excel exports, print log with DUPLICATE | Code complete (manual demo open) |
+| 15 | [GST Reports & Period Close](phase-15-gst-reports-and-period-close.md) | 13, 14 | GSTR-1 JSON, GSTR-3B, HSN/SAC summary, B2B GSTIN, month/year lock | Code complete (GSTR-1 offline-tool check and manual demo open) |
+| 16 | [Licensing, Updates & Import](phase-16-licensing-updates-import.md) | 10 | Machine-locked licence and trial, LAN auto-update, menu/customer import | Code complete (manual demo open) |
+| 17 | [Enterprise UI Refresh](phase-17-enterprise-ui-refresh.md) | 11, 16 | Light green enterprise look on every screen and dialog; presentation only, behaviour unchanged | Code complete (manual demo open) |
+| 18 | [Web Clients for Waiter and Kitchen](phase-18-web-clients-waiter-kitchen.md) | 9, 12, 16, 17 | Blazor PWA served by the API under /app: waiter on phones, kitchen on tablets; same backend, no new business logic | Code complete (device demo open) |
+| 19 | [Android App for Waiter and Kitchen](phase-19-android-app.md) | 18 | .NET MAUI Blazor Hybrid host for the same Razor pages; signed APK, server page, SecureStorage tokens | Code complete (device demo open) |
+| 20 | [Enterprise Product Transformation](phase-20-enterprise-transformation.md) | 11–19 | Role-aware notifications on every client, surfaced live events, role homes and dashboard panels, web polish, HTTPS by default; audit of the owner's master prompt | Code complete 2026-10-16 (device demo § 11 open; D1–D4 deferred by owner) |
+| 21 | [Role-based UI/UX Redesign](phase-21-role-ui-ux-redesign.md) | 17–20 | Waiter, kitchen, cashier and admin clients restyled to the owner's mock-ups (`docs/design/reference`) on one design system; presentation only | Code complete (merged to main 2026-10-17; D1–D11 § 4; galleries regenerated; device demo open) |
 | 22 | [Features excluded from Phase 21](phase-22-excluded-features.md) | 21 | Order types, held orders, reservations, wallet, item-level bill split, hourly sales, expenses + P&L, floor-plan geometry, staff on duty, ticket pictures, KOT PDF from the browser | Done except device demo (merged to main 2026-10-19; full suite 1,579 passed; owner signed off E1–E11 and dropped item split B3/B4; migrations rehearsed on a DB copy; release notes `phase-22-release-notes.md`) |
 
 Phases 2 and 3 are independent and can be built in parallel. Phase 7 can start once Phase 5 exists

@@ -32,18 +32,18 @@ PostgreSQL is the single source of truth.
 | Phase 6 – Billing & Payments           | Done         |
 | Phase 7 – Printing                     | Done         |
 | Phase 8 – Reports & Dashboard          | Done         |
-| Phase 9 – Security & Audit             | In progress  |
-| Phase 10 – Production Readiness        | In progress  |
-| Phase 11 – UI Design System            | In progress  |
+| Phase 9 – Security & Audit             | Code complete (two-machine demo open) |
+| Phase 10 – Production Readiness        | Code complete (installers 0.1.0 built 2026-10-19; clean-VM install test open, docs/ops/10) |
+| Phase 11 – UI Design System            | Code complete (manual demo open) |
 | Phase 12 – CQRS Application Layer      | Done         |
-| Phase 13 – Shifts, Cash & Day End      | In progress  |
-| Phase 14 – Templates, PDF & Excel      | In progress  |
-| Phase 15 – GST & Period Close          | In progress  |
-| Phase 16 – Licensing, Updates & Import | In progress  |
-| Phase 17 – Enterprise UI Refresh | In progress  |
-| Phase 18 – Web Clients (Waiter, Kitchen) | In progress  |
-| Phase 19 – Android App (MAUI Blazor Hybrid) | In progress  |
-| Phase 20 – Enterprise Transformation (notifications, role homes, HTTPS) | In progress  |
+| Phase 13 – Shifts, Cash & Day End      | Code complete (manual demo open) |
+| Phase 14 – Templates, PDF & Excel      | Code complete (manual demo open) |
+| Phase 15 – GST & Period Close          | Code complete (manual demo open) |
+| Phase 16 – Licensing, Updates & Import | Code complete (manual demo open) |
+| Phase 17 – Enterprise UI Refresh | Code complete (manual demo open) |
+| Phase 18 – Web Clients (Waiter, Kitchen) | Code complete (device demo open) |
+| Phase 19 – Android App (MAUI Blazor Hybrid) | Code complete (device demo open) |
+| Phase 20 – Enterprise Transformation (notifications, role homes, HTTPS) | Code complete (device demo open) |
 | Phase 21 – Role-based UI/UX Redesign (owner mock-ups) | Code complete (merged to main 2026-10-17; device demo open) |
 | Phase 22 – Features excluded from Phase 21 (order types, reservations, expenses/P&L, floor plan, staff on duty, ticket pictures, KOT PDF) | Done except device demo (merged to main 2026-10-19, full suite green, owner signed off E1–E11; item split dropped by owner decision; migrations rehearsed on a DB copy) |
 
@@ -81,7 +81,7 @@ Development sign-in: `admin` / `Admin@123` (must change it), or `manager1`, `wai
 | [docs/07-menus-screens-and-fields.md](docs/07-menus-screens-and-fields.md) | Every menu, screen, field, button and validation rule, for owners, testers and trainers |
 | [docs/08-multi-device-readiness-audit.md](docs/08-multi-device-readiness-audit.md) | Source-grounded audit of multi-device support: what works, what is missing, smallest path to phone and tablet clients |
 | [docs/dev-setup.md](docs/dev-setup.md) | Build, run and test on a development PC; release build and load test |
-| [docs/ops/](docs/ops/01-installation.md) | For venue technicians: installation, LAN and firewall, backup and recovery, upgrade, troubleshooting, daily operations, go-live checklist, licensing, the Android staff app |
+| [docs/ops/](docs/ops/01-installation.md) | For venue technicians: installation, LAN and firewall, backup and recovery, upgrade, troubleshooting, daily operations, go-live checklist, licensing, the Android staff app, clean-VM install test |
 | [docs/phases/README.md](docs/phases/README.md) | Roadmap and phase index |
 | [docs/phases/phase-01-foundation.md](docs/phases/phase-01-foundation.md) … [phase-19](docs/phases/phase-19-android-app.md) | One document per phase |
 

@@ -234,8 +234,10 @@ prefer the table for the admin list and audit (`Backup.Completed/Failed`). Migra
 
 - [x] Update the .NET 8 SDK on the build PC so the self-contained publish bundles ASP.NET Core 8.0.32 or later (done 2026-10-16: SDK 8.0.426, bundle 8.0.32; both installers built with Inno Setup 6.7.3)
       (the current SDK bundles 8.0.23 and `publish.ps1` refuses it for a release).
-- [ ] Install Inno Setup 6, build both installers with `publish.ps1`, and run the installer smoke test on clean VMs
-      (§ 10): server installer, service registration and restart-on-failure, client installer with `/API=`,
-      full order-to-payment flow, restore on a second VM.
+- [x] Install Inno Setup 6 and build both installers with `publish.ps1` (done 2026-10-16; release 0.1.0 rebuilt from
+      main 2026-10-19, `artifacts/installers/`).
+- [ ] Installer smoke test on clean VMs (§ 10): server installer, service registration and restart-on-failure, client
+      installer with `/API=`, full order-to-payment flow, restore on a second VM. Step-by-step sheet:
+      `docs/ops/10-clean-vm-install-test.md`.
 - [ ] Run the load test on venue-like hardware for the full 10 minutes over Wi-Fi.
 - [ ] Manual demo script (§ 11) and the go-live checklist on site.
