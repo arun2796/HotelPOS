@@ -61,3 +61,21 @@
 .kds-station-list { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 12px; }
 @media (min-width: 720px) { .kds-station-list { grid-template-columns: repeat(2, 1fr); } }
 .kds-station-list .btn { justify-content: flex-start; }
+
+/* ---- Phone (under 600 px): the kitchen board on a waiter-sized screen. Designed for tablets; this keeps it usable
+   when a phone opens it. Tokens only. ---- */
+@media (max-width: 599px) {
+  /* Shell bar: brand, clock and the theme switch go (the theme stays under Settings); the four nav icons shrink to
+     touch size so title, pill, bell and sign-out fit on one 360 px line. */
+  .shell.kitchen .topbar .brand, .shell.kitchen .topbar .clock, .shell.kitchen .topbar .theme-toggle { display: none; }
+  .shell.kitchen .topbar { gap: 2px; padding-left: 8px; }
+  .shell.kitchen .headnav a { padding: 0 6px; min-width: 40px; }
+  /* Control row: the station chips take a full line (scrolling sideways), then search + refresh + more. */
+  .kds-header { flex-wrap: wrap; }
+  .kds-stations { flex: 1 1 100%; order: -1; }
+  .kds-search { flex: 1 1 auto; min-width: 0; }
+  /* Five KPI tiles in two columns; "Completed today" spans the last row. */
+  .kds-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kds-kpis .kpi:last-child { grid-column: 1 / -1; }
+  .kds-updated { flex-basis: 100%; text-align: left; }
+}
