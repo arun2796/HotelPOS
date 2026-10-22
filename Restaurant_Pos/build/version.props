@@ -2,6 +2,6 @@
   <!-- The one place the release version lives: assemblies, /api/system/info, the desktop's version gate, the
        installers (publish.ps1 passes it to Inno Setup) and the publish folder name all read it from here. -->
   <PropertyGroup>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
   </PropertyGroup>
 </Project>
