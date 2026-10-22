@@ -25,21 +25,25 @@ The server PC may also be used as the admin or billing terminal.
 
 1. Install PostgreSQL 16 or later (the EDB Windows installer). Keep the default port 5432. Write down the password
    of the `postgres` superuser and keep it with the venue's documents, not on the PC.
-2. Open **SQL Shell (psql)** as `postgres` and create the role and database HotelPOS uses (pick a strong
-   password; it goes into the HotelPOS installer in the next step):
+2. The role and database HotelPOS uses (`hotelpos` / `hotelpos`) are created by the HotelPOS installer when you
+   enter the `postgres` password on its Database page (recommended). To prepare them yourself instead, open
+   **SQL Shell (psql)** as `postgres`:
 
    ```sql
    CREATE ROLE hotelpos LOGIN PASSWORD '<strong password>';
    CREATE DATABASE hotelpos OWNER hotelpos;
    ```
 
-   The API never needs the superuser. The installer checks that PostgreSQL answers before it continues.
+   The API never needs the superuser. The installer checks that PostgreSQL answers before it continues, and
+   `scripts\new-database.ps1` does the same creation by hand later.
 
 ## 4. Install the server
 
 1. Run `HotelPOS-Server-Setup-<version>.exe` as administrator.
-2. **Database** page: server `localhost`, port `5432`, database `hotelpos`, user `hotelpos`, the password from
-   step 3. API port: `5000` unless something else uses it.
+2. **Database** page: server `localhost`, port `5432`, database `hotelpos`, user `hotelpos`, and a password for that
+   user (choose one on a new installation, or the one from step 3). Enter the `postgres` superuser password in the
+   optional field and Setup creates the role and database; leave it empty when they already exist (upgrade, or
+   prepared by hand). API port: `5000` unless something else uses it.
 3. **Administrator** page: the first admin password. It is used once, when the admin account is created, and must
    be changed at the first sign-in. It is required on a new installation: there is no default password, and until
    it is changed the `admin` account can do nothing but sign in and change it.

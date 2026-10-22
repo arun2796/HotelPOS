@@ -24,6 +24,8 @@ param(
     [string] $Database = 'hotelpos',
     [string] $DbUser = 'hotelpos',
     [string] $DbPassword,
+    # Optional: with the postgres superuser password the role and database are created when missing (new-database.ps1).
+    [string] $SuperuserPassword,
     [string] $AdminPassword,
     [int] $Port = 5000,
     [int] $HttpsPort = 5001,
@@ -47,7 +49,7 @@ trap {
 if ($SettingsFile) {
     $handover = Get-Content $SettingsFile -Raw | ConvertFrom-Json
     Remove-Item $SettingsFile -Force
-    foreach ($name in 'DbHost', 'DbPort', 'Database', 'DbUser', 'DbPassword', 'AdminPassword', 'Port', 'HttpsPort', 'CertificatePath', 'CertificatePassword', 'DataRoot') {
+    foreach ($name in 'DbHost', 'DbPort', 'Database', 'DbUser', 'DbPassword', 'SuperuserPassword', 'AdminPassword', 'Port', 'HttpsPort', 'CertificatePath', 'CertificatePassword', 'DataRoot') {
         if ($null -ne $handover.$name -and "$($handover.$name)" -ne '') { Set-Variable -Name $name -Value $handover.$name }
     }
 }
@@ -65,6 +67,13 @@ try {
     throw "PostgreSQL is not reachable at ${DbHost}:$DbPort. Install or start PostgreSQL first."
 } finally {
     $probe.Dispose()
+}
+
+# With the superuser password the role and database are made here, so a new installation needs no psql session.
+if ($SuperuserPassword) {
+    if (-not $DbPassword) { throw 'A password for the HotelPOS database role is needed together with the postgres password (-DbPassword).' }
+    & (Join-Path $PSScriptRoot 'new-database.ps1') -DbHost $DbHost -DbPort $DbPort -Database $Database -DbUser $DbUser `
+        -DbPassword $DbPassword -SuperuserPassword $SuperuserPassword
 }
 
 $settings = Get-Content $template -Raw | ConvertFrom-Json

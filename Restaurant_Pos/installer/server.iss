@@ -56,7 +56,7 @@ end;
 
 function GetPort(Param: String): String;
 begin
-  Result := Trim(DatabasePage.Values[5]);
+  Result := Trim(DatabasePage.Values[6]);
   if Result = '' then
     Result := '5000';
 end;
@@ -65,18 +65,20 @@ procedure InitializeWizard;
 begin
   DatabasePage := CreateInputQueryPage(wpSelectDir, 'Database',
     'PostgreSQL connection for HotelPOS',
-    'PostgreSQL must already be installed. Use a dedicated role that owns the hotelpos database (not postgres).');
+    'PostgreSQL must already be installed. HotelPOS uses its own role and database (not postgres). ' +
+    'Enter the postgres password and Setup creates them for you; leave it empty if they already exist.');
   DatabasePage.Add('Server:', False);
   DatabasePage.Add('Port:', False);
   DatabasePage.Add('Database:', False);
   DatabasePage.Add('User:', False);
-  DatabasePage.Add('Password:', True);
+  DatabasePage.Add('Password for this user (choose one on a new installation):', True);
+  DatabasePage.Add('postgres (superuser) password, optional - creates the role and database:', True);
   DatabasePage.Add('HotelPOS API port:', False);
   DatabasePage.Values[0] := 'localhost';
   DatabasePage.Values[1] := '5432';
   DatabasePage.Values[2] := 'hotelpos';
   DatabasePage.Values[3] := 'hotelpos';
-  DatabasePage.Values[5] := '5000';
+  DatabasePage.Values[6] := '5000';
 
   AdminPage := CreateInputQueryPage(DatabasePage.ID, 'Administrator',
     'First administrator password',
@@ -137,6 +139,7 @@ begin
     '"Database":"' + JsonEscape(DatabasePage.Values[2]) + '",' +
     '"DbUser":"' + JsonEscape(DatabasePage.Values[3]) + '",' +
     '"DbPassword":"' + JsonEscape(DatabasePage.Values[4]) + '",' +
+    '"SuperuserPassword":"' + JsonEscape(DatabasePage.Values[5]) + '",' +
     '"AdminPassword":"' + JsonEscape(AdminPage.Values[0]) + '",' +
     '"Port":"' + JsonEscape(GetPort('')) + '",' +
     '"CertificatePath":"' + JsonEscape(Trim(CertificatePage.Values[0])) + '",' +
