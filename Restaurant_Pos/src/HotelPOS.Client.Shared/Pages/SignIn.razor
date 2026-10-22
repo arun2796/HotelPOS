@@ -126,7 +126,8 @@
             }
 
             await Realtime.StartAsync();
-            Navigation.NavigateTo(ReturnUrl ?? string.Empty, replace: true);
+            // A password set by an administrator must be replaced first; the server allows nothing else until then.
+            Navigation.NavigateTo(result.Data?.User.MustChangePassword == true ? "change-password" : ReturnUrl ?? string.Empty, replace: true);
         }
         finally
         {

@@ -24,7 +24,7 @@ namespace HotelPOS.Api.Common;
 
 public static class ApiServiceRegistration
 {
-    public const int MinimumSigningKeyLength = 32;
+    public const int MinimumSigningKeyLength = JwtOptions.MinimumSigningKeyLength;
 
     public static IServiceCollection AddApi(this IServiceCollection services, IConfiguration configuration, IWebHostEnvironment environment)
     {
@@ -34,10 +34,12 @@ public static class ApiServiceRegistration
         services.AddOptions<AppOptions>()
             .Bind(configuration.GetSection(AppOptions.SectionName))
             .PostConfigure(o => o.ApiVersion = ApiVersion);
+        var isDevelopment = environment.IsDevelopment();
         services.AddOptions<JwtOptions>()
             .Validate(
-                o => !string.IsNullOrWhiteSpace(o.SigningKey) && o.SigningKey.Length >= MinimumSigningKeyLength,
-                $"Jwt:SigningKey must be configured and at least {MinimumSigningKeyLength} characters long.")
+                o => JwtOptions.SigningKeyProblem(o.SigningKey, isDevelopment) is null,
+                "Jwt:SigningKey is missing, too short, the template placeholder or the public development key. "
+                + "Run scripts\\configure-server.ps1 (or the installer) to generate one.")
             .Validate(o => o.AccessTokenMinutes > 0 && o.RefreshTokenHours > 0, "Jwt token lifetimes must be positive.")
             .ValidateOnStart();
 

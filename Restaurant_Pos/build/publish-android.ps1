@@ -3,7 +3,7 @@
   Builds the signed release APK of HotelPOS Staff (Phase 19) and places it where staff can install it.
 
 .DESCRIPTION
-  1. Reads the version from Directory.Build.props (same as the server and desktop).
+  1. Reads the version from build\version.props (same as the server and desktop).
   2. Creates the release keystore once if it does not exist (prompts for a password) — keep it with the licence key
      and back it up: a lost keystore means existing installs cannot be updated in place.
   3. dotnet publish src\HotelPOS.Android for net8.0-android, Release, signed.
@@ -26,9 +26,10 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
-$props = [xml](Get-Content (Join-Path $root 'Directory.Build.props'))
+# The release version lives in build/version.props (Directory.Build.props only imports it), same as publish.ps1.
+$props = [xml](Get-Content (Join-Path $PSScriptRoot 'version.props'))
 $version = ($props.Project.PropertyGroup | Where-Object { $_.Version } | Select-Object -First 1).Version
-if (-not $version) { throw 'No <Version> in Directory.Build.props.' }
+if (-not $version) { throw 'No <Version> in build/version.props.' }
 $versionCode = [int]([version]$version).Major * 10000 + [int]([version]$version).Minor * 100 + [int]([version]$version).Build
 
 if (-not $KeyStorePassword) { $KeyStorePassword = Read-Host -AsSecureString 'Keystore password' }

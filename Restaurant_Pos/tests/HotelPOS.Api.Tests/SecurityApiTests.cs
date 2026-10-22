@@ -690,4 +690,49 @@ public class SecurityApiTests : IClassFixture<ApiFactory>
         served.Data!.Status.Should().Be(OrderStatus.Served);
         return served.Data;
     }
+
+    [Fact]
+    public async Task APasswordSetByAnAdministrator_OpensOnlyTheAuthEndpoints_UntilItIsChanged()
+    {
+        var admin = await _factory.CreateAuthenticatedClientAsync("admin", ApiFactory.AdminPassword);
+        var username = "mustchange_" + Guid.NewGuid().ToString("N")[..8];
+        var createResponse = await admin.PostAsJsonAsync("/api/users", new CreateUserRequest
+        {
+            Username = username,
+            DisplayName = "Must Change",
+            Password = "Temporary123",
+            Roles = new[] { "Waiter" },
+            MustChangePassword = true,
+        }, PosJson.Options);
+        createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var target = (await createResponse.ReadEnvelopeAsync<UserDto>()).Data!;
+
+        var login = await _factory.LoginAsync(username, "Temporary123");
+        login.User.MustChangePassword.Should().BeTrue();
+        using var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", login.AccessToken);
+
+        // Everything outside /api/auth is refused with a dedicated code, so the clients can route to the password page.
+        var blocked = await client.GetAsync("/api/orders/active");
+        blocked.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await blocked.ReadEnvelopeAsync<object>()).Errors.Single().Code.Should().Be(ErrorCodes.PasswordChangeRequired);
+        (await client.GetAsync("/api/auth/me")).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await client.GetAsync("/api/system/info")).StatusCode.Should().Be(HttpStatusCode.OK, "the version check must still work");
+
+        // A wrong current password does not lift the block; the right one does, from the very next request.
+        (await client.PostAsJsonAsync("/api/auth/change-password", new ChangePasswordRequest { CurrentPassword = "Wrong123", NewPassword = "MyOwnPass123" }, PosJson.Options))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await client.GetAsync("/api/orders/active")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await client.PostAsJsonAsync("/api/auth/change-password", new ChangePasswordRequest { CurrentPassword = "Temporary123", NewPassword = "MyOwnPass123" }, PosJson.Options))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        (await client.GetAsync("/api/orders/active")).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // An administrator's reset puts the block back for that user.
+        (await admin.PostAsJsonAsync($"/api/users/{target.Id}/reset-password", new ResetPasswordRequest { NewPassword = "Reset12345", MustChangePassword = true }, PosJson.Options))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        var afterReset = await _factory.LoginAsync(username, "Reset12345");
+        using var resetClient = _factory.CreateClient();
+        resetClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", afterReset.AccessToken);
+        (await resetClient.GetAsync("/api/orders/active")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
 }

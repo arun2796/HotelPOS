@@ -20,6 +20,10 @@ public static class LicenseGeneratorCli
 
           inspect --public-key <base64 or file> <licence key>
               Verifies a key and prints what it says.
+
+          sign-update --private-key <file> --manifest <latest.json>
+              Signs the terminal update manifest in place (build/publish.ps1 runs this). The server advertises, and
+              the terminals install, only a manifest that carries this signature.
         """;
 
     public static int Run(string[] args, TextWriter output, TextWriter error)
@@ -38,6 +42,7 @@ public static class LicenseGeneratorCli
                 "keygen" => KeyGen(options, output),
                 "issue" => Issue(options, output),
                 "inspect" => Inspect(options, output, error),
+                "sign-update" => SignUpdate(options, output),
                 _ => Fail(error, $"Unknown command '{args[0]}'.\n{Usage}"),
             };
         }
@@ -130,6 +135,30 @@ public static class LicenseGeneratorCli
 
         output.WriteLine($"Valid. Customer {payload!.Customer}, machine {payload.MachineId}, edition {payload.Edition}, {payload.Terminals} terminal(s), "
             + $"issued {payload.IssuedOn:yyyy-MM-dd}, {(payload.ExpiresOn is { } e ? "expires " + e.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) : "perpetual")}, id {payload.LicenseId}.");
+        return 0;
+    }
+
+    private static readonly System.Text.Json.JsonSerializerOptions ManifestJson = new()
+    {
+        PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true,
+        WriteIndented = true,
+    };
+
+    private static int SignUpdate(Dictionary<string, string> options, TextWriter output)
+    {
+        var privateKey = FromPem(File.ReadAllText(Required(options, "private-key")));
+        var path = Required(options, "manifest");
+        var info = System.Text.Json.JsonSerializer.Deserialize<HotelPOS.Contracts.Admin.ClientUpdateInfo>(File.ReadAllText(path), ManifestJson)
+            ?? throw new ArgumentException($"{path} is not an update manifest.");
+        if (string.IsNullOrWhiteSpace(info.Version) || string.IsNullOrWhiteSpace(info.File) || string.IsNullOrWhiteSpace(info.Sha256) || info.Size <= 0)
+        {
+            throw new ArgumentException($"{path} must have version, file, sha256 and size before it can be signed.");
+        }
+
+        var signed = info with { Signature = HotelPOS.Contracts.Admin.UpdateManifestSignature.Sign(info, privateKey) };
+        File.WriteAllText(path, System.Text.Json.JsonSerializer.Serialize(signed, ManifestJson));
+        output.WriteLine($"Signed {Path.GetFileName(path)} for HotelPOS {signed.Version} ({signed.File}).");
         return 0;
     }
 

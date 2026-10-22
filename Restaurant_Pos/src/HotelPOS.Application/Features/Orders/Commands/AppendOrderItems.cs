@@ -15,7 +15,8 @@ using Microsoft.EntityFrameworkCore;
 namespace HotelPOS.Application.Features.Orders.Commands;
 
 // A new batch for an order that is already with the kitchen.
-public sealed record AppendOrderItemsCommand(int Id, AppendOrderItemsRequest Input)
+// IdempotencyKey: the request's Idempotency-Key when it came through the API, remembered on the order (Order.LastAppendKey).
+public sealed record AppendOrderItemsCommand(int Id, AppendOrderItemsRequest Input, Guid? IdempotencyKey = null)
     : ICommand<OrderDetailDto>, IHasInput<AppendOrderItemsRequest>, IRequirePermission, IAuditedCommand
 {
     public string Permission => Permissions.OrdersCreate;
@@ -70,6 +71,13 @@ internal sealed class AppendOrderItemsHandler : ICommandHandler<AppendOrderItems
             return error;
         }
 
+        // The same request again, after its first attempt committed without the client hearing back: the batch is
+        // already with the kitchen, so answer with the order as it is instead of appending it a second time.
+        if (command.IdempotencyKey is { } key && order!.WasAppendedWith(key))
+        {
+            return await _orders.GetAsync(order.Id, cancellationToken);
+        }
+
         if (order!.Status == OrderStatus.Draft)
         {
             return AppErrors.InvalidState("The order is still a draft: change its items instead.");
@@ -87,6 +95,7 @@ internal sealed class AppendOrderItemsHandler : ICommandHandler<AppendOrderItems
         }
 
         var batch = order.AppendBatch(items.Value);
+        order.RecordAppendKey(command.IdempotencyKey);
         _db.Entry(order).State = EntityState.Modified;
         var existing = await _kitchen.LoadTicketsAsync(order.Id, cancellationToken);
         var created = await _tickets.CreateAsync(order, batch, cancellationToken);

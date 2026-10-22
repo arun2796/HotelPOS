@@ -47,7 +47,10 @@ internal sealed class TransactionBehavior<TRequest, TResponse> : IPipelineBehavi
                 return response;
             }
 
-            await transaction.CommitAsync(cancellationToken);
+            // Never with the request's token: a client that gives up while COMMIT is in flight must not turn a
+            // committed order or payment into an exception, which would drop its idempotency key and let the
+            // retry create a second one. Once the handler has succeeded the commit runs to completion.
+            await transaction.CommitAsync(CancellationToken.None);
         }
 
         await _afterCommit.RunAsync();

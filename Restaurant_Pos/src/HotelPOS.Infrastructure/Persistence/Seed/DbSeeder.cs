@@ -31,7 +31,6 @@ public sealed class SeedOptions
 public sealed class DbSeeder
 {
     public const string DefaultAdminUsername = "admin";
-    public const string FallbackAdminPassword = "Admin@123";
 
     private readonly AppDbContext _db;
     private readonly IPasswordHasher _hasher;
@@ -170,10 +169,10 @@ public sealed class DbSeeder
         var password = options.AdminPassword;
         if (string.IsNullOrWhiteSpace(password))
         {
-            password = FallbackAdminPassword;
-            _logger.LogWarning(
-                "No Seed:AdminPassword configured. Created user '{Admin}' with the default password; it must be changed at first login.",
-                DefaultAdminUsername);
+            // Never a well-known default: anything on the LAN could sign in as the administrator until it was changed.
+            throw new StartupCheckException(
+                $"No administrator account exists yet and Seed:AdminPassword is empty. Set it (the installer asks for it; "
+                + "scripts\\configure-server.ps1 -AdminPassword) and start the service again; the password must be changed at the first sign-in.");
         }
 
         var adminRole = await _db.Roles.SingleAsync(r => r.Name == Roles.Admin, cancellationToken);

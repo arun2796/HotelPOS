@@ -54,6 +54,9 @@ builder.Host.UseSerilog((context, services, logger) =>
 // their logs apart; disposing the app flushes it.
 preserveStaticLogger: true);
 
+// First hosted service = first to start: the database start-up runs before the other hosted services and before
+// Kestrel listens, and after the Service Control Manager has been answered (see StartupHostedService).
+builder.Services.AddHostedService<StartupHostedService>();
 builder.Services
     .AddApplication()
     .AddInfrastructure(builder.Configuration)
@@ -149,20 +152,16 @@ app.MapFallbackToFile("/app/{*path:nonfile}", "app/index.html").AllowAnonymous()
 
 try
 {
-    await app.Services.InitializeDatabaseAsync();
+    await app.RunAsync();
+    return 0;
 }
-catch (StartupCheckException ex)
+catch (Exception ex)
 {
-    // A non-zero exit lets the Windows service recovery settings restart the API once the cause is fixed.
-    app.Logger.LogCritical(ex, "HotelPOS API cannot start: {Reason}", ex.Message);
-    await app.DisposeAsync();
+    // A failed start-up check or migration (already logged by StartupHostedService) or a host that could not start:
+    // a non-zero exit lets the Windows service recovery settings restart the API once the cause is fixed.
+    Console.Error.WriteLine($"HotelPOS API cannot start: {ex.Message}");
     return 1;
 }
-
-StartupDiagnostics.WarnAboutLowDiskSpace(app.Services, app.Logger);
-app.Logger.LogInformation("HotelPOS API {Version} starting ({Environment})", ApiServiceRegistration.ApiVersion, app.Environment.EnvironmentName);
-await app.RunAsync();
-return 0;
 
 public partial class Program
 {

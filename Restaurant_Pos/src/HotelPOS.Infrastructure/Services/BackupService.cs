@@ -82,6 +82,42 @@ public sealed class BackupService : IBackupService
         }
     }
 
+    /// <summary>
+    /// The safety copy taken before database migrations are applied at start-up (docs/ops/04 § 2): a verified
+    /// pg_dump of the current schema and data in the backup folder, named after the upgrade. No media zip and no
+    /// Backups row: the schema is about to change, so nothing is written to the database until the migration is done.
+    /// Throws with the reason when pg_dump or pg_restore fail.
+    /// </summary>
+    public async Task<string> DumpBeforeUpgradeAsync(string label, CancellationToken cancellationToken = default)
+    {
+        await Gate.WaitAsync(cancellationToken);
+        try
+        {
+            var folder = await FolderAsync(cancellationToken);
+            Directory.CreateDirectory(folder);
+            var stamp = TimeZoneInfo.ConvertTimeFromUtc(_clock.UtcNow, TimeZoneInfo.Local).ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
+            var safeLabel = new string(label.Where(char.IsLetterOrDigit).Take(40).ToArray());
+            var dumpPath = Path.Combine(folder, $"hotelpos-{stamp}-before-{safeLabel}.dump");
+            try
+            {
+                await DumpAsync(dumpPath, cancellationToken);
+                await VerifyAsync(dumpPath, cancellationToken);
+            }
+            catch
+            {
+                DeleteQuietly(dumpPath);
+                throw;
+            }
+
+            _logger.LogInformation("Pre-upgrade backup {File} written to {Folder}", Path.GetFileName(dumpPath), folder);
+            return dumpPath;
+        }
+        finally
+        {
+            Gate.Release();
+        }
+    }
+
     public async Task<BackupOverviewDto> GetOverviewAsync(CancellationToken cancellationToken = default)
     {
         var backups = await _db.Backups.AsNoTracking().OrderByDescending(b => b.StartedAt).Take(100).ToListAsync(cancellationToken);

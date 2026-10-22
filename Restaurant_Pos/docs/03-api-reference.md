@@ -37,6 +37,7 @@ endpoint is `tests/HotelPOS.Api.Tests/authorization-matrix.txt`; `AuthorizationM
 | 401 | `INVALID_CREDENTIALS` | Login failed |
 | 403 | `FORBIDDEN` | Role/permission not allowed |
 | 403 | `ACCOUNT_LOCKED` / `ACCOUNT_DISABLED` / `DEVICE_DISABLED` | Account or device blocked |
+| 403 | `PASSWORD_CHANGE_REQUIRED` | The password was set by an administrator; only `/api/auth/*` and `/api/system/info` answer until `POST /api/auth/change-password` succeeds |
 | 404 | `NOT_FOUND` | Entity missing or inactive; unknown route for authenticated callers (anonymous callers get 401) |
 | 405 | `METHOD_NOT_ALLOWED` | Route exists, HTTP method does not |
 | 409 | `DUPLICATE` | Unique value already used (e.g. username) |

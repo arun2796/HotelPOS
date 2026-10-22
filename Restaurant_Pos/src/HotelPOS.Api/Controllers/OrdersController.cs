@@ -25,7 +25,7 @@ public sealed class OrdersController : ApiControllerBase
     [Authorize(Policy = Permissions.OrdersCreate)]
     [ProducesResponseType<ApiResponse<OrderDetailDto>>(StatusCodes.Status201Created)]
     public async Task<IActionResult> Create(CreateOrderRequest request, CancellationToken cancellationToken) =>
-        FromResult(await Sender.Send(new CreateOrderCommand(request), cancellationToken), StatusCodes.Status201Created,
+        FromResult(await Sender.Send(new CreateOrderCommand(request, RequestIdempotencyKey), cancellationToken), StatusCodes.Status201Created,
             request.Submit ? "Order sent to the kitchen." : "Draft saved.");
 
     [HttpGet]
@@ -66,7 +66,7 @@ public sealed class OrdersController : ApiControllerBase
     [Authorize(Policy = Permissions.OrdersCreate)]
     [ProducesResponseType<ApiResponse<OrderDetailDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> AppendItems(int id, AppendOrderItemsRequest request, CancellationToken cancellationToken) =>
-        FromResult(await Sender.Send(new AppendOrderItemsCommand(id, request), cancellationToken), message: "Items sent to the kitchen.");
+        FromResult(await Sender.Send(new AppendOrderItemsCommand(id, request, RequestIdempotencyKey), cancellationToken), message: "Items sent to the kitchen.");
 
     [HttpPost("{id:int}/serve")]
     [Authorize(Policy = Permissions.OrdersCreate)]

@@ -119,6 +119,46 @@ public class OrderTests : DatabaseTestBase
     }
 
     [Fact]
+    public async Task CreateOrder_RepeatedWithTheSameRequestKey_ReturnsTheExistingOrder_NotASecondOne()
+    {
+        var s = await SetupAsync();
+        await AsWaiterAsync(s.WaiterA);
+        var key = Guid.NewGuid();
+        var request = new CreateOrderRequest { OrderType = OrderType.Takeaway, GuestCount = 1, Items = new[] { Line(s.Naan, 1) }, Submit = true };
+
+        // The first attempt committed but its answer was lost (client timeout during COMMIT); the retry carries the same key.
+        var first = await SendAsync(new CreateOrderCommand(request, key));
+        var again = await SendAsync(new CreateOrderCommand(request, key));
+        var different = await SendAsync(new CreateOrderCommand(request, Guid.NewGuid()));
+
+        first.IsSuccess.Should().BeTrue(first.Error?.Message);
+        again.IsSuccess.Should().BeTrue(again.Error?.Message);
+        again.Value.Id.Should().Be(first.Value.Id);
+        different.Value.Id.Should().NotBe(first.Value.Id);
+        (await QueryAsync(db => db.Orders.CountAsync(o => o.IdempotencyKey == key))).Should().Be(1);
+        Realtime.Events.Count(e => e.EventName == HubEvents.OrderCreated).Should().Be(2);
+    }
+
+    [Fact]
+    public async Task AppendItems_RepeatedWithTheSameRequestKey_DoesNotSendASecondBatch()
+    {
+        var s = await SetupAsync();
+        await AsWaiterAsync(s.WaiterA);
+        var order = await CreateAsync(s, submit: true, Line(s.Naan, 1));
+        var key = Guid.NewGuid();
+        var request = new AppendOrderItemsRequest { Items = new[] { Line(s.Naan, 2) } };
+
+        var first = await SendAsync(new AppendOrderItemsCommand(order.Id, request, key));
+        var again = await SendAsync(new AppendOrderItemsCommand(order.Id, request, key));
+        var next = await SendAsync(new AppendOrderItemsCommand(order.Id, request, Guid.NewGuid()));
+
+        first.IsSuccess.Should().BeTrue(first.Error?.Message);
+        again.IsSuccess.Should().BeTrue(again.Error?.Message);
+        again.Value.Items.Select(i => i.BatchNumber).Should().Equal(1, 2);
+        next.Value.Items.Select(i => i.BatchNumber).Should().Equal(1, 2, 3);
+    }
+
+    [Fact]
     public async Task Append_CreatesTheNextBatch_ButNotOnceABillWasRequested()
     {
         var s = await SetupAsync();

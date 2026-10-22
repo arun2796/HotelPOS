@@ -38,8 +38,12 @@ HotelPOS.LicenseGenerator keygen --out C:\vendor\license-private.pem        (onc
 HotelPOS.LicenseGenerator issue --private-key C:\vendor\license-private.pem --machine HP-... \
     --customer "Hotel Saravana" --terminals 5 --expires 2027-10-31          (omit --expires: perpetual)
 HotelPOS.LicenseGenerator inspect --public-key <base64> <key>
+HotelPOS.LicenseGenerator sign-update --private-key C:\vendor\license-private.pem --manifest <server\updates\latest.json>
 ```
 
-`keygen` refuses to write inside a git repository. The public key it prints replaces `EmbeddedLicenseKey.PublicKey`
-in `src/HotelPOS.Application/Features/Licensing/LicenseService.cs` before the release is built. **Keep the private key
-safe and backed up outside the repository**: without it no more keys can be issued for builds that carry this public key.
+`keygen` refuses to write inside a git repository. The public key it prints replaces `VendorKeys.LicensePublicKey`
+in `src/HotelPOS.Contracts/Admin/UpdateManifestSignature.cs` before the release is built. **Keep the private key
+safe and backed up outside the repository**: without it no more keys can be issued for builds that carry this public key,
+and no terminal update can be published. `build/publish.ps1` runs `sign-update` itself (key at
+`%USERPROFILE%\.hotelpos-vendor\license-private.pem`, or `-VendorKey <file>`): the server advertises, and the terminals
+install, only a `latest.json` that carries this signature.

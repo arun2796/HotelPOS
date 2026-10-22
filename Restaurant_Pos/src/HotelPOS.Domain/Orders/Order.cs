@@ -75,6 +75,27 @@ public sealed class Order : BaseEntity, IHasRowVersion
 
     public uint RowVersion { get; set; }
 
+    // The Idempotency-Key of the request that created this order (unique). The API's key store answers ordinary
+    // retries; this catches the retry whose first attempt committed but never answered (client timeout during
+    // COMMIT, server stopped right after it), so the same request can never create two orders.
+    public Guid? IdempotencyKey { get; private set; }
+
+    // The Idempotency-Key of the last batch appended to this order, for the same reason: an append retried after its
+    // first attempt committed returns the order instead of sending the kitchen a second batch.
+    public Guid? LastAppendKey { get; private set; }
+
+    public void RecordCreationKey(Guid? key) => IdempotencyKey = key;
+
+    public bool WasAppendedWith(Guid key) => LastAppendKey == key;
+
+    public void RecordAppendKey(Guid? key)
+    {
+        if (key is not null)
+        {
+            LastAppendKey = key;
+        }
+    }
+
     public IReadOnlyCollection<OrderItem> Items => _items;
 
     public int CurrentBatch => _items.Count == 0 ? 0 : _items.Max(i => i.BatchNumber);

@@ -85,8 +85,11 @@ if ($existing -and $existing.Jwt.SigningKey -and $existing.Jwt.SigningKey -notli
     $settings.Jwt.SigningKey = [Convert]::ToBase64String($bytes)
 }
 
-# Only used when the admin account is first created; afterwards the password is changed in the app.
-$settings.Seed.AdminPassword = if ($AdminPassword) { $AdminPassword } elseif ($existing) { $existing.Seed.AdminPassword } else { 'Admin@123' }
+# Only used when the admin account is first created; afterwards the password is changed in the app. Never a default:
+# the server refuses to create the administrator without one (anything on the LAN could sign in with a known password).
+$settings.Seed.AdminPassword = if ($AdminPassword) { $AdminPassword } elseif ($existing) { $existing.Seed.AdminPassword } else {
+    throw 'The first administrator password is needed on a new installation (-AdminPassword). It must be changed at the first sign-in.'
+}
 # Plain HTTP stays for the Windows terminals; HTTPS (phones, PWA install) is on 5001. A "Urls" value would override
 # the Kestrel endpoints, so it is cleared (the base appsettings.json has one for Development).
 $settings.Urls = ''

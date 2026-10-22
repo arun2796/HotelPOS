@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -63,7 +64,15 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         });
     }
 
-    public Task InitializeAsync() => Task.CompletedTask;
+    // The seeded administrator must change the installer's password before anything else works (the API refuses every
+    // call outside /api/auth with PASSWORD_CHANGE_REQUIRED). The tests act as that admin everywhere, so the flag is
+    // cleared here as if the first sign-in's password change had happened; SecurityApiTests covers the rule itself.
+    public async Task InitializeAsync()
+    {
+        await using var scope = Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await db.Database.ExecuteSqlInterpolatedAsync($"UPDATE \"Users\" SET \"MustChangePassword\" = FALSE WHERE \"Username\" = 'admin'");
+    }
 
     public new async Task DisposeAsync()
     {

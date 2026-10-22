@@ -89,8 +89,10 @@ terminal name over the limit, or one beyond the first N after the limit was lowe
 only users with `license.manage` (Admin) can sign in, so they can see the data, back up and apply a new key. Banner
 from 14 days before expiry and during the trial.
 
-**Update**: `latest.json` = `{ version, file, sha256, size }`. A terminal whose version is below `latestClientVersion`
-offers "Update now": download to `%TEMP%`, verify SHA-256, run the Inno Setup installer silently
+**Update**: `latest.json` = `{ version, file, sha256, size, signature }` (`signature`: Phase 23, ECDSA by the vendor key
+over the other four fields; `publish.ps1` adds it, the server advertises and the terminal installs only a verified
+manifest). A terminal whose version is below `latestClientVersion`
+offers "Update now": verify the signature, download to `%TEMP%`, verify SHA-256, run the Inno Setup installer silently
 (`/SILENT /CLOSEAPPLICATIONS`) and exit. A terminal below `minClientVersion` is blocked by the Phase 10 gate and gets
 the same button. No third-party updater: the server already serves the installer, and the Phase 10 installers and
 service model stay unchanged.

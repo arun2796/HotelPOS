@@ -18,6 +18,12 @@ public static class TestLicense
             new LicensePayload(Guid.NewGuid().ToString("N")[..12], "Test Restaurant", machineId, edition, terminals, DateOnly.FromDateTime(DateTime.Today), expiresOn),
             Pair.PrivateKey);
 
+    // updates/latest.json as publish.ps1 writes it: signed with the vendor key (here the tests' pair).
+    public static string SignedManifest(HotelPOS.Contracts.Admin.ClientUpdateInfo info) =>
+        System.Text.Json.JsonSerializer.Serialize(
+            info with { Signature = HotelPOS.Contracts.Admin.UpdateManifestSignature.Sign(info, Pair.PrivateKey) },
+            new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase });
+
     public sealed class FixedMachine : IMachineIdProvider
     {
         public string GetMachineId() => MachineId;

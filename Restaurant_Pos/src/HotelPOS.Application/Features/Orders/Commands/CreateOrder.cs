@@ -16,7 +16,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HotelPOS.Application.Features.Orders.Commands;
 
-public sealed record CreateOrderCommand(CreateOrderRequest Input)
+// IdempotencyKey: the request's Idempotency-Key when it came through the API, stored on the order (see Order.IdempotencyKey).
+public sealed record CreateOrderCommand(CreateOrderRequest Input, Guid? IdempotencyKey = null)
     : ICommand<OrderDetailDto>, IHasInput<CreateOrderRequest>, IRequirePermission, IAuditedCommand
 {
     public string Permission => Permissions.OrdersCreate;
@@ -87,6 +88,18 @@ internal sealed class CreateOrderHandler : ICommandHandler<CreateOrderCommand, O
     public async Task<Result<OrderDetailDto>> Handle(CreateOrderCommand command, CancellationToken cancellationToken)
     {
         var request = command.Input;
+
+        // The same request again, after its first attempt committed without the client hearing back (timeout during
+        // COMMIT, server stopped right after): that order exists, so answer with it instead of creating a second one.
+        if (command.IdempotencyKey is { } key)
+        {
+            var existing = await _db.Orders.AsNoTracking().Where(o => o.IdempotencyKey == key).Select(o => (int?)o.Id).FirstOrDefaultAsync(cancellationToken);
+            if (existing is { } existingOrderId)
+            {
+                return await _orders.GetAsync(existingOrderId, cancellationToken);
+            }
+        }
+
         Table? table = null;
         if (request.OrderType == OrderType.DineIn)
         {
@@ -125,6 +138,7 @@ internal sealed class CreateOrderHandler : ICommandHandler<CreateOrderCommand, O
                 request.CustomerName, request.CustomerPhone, request.DeliveryAddress, request.DeliveryNotes);
 
         order.ReplaceDraftItems(items.Value);
+        order.RecordCreationKey(command.IdempotencyKey);
         if (request.Submit)
         {
             order.Submit(now);

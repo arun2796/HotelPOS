@@ -9,6 +9,8 @@ public static class ErrorCodes
     public const string AccountLocked = "ACCOUNT_LOCKED";
     public const string AccountDisabled = "ACCOUNT_DISABLED";
     public const string DeviceDisabled = "DEVICE_DISABLED";
+    // 403 on every API call except /api/auth/* until the user replaces a password an administrator set.
+    public const string PasswordChangeRequired = "PASSWORD_CHANGE_REQUIRED";
     public const string NotFound = "NOT_FOUND";
     public const string MethodNotAllowed = "METHOD_NOT_ALLOWED";
     public const string Duplicate = "DUPLICATE";

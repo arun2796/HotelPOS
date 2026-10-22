@@ -14,6 +14,11 @@ public abstract class ApiControllerBase : ControllerBase
 
     protected ISender Sender => _sender ??= HttpContext.RequestServices.GetRequiredService<ISender>();
 
+    // The request's Idempotency-Key (validated by IdempotencyMiddleware on [Idempotent] actions), for commands that
+    // store it on the record they create so a retry after a lost answer finds that record instead of making another.
+    protected Guid? RequestIdempotencyKey =>
+        Guid.TryParse(Request.Headers[HotelPOS.Contracts.Common.PosHeaders.IdempotencyKey], out var key) && key != Guid.Empty ? key : null;
+
     protected IActionResult Envelope<T>(T data, int statusCode = StatusCodes.Status200OK, string? message = null) =>
         StatusCode(statusCode, ApiResponse.Ok(data, message, HttpContext.TraceIdentifier));
 

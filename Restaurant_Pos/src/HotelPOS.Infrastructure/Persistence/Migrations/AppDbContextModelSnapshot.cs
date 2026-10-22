@@ -2390,6 +2390,12 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                     b.Property<int>("GuestCount")
                         .HasColumnType("integer");
 
+                    b.Property<Guid?>("IdempotencyKey")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("LastAppendKey")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Notes")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
@@ -2435,6 +2441,10 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique()
+                        .HasFilter("\"IdempotencyKey\" IS NOT NULL");
 
                     b.HasIndex("OrderNumber")
                         .IsUnique();

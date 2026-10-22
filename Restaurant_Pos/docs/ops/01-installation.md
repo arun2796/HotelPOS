@@ -41,7 +41,8 @@ The server PC may also be used as the admin or billing terminal.
 2. **Database** page: server `localhost`, port `5432`, database `hotelpos`, user `hotelpos`, the password from
    step 3. API port: `5000` unless something else uses it.
 3. **Administrator** page: the first admin password. It is used once, when the admin account is created, and must
-   be changed at the first sign-in.
+   be changed at the first sign-in. It is required on a new installation: there is no default password, and until
+   it is changed the `admin` account can do nothing but sign in and change it.
 4. **HTTPS certificate** page (Phase 20): leave both fields empty to create a LAN certificate automatically (a root CA
    "HotelPOS Root CA" plus a server certificate for this PC's name and addresses), or enter the path of your own `.pfx`
    file and its password. The root CA file for the devices is written to `C:\ProgramData\HotelPOS\Api\hotelpos-root-ca.cer`.

@@ -90,7 +90,7 @@ internal sealed class SetUserActiveHandler : ICommandHandler<SetUserActiveComman
         // alone would leave the current access token (up to an hour) and any open hub connection working.
         _afterCommit.Enqueue(async () =>
         {
-            _userAccess.Remember(user.Id, deactivated: !active);
+            _userAccess.Forget(user.Id);
             if (!active)
             {
                 await _connections.DisconnectUserAsync(user.Id, cancellationToken);

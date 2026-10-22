@@ -136,8 +136,9 @@ API logs: `src/HotelPOS.Api/logs/api-YYYYMMDD.log` (and the console).
 | `cashier1` | `Pass@123` | Cashier | |
 
 Demo users are created only when `Seed:DemoData` is true (`appsettings.Development.json`). In production
-the admin password comes from `Seed:AdminPassword`; if it is empty, `Admin@123` is used and must be changed
-at first sign-in (a warning is logged).
+the admin password comes from `Seed:AdminPassword` (the installer asks for it); with it empty on a new database
+the server refuses to start rather than create the account with a known default. Until the admin changes that
+password, every call outside `/api/auth/*` answers 403 `PASSWORD_CHANGE_REQUIRED`.
 
 ### Database commands
 
@@ -224,7 +225,7 @@ It exits with 0 when every step's p95 is within budget, nothing failed and every
 | Symptom | Check |
 |---|---|
 | API fails at start with "Connection string 'HotelPOS' is not configured" | Run with `ASPNETCORE_ENVIRONMENT=Development` or set `ConnectionStrings:HotelPOS`. |
-| API fails with "Jwt:SigningKey must be configured" | Set `Jwt:SigningKey` (≥ 32 characters). Development has one in `appsettings.Development.json`. |
+| API fails with "Jwt:SigningKey is missing, too short, the template placeholder or the public development key" | Set `Jwt:SigningKey` (≥ 32 random characters). Development has one in `appsettings.Development.json`; outside Development that key and the `<…>` placeholder from the production template are refused. |
 | Desktop says "Cannot reach the server" | API running? Address and port right? On another PC: firewall rule for TCP 5000 on the server. |
 | Desktop status bar stays amber/red | The hub reconnects automatically (2 s → 15 s back-off); check the API log for errors. |
 | Tests or API fail with "password authentication failed" / "No password has been provided" | API: set the user-secret `ConnectionStrings:HotelPOS` (§ 4). Tests: set `HOTELPOS_TEST_POSTGRES` (§ 3) and open a new terminal. |

@@ -113,6 +113,16 @@
 
     private void OnMoreRequested() => _ = InvokeAsync(() => { _more = true; StateHasChanged(); });
 
+    // On every navigation: a session restored with a password an administrator set goes to the change-password page
+    // (its own layout), because the server refuses every other call until the password is replaced.
+    protected override void OnParametersSet()
+    {
+        if (Auth.IsSignedIn && Auth.User!.MustChangePassword)
+        {
+            Navigation.NavigateTo("change-password", replace: true);
+        }
+    }
+
     protected override async Task OnInitializedAsync()
     {
         Shell.Changed += StateHasChanged;

@@ -111,6 +111,13 @@ begin
     MsgBox('The two administrator passwords are different.', mbError, MB_OK);
     Result := False;
   end;
+  // A new installation needs the first administrator password: the server refuses to create the account without one.
+  if (CurPageID = AdminPage.ID) and (Trim(AdminPage.Values[0]) = '') and
+     not FileExists(ExpandConstant('{app}\appsettings.Production.json')) then
+  begin
+    MsgBox('Enter the first administrator password (needed for a new installation). It must be changed at the first sign-in.', mbError, MB_OK);
+    Result := False;
+  end;
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);

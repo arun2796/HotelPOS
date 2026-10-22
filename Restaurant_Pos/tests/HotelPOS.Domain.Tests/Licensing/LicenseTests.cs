@@ -124,6 +124,45 @@ public class LicenseTests
     }
 
     [Fact]
+    public void SignUpdate_SignsTheManifestInPlace_SoServerAndTerminalsAcceptIt()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "hotelpos-signupd-" + Guid.NewGuid().ToString("N"));
+        var privateFile = Path.Combine(directory, "private.pem");
+        var manifestFile = Path.Combine(directory, "latest.json");
+        try
+        {
+            var keygen = new StringWriter();
+            LicenseGeneratorCli.Run(new[] { "keygen", "--out", privateFile }, keygen, keygen).Should().Be(0, keygen.ToString());
+            var publicKey = keygen.ToString().Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Last();
+            File.WriteAllText(manifestFile, """{"version":"0.2.0","file":"HotelPOS-Client-Setup-0.2.0.exe","sha256":"abcd","size":1234}""");
+
+            var sign = new StringWriter();
+            LicenseGeneratorCli.Run(new[] { "sign-update", "--private-key", privateFile, "--manifest", manifestFile }, sign, sign).Should().Be(0, sign.ToString());
+
+            var signed = System.Text.Json.JsonSerializer.Deserialize<HotelPOS.Contracts.Admin.ClientUpdateInfo>(
+                File.ReadAllText(manifestFile), new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
+            signed.Version.Should().Be("0.2.0");
+            signed.Size.Should().Be(1234);
+            HotelPOS.Contracts.Admin.UpdateManifestSignature.Verify(signed, publicKey).Should().BeTrue();
+            // Any change after signing, or another key, fails the check.
+            HotelPOS.Contracts.Admin.UpdateManifestSignature.Verify(signed with { Sha256 = "abce" }, publicKey).Should().BeFalse();
+            HotelPOS.Contracts.Admin.UpdateManifestSignature.Verify(signed, Pair.PublicKey).Should().BeFalse();
+            HotelPOS.Contracts.Admin.UpdateManifestSignature.Verify(signed with { Signature = null }, publicKey).Should().BeFalse();
+
+            // An incomplete manifest is refused rather than signed.
+            File.WriteAllText(manifestFile, """{"version":"0.2.0","file":"x.exe"}""");
+            LicenseGeneratorCli.Run(new[] { "sign-update", "--private-key", privateFile, "--manifest", manifestFile }, new StringWriter(), new StringWriter()).Should().Be(1);
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public void GeneratorRoundTrip_KeygenIssueInspect_ProducesAKeyTheServerAccepts()
     {
         var directory = Path.Combine(Path.GetTempPath(), "hotelpos-licgen-" + Guid.NewGuid().ToString("N"));

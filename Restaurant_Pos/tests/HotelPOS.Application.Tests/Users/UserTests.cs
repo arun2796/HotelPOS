@@ -119,16 +119,20 @@ public class UserTests : DatabaseTestBase
         await CreateUserAsync("waiter1", "secret1", Roles.Waiter);
         var login = (await SendAsync(new LoginCommand(new LoginRequest { Username = "waiter1", Password = "secret1" }))).Value;
         await SignInAsAdminAsync();
+        // As if the middleware had already answered a request of this user: the entry must go with the change.
+        var cache = Get<Application.Security.IUserAccessCache>();
+        cache.Remember(login.User.Id, new Application.Security.UserAccessState(Deactivated: false, MustChangePassword: false));
 
         await SendAsync(new SetUserActiveCommand(login.User.Id, Active: false));
 
         var activeTokens = await QueryAsync(db => db.RefreshTokens.CountAsync(t => t.UserId == login.User.Id && t.RevokedAt == null));
         activeTokens.Should().Be(0);
         Fixture.Connections.DisconnectedUsers.Should().Equal(login.User.Id);
-        Get<Application.Security.IUserAccessCache>().IsDeactivated(login.User.Id).Should().BeTrue();
+        cache.Get(login.User.Id).Should().BeNull("the next request reads the new state from the database");
 
+        cache.Remember(login.User.Id, new Application.Security.UserAccessState(Deactivated: true, MustChangePassword: false));
         await SendAsync(new SetUserActiveCommand(login.User.Id, Active: true));
-        Get<Application.Security.IUserAccessCache>().IsDeactivated(login.User.Id).Should().BeFalse();
+        cache.Get(login.User.Id).Should().BeNull();
     }
 
     [Fact]

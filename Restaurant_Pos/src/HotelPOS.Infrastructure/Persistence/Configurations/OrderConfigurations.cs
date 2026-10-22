@@ -23,6 +23,8 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
         });
         builder.Property(o => o.OrderNumber).HasDefaultValueSql($"nextval('\"{NumberSequence}\"')");
         builder.HasIndex(o => o.OrderNumber).IsUnique();
+        // One order per creating request key (null for orders made before the key was stored).
+        builder.HasIndex(o => o.IdempotencyKey).IsUnique().HasFilter("\"IdempotencyKey\" IS NOT NULL");
         builder.Property(o => o.OrderType).HasDefaultValue(OrderType.DineIn);
         builder.Property(o => o.Notes).HasMaxLength(OrderLimits.NotesMaxLength);
         builder.Property(o => o.CustomerName).HasMaxLength(OrderLimits.CustomerNameMaxLength);

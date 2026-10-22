@@ -53,7 +53,9 @@ public static class DependencyInjection
         services.AddScoped<IReportQueries, ReportQueries>();
         services.AddHostedService<BillClaimCleanupService>();
         services.AddHostedService<AuditRetentionService>();
-        services.AddScoped<IBackupService, BackupService>();
+        // The concrete type is also resolvable: DatabaseInitializer takes the pre-upgrade dump through it.
+        services.AddScoped<BackupService>();
+        services.AddScoped<IBackupService>(sp => sp.GetRequiredService<BackupService>());
         services.AddScoped<IDayEndPackWriter, DayEndPackWriter>();
         services.AddScoped<IBusinessDayLock, BusinessDayLock>();
         services.AddScoped<IShiftLocks, ShiftLocks>();

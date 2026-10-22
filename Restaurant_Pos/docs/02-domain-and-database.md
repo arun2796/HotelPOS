@@ -60,7 +60,7 @@ Unique: `MenuItems (CategoryId, Name)`.
 
 | Entity | Key columns |
 |---|---|
-| `Orders` | `OrderNumber` (int from SEQUENCE, unique), `TableId?` (null for takeaway/delivery; Phase 22), `OrderType` (1 DineIn, 2 Takeaway, 3 Delivery; default DineIn, `CK_Orders_OrderType`; Phase 22), `CustomerName?`, `CustomerPhone?`, `DeliveryAddress?`, `DeliveryNotes?` (Phase 22, delivery orders), `WaiterId`, `GuestCount`, `Status` (enum), `Notes?`, `SubmittedAt?`, `ServedAt?`, `BillRequestedAt?`, `ClosedAt?`, `CancelledAt?`, `CancelledBy?`, `CancelReason?`, `RowVersion` |
+| `Orders` | `OrderNumber` (int from SEQUENCE, unique), `TableId?` (null for takeaway/delivery; Phase 22), `OrderType` (1 DineIn, 2 Takeaway, 3 Delivery; default DineIn, `CK_Orders_OrderType`; Phase 22), `CustomerName?`, `CustomerPhone?`, `DeliveryAddress?`, `DeliveryNotes?` (Phase 22, delivery orders), `WaiterId`, `GuestCount`, `Status` (enum), `Notes?`, `SubmittedAt?`, `ServedAt?`, `BillRequestedAt?`, `ClosedAt?`, `CancelledAt?`, `CancelledBy?`, `CancelReason?`, `IdempotencyKey?` (uuid, unique when set: the request key that created the order; Phase 23), `LastAppendKey?` (uuid, the last appended batch's request key; Phase 23), `RowVersion` |
 | `OrderItems` | `OrderId`, `BatchNumber` (1..n), `MenuItemId`, `ItemName` (snapshot), `UnitPrice` (snapshot), `Quantity`, `Notes?`, `TaxId?`, `TaxRatePercent` (snapshot), `PreparationStationId` (snapshot), `Status` (Draft/Sent/Cancelled), `KitchenOrderId?`, `CancelledBy?`, `CancelReason?` |
 | `OrderItemModifiers` | `OrderItemId`, `ModifierOptionId`, `Name` (snapshot), `PriceDelta` (snapshot) |
 

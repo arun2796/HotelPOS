@@ -41,4 +41,8 @@ public sealed record ClientUpdateInfo
     public string File { get; init; } = string.Empty;
     public string Sha256 { get; init; } = string.Empty;
     public long Size { get; init; }
+
+    // ECDSA signature (base64) by the vendor over version, file, sha256 and size (UpdateManifestSignature); terminals
+    // install nothing without it, so a spoofed server on the staff Wi-Fi cannot push an installer.
+    public string? Signature { get; init; }
 }

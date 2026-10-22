@@ -179,12 +179,19 @@ public class ImportAndUpdatesApiTests : IClassFixture<ApiFactory>
         (await client.GetFromJsonAsync<ApiResponse<SystemInfoDto>>("/api/system/info", PosJson.Options))!.Data!.ClientUpdate.Should().BeNull("nothing is published yet");
 
         await File.WriteAllBytesAsync(Path.Combine(folder, "HotelPOS-Client-Setup-9.9.9.exe"), new byte[] { 1, 2, 3, 4 });
+        var manifest = new ClientUpdateInfo { Version = "9.9.9", File = "HotelPOS-Client-Setup-9.9.9.exe", Sha256 = "ABCD", Size = 4 };
+
+        // A manifest without the vendor's signature (a hand-written or tampered latest.json) is never advertised.
         await File.WriteAllTextAsync(Path.Combine(folder, "latest.json"),
             JsonSerializer.Serialize(new { version = "9.9.9", file = "HotelPOS-Client-Setup-9.9.9.exe", sha256 = "ABCD", size = 4 }));
+        (await client.GetFromJsonAsync<ApiResponse<SystemInfoDto>>("/api/system/info", PosJson.Options))!.Data!.ClientUpdate.Should().BeNull("the manifest is not signed");
+
+        await File.WriteAllTextAsync(Path.Combine(folder, "latest.json"), TestLicense.SignedManifest(manifest));
 
         var info = (await client.GetFromJsonAsync<ApiResponse<SystemInfoDto>>("/api/system/info", PosJson.Options))!.Data!;
         info.ClientUpdate!.Version.Should().Be("9.9.9");
         info.ClientUpdate.File.Should().Be("HotelPOS-Client-Setup-9.9.9.exe");
+        info.ClientUpdate.Signature.Should().NotBeNullOrEmpty("terminals verify it before downloading");
 
         var installer = await client.GetAsync("/updates/HotelPOS-Client-Setup-9.9.9.exe");
         installer.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -192,9 +199,9 @@ public class ImportAndUpdatesApiTests : IClassFixture<ApiFactory>
         (await client.GetAsync("/updates/latest.json")).StatusCode.Should().Be(HttpStatusCode.OK);
         (await client.GetAsync("/updates/..%2fappsettings.json")).StatusCode.Should().NotBe(HttpStatusCode.OK);
 
-        // A manifest pointing at a missing file, or outside the folder, is not advertised.
+        // A manifest pointing at a missing file, or outside the folder, is not advertised even when it is signed.
         await File.WriteAllTextAsync(Path.Combine(folder, "latest.json"),
-            JsonSerializer.Serialize(new { version = "9.9.9", file = "..\\evil.exe", sha256 = "AB", size = 1 }));
+            TestLicense.SignedManifest(new ClientUpdateInfo { Version = "9.9.9", File = "..\\evil.exe", Sha256 = "AB", Size = 1 }));
         (await client.GetFromJsonAsync<ApiResponse<SystemInfoDto>>("/api/system/info", PosJson.Options))!.Data!.ClientUpdate.Should().BeNull();
     }
 }

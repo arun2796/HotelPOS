@@ -13,6 +13,7 @@ public static class ErrorStatusCodes
         [ErrorCodes.AccountLocked] = StatusCodes.Status403Forbidden,
         [ErrorCodes.AccountDisabled] = StatusCodes.Status403Forbidden,
         [ErrorCodes.DeviceDisabled] = StatusCodes.Status403Forbidden,
+        [ErrorCodes.PasswordChangeRequired] = StatusCodes.Status403Forbidden,
         [ErrorCodes.NotFound] = StatusCodes.Status404NotFound,
         [ErrorCodes.MethodNotAllowed] = StatusCodes.Status405MethodNotAllowed,
         [ErrorCodes.Duplicate] = StatusCodes.Status409Conflict,

@@ -16,8 +16,8 @@ public interface IUpdateService
     // The installer the server offers when it is newer than this terminal, else null.
     ClientUpdateInfo? OfferFor(ClientUpdateInfo? latest);
 
-    // Downloads from the server's /updates/, verifies the SHA-256 and starts the installer. On success the caller exits
-    // the application so the installer can replace its files.
+    // Checks the vendor's signature on the manifest, downloads from the server's /updates/, verifies the SHA-256 and
+    // starts the installer. On success the caller exits the application so the installer can replace its files.
     Task<UpdateResult> DownloadAndStartAsync(ClientUpdateInfo update, IProgress<double>? progress, CancellationToken cancellationToken);
 }
 
@@ -45,19 +45,22 @@ public sealed class UpdateService : IUpdateService
     private readonly IInstallerLauncher _launcher;
     private readonly ILogger<UpdateService> _logger;
     private readonly string _folder;
+    private readonly string _vendorPublicKey;
 
     public UpdateService(IHttpClientFactory httpClientFactory, IClientSettingsService settings, IInstallerLauncher launcher, ILogger<UpdateService> logger)
         : this(httpClientFactory, settings, launcher, logger, Path.Combine(Path.GetTempPath(), "HotelPOS-update"))
     {
     }
 
-    public UpdateService(IHttpClientFactory httpClientFactory, IClientSettingsService settings, IInstallerLauncher launcher, ILogger<UpdateService> logger, string folder)
+    // vendorPublicKey: the tests sign with their own key pair; the application always uses the embedded vendor key.
+    public UpdateService(IHttpClientFactory httpClientFactory, IClientSettingsService settings, IInstallerLauncher launcher, ILogger<UpdateService> logger, string folder, string? vendorPublicKey = null)
     {
         _httpClientFactory = httpClientFactory;
         _settings = settings;
         _launcher = launcher;
         _logger = logger;
         _folder = folder;
+        _vendorPublicKey = vendorPublicKey ?? VendorKeys.LicensePublicKey;
     }
 
     public ClientUpdateInfo? OfferFor(ClientUpdateInfo? latest) => UpdateChecker.Offer(AppInfo.Version, latest);
@@ -67,6 +70,14 @@ public sealed class UpdateService : IUpdateService
         if (!UpdateChecker.IsSafeInstallerName(update.File) || string.IsNullOrWhiteSpace(update.Sha256))
         {
             return new UpdateResult(false, "The server's update information is incomplete. Ask your administrator to publish the update again.");
+        }
+
+        // The installer runs with administrator rights, so only a manifest the vendor signed is acted on: whoever
+        // answers on the server's port cannot make this terminal download and run a file of their choosing.
+        if (!UpdateManifestSignature.Verify(update, _vendorPublicKey))
+        {
+            _logger.LogError("The update manifest for {Version} is not signed by the vendor; the update was refused", update.Version);
+            return new UpdateResult(false, "The update offered by the server is not signed by the HotelPOS vendor, so it was not installed. Ask your administrator to publish the release again with publish.ps1.");
         }
 
         if (!Uri.TryCreate(_settings.Current.ApiBaseUrl.TrimEnd('/') + "/", UriKind.Absolute, out var baseUri))

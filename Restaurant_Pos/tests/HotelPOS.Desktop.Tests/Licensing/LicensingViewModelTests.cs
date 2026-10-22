@@ -95,20 +95,51 @@ public sealed class UpdateServiceTests : IDisposable
         public HttpClient CreateClient(string name) => new(_handler, disposeHandler: false);
     }
 
+    // The tests' own vendor key pair: manifests are signed with it and the service verifies with its public half.
+    private static readonly (string Private, string Public) VendorKey = NewKeyPair();
+
+    private static (string Private, string Public) NewKeyPair()
+    {
+        using var ecdsa = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        return (Convert.ToBase64String(ecdsa.ExportPkcs8PrivateKey()), Convert.ToBase64String(ecdsa.ExportSubjectPublicKeyInfo()));
+    }
+
     private UpdateService Service(FakeHandler handler) => new(
         new FakeFactory(handler),
         new InMemorySettings(new ClientSettings { ApiBaseUrl = "http://192.168.1.10:5000" }),
         _launcher,
         NullLogger<UpdateService>.Instance,
-        _folder);
+        _folder,
+        VendorKey.Public);
 
-    private ClientUpdateInfo Info(string? sha = null) => new()
+    private ClientUpdateInfo Info(string? sha = null)
     {
-        Version = "9.9.9",
-        File = "HotelPOS-Client-Setup-9.9.9.exe",
-        Sha256 = sha ?? Convert.ToHexString(SHA256.HashData(_installer)),
-        Size = _installer.Length,
-    };
+        var info = new ClientUpdateInfo
+        {
+            Version = "9.9.9",
+            File = "HotelPOS-Client-Setup-9.9.9.exe",
+            Sha256 = sha ?? Convert.ToHexString(SHA256.HashData(_installer)),
+            Size = _installer.Length,
+        };
+        return info with { Signature = UpdateManifestSignature.Sign(info, VendorKey.Private) };
+    }
+
+    [Fact]
+    public async Task AManifestWithoutTheVendorsSignature_OrChangedAfterSigning_IsRefused_BeforeAnyDownload()
+    {
+        var handler = new FakeHandler { Body = _installer };
+
+        var unsigned = await Service(handler).DownloadAndStartAsync(Info() with { Signature = null }, null, CancellationToken.None);
+        var tampered = await Service(handler).DownloadAndStartAsync(Info() with { File = "HotelPOS-Client-Setup-9.9.9.exe", Version = "9.9.10" }, null, CancellationToken.None);
+        var foreignKey = await Service(handler).DownloadAndStartAsync(Info() with { Signature = UpdateManifestSignature.Sign(Info(), NewKeyPair().Private) }, null, CancellationToken.None);
+
+        unsigned.Success.Should().BeFalse();
+        unsigned.Message.Should().Contain("not signed by the HotelPOS vendor");
+        tampered.Success.Should().BeFalse();
+        foreignKey.Success.Should().BeFalse();
+        handler.Requested.Should().BeNull("nothing is downloaded from a server whose manifest the vendor did not sign");
+        _launcher.DidNotReceiveWithAnyArgs().Start(default!);
+    }
 
     [Fact]
     public async Task Download_WithAMatchingChecksum_StartsTheInstaller()

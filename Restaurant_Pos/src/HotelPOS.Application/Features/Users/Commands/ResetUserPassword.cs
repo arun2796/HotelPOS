@@ -4,6 +4,7 @@ using HotelPOS.Application.Common.Cqrs;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
 using HotelPOS.Application.Features.Security;
+using HotelPOS.Application.Security;
 using HotelPOS.Contracts.Security;
 using HotelPOS.Contracts.Users;
 using HotelPOS.Domain.Identity;
@@ -38,14 +39,19 @@ internal sealed class ResetUserPasswordHandler : ICommandHandler<ResetUserPasswo
     private readonly IAuditTrail _audit;
     private readonly IClock _clock;
     private readonly UserAdministration _users;
+    private readonly IUserAccessCache _userAccess;
+    private readonly IAfterCommit _afterCommit;
 
-    public ResetUserPasswordHandler(IAppDbContext db, IPasswordHasher hasher, IAuditTrail audit, IClock clock, UserAdministration users)
+    public ResetUserPasswordHandler(
+        IAppDbContext db, IPasswordHasher hasher, IAuditTrail audit, IClock clock, UserAdministration users, IUserAccessCache userAccess, IAfterCommit afterCommit)
     {
         _db = db;
         _hasher = hasher;
         _audit = audit;
         _clock = clock;
         _users = users;
+        _userAccess = userAccess;
+        _afterCommit = afterCommit;
     }
 
     public async Task<Result> Handle(ResetUserPasswordCommand command, CancellationToken cancellationToken)
@@ -69,6 +75,12 @@ internal sealed class ResetUserPasswordHandler : ICommandHandler<ResetUserPasswo
         _audit.Add(AuditActions.UserPasswordReset, nameof(User), user.Id.ToString(),
             newValues: new { request.MustChangePassword });
         await _db.SaveChangesAsync(cancellationToken);
+        // After the commit, so the "must change password" rule applies from the user's very next request.
+        _afterCommit.Enqueue(() =>
+        {
+            _userAccess.Forget(user.Id);
+            return Task.CompletedTask;
+        });
         return Result.Success();
     }
 }

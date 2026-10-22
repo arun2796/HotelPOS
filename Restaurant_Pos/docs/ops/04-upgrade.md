@@ -13,13 +13,17 @@ Upgrade outside service hours. Allow 30 minutes; the database part usually takes
 1. **Backup now** in the app (or `scripts\backup-now.ps1` if the API is already stopped). Copy it to a USB drive.
 2. Run the new `HotelPOS-Server-Setup-<version>.exe` as administrator. Leave the database password and admin
    password **empty** on the wizard pages: the existing settings and token key are kept.
-3. The installer restarts the service. On start the API applies any database migrations by itself, then reports
-   healthy. Check `http://localhost:5000/health` and the top of today's log (Administration → Server).
+3. The installer restarts the service. On start the API first writes its own safety copy of the database to the
+   backup folder (`hotelpos-<date>-before-<migration>.dump`; it refuses to upgrade when that copy cannot be made,
+   see § 4), then applies any database migrations by itself, then reports healthy. Check
+   `http://localhost:5000/health` and the top of today's log (Administration → Server).
 
 ## 3. Terminals
 
 **Automatic (from Phase 16):** the server installer also places the client installer in the server's `updates`
-folder (with `latest.json`). A terminal that runs an older version shows **Update now** in the banner at the top; the
+folder (with `latest.json`, signed by the supplier's key when the release was built; the server offers, and a
+terminal installs, only a signed manifest, so nobody on the Wi-Fi can push an installer by pretending to be the
+server). A terminal that runs an older version shows **Update now** in the banner at the top; the
 cashier or waiter taps it when convenient (about a minute, Windows asks for administrator permission once), and
 HotelPOS restarts on the new version. Check a terminal's version in the status bar (bottom right) or under
 Administration → Devices. If a terminal cannot update itself, install by hand as below.
@@ -31,6 +35,13 @@ sign-in screen until they are updated, so no old terminal can talk to the new se
 ## 4. If something goes wrong
 
 - The service does not start: see the newest log in `C:\ProgramData\HotelPOS\Api\logs`. The first lines after
-  "HotelPOS API cannot start" name the problem (database unreachable, pending migrations, missing settings).
-- To go back: reinstall the previous server version, then restore the backup taken in step 2.1 with
-  `restore-db.ps1` (the old program cannot read a database migrated by the new one).
+  "HotelPOS API cannot start" name the problem (database unreachable, pending migrations, missing settings, a
+  failed migration, or the safety copy before the migration could not be written). The service restarts itself
+  every minute until the cause is fixed.
+- "The backup before applying … migration(s) failed": the server would not upgrade without a way back. Fix what the
+  message names (usually `pg_dump` not found → set `Backup:PgBinPath`, or a full disk), then start the service.
+  Only when a backup is otherwise in hand, `"Database": { "BackupBeforeMigrate": false }` in
+  `appsettings.Production.json` skips the copy.
+- To go back: reinstall the previous server version, then restore the backup taken in step 2.1 (or the
+  `…-before-…` copy the server wrote) with `restore-db.ps1` (the old program cannot read a database migrated by the
+  new one). A failed migration leaves the database as it was: PostgreSQL rolls the step back.

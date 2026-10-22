@@ -18,6 +18,10 @@ public sealed class DatabaseOptions
 
     public bool Seed { get; set; } = true;
 
+    // Before pending migrations are applied to a database that already has data, a verified pg_dump is written to
+    // the backup folder (the rollback for a failed upgrade, docs/ops/04). Off only for databases nobody would miss.
+    public bool BackupBeforeMigrate { get; set; } = true;
+
     // At boot the PostgreSQL service can start after the API service, so the first connection is retried this long.
     public int StartupWaitSeconds { get; set; } = 60;
 }
@@ -61,8 +65,21 @@ public static class DatabaseInitializer
 
         if (pending.Count > 0)
         {
+            var safetyCopy = await BackupBeforeMigrationAsync(provider, db, options, pending, logger, cancellationToken);
             logger.LogInformation("Applying {Count} database migration(s): {Migrations}", pending.Count, string.Join(", ", pending));
-            await db.Database.MigrateAsync(cancellationToken);
+            try
+            {
+                await db.Database.MigrateAsync(cancellationToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // Each migration runs in its own transaction, so a failed one leaves the schema as it was.
+                throw new StartupCheckException(
+                    $"Applying the database migration(s) failed: {ex.Message} The schema was not changed by the failed step"
+                    + (safetyCopy is null ? "." : $"; the backup taken before the upgrade is {safetyCopy}.")
+                    + " Fix the cause (see docs/ops/05) or reinstall the previous version (docs/ops/04 § 4).",
+                    ex);
+            }
         }
         else
         {
@@ -82,6 +99,33 @@ public static class DatabaseInitializer
         {
             throw new StartupCheckException(
                 $"Required settings are missing ({string.Join(", ", missing)}). Start once with Database:Seed enabled.");
+        }
+    }
+
+    // A verified pg_dump before an upgrade of a database that already has a schema (a brand-new database has nothing
+    // to lose and may not even exist yet). Failing to take it stops the start-up: upgrading without a way back is
+    // worse than a service that waits for the technician.
+    private static async Task<string?> BackupBeforeMigrationAsync(
+        IServiceProvider provider, AppDbContext db, DatabaseOptions options, IReadOnlyList<string> pending, ILogger logger, CancellationToken cancellationToken)
+    {
+        if (!options.BackupBeforeMigrate || !(await db.Database.GetAppliedMigrationsAsync(cancellationToken)).Any())
+        {
+            return null;
+        }
+
+        try
+        {
+            var file = await provider.GetRequiredService<Services.BackupService>().DumpBeforeUpgradeAsync(pending[^1], cancellationToken);
+            logger.LogInformation("Backup before the upgrade: {File}", file);
+            return file;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            throw new StartupCheckException(
+                $"The backup before applying {pending.Count} database migration(s) failed: {ex.Message} Fix the backup "
+                + "(Backup:PgBinPath, free disk space, docs/ops/03) and start the service again, or set Database:BackupBeforeMigrate "
+                + "to false to upgrade without a safety copy.",
+                ex);
         }
     }
 

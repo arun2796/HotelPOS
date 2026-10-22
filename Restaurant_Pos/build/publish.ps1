@@ -22,7 +22,9 @@
 param(
     [switch] $SkipTests,
     [switch] $AllowOutdatedRuntime,
-    [string] $InnoCompiler
+    [string] $InnoCompiler,
+    # The vendor's licence private key (PEM) also signs updates\latest.json; terminals refuse an unsigned manifest.
+    [string] $VendorKey = (Join-Path $env:USERPROFILE '.hotelpos-vendor\license-private.pem')
 )
 
 $ErrorActionPreference = 'Stop'
@@ -40,6 +42,12 @@ if (-not $InnoCompiler) {
 $version = $props.Project.PropertyGroup.Version
 $out = Join-Path $root "artifacts\publish\$version"
 Write-Host "HotelPOS $version -> $out"
+
+# Checked before the long build: without the key the client installer could not be signed into latest.json and no
+# terminal would accept the self-update.
+if ((Test-Path $InnoCompiler) -and -not (Test-Path $VendorKey)) {
+    throw "Vendor private key not found at $VendorKey (needed to sign updates\latest.json). Pass -VendorKey <file> or restore the key from its backup (docs/ops/08)."
+}
 
 if (-not $SkipTests) {
     dotnet test (Join-Path $root 'HotelPOS.sln') -c Release
@@ -89,6 +97,10 @@ if (Test-Path $InnoCompiler) {
         sha256  = (Get-FileHash $clientSetup -Algorithm SHA256).Hash
         size    = (Get-Item $clientSetup).Length
     } | ConvertTo-Json | Set-Content (Join-Path $updates 'latest.json') -Encoding utf8
+
+    # The vendor's signature over the manifest: the server advertises, and terminals install, only a signed latest.json.
+    dotnet run --project (Join-Path $root 'tools\HotelPOS.LicenseGenerator') -c Release -- sign-update --private-key $VendorKey --manifest (Join-Path $updates 'latest.json')
+    if ($LASTEXITCODE -ne 0) { throw 'Signing updates\latest.json failed; the installers were not built.' }
 
     & $InnoCompiler "/DAppVersion=$version" "/DPublishDir=$out" "/O$installers" (Join-Path $root 'installer\server.iss')
     if ($LASTEXITCODE -ne 0) { throw 'Inno Setup failed on server.iss.' }

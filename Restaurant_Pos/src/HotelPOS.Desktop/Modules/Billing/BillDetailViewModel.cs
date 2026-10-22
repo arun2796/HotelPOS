@@ -905,7 +905,11 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
 
                 if (!result.Success || result.Data is null)
                 {
-                    if (!result.IsConnectionFailure)
+                    // REQUEST_IN_PROGRESS: the first attempt (whose answer never arrived) is still running on the server.
+                    // Keep the key and the request exactly as after a lost connection, so the next CONFIRM replays that
+                    // attempt; a fresh key here would let a partial payment be taken twice.
+                    var stillRunning = result.HasError(ErrorCodes.RequestInProgress);
+                    if (!result.IsConnectionFailure && !stillRunning)
                     {
                         part.Line.RenewKey();
                     }
@@ -917,7 +921,9 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
 
                     PanelError = result.IsConnectionFailure
                         ? "Could not confirm the payment. Check the connection and press CONFIRM again; it will not be taken twice."
-                        : ApiFailures.Describe(result);
+                        : stillRunning
+                            ? "The server is still processing this payment. Wait a moment and press CONFIRM again; it will not be taken twice."
+                            : ApiFailures.Describe(result);
                     if (result.HasError(ErrorCodes.ShiftRequired) && _cashDrawer is not null)
                     {
                         _ = _cashDrawer.OfferOpenShiftAsync();

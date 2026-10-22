@@ -5,6 +5,7 @@ using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
 using HotelPOS.Application.Features.Security;
 using HotelPOS.Application.Features.Users;
+using HotelPOS.Application.Security;
 using HotelPOS.Contracts.Auth;
 using HotelPOS.Domain.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -38,8 +39,12 @@ internal sealed class ChangePasswordHandler : ICommandHandler<ChangePasswordComm
     private readonly ICurrentUser _currentUser;
     private readonly IClock _clock;
     private readonly IPasswordPolicySource _policy;
+    private readonly IUserAccessCache _userAccess;
+    private readonly IAfterCommit _afterCommit;
 
-    public ChangePasswordHandler(IAppDbContext db, IPasswordHasher hasher, IAuditTrail audit, ICurrentUser currentUser, IClock clock, IPasswordPolicySource policy)
+    public ChangePasswordHandler(
+        IAppDbContext db, IPasswordHasher hasher, IAuditTrail audit, ICurrentUser currentUser, IClock clock, IPasswordPolicySource policy,
+        IUserAccessCache userAccess, IAfterCommit afterCommit)
     {
         _db = db;
         _hasher = hasher;
@@ -47,6 +52,8 @@ internal sealed class ChangePasswordHandler : ICommandHandler<ChangePasswordComm
         _currentUser = currentUser;
         _clock = clock;
         _policy = policy;
+        _userAccess = userAccess;
+        _afterCommit = afterCommit;
     }
 
     public async Task<Result> Handle(ChangePasswordCommand command, CancellationToken cancellationToken)
@@ -77,6 +84,12 @@ internal sealed class ChangePasswordHandler : ICommandHandler<ChangePasswordComm
         user.SetPasswordHash(_hasher.Hash(request.NewPassword), mustChangePassword: false, changedAt: _clock.UtcNow);
         _audit.Add(AuditActions.PasswordChanged, nameof(User), user.Id.ToString());
         await _db.SaveChangesAsync(cancellationToken);
+        // After the commit: the "must change password" block (AccessEnforcementMiddleware) lifts with the next request.
+        _afterCommit.Enqueue(() =>
+        {
+            _userAccess.Forget(user.Id);
+            return Task.CompletedTask;
+        });
         return Result.Success();
     }
 }

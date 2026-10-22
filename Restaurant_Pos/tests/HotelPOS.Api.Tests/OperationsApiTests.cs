@@ -59,6 +59,18 @@ public class OperationsApiTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task Startup_OnANewDatabase_WithoutAnAdminPassword_RefusesToStart_InsteadOfUsingADefault()
+    {
+        // Seed:AdminPassword is deliberately absent: the server must not fall back to a well-known password.
+        await using var services = InfrastructureOnly(TestPostgres.NewDatabase("noadminpw"), autoMigrate: true);
+
+        var act = () => services.InitializeDatabaseAsync();
+
+        (await act.Should().ThrowAsync<StartupCheckException>()).Which.Message
+            .Should().Contain("Seed:AdminPassword").And.Contain("changed at the first sign-in");
+    }
+
+    [Fact]
     public async Task Health_ReportsDegraded_WhenDiskSpaceIsBelowTheThreshold()
     {
         using var factory = _factory.WithWebHostBuilder(b => b.ConfigureAppConfiguration((_, config) =>

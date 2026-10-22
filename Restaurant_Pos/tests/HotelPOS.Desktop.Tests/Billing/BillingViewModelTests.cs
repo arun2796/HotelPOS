@@ -178,6 +178,40 @@ public sealed class BillingViewModelTests
     }
 
     [Fact]
+    public async Task APaymentStillRunningOnTheServer_KeepsItsKey_SoTheRetryCannotChargeTwice()
+    {
+        var bill = Detail(BillStatus.Finalized, balance: 630m);
+        _api.GetAsync(9, Arg.Any<CancellationToken>()).Returns(ApiResult<BillDetailDto>.Ok(bill));
+        _api.GetPaymentMethodsAsync(false, Arg.Any<CancellationToken>()).Returns(ApiResult<List<PaymentMethodDto>>.Ok(Methods.ToList()));
+        var keys = new List<Guid>();
+        var requests = new List<AddPaymentRequest>();
+        _api.AddPaymentAsync(9, Arg.Do<AddPaymentRequest>(requests.Add), Arg.Do<Guid>(keys.Add), Arg.Any<CancellationToken>())
+            .Returns(
+                ApiResult<BillDetailDto>.Fail(ErrorCodes.RequestInProgress, "The same request is still being processed."),
+                ApiResult<BillDetailDto>.Ok(bill with
+                {
+                    Status = BillStatus.Settled,
+                    PaidAmount = 630m,
+                    BalanceDue = 0m,
+                    Payments = new[] { new PaymentDto { Id = 1, MethodName = "Cash", Amount = 630m, ChangeAmount = 70m } },
+                }));
+        var vm = DetailViewModel();
+        await vm.OnNavigatedToAsync(9);
+
+        vm.PayHotkeyCommand.Execute("F2");
+        vm.Payment!.TenderedText = Money.Format(700m);
+        await vm.ConfirmPaymentCommand.ExecuteAsync(null);
+        vm.PanelError.Should().Contain("still processing").And.Contain("will not be taken twice");
+        await vm.ConfirmPaymentCommand.ExecuteAsync(null);
+
+        // Same key and the very same request object: the server replays or finishes the first attempt.
+        keys.Should().HaveCount(2).And.OnlyContain(k => k == keys[0]);
+        requests[1].Should().BeSameAs(requests[0]);
+        vm.ActivePanel.Should().Be(BillPanel.Done);
+        vm.Dispose();
+    }
+
+    [Fact]
     public async Task ABillHeldByAnotherCounter_IsReadOnly_AndOnlyAManagerMayTakeItOver()
     {
         var bill = Detail(BillStatus.Open, balance: 630m) with { IsClaimedByMe = false, ClaimedByDevice = "BILLING-02" };

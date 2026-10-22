@@ -12,7 +12,8 @@ namespace HotelPOS.Application.Features.Licensing;
 public static class EmbeddedLicenseKey
 {
     // The vendor's PUBLIC key. The private half lives only on the vendor's PC (tools/HotelPOS.LicenseGenerator keygen).
-    public const string PublicKey = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEgS5cEXcvD30rCmHFCQVqKZM2700s+cedERYP8J+6OgPyhbdPuCqwMg+W7hZ+ty3Bp/hUdjKdFEIV9jTU6h2uXA==";
+    // One constant for the server and the terminals (update manifest check): Contracts.Admin.VendorKeys.
+    public const string PublicKey = Contracts.Admin.VendorKeys.LicensePublicKey;
 }
 
 internal sealed class EmbeddedLicenseTrust : ILicenseTrust

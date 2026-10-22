@@ -46,6 +46,7 @@ PostgreSQL is the single source of truth.
 | Phase 20 – Enterprise Transformation (notifications, role homes, HTTPS) | Code complete (device demo open) |
 | Phase 21 – Role-based UI/UX Redesign (owner mock-ups) | Code complete (merged to main 2026-10-17; device demo open) |
 | Phase 22 – Features excluded from Phase 21 (order types, reservations, expenses/P&L, floor plan, staff on duty, ticket pictures, KOT PDF) | Done except device demo (merged to main 2026-10-19, full suite green, owner signed off E1–E11; item split dropped by owner decision; migrations rehearsed on a DB copy) |
+| Phase 23 – Go-live hardening (duplicate-order race, double payment, service start-up + pre-upgrade backup, JWT placeholder, default admin password, signed updates) | Code complete 2026-10-22 (.NET 10 move deferred; clean-VM test open) |
 
 Update this table (and `docs/phases/README.md`) when a phase starts or finishes.
 
