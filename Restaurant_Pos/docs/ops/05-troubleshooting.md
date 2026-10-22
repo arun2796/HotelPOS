@@ -5,6 +5,7 @@ Start with two checks: `http://<server>:5000/health` from the terminal's browser
 
 | Symptom | Likely cause | What to do |
 |---|---|---|
+| Installer ends with "The service could not be configured (code 1)" | PostgreSQL not installed or not running, or the `hotelpos` role/database were not created before the installer ran ([01 § 3](01-installation.md)), or a wrong database password | Read `C:\Program Files\HotelPOS\Server\configure-server.log` (the dialog shows its last line). Create the role and database in psql, then run `scripts\configure-server.ps1 -DbPassword '…' -AdminPassword '…'` in an elevated PowerShell; it ends with "Server is up: Healthy". |
 | Every terminal shows 🔴 Disconnected | Server off, service stopped, or network down | On the server: `Get-Service HotelPOSApi`; start it. If it stops again, read the log. Check the server's cable/IP. |
 | One terminal 🔴, others fine | That terminal's Wi-Fi, or a wrong server address | Check Wi-Fi; Administration → This Terminal shows the address; `Test-NetConnection <server> -Port 5000`. |
 | Service starts and stops; log says "cannot start: Cannot connect to the database" | PostgreSQL not running, or wrong password in settings | `Get-Service postgresql*`; start it. After a password change run `configure-server.ps1 -DbPassword`. The service retries by itself after a power cut. |

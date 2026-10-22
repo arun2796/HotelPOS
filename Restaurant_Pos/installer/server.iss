@@ -122,8 +122,9 @@ end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
 var
-  Handover, Json: String;
-  ResultCode: Integer;
+  Handover, Json, LogFile, Reason: String;
+  ResultCode, I: Integer;
+  Lines: TArrayOfString;
 begin
   if CurStep <> ssPostInstall then
     Exit;
@@ -143,13 +144,25 @@ begin
   SaveStringToFile(Handover, Json, False);
 
   WizardForm.StatusLabel.Caption := 'Configuring the HotelPOS service...';
-  if not Exec('powershell.exe',
-      '-NoProfile -ExecutionPolicy Bypass -File "' + ExpandConstant('{app}\scripts\configure-server.ps1') +
-      '" -InstallDir "' + ExpandConstant('{app}') + '" -SettingsFile "' + Handover + '"',
+  // The script's output goes to configure-server.log next to the program, so the reason for a failure is kept and
+  // its last "ERROR:" line can be shown here (the script prints exactly one such line when it stops).
+  LogFile := ExpandConstant('{app}\configure-server.log');
+  if not Exec(ExpandConstant('{cmd}'),
+      '/C ""powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "' + ExpandConstant('{app}\scripts\configure-server.ps1') +
+      '" -InstallDir "' + ExpandConstant('{app}') + '" -SettingsFile "' + Handover + '" > "' + LogFile + '" 2>&1"',
       '', SW_HIDE, ewWaitUntilTerminated, ResultCode) or (ResultCode <> 0) then
   begin
     DeleteFile(Handover);
-    MsgBox('The service could not be configured (code ' + IntToStr(ResultCode) + '). Run scripts\configure-server.ps1 ' +
-      'in an elevated PowerShell to see the reason, and check docs\ops\05-troubleshooting.md.', mbError, MB_OK);
+    Reason := '';
+    if LoadStringsFromFile(LogFile, Lines) then
+      for I := GetArrayLength(Lines) - 1 downto 0 do
+        if (Reason = '') and (Pos('ERROR: ', Lines[I]) = 1) then
+          Reason := Copy(Lines[I], 8, Length(Lines[I]));
+    if Reason = '' then
+      Reason := 'See ' + LogFile + ' for the output.';
+    MsgBox('The service could not be configured (code ' + IntToStr(ResultCode) + ').' + #13#10#13#10 +
+      Reason + #13#10#13#10 +
+      'Fix the cause (docs\ops\05-troubleshooting.md), then run scripts\configure-server.ps1 in an elevated PowerShell ' +
+      'with -DbPassword and -AdminPassword; it ends with "Server is up: Healthy".', mbError, MB_OK);
   end;
 end;

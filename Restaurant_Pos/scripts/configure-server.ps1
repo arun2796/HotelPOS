@@ -37,6 +37,13 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# One clean "ERROR: <reason>" line as the last output when the script stops: the installer shows it in its dialog
+# (PowerShell's own error dump is wrapped and ends with stack lines) and configure-server.log keeps it.
+trap {
+    Write-Host "ERROR: $($_.Exception.Message)"
+    exit 1
+}
+
 if ($SettingsFile) {
     $handover = Get-Content $SettingsFile -Raw | ConvertFrom-Json
     Remove-Item $SettingsFile -Force
@@ -160,4 +167,10 @@ for ($i = 0; $i -lt 60; $i++) {
     }
 }
 
-throw "The service did not answer /health within 2 minutes. See $($settings.Logging.Directory)."
+# Quote the server's own reason (the log line after "cannot start"): usually a database role, database or password
+# that does not exist yet (docs/ops/01 § 3), so the technician sees it here instead of hunting for the log.
+$logDir = $settings.Logging.Directory
+$reason = Get-ChildItem $logDir -Filter 'api-*.log' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1 |
+    ForEach-Object { Select-String -Path $_.FullName -Pattern 'cannot start' | Select-Object -Last 1 | ForEach-Object { ($_.Line -split 'cannot start: ', 2)[-1] } }
+$state = (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue).Status
+throw "The service did not answer /health within 2 minutes (service state: $state). $(if ($reason) { "Reason from the log: $reason" } else { "See $logDir." })"
