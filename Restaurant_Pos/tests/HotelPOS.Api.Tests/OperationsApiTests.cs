@@ -63,11 +63,19 @@ public class OperationsApiTests : IClassFixture<ApiFactory>
     {
         // Seed:AdminPassword is deliberately absent: the server must not fall back to a well-known password.
         await using var services = InfrastructureOnly(TestPostgres.NewDatabase("noadminpw"), autoMigrate: true);
+        try
+        {
+            var act = () => services.InitializeDatabaseAsync();
 
-        var act = () => services.InitializeDatabaseAsync();
-
-        (await act.Should().ThrowAsync<StartupCheckException>()).Which.Message
-            .Should().Contain("Seed:AdminPassword").And.Contain("changed at the first sign-in");
+            (await act.Should().ThrowAsync<StartupCheckException>()).Which.Message
+                .Should().Contain("Seed:AdminPassword").And.Contain("changed at the first sign-in");
+        }
+        finally
+        {
+            // The migration created the database before the seed refused; drop it like ApiFactory does.
+            await using var scope = services.CreateAsyncScope();
+            await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.EnsureDeletedAsync();
+        }
     }
 
     [Fact]
