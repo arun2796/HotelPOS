@@ -41,9 +41,9 @@ The server PC may also be used as the admin or billing terminal.
 
 1. Run `HotelPOS-Server-Setup-<version>.exe` as administrator.
 2. **Database** page: server `localhost`, port `5432`, database `hotelpos`, user `hotelpos`, and a password for that
-   user (choose one on a new installation, or the one from step 3). Enter the `postgres` superuser password in the
-   optional field and Setup creates the role and database; leave it empty when they already exist (upgrade, or
-   prepared by hand). API port: `5000` unless something else uses it.
+   user (choose one on a new installation, or the one from step 3). API port: `5000` unless something else uses it.
+   **Create the database** page: enter the `postgres` superuser password and Setup creates the role and database;
+   leave it empty when they already exist (upgrade, or prepared by hand).
 3. **Administrator** page: the first admin password. It is used once, when the admin account is created, and must
    be changed at the first sign-in. It is required on a new installation: there is no default password, and until
    it is changed the `admin` account can do nothing but sign in and change it.

@@ -44,6 +44,7 @@ Filename: "{sys}\sc.exe"; Parameters: "delete HotelPOSApi"; Flags: runhidden; Ru
 [Code]
 var
   DatabasePage: TInputQueryWizardPage;
+  SuperuserPage: TInputQueryWizardPage;
   AdminPage: TInputQueryWizardPage;
   CertificatePage: TInputQueryWizardPage;
 
@@ -56,7 +57,7 @@ end;
 
 function GetPort(Param: String): String;
 begin
-  Result := Trim(DatabasePage.Values[6]);
+  Result := Trim(DatabasePage.Values[5]);
   if Result = '' then
     Result := '5000';
 end;
@@ -65,22 +66,28 @@ procedure InitializeWizard;
 begin
   DatabasePage := CreateInputQueryPage(wpSelectDir, 'Database',
     'PostgreSQL connection for HotelPOS',
-    'PostgreSQL must already be installed. HotelPOS uses its own role and database (not postgres). ' +
-    'Enter the postgres password and Setup creates them for you; leave it empty if they already exist.');
+    'PostgreSQL must already be installed. HotelPOS uses its own role and database (not postgres); the next page lets Setup create them. ' +
+    'On a new installation choose the password for this user here.');
   DatabasePage.Add('Server:', False);
   DatabasePage.Add('Port:', False);
   DatabasePage.Add('Database:', False);
   DatabasePage.Add('User:', False);
   DatabasePage.Add('Password for this user (choose one on a new installation):', True);
-  DatabasePage.Add('postgres (superuser) password, optional - creates the role and database:', True);
   DatabasePage.Add('HotelPOS API port:', False);
   DatabasePage.Values[0] := 'localhost';
   DatabasePage.Values[1] := '5432';
   DatabasePage.Values[2] := 'hotelpos';
   DatabasePage.Values[3] := 'hotelpos';
-  DatabasePage.Values[6] := '5000';
+  DatabasePage.Values[5] := '5000';
 
-  AdminPage := CreateInputQueryPage(DatabasePage.ID, 'Administrator',
+  // Its own page: a TInputQueryWizardPage shows six fields at most, and this one must not be the one that is cut off.
+  SuperuserPage := CreateInputQueryPage(DatabasePage.ID, 'Create the database',
+    'Let Setup create the HotelPOS role and database',
+    'Enter the password of the PostgreSQL "postgres" account (chosen when PostgreSQL was installed). Setup then creates the role and database from the previous page. ' +
+    'Leave it empty only if they already exist (upgrade, or prepared by a technician).');
+  SuperuserPage.Add('postgres password:', True);
+
+  AdminPage := CreateInputQueryPage(SuperuserPage.ID, 'Administrator',
     'First administrator password',
     'Used only when the admin account is created on a new database; it must be changed at the first sign-in. Leave empty when upgrading.');
   AdminPage.Add('Password:', True);
@@ -139,7 +146,7 @@ begin
     '"Database":"' + JsonEscape(DatabasePage.Values[2]) + '",' +
     '"DbUser":"' + JsonEscape(DatabasePage.Values[3]) + '",' +
     '"DbPassword":"' + JsonEscape(DatabasePage.Values[4]) + '",' +
-    '"SuperuserPassword":"' + JsonEscape(DatabasePage.Values[5]) + '",' +
+    '"SuperuserPassword":"' + JsonEscape(SuperuserPage.Values[0]) + '",' +
     '"AdminPassword":"' + JsonEscape(AdminPage.Values[0]) + '",' +
     '"Port":"' + JsonEscape(GetPort('')) + '",' +
     '"CertificatePath":"' + JsonEscape(Trim(CertificatePage.Values[0])) + '",' +
