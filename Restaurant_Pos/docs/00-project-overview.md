@@ -69,8 +69,8 @@ its local configuration, independent of who logs in.
 
 | Layer     | Choice |
 |-----------|--------|
-| Desktop   | C#, .NET 8, WPF, MVVM with `CommunityToolkit.Mvvm`, `Microsoft.Extensions.Hosting` for DI, Serilog, `Microsoft.AspNetCore.SignalR.Client` |
-| Backend   | ASP.NET Core 8 Web API, EF Core 8 + PostgreSQL (Npgsql), SignalR, JWT bearer auth, FluentValidation, Serilog |
+| Desktop   | C#, .NET 10, WPF, MVVM with `CommunityToolkit.Mvvm`, `Microsoft.Extensions.Hosting` for DI, Serilog, `Microsoft.AspNetCore.SignalR.Client` |
+| Backend   | ASP.NET Core 10 Web API, EF Core 10 + PostgreSQL (Npgsql), SignalR, JWT bearer auth, FluentValidation, Serilog |
 | Database  | PostgreSQL 16+ (free; one server per venue, on the API machine) |
 | Tests     | xUnit, FluentAssertions, NSubstitute, `WebApplicationFactory`, local PostgreSQL / Testcontainers |
 | Packaging | `dotnet publish` self-contained, Inno Setup installers, API hosted as a Windows Service |

@@ -4,28 +4,28 @@
   </PropertyGroup>
 
   <ItemGroup Label="Backend">
-    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="8.0.31" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.13" />
     <!-- Relational is pinned so the Npgsql provider runs on the same EF Core patch as everything else. -->
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.31" />
-    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.11" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.31" />
-    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.32" />
-    <PackageVersion Include="Microsoft.Extensions.Identity.Core" Version="8.0.31" />
-    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="8.0.31" />
-    <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.0.2" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.13" />
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.Extensions.Identity.Core" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="10.0.13" />
+    <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.23.0" />
     <PackageVersion Include="SkiaSharp" Version="3.119.4" />
     <PackageVersion Include="FluentValidation" Version="11.12.0" />
     <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="11.12.0" />
     <!-- 12.x stays on the Apache 2.0 licence; 13+ needs a commercial licence key. -->
     <PackageVersion Include="MediatR" Version="12.5.0" />
-    <PackageVersion Include="Serilog.AspNetCore" Version="8.0.3" />
-    <PackageVersion Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.1" />
+    <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.13" />
     <PackageVersion Include="Swashbuckle.AspNetCore" Version="6.9.0" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.3" />
-    <PackageVersion Include="Microsoft.Extensions.Options" Version="8.0.2" />
-    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
-    <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.13" />
     <!-- Phase 14 documents. QuestPDF: Community licence (free below USD 1 M annual gross revenue); the licence must
          be confirmed before go-live (docs/phases/phase-14 § 2). ClosedXML: MIT. ZXing.Net (UPI QR codes): Apache 2.0. -->
     <PackageVersion Include="QuestPDF" Version="2026.9.1" />
@@ -37,22 +37,25 @@
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageVersion Include="MaterialDesignThemes" Version="5.1.0" />
     <PackageVersion Include="MaterialDesignColors" Version="3.1.0" />
-    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
-    <PackageVersion Include="Microsoft.Extensions.Http" Version="8.0.1" />
-    <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.32" />
-    <!-- Phase 18 browser client (Blazor WebAssembly). Pinned with the other ASP.NET Core packages (8.0.32; 8.0.25 has a known vulnerability, NU1903). -->
-    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="8.0.32" />
-    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="8.0.32" />
-    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="8.0.32" />
-    <PackageVersion Include="Microsoft.AspNetCore.Components.Authorization" Version="8.0.32" />
-    <PackageVersion Include="Microsoft.AspNetCore.Components.Web" Version="8.0.32" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.13" />
+    <!-- Phase 18 browser client (Blazor WebAssembly). Kept on the runtime the build SDK bundles (10.0.8): the WebAssembly runtime pack comes from the SDK, so this family must not run ahead of it. -->
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.8" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.8" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.8" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.Web" Version="10.0.8" />
     <!-- Phase 19 Android app: MauiVersion comes from the installed maui-android workload. -->
     <PackageVersion Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="$(MauiVersion)" />
     <PackageVersion Include="bunit" Version="1.40.0" />
-    <PackageVersion Include="Serilog.Extensions.Hosting" Version="8.0.0" />
-    <PackageVersion Include="Serilog.Sinks.File" Version="5.0.0" />
-    <PackageVersion Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+    <!-- bunit 1.40 is compiled against AngleSharp 1.2/1.3; 1.4+ (where GHSA-pgww-w46g-26qg is fixed) breaks it at run time
+         (MissingMethodException). Test-only HTML parser of our own markup, so the moderate advisory is accepted until
+         the move to bunit 2 (Phase 24 follow-up). -->
+    <PackageVersion Include="AngleSharp" Version="1.3.0" />
+    <PackageVersion Include="Serilog.Extensions.Hosting" Version="10.0.0" />
+    <PackageVersion Include="Serilog.Sinks.File" Version="7.0.0" />
   </ItemGroup>
 
   <ItemGroup Label="Tests">
@@ -62,7 +65,7 @@
     <PackageVersion Include="FluentAssertions" Version="6.12.2" />
     <PackageVersion Include="NSubstitute" Version="5.3.0" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
-    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.32" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.13" />
     <!-- Reads the text of generated PDFs in tests (Apache 2.0). -->
     <PackageVersion Include="PdfPig" Version="0.1.16" />
   </ItemGroup>

@@ -4,7 +4,7 @@
 
 .DESCRIPTION
   Installs, in this order:
-    1. the .NET workload "maui-android" (the SDK that builds net8.0-android);
+    1. the .NET workload "maui-android" (the SDK that builds net10.0-android);
     2. Microsoft OpenJDK 17 (winget), which the Android build tools need;
     3. the Android SDK pieces (platform 34, build-tools, platform-tools) into -AndroidSdkDirectory, using the
        .NET Android SDK's own installer target, with the licences accepted.
@@ -48,8 +48,8 @@ Write-Host "   JDK: $JavaSdkDirectory"
 Write-Host '== 3/3 Android SDK'
 New-Item -ItemType Directory -Force $AndroidSdkDirectory | Out-Null
 $project = Join-Path $root 'src\HotelPOS.Android\HotelPOS.Android.csproj'
-if (-not (Test-Path $project)) { throw "The Android project is not there yet ($project); run this script again after step 19.2 creates it, or pass a project that targets net8.0-android." }
-dotnet build $project -t:InstallAndroidDependencies -f net8.0-android `
+if (-not (Test-Path $project)) { throw "The Android project is not there yet ($project); run this script again after step 19.2 creates it, or pass a project that targets net10.0-android." }
+dotnet build $project -t:InstallAndroidDependencies -f net10.0-android `
     "-p:AndroidSdkDirectory=$AndroidSdkDirectory" "-p:JavaSdkDirectory=$JavaSdkDirectory" '-p:AcceptAndroidSDKLicenses=True'
 if ($LASTEXITCODE -ne 0) { throw 'Android SDK installation failed.' }
 
@@ -57,4 +57,4 @@ if ($LASTEXITCODE -ne 0) { throw 'Android SDK installation failed.' }
 [Environment]::SetEnvironmentVariable('JAVA_HOME', $JavaSdkDirectory, 'User')
 Write-Host ''
 Write-Host "Done. ANDROID_HOME=$AndroidSdkDirectory  JAVA_HOME=$JavaSdkDirectory (user environment; open a new window)."
-Write-Host 'Build the app with: dotnet build src\HotelPOS.Android -f net8.0-android'
+Write-Host 'Build the app with: dotnet build src\HotelPOS.Android -f net10.0-android'

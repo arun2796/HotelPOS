@@ -6,7 +6,7 @@
   1. Reads the version from build\version.props (same as the server and desktop).
   2. Creates the release keystore once if it does not exist (prompts for a password) — keep it with the licence key
      and back it up: a lost keystore means existing installs cannot be updated in place.
-  3. dotnet publish src\HotelPOS.Android for net8.0-android, Release, signed.
+  3. dotnet publish src\HotelPOS.Android for net10.0-android, Release, signed.
   4. Copies the APK to artifacts\android\<version>\HotelPOS-Staff-<version>.apk and, when -UpdatesFolder exists,
      to the server's /updates folder so phones can download it from http(s)://<server>/updates/HotelPOS-Staff.apk.
 
@@ -49,7 +49,7 @@ if (Test-Path $out) { Remove-Item -Recurse -Force $out }
 New-Item -ItemType Directory -Force $out | Out-Null
 
 $args = @(
-    (Join-Path $root 'src\HotelPOS.Android'), '-f', 'net8.0-android', '-c', 'Release',
+    (Join-Path $root 'src\HotelPOS.Android'), '-f', 'net10.0-android', '-c', 'Release',
     "-p:ApplicationDisplayVersion=$version", "-p:ApplicationVersion=$versionCode",
     '-p:AndroidKeyStore=true', "-p:AndroidSigningKeyStore=$KeyStore", "-p:AndroidSigningKeyAlias=$KeyAlias",
     "-p:AndroidSigningKeyPass=$plain", "-p:AndroidSigningStorePass=$plain",

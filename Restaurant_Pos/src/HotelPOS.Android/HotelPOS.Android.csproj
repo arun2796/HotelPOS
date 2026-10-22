@@ -3,7 +3,7 @@
   <!-- Phase 19: HotelPOS Staff — the waiter/kitchen screens of HotelPOS.Client.Shared inside a native Android app
        (.NET MAUI Blazor Hybrid). Android only; the project shape allows an iOS target later. -->
   <PropertyGroup>
-    <TargetFrameworks>net8.0-android</TargetFrameworks>
+    <TargetFrameworks>net10.0-android</TargetFrameworks>
     <OutputType>Exe</OutputType>
     <RootNamespace>HotelPOS.Android</RootNamespace>
     <UseMaui>true</UseMaui>

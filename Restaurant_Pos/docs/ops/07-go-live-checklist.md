@@ -10,7 +10,7 @@ Venue: ____________________  Date: __________  Technician: ____________________ 
 - [ ] Network profile is **Private**; firewall rules from `create-firewall-rule.ps1` present.
 - [ ] From a terminal: port 5000 reachable, **port 5432 not reachable** (`Test-NetConnection`).
 - [ ] PostgreSQL role `hotelpos` owns database `hotelpos`; the `postgres` password is stored off the PC.
-- [ ] The release was built with ASP.NET Core **8.0.32 or later** (`version.txt` in the server folder); no
+- [ ] The release was built with ASP.NET Core **10.0.8 or later** (`version.txt` in the server folder); no
       `NOT-FOR-RELEASE.txt` next to it.
 - [ ] Service **HotelPOS API** is Automatic and running; `/health` is Healthy.
 - [ ] Server time zone and clock are correct.

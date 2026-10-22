@@ -84,7 +84,7 @@ public sealed class ApiProcess : IAsyncDisposable
         }
 
         var candidates = new[] { "Debug", "Release" }
-            .Select(c => Path.Combine(dir.FullName, "src", "HotelPOS.Api", "bin", c, "net8.0", "HotelPOS.Api.dll"))
+            .Select(c => Path.Combine(dir.FullName, "src", "HotelPOS.Api", "bin", c, "net10.0", "HotelPOS.Api.dll"))
             .Where(File.Exists)
             .OrderByDescending(File.GetLastWriteTimeUtc)
             .ToList();
