@@ -161,10 +161,14 @@ public static class DatabaseInitializer
             await Task.Delay(RetryDelay, cancellationToken);
         }
 
+        // PostgreSQL's own words (e.g. 28P01 password authentication failed for user "hotelpos", or a refused
+        // connection) name the actual problem; they never contain the password.
+        var detail = lastError?.GetBaseException().Message.Trim();
         throw new StartupCheckException(
-            $"Cannot connect to the database {Describe(db)} after {options.StartupWaitSeconds} s. Check that the PostgreSQL "
-            + "service is running, that the server address and port are right, and that ConnectionStrings:HotelPOS has "
-            + "the correct user and password.",
+            $"Cannot connect to the database {Describe(db)} after {options.StartupWaitSeconds} s"
+            + (string.IsNullOrEmpty(detail) ? "." : $": {detail}.")
+            + " Check that the PostgreSQL service is running, that the server address and port are right, and that the role "
+            + "and password in ConnectionStrings:HotelPOS exist in PostgreSQL (scripts\\new-database.ps1 creates them).",
             lastError);
     }
 

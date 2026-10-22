@@ -76,6 +76,29 @@ if ($SuperuserPassword) {
         -DbPassword $DbPassword -SuperuserPassword $SuperuserPassword
 }
 
+# Try the HotelPOS role's own credentials now (when psql is available) instead of letting the service discover a
+# missing role or wrong password after a two-minute wait.
+if ($DbPassword) {
+    $psqlExe = (Get-Command psql.exe -ErrorAction SilentlyContinue).Source
+    if (-not $psqlExe) {
+        $psqlExe = Get-ChildItem "$env:ProgramFiles\PostgreSQL" -Directory -ErrorAction SilentlyContinue |
+            Sort-Object { [int]($_.Name -replace '\D', '0') } -Descending |
+            ForEach-Object { Join-Path $_.FullName 'bin\psql.exe' } | Where-Object { Test-Path $_ } | Select-Object -First 1
+    }
+    if ($psqlExe) {
+        $env:PGPASSWORD = $DbPassword
+        $previous = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+        $check = & $psqlExe -h $DbHost -p $DbPort -U $DbUser -d postgres -At -c 'select 1' 2>&1
+        $ErrorActionPreference = $previous
+        Remove-Item Env:\PGPASSWORD -ErrorAction SilentlyContinue
+        if ($LASTEXITCODE -ne 0) {
+            $said = (($check | ForEach-Object { "$_" }) -join ' ').Trim()
+            throw "PostgreSQL refuses the HotelPOS role '$DbUser' with this password ($said). On a new installation enter the postgres (superuser) password on the Database page, or run scripts\new-database.ps1, so the role and database are created."
+        }
+        Write-Host "Database role '$DbUser' accepted by PostgreSQL."
+    }
+}
+
 $settings = Get-Content $template -Raw | ConvertFrom-Json
 $existing = if (Test-Path $target) { Get-Content $target -Raw | ConvertFrom-Json } else { $null }
 
