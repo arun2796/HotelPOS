@@ -6,10 +6,18 @@
 .page-sub { color: var(--text-2); font-size: var(--fs-label); margin-bottom: 8px; }
 
 /* ---- W2: tables. Three cards per row at 360 px (328 px of content: 3 x 100 + 2 x 8), more on wider screens. ---- */
-.tables-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 2px 0 10px; }
+.tables-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin: 2px 0 10px; }
 .tables-toolbar .segmented { flex: none; }
-.tables-toolbar-controls { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.tables-toolbar-controls { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; margin-left: auto; }
 .tables-toolbar .segment { min-height: var(--touch); padding: 0 12px; font-size: var(--fs-caption); }
+/* Phone width: the summary takes its own line and the two switches share one full-width row (wrapping to two
+   equal rows when the labels do not fit) instead of stacking right-aligned beside wrapped text. */
+@media (max-width: 479px) {
+  .tables-toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
+  .tables-toolbar-controls { margin-left: 0; justify-content: stretch; }
+  .tables-toolbar-controls .segmented { flex: 1 1 auto; display: flex; }
+  .tables-toolbar-controls .segment { flex: 1 1 0; white-space: nowrap; }
+}
 .table-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; margin-bottom: 8px; }
 .table-grid + .section-head { margin-top: 18px; }
 
