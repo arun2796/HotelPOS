@@ -10,14 +10,14 @@ How to build, run and test HotelPOS on a development PC. Production installation
 | Tool | Version | Notes |
 |---|---|---|
 | Windows | 10 / 11 | The desktop client is WPF (Windows only). |
-| .NET SDK | 8.0.4xx | Pinned by `global.json` (roll-forward to the latest 8.0 feature band). |
+| .NET SDK | 10.0.3xx | Pinned by `global.json` (roll-forward to the latest 10.0 feature band). Workloads `maui-android` and `wasm-tools` for the Android app and the browser client. |
 | PostgreSQL | 16+ (developed on 18) | Local server on `localhost:5432`, used for development and tests. Windows installer from postgresql.org. |
 | IDE | Visual Studio 2022, Rider or VS Code + C# Dev Kit | |
 
 Check:
 
 ```powershell
-dotnet --list-sdks          # an 8.0.x SDK must be listed
+dotnet --list-sdks          # a 10.0.x SDK must be listed
 psql -h localhost -U postgres -c "select version();"   # the server must answer
 ```
 
@@ -209,7 +209,7 @@ Delete the settings file to see the first-run screen again. **F11** toggles full
 ```
 
 The version lives in `build/version.props`. The publish is self-contained and carries this PC's .NET runtime;
-the script refuses a release with ASP.NET Core below 8.0.32. Installers need Inno Setup 6 (see
+the script refuses a release with ASP.NET Core below 10.0.8 (.NET 10 LTS). Installers need Inno Setup 6 (see
 `docs/phases/phase-10-production-readiness.md` § 14 for what each script does).
 
 Load test against a running API with demo users (a scratch database, never a venue's):

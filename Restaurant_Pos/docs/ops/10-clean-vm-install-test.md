@@ -15,7 +15,7 @@ Release: __________  Tester: ____________________  Date: __________  Result: PAS
       before you start so the test can be repeated.
 - [ ] From the build PC: `artifacts\installers\HotelPOS-Server-Setup-<version>.exe`,
       `HotelPOS-Client-Setup-<version>.exe` and `artifacts\publish\<version>\version.txt`. Copy them to
-      `C:\Install` on the VMs (shared folder or ISO). `version.txt` must say ASP.NET Core **8.0.32 or later** and there
+      `C:\Install` on the VMs (shared folder or ISO). `version.txt` must say ASP.NET Core **10.0.8 or later** and there
       must be no `NOT-FOR-RELEASE.txt` next to the installers.
 - [ ] The PostgreSQL 16 Windows installer (EDB) copied to `C:\Install` on `POS-SERVER`.
 - [ ] A licence key for the server VM is **not** needed: the 7-day trial covers the test.

@@ -4,7 +4,7 @@ Last updated: 2026-10-07
 
 ## 1. Coding conventions
 
-- C# 12, .NET 8, nullable reference types enabled, implicit usings, `TreatWarningsAsErrors` in `src/`.
+- C# 14, .NET 10 (LTS; moved from .NET 8 on 2026-10-22, Phase 24), nullable reference types enabled, implicit usings, `TreatWarningsAsErrors` in `src/`.
 - `async`/`await` end-to-end; async methods end with `Async` and accept `CancellationToken`.
 - Records for DTOs and event payloads; classes for entities; `sealed` by default.
 - Guard clauses and early returns; no nested ternaries; no magic strings (use constants in Contracts).

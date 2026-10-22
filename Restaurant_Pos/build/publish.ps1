@@ -10,8 +10,9 @@
         artifacts\installers\                HotelPOS-Server-Setup-<version>.exe, HotelPOS-Client-Setup-<version>.exe
 
     Self-contained means the venue PCs need no .NET install, but the build carries the runtime of THIS machine's
-    .NET SDK. The script refuses to produce a release whose ASP.NET Core runtime is older than 8.0.32
-    (CVE-2026-70159, SignalR denial of service): update the .NET 8 SDK on the build PC first.
+    .NET SDK. The script refuses to produce a release whose ASP.NET Core runtime is older than $minimumAspNetCore
+    (.NET 10 LTS; .NET 8 left support on 2026-11-10, and 8.0.32 had closed CVE-2026-70159): update the .NET 10 SDK
+    on the build PC first.
 
 .EXAMPLE
     .\build\publish.ps1
@@ -29,7 +30,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
-$minimumAspNetCore = [Version]'8.0.32'
+$minimumAspNetCore = [Version]'10.0.8'
 
 # Inno Setup installs per machine (Program Files (x86)) or per user (LocalAppData, the winget default); accept either.
 if (-not $InnoCompiler) {
@@ -67,7 +68,7 @@ $signalR = Get-Item (Join-Path $out 'server\Microsoft.AspNetCore.SignalR.Core.dl
 $shipped = [Version]($signalR.VersionInfo.ProductVersion -split '[+-]')[0]
 Write-Host "Bundled ASP.NET Core runtime: $shipped"
 if ($shipped -lt $minimumAspNetCore) {
-    $message = "The bundled ASP.NET Core runtime $shipped is older than $minimumAspNetCore (CVE-2026-70159). Install the latest .NET 8 SDK and publish again."
+    $message = "The bundled ASP.NET Core runtime $shipped is older than $minimumAspNetCore (.NET 10 LTS is required). Install the latest .NET 10 SDK and publish again."
     if (-not $AllowOutdatedRuntime) { Remove-Item -Recurse -Force $out; throw $message }
     Write-Warning "$message This output is for local trials only."
     Set-Content (Join-Path $out 'NOT-FOR-RELEASE.txt') $message

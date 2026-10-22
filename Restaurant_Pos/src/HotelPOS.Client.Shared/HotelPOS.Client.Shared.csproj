@@ -4,7 +4,7 @@
        served under /app) and the Android host (HotelPOS.Android, .NET MAUI Blazor Hybrid). Hosts supply
        IClientHost, ISessionTransport, IBrowserStorage and an HttpClient; everything else lives here. -->
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>HotelPOS.Client</RootNamespace>
     <AddRazorSupportForMvc>false</AddRazorSupportForMvc>
   </PropertyGroup>
