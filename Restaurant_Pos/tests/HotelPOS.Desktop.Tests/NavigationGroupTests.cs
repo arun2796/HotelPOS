@@ -78,6 +78,15 @@ public class NavigationGroupTests
         order.Should().BeInAscendingOrder("a group's modules must be contiguous so the sidebar shows one header per group");
     }
 
+    // The glyphs are private-use characters that look like empty strings in many editors and terminals; a rewrite of
+    // the registry once dropped them all (2026-10-23). Every sidebar entry must draw an icon.
+    [Fact]
+    public void EverySidebarModule_HasAnIconGlyph()
+    {
+        ModuleRegistry.All.Where(m => m.ShowInNav).Should().OnlyContain(m => m.Glyph.Length == 1 && m.Glyph[0] >= '',
+            "sidebar entries draw a Segoe Fluent icon from the private-use range");
+    }
+
     [Fact]
     public void Relabels_FollowTheDesignDecisions()
     {
