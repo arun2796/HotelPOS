@@ -15,12 +15,21 @@
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
+    <!-- The page's one primary action sits in the header row, where every admin screen keeps it (Phase 25). -->
     <StackPanel Margin="0,0,0,12">
-      <TextBlock Style="{StaticResource Text.Caption}" FontSize="14">
-        <Run Text="Printers attached to terminal" />
-        <Run Text="{Binding DeviceName, Mode=OneWay}" FontWeight="SemiBold" />
-        <Run Text="· saved on this PC only. Thermal printers on USB need the “Generic / Text Only” Windows driver." />
-      </TextBlock>
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <TextBlock Style="{StaticResource Text.Caption}" FontSize="14" VerticalAlignment="Center" TextWrapping="Wrap">
+          <Run Text="Printers attached to terminal" />
+          <Run Text="{Binding DeviceName, Mode=OneWay}" FontWeight="SemiBold" />
+          <Run Text="· saved on this PC only. Thermal printers on USB need the “Generic / Text Only” Windows driver." />
+        </TextBlock>
+        <Button Grid.Column="1" Content="Save printer settings" Command="{Binding SaveCommand}" Style="{StaticResource Button.Primary}"
+                MinWidth="180" Margin="16,0,16,0" VerticalAlignment="Center" />
+      </Grid>
       <Border Style="{StaticResource Banner.Error}" Margin="0,10,0,0"
               Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibility}}">
         <TextBlock Text="{Binding ErrorMessage}" Style="{StaticResource Text.Error}" />
@@ -146,7 +155,5 @@
       </ItemsControl>
     </ScrollViewer>
 
-    <Button Grid.Row="2" Content="Save printer settings" Command="{Binding SaveCommand}" Style="{StaticResource Button.Primary}"
-            HorizontalAlignment="Right" MinWidth="200" MinHeight="48" Margin="0,16,16,0" />
   </Grid>
 </UserControl>

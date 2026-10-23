@@ -104,6 +104,24 @@
       </DataGrid>
       <ProgressBar IsIndeterminate="True" Height="3" VerticalAlignment="Top"
                    Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}" />
+      <!-- An empty grid says why it is empty instead of showing a blank box. -->
+      <controls:EmptyState Icon="users" Title="No users to show" Message="Change the search or the inactive filter, or add the first staff account with New user."
+                           VerticalAlignment="Center" IsHitTestVisible="False">
+        <controls:EmptyState.Style>
+          <Style TargetType="controls:EmptyState" BasedOn="{StaticResource {x:Type controls:EmptyState}}">
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers>
+              <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                  <Condition Binding="{Binding Users.Count}" Value="0" />
+                  <Condition Binding="{Binding IsBusy}" Value="False" />
+                </MultiDataTrigger.Conditions>
+                <Setter Property="Visibility" Value="Visible" />
+              </MultiDataTrigger>
+            </Style.Triggers>
+          </Style>
+        </controls:EmptyState.Style>
+      </controls:EmptyState>
     </Grid>
 
     <!-- Actions wrap onto a second line when the editor panel narrows the page, instead of being cut off. -->
@@ -112,13 +130,16 @@
         <ColumnDefinition Width="*" />
         <ColumnDefinition Width="Auto" />
       </Grid.ColumnDefinitions>
-      <WrapPanel Margin="0,0,0,-8">
-        <Button Content="Edit" Command="{Binding EditCommand}" MinWidth="90" Margin="0,0,8,8" />
-        <Button Content="Reset password" Command="{Binding ResetPasswordCommand}" Margin="0,0,8,8" />
-        <Button Content="{Binding ToggleActiveText}" Command="{Binding ToggleActiveCommand}" Margin="0,0,8,8" MinWidth="100" />
-        <Button Content="Unlock" Command="{Binding UnlockCommand}" Margin="0,0,8,8" MinWidth="80" />
-        <Button Content="Sessions" Command="{Binding ViewSessionsCommand}" Margin="0,0,8,8" MinWidth="90" />
-        <Button Content="Log out everywhere" Command="{Binding LogoutAllCommand}" Margin="0,0,8,8" MinWidth="140" />
+      <!-- One emphasised action (Edit); the rest are quiet, so the row reads as a toolbar for the selected user, not six
+           equal buttons. -->
+      <WrapPanel Margin="0,0,0,-8" VerticalAlignment="Center">
+        <Button Content="Edit" Command="{Binding EditCommand}" Style="{StaticResource Button.Secondary}" MinWidth="90" Margin="0,0,8,8" />
+        <Button Content="Reset password" Command="{Binding ResetPasswordCommand}" Style="{StaticResource Button.Ghost}" Margin="0,0,4,8" />
+        <Button Content="{Binding ToggleActiveText}" Command="{Binding ToggleActiveCommand}" Style="{StaticResource Button.Ghost}" Margin="0,0,4,8" />
+        <Button Content="Unlock" Command="{Binding UnlockCommand}" Style="{StaticResource Button.Ghost}" Margin="0,0,4,8" />
+        <Button Content="Sessions" Command="{Binding ViewSessionsCommand}" Style="{StaticResource Button.Ghost}" Margin="0,0,4,8" />
+        <Button Content="Log out everywhere" Command="{Binding LogoutAllCommand}" Style="{StaticResource Button.Ghost}"
+                Foreground="{DynamicResource Brush.DangerText}" Margin="0,0,4,8" />
       </WrapPanel>
       <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Bottom">
         <Button Command="{Binding PreviousPageCommand}" ToolTip="Previous page">
@@ -131,7 +152,7 @@
       </StackPanel>
     </Grid>
 
-    <Border Grid.Column="1" Grid.RowSpan="4" Style="{StaticResource Card}" Width="380" Margin="20,0,0,0"
+    <Border Grid.Column="1" Grid.RowSpan="4" Style="{StaticResource Card.Elevated}" Width="380" Margin="20,0,0,0"
             DataContext="{Binding Editor}"
             Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibility}}">
       <Grid>

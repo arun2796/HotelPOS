@@ -123,6 +123,17 @@
     <Setter Property="Padding" Value="{DynamicResource Padding.Card}" />
   </Style>
 
+  <!-- A card that sits above the page: editor panes and detail panels next to a list. The shadow is soft and small
+       (Phase 25); not for cards inside scrolling lists, where effects cost frames. -->
+  <Style x:Key="Card.Elevated" TargetType="Border" BasedOn="{StaticResource Card}">
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderSubtle}" />
+    <Setter Property="Effect">
+      <Setter.Value>
+        <DropShadowEffect BlurRadius="18" ShadowDepth="2" Direction="270" Opacity="0.10" Color="#0F1623" />
+      </Setter.Value>
+    </Setter>
+  </Style>
+
   <Style x:Key="Banner.Base" TargetType="Border">
     <Setter Property="CornerRadius" Value="8" />
     <Setter Property="Padding" Value="14,10" />

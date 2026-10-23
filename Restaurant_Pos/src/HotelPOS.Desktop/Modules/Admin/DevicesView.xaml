@@ -122,6 +122,23 @@
 
       <ProgressBar IsIndeterminate="True" Height="3" VerticalAlignment="Top"
                    Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}" />
+      <controls:EmptyState Icon="signal" Title="No terminals yet" Message="A terminal appears here the first time someone signs in from it."
+                           VerticalAlignment="Center" IsHitTestVisible="False">
+        <controls:EmptyState.Style>
+          <Style TargetType="controls:EmptyState" BasedOn="{StaticResource {x:Type controls:EmptyState}}">
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers>
+              <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                  <Condition Binding="{Binding Devices.Count}" Value="0" />
+                  <Condition Binding="{Binding IsBusy}" Value="False" />
+                </MultiDataTrigger.Conditions>
+                <Setter Property="Visibility" Value="Visible" />
+              </MultiDataTrigger>
+            </Style.Triggers>
+          </Style>
+        </controls:EmptyState.Style>
+      </controls:EmptyState>
     </Grid>
 
     <!-- Bottom Actions -->
