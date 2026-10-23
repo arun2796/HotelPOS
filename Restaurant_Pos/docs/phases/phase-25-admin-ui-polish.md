@@ -53,3 +53,18 @@ Dark mode re-checked on every changed screen (renders with the `-dark` suffix). 
 
 What the page header already provides: the shell's top bar carries each module's title and one-line description from
 `ModuleRegistry`, so an in-page header would repeat it; the primary action sits in the content's header row instead.
+
+## Pass 3 (2026-10-23): the status badge and the dashboard strip
+
+The owner's note: the green "Connected" pill in the sidebar device card looked like a sticker, and the same pill is
+used for every status in every section. The pill itself was redesigned once, in the design system, so all of them moved.
+
+| Change | Where |
+|---|---|
+| Soft badge: a 6 px dot in the tone colour, a 1 px hairline border, radius 6, medium weight, no icon. Solid badges (the ones that have to shout: Ready, failed prints) keep the strong fill and the icon | `Controls.xaml` StatusBadge template, `StatusBadge.BadgeAccent` |
+| On the navy sidebar card the badge is an outline in the tone colour with no fill (`OnDark="True"`), so it reads as part of the card instead of a label stuck on it | `Controls.xaml` DeviceStatusCard, `StatusBadge.OnDark` |
+| Staff web and Android apps: `.status-badge` restyled the same way (dot, hairline, radius 6; `.solid` unchanged) | `Client.Shared/wwwroot/css/app.css` |
+| Dashboard: five KPI tiles in one row from 1000 px of content width (a 1366 px window with the sidebar open), instead of three tiles and two orphans | `DashboardView.KpiColumnsFor` |
+
+Renders: `68-admin-dashboard-phase25.png` (and `-dark`). The sidebar card and the table badges are visible on every
+earlier render once `ScreenRenderingTests` is re-run.

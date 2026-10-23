@@ -15,7 +15,9 @@ public partial class DashboardView : UserControl
 
     // Five KPI cards (Phase 22 F4 added "Expenses today") shrink gracefully (the value is a DownOnly Viewbox) down to
     // about 225 px each, so one row needs ~1150 px; below that they go 3 + 2, and under 700 px they pair up.
-    public static int KpiColumnsFor(double width) => width < 700 ? 2 : width < 1150 ? 3 : 5;
+    // Five figures in one row from 1000 px (a 1366 px window with the sidebar open): the strip reads as one line of
+    // numbers instead of three tiles and two orphans. The tile's Viewbox shrinks the value when the column is narrow.
+    public static int KpiColumnsFor(double width) => width < 700 ? 2 : width < 1000 ? 3 : 5;
 
     public static int PanelColumnsFor(double width) => width < CompactWidth ? 2 : 3;
 

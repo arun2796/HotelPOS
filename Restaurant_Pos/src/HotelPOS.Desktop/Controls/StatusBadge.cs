@@ -4,6 +4,7 @@ using System.Windows.Data;
 using System.Windows.Media;
 using HotelPOS.Contracts.Presentation;
 using HotelPOS.Desktop.Converters;
+using HotelPOS.Desktop.Modules.Common;
 
 namespace HotelPOS.Desktop.Controls;
 
@@ -36,6 +37,15 @@ public sealed class StatusBadge : Control
 
     public static readonly DependencyProperty BadgeBackgroundProperty =
         DependencyProperty.Register(nameof(BadgeBackground), typeof(Brush), typeof(StatusBadge), new PropertyMetadata(null));
+
+    // The tone's strong colour: the 6 px dot and the hairline border (Phase 25 badge).
+    public static readonly DependencyProperty BadgeAccentProperty =
+        DependencyProperty.Register(nameof(BadgeAccent), typeof(Brush), typeof(StatusBadge), new PropertyMetadata(null));
+
+    // On the navy sidebar a tinted fill looks like a sticker: OnDark draws the badge as an outline in the tone's strong colour.
+    public static readonly DependencyProperty OnDarkProperty =
+        DependencyProperty.Register(nameof(OnDark), typeof(bool), typeof(StatusBadge),
+            new PropertyMetadata(false, (d, _) => ((StatusBadge)d).Refresh()));
 
     static StatusBadge()
     {
@@ -85,6 +95,18 @@ public sealed class StatusBadge : Control
         set => SetValue(ShowIconProperty, value);
     }
 
+    public Brush? BadgeAccent
+    {
+        get => (Brush?)GetValue(BadgeAccentProperty);
+        set => SetValue(BadgeAccentProperty, value);
+    }
+
+    public bool OnDark
+    {
+        get => (bool)GetValue(OnDarkProperty);
+        set => SetValue(OnDarkProperty, value);
+    }
+
     public Brush? BadgeBackground
     {
         get => (Brush?)GetValue(BadgeBackgroundProperty);
@@ -102,6 +124,17 @@ public sealed class StatusBadge : Control
 
     private void Refresh()
     {
+        var accent = StatusLabels.SolidBrushKey(Tone);
+        SetResourceReference(BadgeAccentProperty, accent);
+
+        if (OnDark && Fill != StatusFill.Solid)
+        {
+            // Outline on a dark surface: no fill, the tone's strong colour for border, dot and word.
+            SetValue(BadgeBackgroundProperty, Brushes.Transparent);
+            SetResourceReference(ForegroundProperty, accent);
+            return;
+        }
+
         var (background, foreground) = ToneBrushes.For(Tone, Fill);
         SetResourceReference(BadgeBackgroundProperty, background);
         if (foreground is null)

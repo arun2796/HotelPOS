@@ -429,16 +429,26 @@
     <Setter Property="VerticalAlignment" Value="Center" />
     <Setter Property="Template">
       <Setter.Value>
+        <!-- Phase 25: a quiet tag, not a sticker. Soft: tinted fill, hairline border in the tone, a 6 px dot and the word in
+             medium weight, 6 px corners. Solid (alerts that must shout) keeps the strong fill, white text and the icon. -->
         <ControlTemplate TargetType="controls:StatusBadge">
-          <Border x:Name="Root" Background="{TemplateBinding BadgeBackground}" CornerRadius="{StaticResource Radius.Pill}" Padding="8,3">
+          <Border x:Name="Root" Background="{TemplateBinding BadgeBackground}" BorderBrush="{TemplateBinding BadgeAccent}" BorderThickness="1"
+                  CornerRadius="6" Padding="8,2" SnapsToDevicePixels="True">
             <StackPanel Orientation="Horizontal">
-              <controls:Icon x:Name="PartIcon" Kind="{TemplateBinding Icon}" Width="12" Height="12" Margin="0,0,5,0"
+              <Ellipse x:Name="PartDot" Width="6" Height="6" Margin="0,0,6,0" VerticalAlignment="Center" Fill="{TemplateBinding BadgeAccent}" />
+              <controls:Icon x:Name="PartIcon" Kind="{TemplateBinding Icon}" Width="12" Height="12" Margin="0,0,5,0" Visibility="Collapsed"
                              Foreground="{TemplateBinding Foreground}" />
-              <TextBlock Text="{TemplateBinding Label}" FontSize="{DynamicResource Font.Size.Caption}" FontWeight="SemiBold"
+              <TextBlock Text="{TemplateBinding Label}" FontSize="{DynamicResource Font.Size.Caption}" FontWeight="Medium"
                          Foreground="{TemplateBinding Foreground}" VerticalAlignment="Center" />
             </StackPanel>
           </Border>
           <ControlTemplate.Triggers>
+            <Trigger Property="Fill" Value="Solid">
+              <Setter TargetName="Root" Property="BorderThickness" Value="0" />
+              <Setter TargetName="Root" Property="Padding" Value="9,3" />
+              <Setter TargetName="PartDot" Property="Visibility" Value="Collapsed" />
+              <Setter TargetName="PartIcon" Property="Visibility" Value="Visible" />
+            </Trigger>
             <Trigger Property="Icon" Value="">
               <Setter TargetName="PartIcon" Property="Visibility" Value="Collapsed" />
             </Trigger>
@@ -811,7 +821,7 @@
                 <DockPanel>
                   <TextBlock DockPanel.Dock="Right" Text="{TemplateBinding Version}" FontSize="11" VerticalAlignment="Center"
                              Foreground="{DynamicResource Brush.SidebarTextMuted}" />
-                  <controls:StatusBadge Display="{Binding Display, RelativeSource={RelativeSource TemplatedParent}}" />
+                  <controls:StatusBadge Display="{Binding Display, RelativeSource={RelativeSource TemplatedParent}}" OnDark="True" />
                 </DockPanel>
                 <TextBlock Text="{TemplateBinding TerminalName}" Margin="2,6,0,0" FontSize="13" FontWeight="SemiBold"
                            Foreground="{DynamicResource Brush.SidebarTextActive}" TextTrimming="CharacterEllipsis"
