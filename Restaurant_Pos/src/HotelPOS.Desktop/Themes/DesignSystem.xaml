@@ -1341,11 +1341,12 @@
           <StackPanel>
             <Border x:Name="GroupDivider" Height="1" Margin="18,12,18,0" Background="{DynamicResource Brush.SidebarDivider}"
                     Visibility="{Binding ShowGroupDivider, Converter={StaticResource BoolToVisibility}}" />
-            <TextBlock x:Name="GroupHeader" Text="{Binding Group}"
+            <TextBlock x:Name="GroupHeader" Text="{Binding GroupLabel}"
                        Visibility="{Binding ShowGroupHeader, Converter={StaticResource BoolToVisibility}}"
-                       Margin="22,14,12,6"
-                       FontSize="11"
+                       Margin="22,16,12,6"
+                       FontSize="10.5"
                        FontWeight="SemiBold"
+                       Opacity="0.85"
                        Foreground="{DynamicResource Brush.SidebarTextMuted}" />
             <Grid Margin="10,1">
               <Border x:Name="Root" CornerRadius="8" Padding="12,0" Height="{DynamicResource Size.NavItem}" Background="Transparent">

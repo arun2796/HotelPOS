@@ -22,6 +22,9 @@ public sealed partial class NavItemViewModel : ObservableObject
 
     public string Group => Module.Group;
 
+    /// <summary>The group header as the sidebar prints it: small capitals, like the mock-up's section labels.</summary>
+    public string GroupLabel => Module.Group.ToUpperInvariant();
+
     /// <summary>The first visible item of a group carries the group's header.</summary>
     public bool ShowGroupHeader { get; }
 

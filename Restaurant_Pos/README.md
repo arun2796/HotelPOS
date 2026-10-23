@@ -47,7 +47,8 @@ PostgreSQL is the single source of truth.
 | Phase 21 – Role-based UI/UX Redesign (owner mock-ups) | Code complete (merged to main 2026-10-17; device demo open) |
 | Phase 22 – Features excluded from Phase 21 (order types, reservations, expenses/P&L, floor plan, staff on duty, ticket pictures, KOT PDF) | Done except device demo (merged to main 2026-10-19, full suite green, owner signed off E1–E11; item split dropped by owner decision; migrations rehearsed on a DB copy) |
 | Phase 23 – Go-live hardening (duplicate-order race, double payment, service start-up + pre-upgrade backup, JWT placeholder, default admin password, signed updates) | Code complete 2026-10-22 (clean-VM test open) |
-| Phase 24 – .NET 10 LTS (all projects, EF Core 10, ASP.NET Core 10, MAUI 10) | Code complete 2026-10-22 on branch `phase-24-dotnet-10` (clean-VM test and phone check open) |
+| Phase 24 – .NET 10 LTS (all projects, EF Core 10, ASP.NET Core 10, MAUI 10) | Done (merged 2026-10-22, 0.1.1 installers built) |
+| Phase 25 – Admin UI polish (sidebar order and icons, section labels, status badges) | Pass 1 code complete 2026-10-23; pass 2 proposed |
 
 Update this table (and `docs/phases/README.md`) when a phase starts or finishes.
 

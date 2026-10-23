@@ -64,25 +64,38 @@
           <DataGridTextColumn Header="USERNAME" Binding="{Binding Username}" Width="1*" MinWidth="90" />
           <DataGridTextColumn Header="NAME" Binding="{Binding DisplayName}" Width="1.5*" MinWidth="120" />
           <DataGridTextColumn Header="ROLES" Binding="{Binding Roles, Converter={StaticResource ListJoin}}" Width="1.2*" MinWidth="90" />
-          <DataGridTextColumn Header="STATUS" Binding="{Binding IsActive, Converter={StaticResource ActiveText}}" Width="0.7*" MinWidth="80" />
-          <DataGridTemplateColumn Header="LOCKOUT" Width="0.8*" MinWidth="80">
+          <!-- Status and lockout as badges, like every other status in the app: colour plus a word, never colour alone. -->
+          <DataGridTemplateColumn Header="STATUS" Width="0.9*" MinWidth="112">
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate>
-                <TextBlock VerticalAlignment="Center">
-                  <TextBlock.Style>
-                    <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
-                      <Setter Property="Text" Value="Not locked" />
-                      <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+                <controls:StatusBadge>
+                  <controls:StatusBadge.Style>
+                    <Style TargetType="controls:StatusBadge" BasedOn="{StaticResource {x:Type controls:StatusBadge}}">
+                      <Setter Property="Tone" Value="Success" />
+                      <Setter Property="Label" Value="Active" />
+                      <Setter Property="Icon" Value="check" />
                       <Style.Triggers>
-                        <DataTrigger Binding="{Binding IsLockedOut}" Value="True">
-                          <Setter Property="Text" Value="Locked" />
-                          <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
-                          <Setter Property="FontWeight" Value="SemiBold" />
+                        <DataTrigger Binding="{Binding IsActive}" Value="False">
+                          <Setter Property="Tone" Value="Neutral" />
+                          <Setter Property="Label" Value="Inactive" />
+                          <Setter Property="Icon" Value="ban" />
                         </DataTrigger>
                       </Style.Triggers>
                     </Style>
-                  </TextBlock.Style>
-                </TextBlock>
+                  </controls:StatusBadge.Style>
+                </controls:StatusBadge>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTemplateColumn Header="LOCKOUT" Width="0.8*" MinWidth="96">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate>
+                <Grid>
+                  <TextBlock Text="—" Style="{StaticResource Text.Caption}" VerticalAlignment="Center"
+                             Visibility="{Binding IsLockedOut, Converter={StaticResource InverseBoolToVisibility}}" />
+                  <controls:StatusBadge Tone="Danger" Label="Locked" Icon="lock"
+                                        Visibility="{Binding IsLockedOut, Converter={StaticResource BoolToVisibility}}" />
+                </Grid>
               </DataTemplate>
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>
