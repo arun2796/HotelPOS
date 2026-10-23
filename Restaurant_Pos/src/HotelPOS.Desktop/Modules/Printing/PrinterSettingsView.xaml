@@ -97,6 +97,7 @@
                     <StackPanel Grid.Column="2">
                       <TextBlock Text="Print ₹ as" Style="{StaticResource Text.Label}" />
                       <TextBox Text="{Binding CurrencyFallback, UpdateSourceTrigger=PropertyChanged}" MaxLength="5" />
+                      <TextBlock Text="Thermal printers cannot print ₹. Empty prints bare amounts; Rs. prints Rs. 150.00." Style="{StaticResource Text.Caption}" TextWrapping="Wrap" Margin="0,4,0,0" />
                     </StackPanel>
                   </Grid>
 
