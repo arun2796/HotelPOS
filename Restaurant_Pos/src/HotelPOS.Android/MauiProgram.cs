@@ -22,6 +22,8 @@ public static class MauiProgram
         builder.Services.AddSingleton<IBrowserStorage, MauiStorage>();
         builder.Services.AddSingleton<IAlertSignal, MauiAlertSignal>();
         builder.Services.AddSingleton<ISecureTokenStore, MauiSecureTokenStore>();
+        // Print KOT: the Android print dialog instead of a browser tab (the web view cannot open blobs in a new tab).
+        builder.Services.AddSingleton<IPdfOpener, MauiPdfOpener>();
         builder.Services.AddScoped<ISessionTransport, TokenSessionTransport>();
         builder.Services.AddHotelPosClient();
 

@@ -3,18 +3,20 @@ using Microsoft.JSInterop;
 namespace HotelPOS.Client.Services;
 
 /// <summary>
-/// Print KOT from a browser (Phase 22 P6): reserve a copy (so the print log has the same record as a terminal print),
-/// fetch the PDF for that copy with the session's bearer token, open it in a new tab, then report the result.
+/// Print KOT from a browser or the Android app (Phase 22 P6): reserve a copy (so the print log has the same record as a
+/// terminal print), fetch the PDF for that copy with the session's bearer token, show it through the host's
+/// <see cref="IPdfOpener"/> (new tab in a browser, the system print dialog on Android), then report the result.
 /// </summary>
 public sealed class KotPrinter
 {
     private readonly IPrintApi _api;
-    private readonly IJSRuntime _js;
+    private readonly IPdfOpener _opener;
 
-    public KotPrinter(IPrintApi api, IJSRuntime js)
+    // The opener is optional for the hosts and tests that register only the JS runtime: the browser behaviour is the default.
+    public KotPrinter(IPrintApi api, IJSRuntime js, IPdfOpener? opener = null)
     {
         _api = api;
-        _js = js;
+        _opener = opener ?? new JsPdfOpener(js);
     }
 
     /// <summary>Null when the ticket was opened; otherwise the message to show in a toast.</summary>
@@ -26,7 +28,7 @@ public sealed class KotPrinter
             return reserved.Success ? "The server did not reserve a copy." : reserved.Message;
         }
 
-        string? failure = null;
+        string? failure;
         var pdf = await _api.GetKotPdfAsync(ticketId, logId, ct);
         if (!pdf.Success || pdf.Data is null)
         {
@@ -34,18 +36,7 @@ public sealed class KotPrinter
         }
         else
         {
-            try
-            {
-                var opened = await _js.InvokeAsync<bool>("hotelposPrint.openPdf", ct, pdf.Data, $"kot-{reserved.Data.TicketNumber}.pdf");
-                if (!opened)
-                {
-                    failure = "The browser blocked the ticket window. Allow pop-ups for this site and try again.";
-                }
-            }
-            catch (Exception ex) when (ex is JSException or InvalidOperationException)
-            {
-                failure = "The ticket could not be opened on this device.";
-            }
+            failure = await _opener.OpenAsync(pdf.Data, $"kot-{reserved.Data.TicketNumber}.pdf", ct);
         }
 
         // The log entry is closed either way; a failed report here must not hide the real outcome.
