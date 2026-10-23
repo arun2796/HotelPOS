@@ -300,8 +300,9 @@ public class DashboardViewModelTests
         DashboardViewModel.ConnectionDisplayFor(ConnectionStatus.Connected).Label.Should().Be("Online");
         DashboardViewModel.ConnectionDisplayFor(ConnectionStatus.Reconnecting).Label.Should().Be("Reconnecting");
         DashboardViewModel.ConnectionDisplayFor(ConnectionStatus.Disconnected).Label.Should().Be("Offline");
-        DashboardView.KpiColumnsFor(1366 - 248 - 48).Should().Be(3, "five cards go 3 + 2 at 1366 px with the sidebar open (Phase 22 F4)");
+        DashboardView.KpiColumnsFor(1366 - 248 - 48).Should().Be(5, "one row of five at 1366 px with the sidebar open (Phase 25 pass 3)");
         DashboardView.KpiColumnsFor(1600).Should().Be(5, "one row of five on a wide screen");
+        DashboardView.KpiColumnsFor(999).Should().Be(3, "under 1000 px the five cards go 3 + 2");
         DashboardView.KpiColumnsFor(800).Should().Be(3);
         DashboardView.KpiColumnsFor(600).Should().Be(2);
         DashboardView.PanelColumnsFor(1366 - 248 - 48).Should().Be(2, "1366 px with the sidebar open is the two-column layout");
