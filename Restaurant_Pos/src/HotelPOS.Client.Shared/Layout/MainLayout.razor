@@ -39,7 +39,7 @@
         <ThemeToggle />
         @if (Auth.IsSignedIn && Mode == ShellMode.Kitchen)
         {
-            <button class="btn icon ghost" title="@($"{Auth.User!.DisplayName} · Sign out")" @onclick="SignOutAsync" aria-label="Sign out">
+            <button class="btn icon ghost" title="@($"{Auth.User!.DisplayName} · Sign out")" @onclick="() => _confirmSignOut = true" aria-label="Sign out">
                 <span class="avatar">@ShellModes.Initials(Auth.User!.DisplayName)</span>
             </button>
         }
@@ -89,9 +89,18 @@
                 <NotificationPanel OnClose="() => _more = false" />
             </section>
             <NavLink class="btn block more-link" href="settings" @onclick="() => _more = false"><Icon Name="settings" /> Settings</NavLink>
-            <button type="button" class="btn block danger-outline more-link" @onclick="SignOutAsync"><Icon Name="logout" /> Sign out</button>
+            <button type="button" class="btn block danger-outline more-link" @onclick="AskSignOut"><Icon Name="logout" /> Sign out</button>
         </BottomSheet>
     }
+
+    @* One wrong tap must not take a waiter or the kitchen off the air mid-service: sign-out asks first. *@
+    <BottomSheet Open="_confirmSignOut" Title="Sign out?" OnClose="() => _confirmSignOut = false">
+        <p class="muted" style="margin:0 0 12px">This device stops receiving orders and alerts until someone signs in again.</p>
+        <div class="row" style="gap:8px">
+            <button type="button" class="btn block" data-testid="cancel-sign-out" @onclick="() => _confirmSignOut = false">Cancel</button>
+            <button type="button" class="btn block danger" data-testid="confirm-sign-out" @onclick="SignOutAsync"><Icon Name="logout" /> Sign out</button>
+        </div>
+    </BottomSheet>
 
     <Toasts />
 </div>
@@ -99,6 +108,7 @@
 @code {
     private bool _more;
     private bool _pick;
+    private bool _confirmSignOut;
     private DateTime _now = DateTime.Now;
     private Timer? _clock;
 
@@ -131,9 +141,16 @@
         await Notifications.StartAsync();
     }
 
+    private void AskSignOut()
+    {
+        _more = false;
+        _confirmSignOut = true;
+    }
+
     private async Task SignOutAsync()
     {
         _more = false;
+        _confirmSignOut = false;
         Notifications.Stop();
         NotificationList.Clear();
         await Realtime.StopAsync();

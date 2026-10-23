@@ -154,6 +154,9 @@ public sealed class ShellTests : TestContext
 
         layout.FindAll(".bsheet button").Single(b => b.TextContent.Contains("Sign out")).Click();
 
+        // Sign-out asks first: nothing happens until it is confirmed.
+        _signOuts.Should().Be(0);
+        layout.Find("[data-testid=confirm-sign-out]").Click();
         layout.WaitForAssertion(() => _signOuts.Should().Be(1));
         Services.GetRequiredService<NavigationManager>().Uri.Should().EndWith("signin");
         await Services.GetRequiredService<WebRealtimeClient>().StopAsync();
@@ -169,6 +172,11 @@ public sealed class ShellTests : TestContext
         layout.Find("[data-testid=clock]").TextContent.Should().MatchRegex(@"\d\d:\d\d");
         layout.Find("header button[aria-label='Sign out']").Click();
 
+        // Sign-out asks first; Cancel keeps the session, confirming ends it.
+        layout.Find("[data-testid=cancel-sign-out]").Click();
+        _signOuts.Should().Be(0);
+        layout.Find("header button[aria-label='Sign out']").Click();
+        layout.Find("[data-testid=confirm-sign-out]").Click();
         layout.WaitForAssertion(() => _signOuts.Should().Be(1));
         await Services.GetRequiredService<WebRealtimeClient>().StopAsync();
     }
