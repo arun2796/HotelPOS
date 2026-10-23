@@ -22,86 +22,53 @@
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
-    <!-- Filter Bar -->
-    <Grid Margin="0,0,0,16">
+    <!-- Filter bar: wraps onto a second line when the window is narrow (1366 px with the sidebar open) instead of
+         cutting the search off at the right edge (Phase 25). The summary and reload stay pinned right. -->
+    <Grid Margin="0,0,0,8">
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="Auto" />
-        <ColumnDefinition Width="Auto" />
-        <ColumnDefinition Width="Auto" />
-        <ColumnDefinition Width="Auto" />
-        <ColumnDefinition Width="Auto" />
-        <ColumnDefinition Width="Auto" />
-        <ColumnDefinition Width="Auto" />
-        <ColumnDefinition Width="*" MinWidth="140" MaxWidth="240" />
-        <ColumnDefinition Width="Auto" />
         <ColumnDefinition Width="*" />
         <ColumnDefinition Width="Auto" />
-        <ColumnDefinition Width="Auto" />
-        <ColumnDefinition Width="Auto" />
       </Grid.ColumnDefinitions>
+      <WrapPanel VerticalAlignment="Center" Margin="0,0,0,-8">
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,14,8">
+          <DatePicker SelectedDate="{Binding FromDate}" Width="136" ToolTip="From date"
+                      AutomationProperties.Name="Filter from date" />
+          <TextBlock Text="–" Margin="6,0" VerticalAlignment="Center" />
+          <DatePicker SelectedDate="{Binding ToDate}" Width="136" ToolTip="To date"
+                      AutomationProperties.Name="Filter to date" />
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,14,8">
+          <Button Content="Today" Command="{Binding QuickFilterTodayCommand}" Style="{StaticResource Button.Secondary}" />
+          <Button Content="This month" Command="{Binding QuickFilterThisMonthCommand}" Style="{StaticResource Button.Secondary}" Margin="6,0,0,0" />
+          <Button Content="Last 30 days" Command="{Binding QuickFilterLast30DaysCommand}" Style="{StaticResource Button.Secondary}" Margin="6,0,0,0" />
+        </StackPanel>
+        <ComboBox ItemsSource="{Binding CategoryFilters}" SelectedItem="{Binding SelectedCategoryFilter}"
+                  DisplayMemberPath="Name" Width="150" VerticalAlignment="Center" Margin="0,0,14,8"
+                  ToolTip="Filter by category" AutomationProperties.Name="Category filter" />
+        <CheckBox Content="Include void" IsChecked="{Binding IncludeVoid}" VerticalAlignment="Center" Margin="0,0,14,8" />
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,8">
+          <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" Width="220"
+                   ToolTip="Search payee, notes, category, amount" md:HintAssist.Hint="Search expenses..."
+                   VerticalAlignment="Center" AutomationProperties.Name="Search expenses">
+            <TextBox.InputBindings>
+              <KeyBinding Key="Enter" Command="{Binding SearchCommand}" />
+            </TextBox.InputBindings>
+          </TextBox>
+          <Button Command="{Binding SearchCommand}" Margin="6,0,0,0" ToolTip="Search" VerticalAlignment="Center">
+            <TextBlock Text="&#xE721;" Style="{StaticResource Text.Icon}" />
+          </Button>
+        </StackPanel>
+      </WrapPanel>
 
-      <!-- Date filters -->
-      <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-        <DatePicker SelectedDate="{Binding FromDate}" Width="120" ToolTip="From date"
-                    AutomationProperties.Name="Filter from date" />
-        <TextBlock Text="–" Margin="6,0" VerticalAlignment="Center" />
-        <DatePicker SelectedDate="{Binding ToDate}" Width="120" ToolTip="To date"
-                    AutomationProperties.Name="Filter to date" />
+      <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top" Margin="16,0,0,0">
+        <TextBlock Text="{Binding SummaryText}" Style="{StaticResource Text.Caption}" FontSize="13" VerticalAlignment="Center"
+                   Margin="0,0,12,0" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+        <Button Command="{Binding LoadCommand}" ToolTip="Reload from server" VerticalAlignment="Center">
+          <TextBlock Text="&#xE72C;" Style="{StaticResource Text.Icon}" />
+        </Button>
       </StackPanel>
-
-      <Button Grid.Column="1" Content="Today" Command="{Binding QuickFilterTodayCommand}" Margin="8,0,0,0" VerticalAlignment="Center" />
-      <Button Grid.Column="2" Content="This Month" Command="{Binding QuickFilterThisMonthCommand}" Margin="6,0,0,0" VerticalAlignment="Center" />
-      <Button Grid.Column="3" Content="Last 30 Days" Command="{Binding QuickFilterLast30DaysCommand}" Margin="6,0,14,0" VerticalAlignment="Center" />
-
-      <!-- Category Filter -->
-      <ComboBox Grid.Column="4" ItemsSource="{Binding CategoryFilters}" SelectedItem="{Binding SelectedCategoryFilter}"
-                DisplayMemberPath="Name" Width="150" VerticalAlignment="Center" Margin="0,0,14,0"
-                ToolTip="Filter by category" AutomationProperties.Name="Category filter" />
-
-      <!-- Include Void Checkbox -->
-      <CheckBox Grid.Column="5" Content="Include void" IsChecked="{Binding IncludeVoid}"
-                VerticalAlignment="Center" Margin="0,0,14,0" />
-
-      <!-- Search Input -->
-      <TextBox Grid.Column="7" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-               ToolTip="Search payee, notes, category, amount" md:HintAssist.Hint="Search expenses..."
-               VerticalAlignment="Center" AutomationProperties.Name="Search expenses">
-        <TextBox.InputBindings>
-          <KeyBinding Key="Enter" Command="{Binding SearchCommand}" />
-        </TextBox.InputBindings>
-      </TextBox>
-      <Button Grid.Column="8" Command="{Binding SearchCommand}" Margin="6,0,0,0" ToolTip="Search" VerticalAlignment="Center">
-        <TextBlock Text="&#xE721;" Style="{StaticResource Text.Icon}" />
-      </Button>
-
-      <!-- Summary -->
-      <TextBlock Grid.Column="9" Text="{Binding SummaryText}" Style="{StaticResource Text.Caption}" FontSize="13"
-                 HorizontalAlignment="Right" VerticalAlignment="Center" Margin="16,0" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-
-      <!-- Reload button -->
-      <Button Grid.Column="10" Command="{Binding LoadCommand}" ToolTip="Reload from server" VerticalAlignment="Center">
-        <TextBlock Text="&#xE72C;" Style="{StaticResource Text.Icon}" />
-      </Button>
-
-      <!-- Categories button -->
-      <Button Grid.Column="11" Command="{Binding OpenCategoriesDrawerCommand}" ToolTip="Manage expense categories"
-              Margin="8,0,0,0" VerticalAlignment="Center">
-        <StackPanel Orientation="Horizontal">
-          <TextBlock Text="&#xE8D2;" Style="{StaticResource Text.Icon}" FontSize="13" />
-          <TextBlock Text="Categories" Margin="6,0,0,0" />
-        </StackPanel>
-      </Button>
-
-      <!-- Record Expense button -->
-      <Button Grid.Column="12" Command="{Binding NewExpenseCommand}" Style="{StaticResource Button.Primary}"
-              Margin="8,0,0,0" VerticalAlignment="Center"
-              Visibility="{Binding CanManage, Converter={StaticResource BoolToVisibility}}">
-        <StackPanel Orientation="Horizontal">
-          <TextBlock Text="&#xE710;" Style="{StaticResource Text.Icon}" FontSize="14" />
-          <TextBlock Text="Record expense" Margin="8,0,0,0" />
-        </StackPanel>
-      </Button>
     </Grid>
+
 
     <!-- Error Banner -->
     <Border Grid.Row="1" Style="{StaticResource Banner.Error}" Margin="0,0,0,12"
@@ -124,7 +91,28 @@
           <DataGridTextColumn Header="SOURCE" Binding="{Binding PaymentSourceDisplay}" Width="1.1*" MinWidth="100" />
           <DataGridTextColumn Header="TILL LINK" Binding="{Binding CashMovementDisplay}" Width="1.1*" MinWidth="95" />
           <DataGridTextColumn Header="NOTES" Binding="{Binding NotesText}" Width="1.8*" MinWidth="130" />
-          <DataGridTextColumn Header="STATUS" Binding="{Binding StatusText}" Width="1.3*" MinWidth="110" />
+          <DataGridTemplateColumn Header="STATUS" Width="1*" MinWidth="104">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate>
+                <controls:StatusBadge ToolTip="{Binding StatusText}">
+                  <controls:StatusBadge.Style>
+                    <Style TargetType="controls:StatusBadge" BasedOn="{StaticResource {x:Type controls:StatusBadge}}">
+                      <Setter Property="Tone" Value="Success" />
+                      <Setter Property="Label" Value="Active" />
+                      <Setter Property="Icon" Value="check" />
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsVoid}" Value="True">
+                          <Setter Property="Tone" Value="Neutral" />
+                          <Setter Property="Label" Value="Voided" />
+                          <Setter Property="Icon" Value="ban" />
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </controls:StatusBadge.Style>
+                </controls:StatusBadge>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
         </DataGrid.Columns>
       </DataGrid>
 
