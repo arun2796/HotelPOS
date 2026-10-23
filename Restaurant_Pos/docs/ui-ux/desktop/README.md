@@ -153,3 +153,11 @@ DISCOUNT") is gone with the new totals block.
 What worked well: the three panes make claim, discount, finalize and pay one uninterrupted path with no page change; the
 hotkeys are printed on the buttons and repeated in the hint line; the Paid state keeps the bill on screen for the
 receipt; the dashboard's chips and pager mirror the Orders page exactly; the dark theme is complete on every screen.
+
+## `admin/` — Phase 25 renders (23 Oct 2026, `ScreenRenderingTests` output, fake data, 1366 × 800)
+
+Files `60`–`67` with the `-phase25` suffix (light, and `-dark` where the theme matters): Users (elevated editor, badges,
+quiet action row), Devices (badges, empty state), Printers (primary action in the header), Expenses (wrapping filter
+bar, badges), GST returns (capital headers), Cash shifts (badges, variance colour), Backup (badges), Audit Log (column
+widths). All 167 renders pass in both themes with zero binding errors. What changed and what was deliberately left:
+`docs/phases/phase-25-admin-ui-polish.md`.

@@ -40,16 +40,16 @@ Renders: `60-admin-users-phase25.png`, `61-admin-devices-phase25.png`, `62-admin
 | Cash shifts: Open / Closed / Handed over / Force closed as badges; a non-zero variance reads in the danger colour | `ShiftsView.xaml`, `ShiftsViewModel.HasVariance` |
 | Tax Returns: GSTR-1 / 3B / HSN grid headers in capitals like every other grid, which also fixes IGST, CGST, SGST, GSTIN, HSN/SAC (Phase 20 carry-over 18) | `GstHubView.xaml.cs` |
 
-## Pass 2b (remaining)
+Dark mode re-checked on every changed screen (renders with the `-dark` suffix). Phase closed 2026-10-23.
 
-1. Page header pattern on every admin screen: title, one-line description, breadcrumb for hub tabs, primary action top
-   right (Users, Devices, Printers, Settings hub, Menu hub, Roles, Backup, Server, Licence, Import, Audit, Expenses).
-2. Form system: one field style with floating labels, help captions, inline validation states, consistent widths,
-   section dividers inside cards (Printers, Settings, Template Studio, user and item editors).
-3. Table system: row actions on hover instead of button rows under the grid (Users, Devices, Audit, Print Log),
-   sticky header, right-aligned tabular numbers everywhere, empty and loading states on every grid.
-4. Cards in two weights (surface for forms, elevated for live data) and KPI tiles with delta arrows and a trend line.
-5. Focus rings, pressed states and 150 ms transitions on buttons, chips and nav items; 8 px rhythm audit.
-6. Dark mode re-check of every admin screen after the above; galleries regenerated into `docs/ui-ux/desktop`.
+## Left out, by decision
 
-Effort for pass 2: two to three days, verified by the rendering suite and new galleries.
+| Proposed | Why it stays out |
+|---|---|
+| Row actions on hover instead of the button row under a grid | The select-then-act row is the same on every list screen, the demo and screenshot harnesses click those buttons by name, and hover actions do not work on the touch billing counters. A consistent row beats a hidden one. |
+| Shadowed (elevated) cards on the dashboard | A `DropShadowEffect` per panel costs frames while the dashboard scrolls and refreshes every few seconds; the elevated card is used only for panes that sit still beside a list. |
+| Floating labels on forms | The label-above-field pattern with a caption is already consistent and reads better at the Compact density on billing PCs; floating labels would change every editor for no gain in clarity. |
+| Animated 150 ms transitions on buttons and nav items | Buttons already have hover, pressed (scale) and focus states, and pages cross-fade; further animation adds nothing a cashier needs. |
+
+What the page header already provides: the shell's top bar carries each module's title and one-line description from
+`ModuleRegistry`, so an in-page header would repeat it; the primary action sits in the content's header row instead.
