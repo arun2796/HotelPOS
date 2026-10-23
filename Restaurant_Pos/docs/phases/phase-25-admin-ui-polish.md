@@ -68,3 +68,17 @@ used for every status in every section. The pill itself was redesigned once, in 
 
 Renders: `68-admin-dashboard-phase25.png` (and `-dark`). The sidebar card and the table badges are visible on every
 earlier render once `ScreenRenderingTests` is re-run.
+
+## Pass 4 (2026-10-23): the staff app (waiter phone, kitchen tablet, Android) moves with it
+
+The owner asked for the app to be brought to the same finish. Presentation only, tokens only, no behaviour change.
+
+| Change | Where |
+|---|---|
+| Table card: a plain card with a 3 px tone stripe along the top and the quiet status badge, instead of a solid pastel block with a tone border. The timer reads in the tone only when the wait matters (preparing, bill requested); Ready keeps its full ring | `waiter.css` `.table-card`, `.table-elapsed` |
+| Connection pill: the same dot-and-hairline badge as the desktop shell, coloured by state (green Connected, amber Reconnecting, red Offline) | `app.css` `.conn` |
+| Phone top bar: Connected is one plain green dot with a soft halo (no grey box); the theme switch leaves the bar on waiter phones (it is in the More sheet), so "Good evening, <name>" fits without an ellipsis | `app.css` phone rules |
+| Status badges everywhere in the app (order cards, tickets, device card): dot + hairline, from pass 3 | `app.css` `.status-badge` |
+
+Checked with `docs/ui-ux/tools/web-flow.mjs` against the Development API (phone 390 × 844, tablet 1024 × 768, light
+and dark); the refreshed renders replace the same-named files in `docs/ui-ux/web`.

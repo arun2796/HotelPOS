@@ -108,7 +108,15 @@
  "14-kitchen-board-new": [],
  "14b-kitchen-ticket-detail": [],
  "14c-kitchen-delayed-filter": [],
- "15-kitchen-station": [],
+ "15-kitchen-station": [
+  {
+   "tag": "input",
+   "cls": "",
+   "text": "checkbox",
+   "w": 22,
+   "h": 22
+  }
+ ],
  "16a-kitchen-accepted": [],
  "16-kitchen-preparing": [],
  "17-kitchen-ready": [],
@@ -119,5 +127,8 @@
  "22a-waiter-table-ready": [],
  "22b-waiter-table-served": [],
  "22-waiter-bill-requested": [],
- "23-waiter-bell-ready": []
+ "23-waiter-bell-ready": [],
+ "24-waiter-offline-banner": [],
+ "25-waiter-offline-my-orders": [],
+ "24b-waiter-back-online": []
 }

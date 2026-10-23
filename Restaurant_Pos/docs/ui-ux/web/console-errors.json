@@ -1,12 +1,62 @@
 [
  {
   "role": "waiter",
-  "url": "http://localhost:5100/app/signin",
+  "url": "http://localhost:5000/app/signin",
   "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
  },
  {
   "role": "kitchen",
-  "url": "http://localhost:5100/app/signin",
+  "url": "http://localhost:5000/app/signin",
   "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+ },
+ {
+  "role": "waiter",
+  "url": "http://localhost:5000/app/tables/2/order",
+  "text": "Failed to load resource: net::ERR_INTERNET_DISCONNECTED"
+ },
+ {
+  "role": "waiter",
+  "url": "http://localhost:5000/app/my-orders",
+  "text": "Failed to load resource: net::ERR_INTERNET_DISCONNECTED"
+ },
+ {
+  "role": "waiter",
+  "url": "http://localhost:5000/app/my-orders",
+  "text": "Failed to load resource: net::ERR_INTERNET_DISCONNECTED"
+ },
+ {
+  "role": "waiter",
+  "url": "http://localhost:5000/app/my-orders",
+  "text": "Failed to load resource: net::ERR_INTERNET_DISCONNECTED"
+ },
+ {
+  "role": "waiter",
+  "url": "http://localhost:5000/app/my-orders",
+  "text": "Failed to load resource: net::ERR_INTERNET_DISCONNECTED"
+ },
+ {
+  "role": "waiter",
+  "url": "http://localhost:5000/app/my-orders",
+  "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+ },
+ {
+  "role": "kitchen",
+  "url": "http://localhost:5000/app/kitchen",
+  "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+ },
+ {
+  "role": "waiter",
+  "url": "http://localhost:5000/app/my-orders",
+  "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+ },
+ {
+  "role": "waiter",
+  "url": "http://localhost:5000/app/my-orders",
+  "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+ },
+ {
+  "role": "kitchen",
+  "url": "http://localhost:5000/app/kitchen",
+  "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
  }
 ]

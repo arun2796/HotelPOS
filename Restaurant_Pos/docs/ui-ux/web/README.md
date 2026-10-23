@@ -1,5 +1,9 @@
 # Web client (waiter + kitchen) UI/UX gallery — Phase 21.5
 
+**Re-captured 2026-10-23 (Phase 25 pass 4)** on `main` against the Development API on `http://localhost:5000/app`: table cards
+with a tone stripe instead of a pastel fill, the dot-and-hairline status badges and connection pill, and the theme
+switch moved to the More sheet on waiter phones. Same script, same viewports; the notes below still describe each screen.
+
 Captured **2026-10-17** on branch `phase-21-role-ui-ux` against the API in Development mode on
 `http://localhost:5100/app` (demo seed, same dev database as the Phase 20 runs, so the day-old orders #1003/#1005/#1009/#1014
 are still on the boards), headless Microsoft Edge through Playwright 1.58, `deviceScaleFactor: 2`. Waiter: phone 390 × 844

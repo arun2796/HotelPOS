@@ -47,12 +47,15 @@ h3 { font-size: 15px; }
 .bottomnav a.active { color: var(--success-text); font-weight: 600; }
 .bottomnav a .ico { font-size: 20px; line-height: 1; }
 
-/* Connection pill (always visible). */
-.conn { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2); padding: 4px 8px;
-  border-radius: 999px; background: var(--surface-subtle); white-space: nowrap; }
-.conn::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); }
+/* Connection pill (always visible): the same quiet badge as the desktop shell, dot + hairline in the state's colour. */
+.conn { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; color: var(--text-2); padding: 3px 8px;
+  border-radius: 6px; background: var(--surface); border: 1px solid var(--border); white-space: nowrap; }
+.conn::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--text-3); }
+.conn.ok { color: var(--success-text); border-color: var(--success); }
 .conn.ok::before { background: var(--success); }
+.conn.wait { color: var(--warning-text); border-color: var(--warning); }
 .conn.wait::before { background: var(--warning); }
+.conn.off { color: var(--danger-text); border-color: var(--danger); }
 .conn.off::before { background: var(--danger); }
 
 /* Cards, chips, buttons, inputs */
@@ -407,5 +410,12 @@ svg.ic { flex: none; vertical-align: middle; }
 .shell.waiter .toasts { top: calc(60px + env(safe-area-inset-top, 0px)); bottom: auto; }
 /* Top bar: the subtitle is one ellipsis line and the title block keeps room for a few characters beside the back button. */
 .topbar .title { min-width: 48px; }
-@media (max-width: 420px) { .topbar .conn { gap: 4px; padding: 4px 6px; font-size: 11px; } .topbar .conn.ok { font-size: 0; gap: 0; padding: 8px; } /* connected = a green dot (the title attribute keeps the words); wait/off keep their text */ }
+@media (max-width: 420px) {
+  .topbar .conn { gap: 4px; padding: 3px 6px; font-size: 11px; }
+  /* Connected = one plain green dot, no box around it (the title attribute keeps the words); wait/off keep their text. */
+  .topbar .conn.ok { font-size: 0; gap: 0; padding: 8px 4px; border-color: transparent; background: transparent; }
+  .topbar .conn.ok::before { width: 9px; height: 9px; box-shadow: 0 0 0 3px var(--success-soft); }
+}
+/* Waiter phones: the theme switch lives in the More sheet, so the bar keeps room for "Good evening, <name>". */
+@media (max-width: 479px) { .shell.waiter .topbar .theme-toggle { display: none; } }
 .topbar .sub { display: block; -webkit-line-clamp: unset; white-space: nowrap; text-overflow: ellipsis; }

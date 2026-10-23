@@ -171,11 +171,18 @@ async function addItem(page, card) {
 }
 
 async function setTheme(page, mode) {
-  const toggle = page.locator('.topbar .theme-toggle');
+  // Phase 25 pass 4: on waiter phones the theme switch lives in the More sheet, not the top bar.
+  let toggle = page.locator('.topbar .theme-toggle');
+  const inSheet = !(await toggle.isVisible());
+  if (inSheet) {
+    await navSheet(page, 'More');
+    toggle = page.locator('.overlay .sheet .theme-toggle');
+  }
   for (let i = 0; i < 3 && !(await toggle.getAttribute('title')).includes(mode); i++) {
     await toggle.click();
     await pause(page, 200);
   }
+  if (inSheet) await closeSheet(page);
 }
 
 const browser = await chromium.launch({ channel: CHANNEL, headless: true });
