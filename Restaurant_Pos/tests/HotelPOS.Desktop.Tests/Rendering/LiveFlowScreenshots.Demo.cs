@@ -1241,7 +1241,7 @@ public partial class LiveFlowScreenshots
             });
 
             ReservationsViewModel? reservations = null;
-            await StepAsync("Reservations list", "Live Operations > Reservations", "Today's reservations are listed", async () =>
+            await StepAsync("Reservations list", "Service > Reservations", "Today's reservations are listed", async () =>
             {
                 reservations = await DemoOpenAsync<ReservationsViewModel>(shell, ModuleRegistry.Reservations, settleMs: 800);
                 await DemoShotAsync("reservations-list");

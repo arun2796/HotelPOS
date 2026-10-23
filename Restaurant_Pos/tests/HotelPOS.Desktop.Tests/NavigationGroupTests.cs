@@ -7,22 +7,23 @@ namespace HotelPOS.Desktop.Tests;
 /// <summary>Phase 21 0.6 / D3 / D7 / D10: the sidebar groups, the hidden Customers entry and the narrow-window rule.</summary>
 public class NavigationGroupTests
 {
+    // Order of use (2026-10-23, client feedback): the day's service, the day's money, reports and tax, then set-up,
+    // people, devices and system. Within a group, the order of work.
     [Fact]
-    public void Admin_SeesTheNineGroupsInOrder_WithEveryModuleInItsGroup()
+    public void Admin_SeesTheEightGroupsInOrder_WithEveryModuleInItsGroup()
     {
         var groups = ModuleRegistry.NavigationFor(new[] { Roles.Admin }, RolePermissionMap.For(new[] { Roles.Admin }));
 
         groups.Select(g => g.Group).Should().Equal(
-            "Overview", "Live Operations", "Menu Management", "Finance", "Analytics & Reports", "People", "Devices", "Settings", "System");
+            "Overview", "Service", "Cash & Day End", "Reports & Tax", "Set-up", "People", "Devices", "System");
         Keys(groups, "Overview").Should().Equal("dashboard");
-        Keys(groups, "Live Operations").Should().Equal("tables", "floor", "floor-plan", "my-orders", "orders", "kitchen-display", "kitchen-completed", "billing", "closed-bills", "print-log", "reservations");
-        Keys(groups, "Menu Management").Should().Equal("menu");
-        Keys(groups, "Finance").Should().Equal("discounts", "expenses", "shifts", "day-end", "day-end-history", "period-close", "gst");
-        Keys(groups, "Analytics & Reports").Should().Equal("reports");
+        Keys(groups, "Service").Should().Equal("tables", "reservations", "my-orders", "orders", "kitchen-display", "kitchen-completed", "billing", "closed-bills");
+        Keys(groups, "Cash & Day End").Should().Equal("shifts", "day-end", "day-end-history", "expenses");
+        Keys(groups, "Reports & Tax").Should().Equal("reports", "gst", "period-close");
+        Keys(groups, "Set-up").Should().Equal("menu", "floor", "floor-plan", "discounts", "import");
         Keys(groups, "People").Should().Equal("users", "roles");
-        Keys(groups, "Devices").Should().Equal("devices", "printers", "stations");
-        Keys(groups, "Settings").Should().Equal("settings");
-        Keys(groups, "System").Should().Equal("license", "backup", "server", "this-device", "import", "audit");
+        Keys(groups, "Devices").Should().Equal("devices", "printers", "stations", "this-device", "print-log");
+        Keys(groups, "System").Should().Equal("settings", "backup", "server", "license", "audit");
     }
 
     [Fact]
@@ -48,17 +49,16 @@ public class NavigationGroupTests
 
         var groups = ModuleRegistry.NavigationFor(manager, reduced);
 
-        groups.Select(g => g.Group).Should().NotContain("Analytics & Reports");
-        Keys(groups, "System").Should().NotContain("audit");
+        groups.SelectMany(g => g.Modules).Select(m => m.Key).Should().NotContain("reports").And.NotContain("audit");
         groups.Should().OnlyContain(g => g.Modules.Count > 0);
     }
 
     [Fact]
-    public void Waiter_SeesOnlyOverviewAndLiveOperations()
+    public void Waiter_SeesOnlyOverviewAndService()
     {
         var groups = ModuleRegistry.NavigationFor(new[] { Roles.Waiter }, RolePermissionMap.For(new[] { Roles.Waiter }));
 
-        groups.Select(g => g.Group).Should().Equal("Overview", "Live Operations");
+        groups.Select(g => g.Group).Should().Equal("Overview", "Service");
     }
 
     [Fact]

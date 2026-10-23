@@ -24,35 +24,37 @@ open at least one screen in it. The sidebar collapses to an icon rail on its own
 |---|---|---|---|
 | Overview | Dashboard | Admin, Manager, Waiter | KPI cards, live order status, active orders, table status, recent activity (3.1) |
 | Overview | Cashier home | Cashier | Pending bills, own shift, expected cash, print failures, business day (3.1.1) |
-| Live Operations | Tables | Admin, Manager, Waiter, Cashier | Live table map; occupy tables, take orders |
-| Live Operations | Sections & Tables | Admin, Manager | Set up sections and tables |
-| Live Operations | Floor plan | Admin (`floor.layout.manage`) | Arrange each section's tables on the floor plan (6.6, Phase 22 P2) |
-| Live Operations | My Orders | Admin, Manager, Waiter | Your active orders; ready ones highlighted |
-| Live Operations | Orders | Admin, Manager | Every active order: search, status chips, sort, open the table (3.4, new in Phase 21) |
-| Live Operations | Kitchen Display | Admin, Manager, Kitchen | New / preparing / ready tickets |
-| Live Operations | Completed Orders | Admin, Manager, Kitchen | Tickets completed today with timings |
-| Live Operations | Billing | Admin, Manager, Cashier | The cashier workspace: queue, bill and payment side by side (5.1) |
-| Live Operations | Closed Bills | Admin, Manager, Cashier | Settled and voided bills, reprint, refund |
-| Live Operations | Print Log | Admin, Manager, Cashier | Prints that failed on this terminal, with a Failed filter and Retry |
-| Menu Management | Menu | Admin, Manager | Tabs Categories, Items, Modifiers, Taxes*, Stations*, Preview (6.6) |
-| Finance | Payments & discounts | Admin, Manager | Predefined discounts, payment methods, cash denominations (6.7) |
-| Finance | Cash shifts | Admin, Manager | All cash shifts of a day; X/Z reports, force close |
-| Finance | Day End | Admin, Manager | Close the business day |
-| Finance | Day End History | Admin, Manager | Closed days; reopen a day |
-| Finance | Period Close | Admin | Lock a GST month or financial year |
-| Finance | Tax Returns | Admin, Manager | GSTR-1, GSTR-3B, HSN/SAC, validation |
-| Analytics & Reports | Reports | Admin, Manager | Sales, items, payments, taxes, staff, kitchen (one screen; the report type is chosen inside it) |
+| Service | Tables | Admin, Manager, Waiter, Cashier | Live table map; occupy tables, take orders |
+| Service | Reservations | Admin, Manager, Waiter, Cashier | Book, view, seat and manage reservations (Phase 22) |
+| Service | My Orders | Admin, Manager, Waiter | Your active orders; ready ones highlighted |
+| Service | Orders | Admin, Manager | Every active order: search, status chips, sort, open the table (3.4, new in Phase 21) |
+| Service | Kitchen Display | Admin, Manager, Kitchen | New / preparing / ready tickets |
+| Service | Completed Orders | Admin, Manager, Kitchen | Tickets completed today with timings |
+| Service | Billing | Admin, Manager, Cashier | The cashier workspace: queue, bill and payment side by side (5.1) |
+| Service | Closed Bills | Admin, Manager, Cashier | Settled and voided bills, reprint, refund |
+| Cash & Day End | Cash shifts | Admin, Manager | All cash shifts of a day; X/Z reports, force close |
+| Cash & Day End | Day End | Admin, Manager | Close the business day |
+| Cash & Day End | Day End History | Admin, Manager | Closed days; reopen a day |
+| Cash & Day End | Expenses | Admin, Manager | Record, filter and void expenses (Phase 22) |
+| Reports & Tax | Reports | Admin, Manager | Sales, items, payments, taxes, staff, kitchen (one screen; the report type is chosen inside it) |
+| Reports & Tax | Tax Returns | Admin, Manager | GSTR-1, GSTR-3B, HSN/SAC, validation |
+| Reports & Tax | Period Close | Admin | Lock a GST month or financial year |
+| Set-up | Menu | Admin, Manager | Tabs Categories, Items, Modifiers, Taxes*, Stations*, Preview (6.6) |
+| Set-up | Sections & Tables | Admin, Manager | Set up sections and tables |
+| Set-up | Floor plan | Admin (`floor.layout.manage`) | Arrange each section's tables on the floor plan (6.6, Phase 22 P2) |
+| Set-up | Payments & discounts | Admin, Manager | Predefined discounts, payment methods, cash denominations (6.7) |
+| Set-up | Import | Admin, Manager | Bring menu or customers in from Excel/CSV |
 | People | Users | Admin | Staff accounts |
 | People | Roles & Permissions | Admin | Permissions per role |
 | Devices | Devices | Admin | Registered terminals |
 | Devices | Printers | Admin, Manager | Printers attached to this PC |
 | Devices | Kitchen stations | Admin | Opens the Stations tab of Menu |
-| Settings | Restaurant Settings | Admin | Shared settings and print templates |
-| System | Licence | Admin | Licence status and key |
+| Devices | This Terminal | Admin, Manager | Server address and identity of this PC |
+| Devices | Print Log | Admin, Manager, Cashier | Prints that failed on this terminal, with a Failed filter and Retry |
+| System | Restaurant Settings | Admin | Shared settings and print templates |
 | System | Backup | Admin | Database backups |
 | System | Server | Admin | Notices to terminals; server log |
-| System | This Terminal | Admin, Manager | Server address and identity of this PC |
-| System | Import | Admin, Manager | Bring menu or customers in from Excel/CSV |
+| System | Licence | Admin | Licence status and key |
 | System | Audit Log | Admin, Manager | Who changed what, when, from which terminal |
 | (not in the sidebar) | Customers | Admin, Manager, Cashier | Customer list used by the bill (5.3). Hidden from the menu in Phase 21 (D3); reached from the command palette or the bill's customer panel |
 
@@ -271,7 +273,7 @@ Source: `Modules/Orders/OrderListView.xaml`
 
 ### 3.4 Orders (Phase 21)
 
-Purpose: every active order in the restaurant on one page (the dashboard's Active Orders widget in full). Opened by Admin, Manager (Live Operations group).
+Purpose: every active order in the restaurant on one page (the dashboard's Active Orders widget in full). Opened by Admin, Manager (Service group).
 Controls: search (order number, table or waiter), "n active orders", sort (Newest first / Oldest first / Highest amount), refresh; status chips with counts (**All**, then one per status present: Sent to kitchen, Preparing, Ready, Served, Bill requested …). The dashboard's **View all** opens this page with the chip it was on (deep link).
 Columns: #, TABLE, WAITER, ITEMS, TOTAL, STATUS (badge with icon and word), CREATED (time), ELAPSED ("20 h 39 min"), **View** (opens the table; double-click does the same). Refreshed live on order, table and bill events. Empty state "No active orders".
 
@@ -637,7 +639,7 @@ Source: `Modules/Admin/FloorView.xaml`, `Modules/Admin/TablesView.xaml`, `Module
 
 ### 6.6 Floor plan (Phase 22 P2)
 
-Purpose: place each section's tables on a canvas. Admin only (permission `floor.layout.manage`; the sidebar entry sits under Live Operations after Sections & Tables).
+Purpose: place each section's tables on a canvas. Admin only (permission `floor.layout.manage`; the sidebar entry sits under Set-up after Sections & Tables).
 
 Controls: **Section** picker; **Snap to 8-unit grid** (on by default); **Rotate 90°** and **Round / Rectangle** (act on the selected table); **Undo** / **Redo** (Ctrl+Z / Ctrl+Y); **Reset to grid** (every table of the section in rows of six, 120 x 80, 24 apart, rectangles, no rotation); **Zoom** slider (25 % to 200 %) and **Fit**; **Save layout** (enabled only when something changed). The header says "Unsaved changes" or "All changes saved".
 
@@ -651,7 +653,7 @@ Source: `Modules/Admin/FloorEditorView.xaml`, `Modules/Admin/FloorEditorViewMode
 
 ### 6.6 Menu
 
-Purpose: categories, items, prices, modifiers, taxes and preparation stations. Opened by Admin, Manager (permission "manage menu"); the only screen of the Menu Management group. Tabs, in this order since Phase 21: **Categories**, **Items**, **Modifiers**, **Taxes** (administrators only), **Stations** (administrators only), **Preview**. The command palette and the Devices › Kitchen stations entry deep-link to a tab by its title (A7). Every change is sent to all terminals automatically.
+Purpose: categories, items, prices, modifiers, taxes and preparation stations. Opened by Admin, Manager (permission "manage menu"); the first screen of the Set-up group. Tabs, in this order since Phase 21: **Categories**, **Items**, **Modifiers**, **Taxes** (administrators only), **Stations** (administrators only), **Preview**. The command palette and the Devices › Kitchen stations entry deep-link to a tab by its title (A7). Every change is sent to all terminals automatically.
 
 #### 6.6.1 Items tab
 Controls: search (name or code), category filter, Inactive (also show inactive items, in grey), refresh, **New item**.
