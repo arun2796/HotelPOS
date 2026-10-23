@@ -40,10 +40,25 @@ Each release: `.\build\publish-android.ps1 -UpdatesFolder 'C:\ProgramData\HotelP
   (**back it up with the licence private key**; without it existing installs cannot be updated in place);
 - writes `artifacts\android\<version>\HotelPOS-Staff-<version>.apk` and copies it to the server's `/updates` folder.
 
+## 4a. Alerts while the app is off the screen
+
+While a user is signed in, the app keeps listening for orders in the background and shows a quiet "HotelPOS Staff is
+listening for orders" entry in the notification shade. A new order, a ready order, a delay or a bill request then
+arrives as a normal phone notification, with its own sound, even on the lock screen or while another app is in
+front; tapping it opens the right page. Signing out stops the listening and clears the notifications: a signed-out
+phone belongs to nobody and stays quiet.
+
+At the first sign-in the phone asks to allow notifications (say **Allow**) and, on most phones, whether to stop
+optimising the app's battery use (say **Allow** again; without it some phones stop the app after a few minutes in
+the background). Xiaomi, Oppo, Vivo and Realme phones also need **Autostart** / "Allow background activity" for
+HotelPOS Staff in their own battery settings. Each event's sound can be switched off per device under Settings →
+Notifications on this device.
+
 ## 5. Troubleshooting
 
 | Symptom | Cause / fix |
 |---|---|
+| No alerts when the phone is locked or another app is in front | Notifications were refused at the first sign-in (phone Settings → Apps → HotelPOS Staff → Notifications), or the phone's battery saver stopped the app (Settings → Battery → HotelPOS Staff → Unrestricted; on Xiaomi/Oppo/Vivo also Autostart). Nobody signed in on that phone means no alerts, by design. |
 | "No HotelPOS server answered at that address" | Wrong address or port, phone on guest Wi-Fi, or port 5000 blocked: on the server PC the Wi-Fi/LAN profile must be **Private** (the firewall rule does not apply to Public networks) — [02 § 1–2](02-lan-and-firewall.md). Try the same address in the phone's browser. |
 | HTTPS address refused | The root CA is not installed on the device, or the certificate does not name the address used ([02 § 5](02-lan-and-firewall.md)). |
 | "This licence covers N terminals and M are registered" | Every app install and browser profile is a terminal. Deactivate unused ones under Administration → Devices, or extend the licence. |

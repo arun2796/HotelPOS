@@ -26,6 +26,24 @@ public sealed class SilentAlertSignal : IAlertSignal
 }
 
 /// <summary>
+/// Alerts that reach the user when the app is not on the screen: the Android host posts a system notification (lock
+/// screen, other app in front) and keeps a background connection while someone is signed in. The browser has no
+/// such channel on a LAN, so its implementation does nothing.
+/// </summary>
+public interface IBackgroundNotifier
+{
+    /// <summary>A notification the router accepted for this user; <paramref name="route"/> is the page that shows it, if any.</summary>
+    void Show(NotificationDraft draft, string? route);
+}
+
+public sealed class NoBackgroundNotifier : IBackgroundNotifier
+{
+    public void Show(NotificationDraft draft, string? route)
+    {
+    }
+}
+
+/// <summary>
 /// What this browser or phone does for each kind of notification: toast on/off, sound (and vibration) on/off. Kept in
 /// <see cref="IBrowserStorage"/>, so it is per device, never a server setting. Kinds never changed follow
 /// <see cref="NotificationPreferenceDefaults"/> for the signed-in roles.

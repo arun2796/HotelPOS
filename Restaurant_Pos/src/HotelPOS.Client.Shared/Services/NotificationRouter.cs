@@ -16,10 +16,11 @@ public sealed class NotificationRouter : IDisposable
     private readonly ToastService _toasts;
     private readonly NotificationPreferences _preferences;
     private readonly IAlertSignal _signal;
+    private readonly IBackgroundNotifier _background;
     private readonly List<IDisposable> _subscriptions = new();
 
     public NotificationRouter(WebRealtimeClient realtime, WebAuthState auth, NotificationCenter center, ToastService toasts,
-        NotificationPreferences preferences, IAlertSignal signal)
+        NotificationPreferences preferences, IAlertSignal signal, IBackgroundNotifier? background = null)
     {
         _realtime = realtime;
         _auth = auth;
@@ -27,6 +28,7 @@ public sealed class NotificationRouter : IDisposable
         _toasts = toasts;
         _preferences = preferences;
         _signal = signal;
+        _background = background ?? new NoBackgroundNotifier();
     }
 
     public async Task StartAsync()
@@ -130,6 +132,9 @@ public sealed class NotificationRouter : IDisposable
         {
             return;
         }
+
+        // Same switch as the pop-up: when the app is not on the screen the host turns this into a system notification.
+        _background.Show(draft, UrlFor(draft.Target));
 
         switch (draft.Level)
         {

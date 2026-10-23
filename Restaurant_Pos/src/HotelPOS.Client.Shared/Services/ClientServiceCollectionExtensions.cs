@@ -30,6 +30,7 @@ public static class ClientServiceCollectionExtensions
         services.AddScoped<NotificationCenter>();
         services.AddScoped<NotificationPreferences>();
         services.TryAddSingleton<IAlertSignal, SilentAlertSignal>();
+        services.TryAddSingleton<IBackgroundNotifier, NoBackgroundNotifier>();
         services.AddScoped<NotificationRouter>();
         services.AddScoped<ShellState>();
         return services;

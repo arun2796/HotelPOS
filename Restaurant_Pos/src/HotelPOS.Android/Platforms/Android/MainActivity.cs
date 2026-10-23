@@ -1,4 +1,5 @@
 using Android.App;
+using Android.Content;
 using Android.Content.PM;
 using Android.Content.Res;
 using Android.OS;
@@ -21,6 +22,37 @@ public class MainActivity : MauiAppCompatActivity
         // A POS screen must not go dark mid-service: kitchen tablets stay on, phones follow when the app is in front.
         Window?.AddFlags(WindowManagerFlags.KeepScreenOn);
         ApplySystemBarInsets();
+        TakeRoute(Intent);
+    }
+
+    // A tapped system notification carries the page to open; Routes.razor picks it up once the app is in front.
+    protected override void OnNewIntent(Intent? intent)
+    {
+        base.OnNewIntent(intent);
+        TakeRoute(intent);
+    }
+
+    protected override void OnResume()
+    {
+        base.OnResume();
+        Services.AppState.InForeground = true;
+        Services.AppState.RouteRequested?.Invoke();
+    }
+
+    protected override void OnPause()
+    {
+        Services.AppState.InForeground = false;
+        base.OnPause();
+    }
+
+    private static void TakeRoute(Intent? intent)
+    {
+        var route = intent?.GetStringExtra(Services.AppState.RouteExtra);
+        if (!string.IsNullOrEmpty(route))
+        {
+            Services.AppState.PendingRoute = route;
+            intent!.RemoveExtra(Services.AppState.RouteExtra);
+        }
     }
 
     public override void OnConfigurationChanged(Configuration newConfig)

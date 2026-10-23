@@ -1,9 +1,12 @@
+@using HotelPOS.Android.Services
 @using HotelPOS.Client.Layout
 @using HotelPOS.Client.Services
 @using HotelPOS.Client.Shared
+@implements IDisposable
 @inject IClientHost Host
 @inject WebAuthState Auth
 @inject NavigationManager Navigation
+@inject BackgroundAlerts Alerts
 
 @if (!_ready)
 {
@@ -56,5 +59,32 @@ else
         {
             Navigation.NavigateTo("server", replace: true);
         }
+
+        // Background alerts follow the sign-in state: on while someone is signed in, off at sign-out.
+        Auth.AuthenticationStateChanged += OnAuthenticationStateChanged;
+        AppState.RouteRequested += OnRouteRequested;
+        await Alerts.SetSignedInAsync(Auth.IsSignedIn);
+        OpenPendingRoute();
+    }
+
+    private void OnAuthenticationStateChanged(Task<AuthenticationState> state) =>
+        _ = InvokeAsync(() => Alerts.SetSignedInAsync(Auth.IsSignedIn));
+
+    // A tapped notification: the activity stored the page; open it now that the app is in front.
+    private void OnRouteRequested() => _ = InvokeAsync(OpenPendingRoute);
+
+    private void OpenPendingRoute()
+    {
+        if (AppState.PendingRoute is { } route && Auth.IsSignedIn)
+        {
+            AppState.PendingRoute = null;
+            Navigation.NavigateTo(route);
+        }
+    }
+
+    public void Dispose()
+    {
+        Auth.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+        AppState.RouteRequested -= OnRouteRequested;
     }
 }
