@@ -89,9 +89,10 @@ else
         <div class="card" style="margin-top:10px">
             <h2>Seat guests</h2>
             <div class="row between" style="margin-top:8px">
-                <Stepper @bind-Value="_guests" Min="FloorLimits.MinGuests" Max="FloorLimits.MaxGuests" Label="Guests" Unit="guest" />
+                <Stepper @bind-Value="_guests" Min="FloorLimits.MinGuests" Max="MaxGuestsFor(table)" Label="Guests" Unit="guest" />
                 <button class="btn primary lg" data-action="occupy" @onclick="OccupyAsync" disabled="@_busy">Occupy</button>
             </div>
+            <p class="muted small" style="margin:8px 0 0" data-testid="seats-hint">This table seats @table.Capacity. For a larger party choose a bigger table, or ask a manager to change the seats under Administration → Tables.</p>
         </div>
     }
 
@@ -229,7 +230,7 @@ else
     <BottomSheet Open="true" Title="@($"Edit order #{editing.OrderNumber}")" OnClose="() => _editOpen = false">
         <div class="review-row">
             <span>Guests</span>
-            <Stepper @bind-Value="_editGuests" Min="FloorLimits.MinGuests" Max="FloorLimits.MaxGuests" Label="Guests" Unit="guest" />
+            <Stepper @bind-Value="_editGuests" Min="FloorLimits.MinGuests" Max="MaxGuestsFor(_detail?.Table)" Label="Guests" Unit="guest" />
         </div>
         <label class="field review-notes">
             <span>Order notes <span class="muted">(for the kitchen)</span></span>
@@ -267,6 +268,11 @@ else
     private int _editGuests = 1;
     private string _editNotes = string.Empty;
     private int _guests = 2;
+
+    // A table takes at most the guests it has seats for (a 4-seat table cannot be occupied by 8); a table without a
+    // configured capacity falls back to the floor-wide limit.
+    private static int MaxGuestsFor(TableDto? table) =>
+        table is { Capacity: > 0 } ? Math.Max(FloorLimits.MinGuests, table.Capacity) : FloorLimits.MaxGuests;
     private string _tab = DetailsTab;
     private readonly List<IDisposable> _subscriptions = new();
 

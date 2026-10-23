@@ -82,12 +82,12 @@ public sealed class NotificationPreferenceTests : TestContext
         var router = Router(auth, center, preferences);
 
         router.TicketDelayed(5, "K-5", "t2");
-        await _signal.DidNotReceive().SignalAsync();
+        await _signal.DidNotReceive().SignalAsync(Arg.Any<NotificationKind>());
         center.Items.Should().ContainSingle(i => i.Kind == NotificationKind.TicketDelayed);
 
         await preferences.SetAsync(NotificationKind.TicketDelayed, toast: true, sound: true);
         router.TicketDelayed(6, "K-6", "t2");
-        await _signal.Received(1).SignalAsync();
+        await _signal.Received(1).SignalAsync(NotificationKind.TicketDelayed);
     }
 
     [Fact]

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using HotelPOS.Client.Services;
+using HotelPOS.Contracts.Realtime;
 
 namespace HotelPOS.Android.Services;
 
@@ -134,15 +135,24 @@ public sealed class MauiStorage : IBrowserStorage
 }
 
 /// <summary>Attention signal on the phone: a short tone on the notification stream and a vibration (Phase 20.2).</summary>
+/// <summary>
+/// Attention on the phone or tablet: a tone pattern per kind of event at full notification volume, with a matching
+/// vibration. A kitchen hears a new order (three rising beeps) differently from a delayed ticket (a long alarm), and a
+/// waiter hears a ready order (two beeps) differently from a bill request (one beep). The device's notification
+/// volume still applies: turn it up on a kitchen tablet.
+/// </summary>
 public sealed class MauiAlertSignal : IAlertSignal
 {
     private global::Android.Media.ToneGenerator? _tone;
 
-    public ValueTask SignalAsync()
+    public ValueTask SignalAsync() => SignalAsync(NotificationKind.ServerNotice);
+
+    public async ValueTask SignalAsync(NotificationKind kind)
     {
+        var pattern = PatternFor(kind);
         try
         {
-            Vibration.Default.Vibrate(TimeSpan.FromMilliseconds(300));
+            Vibration.Default.Vibrate(TimeSpan.FromMilliseconds(pattern.VibrateMs));
         }
         catch (Exception)
         {
@@ -151,16 +161,32 @@ public sealed class MauiAlertSignal : IAlertSignal
 
         try
         {
-            _tone ??= new global::Android.Media.ToneGenerator(global::Android.Media.Stream.Notification, 80);
-            _tone.StartTone(global::Android.Media.Tone.PropBeep, 250);
+            _tone ??= new global::Android.Media.ToneGenerator(global::Android.Media.Stream.Notification, 100);
+            foreach (var (tone, ms) in pattern.Tones)
+            {
+                _tone.StartTone(tone, ms);
+                await Task.Delay(ms + 80);
+            }
         }
         catch (Exception)
         {
             // Silent device or no audio output.
         }
-
-        return default;
     }
+
+    private static (IReadOnlyList<(global::Android.Media.Tone Tone, int Ms)> Tones, int VibrateMs) PatternFor(NotificationKind kind) => kind switch
+    {
+        // Kitchen: a new ticket must cut through the noise; a delay nags.
+        NotificationKind.TicketCreated => (new[] { (global::Android.Media.Tone.PropBeep, 180), (global::Android.Media.Tone.PropBeep2, 180), (global::Android.Media.Tone.PropAck, 320) }, 600),
+        NotificationKind.TicketDelayed => (new[] { (global::Android.Media.Tone.CdmaAlertCallGuard, 900), (global::Android.Media.Tone.CdmaAlertCallGuard, 900) }, 1200),
+        // Waiter: food ready = two bright beeps; a bill or payment = one acknowledgement.
+        NotificationKind.OrderReady => (new[] { (global::Android.Media.Tone.PropBeep2, 220), (global::Android.Media.Tone.PropBeep2, 220) }, 450),
+        NotificationKind.OrderAccepted or NotificationKind.OrderPreparing => (new[] { (global::Android.Media.Tone.PropBeep, 160) }, 150),
+        NotificationKind.BillRequested or NotificationKind.BillClaimed or NotificationKind.PaymentCompleted => (new[] { (global::Android.Media.Tone.PropAck, 300) }, 300),
+        // Something went wrong: a low double buzz.
+        NotificationKind.PrintFailed or NotificationKind.PaymentFailed or NotificationKind.DeviceOffline => (new[] { (global::Android.Media.Tone.PropNack, 350), (global::Android.Media.Tone.PropNack, 350) }, 700),
+        _ => (new[] { (global::Android.Media.Tone.PropBeep, 250) }, 300),
+    };
 }
 
 /// <summary>The refresh token, and only the refresh token, in Android SecureStorage (Keystore-backed).</summary>

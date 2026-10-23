@@ -97,11 +97,11 @@ public sealed class NotificationRouter : IDisposable
         _ => null,
     };
 
-    private async Task SignalAsync()
+    private async Task SignalAsync(NotificationKind kind)
     {
         try
         {
-            await _signal.SignalAsync();
+            await _signal.SignalAsync(kind);
         }
         catch (Exception)
         {
@@ -123,7 +123,7 @@ public sealed class NotificationRouter : IDisposable
         var preference = _preferences.Get(draft.Kind);
         if (preference.Sound)
         {
-            _ = SignalAsync();
+            _ = SignalAsync(draft.Kind);
         }
 
         if (!preference.Toast)

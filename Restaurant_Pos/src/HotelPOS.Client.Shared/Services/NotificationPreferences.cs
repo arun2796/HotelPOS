@@ -11,6 +11,12 @@ public interface IAlertSignal
 {
     /// <summary>Beeps and vibrates once. Never throws: a device without audio or a vibrator is silent.</summary>
     ValueTask SignalAsync();
+
+    /// <summary>
+    /// The attention pattern for one kind of event, so a kitchen hears a new order differently from a delay, and a
+    /// waiter a ready order differently from a bill. Hosts without distinct patterns play their single signal.
+    /// </summary>
+    ValueTask SignalAsync(NotificationKind kind) => SignalAsync();
 }
 
 /// <summary>Used when a host registers nothing (tests, a future host): no sound, no vibration.</summary>
