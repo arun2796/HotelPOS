@@ -37,6 +37,9 @@ public sealed record ShiftRow(CashShiftDto Shift)
     };
 
     public bool IsOpen => Shift.Status == CashShiftStatus.Open;
+
+    /// <summary>A counted shift whose cash did not match: the grid colours the variance.</summary>
+    public bool HasVariance => Shift.Variance is { } v && v != 0;
 }
 
 // Managers: every shift of a business day with its expected, counted and variance; X/Z reports, force close, reopen.

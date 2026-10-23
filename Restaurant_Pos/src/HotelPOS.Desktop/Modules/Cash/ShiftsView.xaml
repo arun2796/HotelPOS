@@ -47,8 +47,47 @@
           <DataGridTextColumn Header="FLOAT" Binding="{Binding FloatText}" Width="0.9*" MinWidth="90" HeaderStyle="{StaticResource DataGrid.NumberHeader}" ElementStyle="{StaticResource Text.GridNumber}" />
           <DataGridTextColumn Header="EXPECTED" Binding="{Binding ExpectedText}" Width="0.9*" MinWidth="90" HeaderStyle="{StaticResource DataGrid.NumberHeader}" ElementStyle="{StaticResource Text.GridNumber}" />
           <DataGridTextColumn Header="COUNTED" Binding="{Binding CountedText}" Width="0.9*" MinWidth="90" HeaderStyle="{StaticResource DataGrid.NumberHeader}" ElementStyle="{StaticResource Text.GridNumber}" />
-          <DataGridTextColumn Header="VARIANCE" Binding="{Binding VarianceText}" Width="0.9*" MinWidth="90" HeaderStyle="{StaticResource DataGrid.NumberHeader}" ElementStyle="{StaticResource Text.GridNumber}" />
-          <DataGridTextColumn Header="STATUS" Binding="{Binding StatusText}" Width="0.9*" MinWidth="100" />
+          <!-- A variance that is not zero is the thing a manager looks for: it reads in the danger colour. -->
+          <DataGridTextColumn Header="VARIANCE" Binding="{Binding VarianceText}" Width="0.9*" MinWidth="90" HeaderStyle="{StaticResource DataGrid.NumberHeader}">
+            <DataGridTextColumn.ElementStyle>
+              <Style TargetType="TextBlock" BasedOn="{StaticResource Text.GridNumber}">
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding HasVariance}" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource Brush.DangerText}" />
+                    <Setter Property="FontWeight" Value="SemiBold" />
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </DataGridTextColumn.ElementStyle>
+          </DataGridTextColumn>
+          <DataGridTemplateColumn Header="STATUS" Width="1.1*" MinWidth="144">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate>
+                <controls:StatusBadge Label="{Binding StatusText}">
+                  <controls:StatusBadge.Style>
+                    <Style TargetType="controls:StatusBadge" BasedOn="{StaticResource {x:Type controls:StatusBadge}}">
+                      <Setter Property="Tone" Value="Neutral" />
+                      <Setter Property="Icon" Value="check" />
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding Shift.Status}" Value="Open">
+                          <Setter Property="Tone" Value="Info" />
+                          <Setter Property="Icon" Value="clock" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding Shift.Status}" Value="HandedOver">
+                          <Setter Property="Tone" Value="Success" />
+                          <Setter Property="Icon" Value="swap" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding Shift.Status}" Value="ForceClosed">
+                          <Setter Property="Tone" Value="Warning" />
+                          <Setter Property="Icon" Value="alert" />
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </controls:StatusBadge.Style>
+                </controls:StatusBadge>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
         </DataGrid.Columns>
       </DataGrid>
       <controls:EmptyState Grid.Row="2" Glyph="&#xE8C7;" Title="No shifts on this day" Message="Cashiers open shifts from the bar on their billing terminal."

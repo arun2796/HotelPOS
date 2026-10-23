@@ -32,6 +32,14 @@ Reference renders (fake data, 1366 × 800, light): `docs/ui-ux/desktop/admin/60-
 
 Renders: `60-admin-users-phase25.png`, `61-admin-devices-phase25.png`, `62-admin-printers-phase25.png`.
 
+## Pass 2b (2026-10-23, in progress)
+
+| Change | Where |
+|---|---|
+| Expenses: the filter bar wraps onto a second line at 1366 px instead of cutting the search off; summary and reload pinned right; Active / Voided as badges | `ExpensesView.xaml` (render `63-manager-expenses-phase25.png`) |
+| Cash shifts: Open / Closed / Handed over / Force closed as badges; a non-zero variance reads in the danger colour | `ShiftsView.xaml`, `ShiftsViewModel.HasVariance` |
+| Tax Returns: GSTR-1 / 3B / HSN grid headers in capitals like every other grid, which also fixes IGST, CGST, SGST, GSTIN, HSN/SAC (Phase 20 carry-over 18) | `GstHubView.xaml.cs` |
+
 ## Pass 2b (remaining)
 
 1. Page header pattern on every admin screen: title, one-line description, breadcrumb for hub tabs, primary action top
