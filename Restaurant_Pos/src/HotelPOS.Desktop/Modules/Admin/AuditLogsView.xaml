@@ -77,12 +77,12 @@
       <controls:BusyOverlay IsBusy="{Binding IsBusy}" Message="Loading the audit log…">
         <DataGrid ItemsSource="{Binding AuditEntries}" SelectedItem="{Binding SelectedEntry}" HorizontalScrollBarVisibility="Disabled">
           <DataGrid.Columns>
-            <DataGridTextColumn Header="TIME" Binding="{Binding TimestampUtc, Converter={StaticResource UtcToLocal}}" Width="150" MinWidth="150" />
-            <DataGridTextColumn Header="ACTION" Binding="{Binding Action}" Width="1.6*" MinWidth="170" ElementStyle="{StaticResource Text.GridTrim}" />
-            <DataGridTextColumn Header="USER" Binding="{Binding UserName}" Width="1*" MinWidth="80" />
-            <DataGridTextColumn Header="TERMINAL" Binding="{Binding DeviceName}" Width="1*" MinWidth="80" />
-            <DataGridTextColumn Header="ENTITY" Binding="{Binding EntityType}" Width="0.9*" MinWidth="70" />
-            <DataGridTextColumn Header="ID" Binding="{Binding EntityId}" Width="60" />
+            <DataGridTextColumn Header="TIME" Binding="{Binding TimestampUtc, Converter={StaticResource UtcToLocal}}" Width="136" MinWidth="136" />
+            <DataGridTextColumn Header="ACTION" Binding="{Binding Action}" Width="1.4*" MinWidth="132" ElementStyle="{StaticResource Text.GridTrim}" />
+            <DataGridTextColumn Header="USER" Binding="{Binding UserName}" Width="1*" MinWidth="96" ElementStyle="{StaticResource Text.GridTrim}" />
+            <DataGridTextColumn Header="TERMINAL" Binding="{Binding DeviceName}" Width="1.1*" MinWidth="104" ElementStyle="{StaticResource Text.GridTrim}" />
+            <DataGridTextColumn Header="ENTITY" Binding="{Binding EntityType}" Width="0.9*" MinWidth="84" ElementStyle="{StaticResource Text.GridTrim}" />
+            <DataGridTextColumn Header="ID" Binding="{Binding EntityId}" Width="52" MinWidth="52" ElementStyle="{StaticResource Text.GridTrim}" />
           </DataGrid.Columns>
         </DataGrid>
       </controls:BusyOverlay>

@@ -19,7 +19,20 @@ except where noted.
 Reference renders (fake data, 1366 × 800, light): `docs/ui-ux/desktop/admin/60-admin-users-phase25.png`,
 `61-admin-devices-phase25.png`. `ScreenRenderingTests` (167 renders, both themes, zero binding errors) is the gate.
 
-## Pass 2 (proposed, not started)
+## Pass 2a (2026-10-23)
+
+| Change | Where |
+|---|---|
+| `Card.Elevated` (soft shadow) for panes that sit beside a list; used by the Users editor | `DesignSystem.xaml`, `UsersView.xaml` |
+| Users action row: one emphasised Edit, the rest quiet ghost buttons, "Log out everywhere" in the danger colour | `UsersView.xaml` |
+| Empty states on the Users and Devices grids (why it is empty, what to do) | `UsersView.xaml`, `DevicesView.xaml` |
+| Printers: the primary action moves into the header row | `PrinterSettingsView.xaml` |
+| Backup: OK / FAILED / Running as badges | `BackupView.xaml` |
+| Audit Log: user, terminal and entity columns no longer truncate at 1366 px (room plus trim-with-tooltip) | `AuditLogsView.xaml` |
+
+Renders: `60-admin-users-phase25.png`, `61-admin-devices-phase25.png`, `62-admin-printers-phase25.png`.
+
+## Pass 2b (remaining)
 
 1. Page header pattern on every admin screen: title, one-line description, breadcrumb for hub tabs, primary action top
    right (Users, Devices, Printers, Settings hub, Menu hub, Roles, Backup, Server, Licence, Import, Audit, Expenses).
