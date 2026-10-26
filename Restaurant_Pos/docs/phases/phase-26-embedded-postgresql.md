@@ -1,6 +1,7 @@
 # Phase 26 — Embedded PostgreSQL
 
-Status: code complete 2026-10-26 (installer, scripts, publish; sandbox install test in progress). Owner's ask of
+Status: done 2026-10-26 (installer, scripts, publish; sandbox install test passed; installers 0.1.1 rebuilt with the
+full test suite green). Owner's ask of
 2026-10-25: "without server, any other option with simply setup?" The server stays (the terminals share one live
 state); the separate PostgreSQL installation goes.
 
@@ -86,7 +87,7 @@ None.
 - [x] Server package carries PostgreSQL; `version.txt` names its version.
 - [x] Wizard: PostgreSQL page, superuser page skipped when bundled.
 - [x] `configure-server.ps1` creates cluster and service without any PostgreSQL on the PC.
-- [ ] Sandbox install test passes end to end (server healthy, client signs in).
+- [x] Sandbox install test passes end to end (2026-10-26: server healthy 86 s after Install, client first-run, admin sign-in, password change, dashboard).
 - [x] Backups find `pg_dump` without configuration.
 - [x] docs/ops/01 and 03 updated.
 

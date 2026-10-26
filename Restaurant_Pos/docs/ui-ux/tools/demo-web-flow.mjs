@@ -262,8 +262,16 @@ async function addByName(page, name) {
   await page.locator('.search-clear').click().catch(() => {});
   await pause(page, 300);
 }
+// The waiter's phone top bar hides the theme toggle below 480 px (app.css); the Settings page always shows one, so the
+// visible toggle is used and, when none is on screen, the Settings page is opened first.
 async function setTheme(page, mode) {
-  const toggle = page.locator('.topbar .theme-toggle');
+  let toggle = page.locator('.theme-toggle:visible').first();
+  if (!(await toggle.count())) {
+    await page.goto(new URL('settings', page.url()).href);
+    await page.waitForURL(/\/settings/);
+    toggle = page.locator('.theme-toggle:visible').first();
+    await toggle.waitFor();
+  }
   for (let i = 0; i < 3 && !(await toggle.getAttribute('title')).includes(mode); i++) {
     await toggle.click();
     await pause(page, 200);
@@ -669,10 +677,10 @@ try {
     await w.locator('.sheet a.more-link', { hasText: 'Settings' }).click();
     await w.waitForURL(/\/settings/);
   }, { wait: 1000 });
-  await W('Waiter: bell, settings, theme', 'Dark theme', 'Tables page, theme toggle to dark', 'Tables page rendered in the dark theme', 'tables-dark', async () => {
+  await W('Waiter: bell, settings, theme', 'Dark theme', 'Settings theme toggle to dark, back to Tables', 'Tables page rendered in the dark theme', 'tables-dark', async () => {
+    await setTheme(w, 'dark');            // on the phone the toggle lives on the Settings page
     await nav(w, 'Tables');
     await w.locator('.table-card, [data-testid=floor-tile]').first().waitFor();
-    await setTheme(w, 'dark');
     await pause(w, 400);
     const bg = await w.evaluate(() => getComputedStyle(document.body).backgroundColor);
     const m = bg.match(/\d+/g).map(Number);

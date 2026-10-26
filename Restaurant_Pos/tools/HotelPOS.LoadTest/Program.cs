@@ -6,6 +6,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using HotelPOS.Contracts.Auth;
 using HotelPOS.Contracts.Billing;
+using HotelPOS.Contracts.Cash;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Floor;
@@ -26,9 +27,12 @@ Console.WriteLine($"HotelPOS load test: {options.Clients} clients for {options.D
 
 var stats = new Stats();
 using var http = new HttpClient { BaseAddress = options.Api, Timeout = TimeSpan.FromSeconds(30) };
-var waiter = await LoginAsync(http, options.Waiter, options.Password);
-var kitchen = await LoginAsync(http, options.Kitchen, options.Password);
-var cashier = await LoginAsync(http, options.Cashier, options.Password);
+// Each role signs in as its own kind of terminal: cash shifts (and so cash payments) exist only on Billing terminals.
+var waiter = await LoginAsync(http, options.Waiter, options.Password, "LOADTEST-WAITER", DeviceType.Waiter);
+var kitchen = await LoginAsync(http, options.Kitchen, options.Password, "LOADTEST-KITCHEN", DeviceType.Kitchen);
+var cashier = await LoginAsync(http, options.Cashier, options.Password, "LOADTEST-BILLING", DeviceType.Billing);
+// Cash payments need an open shift on the cashier's terminal (Phase 13): open one for the run, close it at the end.
+var shift = await EnsureShiftAsync(http, cashier);
 var menu = (await GetAsync<MenuDto>(http, waiter, "api/menu", stats, "menu"))!;
 var orderable = menu.Items.Where(i => i.IsAvailable).ToList();
 
@@ -64,8 +68,60 @@ var workers = Enumerable.Range(0, options.Clients).Select(async worker =>
 });
 await Task.WhenAll(workers);
 await Task.Delay(2000); // late hub events
+await CloseShiftAsync(http, cashier, shift, options.Password);
 Console.WriteLine(stats.Report(cycles, billsRequested, billRequestedEvents, options.P95Ms, out var passed));
 return passed && billRequestedEvents >= billsRequested ? 0 : 1;
+
+// The shift already open on this terminal, else a new one with an empty float.
+static async Task<CashShiftDto?> EnsureShiftAsync(HttpClient http, string cashierToken)
+{
+    using var current = new HttpRequestMessage(HttpMethod.Get, "api/shifts/current");
+    current.Headers.Authorization = new AuthenticationHeaderValue("Bearer", cashierToken);
+    var open = await (await http.SendAsync(current)).Content.ReadFromJsonAsync<ApiResponse<CashShiftDto>>(PosJson.Options);
+    if (open?.Data is not null)
+    {
+        Console.WriteLine($"Cash shift #{open.Data.Id} already open on the cashier terminal.");
+        return open.Data;
+    }
+
+    using var request = new HttpRequestMessage(HttpMethod.Post, "api/shifts") { Content = JsonContent.Create(new OpenShiftRequest(), options: PosJson.Options) };
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", cashierToken);
+    var opened = await (await http.SendAsync(request)).Content.ReadFromJsonAsync<ApiResponse<CashShiftDto>>(PosJson.Options);
+    if (opened?.Data is null)
+    {
+        Console.WriteLine($"WARNING: could not open a cash shift ({opened?.Message}); cash payments will fail with SHIFT_REQUIRED.");
+        return null;
+    }
+
+    Console.WriteLine($"Cash shift #{opened.Data.Id} opened for the run.");
+    return opened.Data;
+}
+
+static async Task CloseShiftAsync(HttpClient http, string cashierToken, CashShiftDto? shift, string demoPassword)
+{
+    if (shift is null)
+    {
+        return;
+    }
+
+    // The counted cash is left empty: the whole takings show as a variance, which the demo manager approves inline.
+    using var refresh = new HttpRequestMessage(HttpMethod.Get, "api/shifts/current");
+    refresh.Headers.Authorization = new AuthenticationHeaderValue("Bearer", cashierToken);
+    var current = await (await http.SendAsync(refresh)).Content.ReadFromJsonAsync<ApiResponse<CashShiftDto>>(PosJson.Options);
+    var rowVersion = current?.Data?.RowVersion ?? shift.RowVersion;
+    using var request = new HttpRequestMessage(HttpMethod.Post, $"api/shifts/{shift.Id}/close")
+    {
+        Content = JsonContent.Create(new CloseShiftRequest
+        {
+            VarianceReason = "Load test: cash not counted",
+            RowVersion = rowVersion,
+            Approval = new ManagerApprovalDto { ApproverUsername = "manager1", ApproverPassword = demoPassword },
+        }, options: PosJson.Options),
+    };
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", cashierToken);
+    var response = await http.SendAsync(request);
+    Console.WriteLine(response.IsSuccessStatusCode ? $"Cash shift #{shift.Id} closed." : $"WARNING: the cash shift stayed open ({(int)response.StatusCode}); close it from the cashier terminal.");
+}
 
 async Task<bool> RunCycleAsync(Random random)
 {
@@ -124,9 +180,10 @@ async Task<bool> RunCycleAsync(Random random)
     }
 }
 
-static async Task<string> LoginAsync(HttpClient http, string username, string password)
+static async Task<string> LoginAsync(HttpClient http, string username, string password, string deviceName, DeviceType deviceType)
 {
-    var response = await http.PostAsJsonAsync("api/auth/login", new LoginRequest { Username = username, Password = password }, PosJson.Options);
+    var login = new LoginRequest { Username = username, Password = password, DeviceName = deviceName, DeviceType = deviceType, MachineName = Environment.MachineName, AppVersion = "loadtest" };
+    var response = await http.PostAsJsonAsync("api/auth/login", login, PosJson.Options);
     var body = await response.Content.ReadFromJsonAsync<ApiResponse<LoginResponse>>(PosJson.Options);
     return body?.Data?.AccessToken ?? throw new InvalidOperationException($"Login of {username} failed: {body?.Message}");
 }

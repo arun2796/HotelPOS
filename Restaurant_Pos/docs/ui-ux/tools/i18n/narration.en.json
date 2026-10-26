@@ -180,13 +180,12 @@
         "heading": "First sign-in",
         "bullets": [
           "Sign in as admin with the installer's password and set a new one",
-          "Restaurant settings: name, address, GSTIN, invoice prefix, business-day start",
-          "Users: one account per person. Sections and tables, menu, discounts and payments",
-          "Backup: check the folder and time, press Backup now once",
-          "Walk through the go-live checklist"
+          "The dashboard opens: the terminal is registered and online",
+          "Restaurant settings, users, tables, menu and the first backup follow: the administrator chapter shows them",
+          "Walk through the go-live checklist and apply the licence key"
         ],
         "image": "desktop/admin/28-admin-settings.png",
-        "speech": "First sign-in. On the admin terminal sign in as admin with the installer's password, and set a new one. Fill the restaurant settings: name, address, GST number, invoice prefix and the start of the business day. Then users, one account per person, sections and tables, the menu, discounts and payments. Press Backup now once and confirm it shows OK. Finish with the go-live checklist."
+        "speech": "First sign-in. On the billing terminal sign in as admin with the installer's password, and set a new one: the server insists on it. The dashboard opens and the terminal shows as online. The restaurant settings, users, tables, menu and the first backup come next; the administrator chapter shows every one of them. Finish with the go-live checklist and the licence key."
       },
       {
         "id": "roles",

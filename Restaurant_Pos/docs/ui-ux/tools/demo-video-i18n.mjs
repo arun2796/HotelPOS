@@ -16,7 +16,9 @@ import { spawnSync } from 'node:child_process';
 import { CSS, esc, renderFrames, repo, here, clipStill, clipLive, concat, duration, fmt, run } from './demo-video-lib.mjs';
 
 const LANG = process.env.LANG_ID ?? 'en';
-const N = JSON.parse(fs.readFileSync(path.join(here, 'i18n', `narration.${LANG}.json`), 'utf8'));
+// JSON written by PowerShell carries a byte-order mark, which JSON.parse rejects.
+const readJson = file => JSON.parse(fs.readFileSync(file, 'utf8').replace(/^﻿/, ''));
+const N = readJson(path.join(here, 'i18n', `narration.${LANG}.json`));
 const OUT = process.env.OUT_DIR ?? path.join(repo, 'artifacts', 'demo-video-i18n', LANG);
 const WORK = path.join(OUT, 'work');
 // Recordings: <OUT>/record when it exists (fresh runs recorded for this video), else the demo-video-screen pack.
@@ -26,7 +28,7 @@ const MAX_LEAD = 8;
 fs.mkdirSync(WORK, { recursive: true });
 
 // English role-step lines come from the live-video narration unless the language file overrides them.
-const english = JSON.parse(fs.readFileSync(path.join(here, 'demo-narration.json'), 'utf8'));
+const english = readJson(path.join(here, 'demo-narration.json'));
 delete english._comment;
 const stepText = key => (N.steps && key in N.steps) ? N.steps[key] : (LANG === 'en' ? english[key] : undefined);
 const wavId = key => key.replace(/\//g, '--');
@@ -130,13 +132,13 @@ function setupHtml(ch, stepNo, s) {
 function desktopSteps(folder) {
   const file = path.join(RECORD, folder + '.json');
   if (!fs.existsSync(file)) return null;
-  const rec = JSON.parse(fs.readFileSync(file, 'utf8'));
+  const rec = readJson(file);
   return rec.steps.filter(s => s.included && stepText(s.key)).map(s => ({ ...s, src: path.join(RECORD, rec.video) }));
 }
 function webSteps() {
   const file = path.join(RECORD, 'web-record.json');
   if (!fs.existsSync(file)) return { '2': null, '3': null };
-  const rec = JSON.parse(fs.readFileSync(file, 'utf8'));
+  const rec = readJson(file);
   const all = rec.steps.map(s => ({ ...s, src: rec.videos[s.role], crop: s.role === 'waiter' ? '390:844:0:0' : null }));
   const first = all.findIndex(s => /^Kitchen/.test(s.chapter));
   let last = -1;
@@ -164,7 +166,7 @@ const chapters = [];
 // step ids match N.setup.steps so the narration comes from there). Fallback with SETUP_SLIDES=1: designed frames. Else: no chapter 0.
 const setupRec = path.join(RECORD, '00-setup.json');
 if (fs.existsSync(setupRec)) {
-  const rec = JSON.parse(fs.readFileSync(setupRec, 'utf8'));
+  const rec = readJson(setupRec);
   const byId = Object.fromEntries(N.setup.steps.map(s => [s.id, s]));
   const steps = rec.steps.filter(s => s.included !== false && (byId[s.id]?.speech || s.caption))
     .map((s, i) => ({ ...s, no: i + 1, key: `00-setup/${s.id}`, step: byId[s.id]?.heading ?? s.id, caption: byId[s.id]?.speech ?? s.caption, src: path.join(RECORD, rec.video) }));

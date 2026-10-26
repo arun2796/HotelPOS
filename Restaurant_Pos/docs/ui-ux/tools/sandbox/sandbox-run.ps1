@@ -434,7 +434,8 @@ finally {
     try { $ffmpeg.StandardInput.Write('q'); $ffmpeg.StandardInput.Flush() } catch { }
     if (-not $ffmpeg.WaitForExit(20000)) { $ffmpeg.Kill() }
     Log "recording stopped at $([Math]::Round($Clock.Elapsed.TotalSeconds))s"
-    [ordered]@{ video = '00-setup.mp4'; fps = 15; steps = @($Steps) } | ConvertTo-Json -Depth 4 | Set-Content -Encoding UTF8 "$Out\00-setup.json"
+    $json = [ordered]@{ video = '00-setup.mp4'; fps = 15; steps = @($Steps) } | ConvertTo-Json -Depth 4
+    [IO.File]::WriteAllText("$Out\00-setup.json", $json, (New-Object Text.UTF8Encoding $false))   # no BOM: node's JSON.parse rejects it
     Copy-Item "$Rec\00-setup.mp4" "$Out\00-setup.mp4" -Force
     # diagnostics for the host: installer log, API logs, services, processes
     try {
