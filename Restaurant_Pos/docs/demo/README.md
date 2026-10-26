@@ -247,5 +247,28 @@ Smaller UI/UX notes (clipped columns, chips, stale demo data, slow steps) are li
    `MUSIC=<file>` swaps in a licensed track, `MUSIC_LEVEL` (default 0.16) sets how loud it is under the voice. `THEME` (navy, emerald) colours the role and app videos;
    `FULL_THEME` colours the full walkthrough on its own (the owner chose emerald for it).
 
+8. Full-flow walkthrough cut from FRESH live recordings with a neural voice (`artifacts/demo-video-en/`, built 2026-10-25 on the
+   Phase 25 build): `docs/ui-ux/tools/demo-video-i18n.mjs` is the builder, `docs/ui-ux/tools/i18n/narration.<lang>.json` holds
+   every spoken and on-screen word (`en` reuses `demo-narration.json` for the role steps; the builder can take other languages,
+   English is the only one kept). Speech: Microsoft neural voices through edge-tts (`pip install edge-tts`, needs internet; en-IN Neerja;
+   venv at `artifacts/demo-video-i18n/tts-venv`, or set `EDGE_TTS_PY`). Steps, from the Playwright scratch folder:
+   1. `LANG_ID=en OUT_DIR=<out> node …/demo-video-i18n.mjs --prepare` speaks the lines and writes `<out>/work/durations.json`.
+   2. Desktop chapters recorded ON SCREEN (real window, real mouse; keep hands off ~13 min): step 2 of item 6 plus
+      `HOTELPOS_DEMO_SCREEN=1 HOTELPOS_DEMO_RECORD=<out>/record HOTELPOS_DEMO_NARRATION=<out>/work/durations.json`
+      (`HOTELPOS_DEMO_CHAPTERS=admin,manager` re-records only some chapters). The admin account must not have a pending
+      forced password change (the API caches that state: restart the API after clearing it), and the demo tables must be free.
+   3. Web chapters: step 3 of item 6 with `RECORD_DIR=<out>/record HOTELPOS_DEMO_NARRATION=…` (`ADMIN_PASSWORD` must match).
+   4. Set-up chapter (server exe with its bundled PostgreSQL, client exe, first sign-in): recorded automatically in Windows
+      Sandbox by `docs/ui-ux/tools/sandbox/run-sandbox.ps1` (Windows feature `Containers-DisposableClientVM`; it drives the
+      wizards and the app, records the screen and writes `<out>/record/00-setup.mp4` + `.json`). On a real PC or VM, or for
+      the phone and Android steps, record by hand with `docs/ui-ux/tools/record-screen.ps1 -Out <out>/record -Name 00-setup`
+      (ENTER + step id at each step; ids are the `setup.steps[].id` values in the narration file; see
+      `docs/demo/setup-recording-runbook.md`). Without `<out>/record/00-setup.json` the chapter is skipped;
+      `SETUP_SLIDES=1` falls back to designed frames.
+   5. `LANG_ID=en OUT_DIR=<out> node …/demo-video-i18n.mjs` cuts and joins: `01-admin.mp4` … `05-manager.mp4`,
+      `HotelPOS-full-walkthrough-en.mp4`, `narration-script.md`. Speech, frames and clips are cached under `work/`: after
+      editing a line delete its `.mp3`, `.png`, `.mp4` there. A failed step is left out by setting `included: false` in the
+      chapter's record JSON.
+
 Android: the same PWA pages run inside the Android app (`docs/ops/09-android-app.md`); phone screenshots for the video
 are best taken on the device itself after the owner's device test.

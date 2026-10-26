@@ -1,0 +1,296 @@
+{
+  "_comment": "English full-flow walkthrough: set-up chapter, role cards and UI strings. Role-step lines come from ../demo-narration.json.",
+  "language": "English",
+  "voice": "en-IN-NeerjaNeural",
+  "rate": "+0%",
+  "ui": {
+    "walkthrough": "Full-flow walkthrough",
+    "chapter": "Chapter {n}",
+    "steps": "{n} steps",
+    "captured": "Captured from the real application, nothing mocked",
+    "rupee": "rupees",
+    "spell": {
+      "KOT": "K.O.T.",
+      "PWA": "P.W.A.",
+      "GST": "G.S.T.",
+      "GSTIN": "G.S.T.I.N.",
+      "UPI": "U.P.I.",
+      "APK": "A.P.K.",
+      "API": "A.P.I.",
+      "CA": "C.A.",
+      "exe": "E.X.E.",
+      "pfx": "P.F.X."
+    }
+  },
+  "opening": {
+    "heading": "HotelPOS",
+    "sub": "Restaurant point of sale for one venue on one LAN · set-up to day end",
+    "bullets": [
+      "Set-up: server, Windows terminals, phones in the browser, Android app",
+      "Five roles: administrator, waiter, kitchen, cashier, manager",
+      "Everything updates live across every device"
+    ],
+    "speech": "Welcome to HotelPOS. In this video we install the server and the terminals, add the phones and the Android app, and then follow one day of service through the five roles: administrator, waiter, kitchen, cashier and manager. Everything runs on one local network and updates live on every device."
+  },
+  "openingRoles": {
+    "sub": "Restaurant point of sale for one venue on one LAN",
+    "bullets": [
+      "Five roles: administrator, waiter, kitchen, cashier, manager",
+      "Three clients: Windows terminals, phones and tablets in the browser, Android app",
+      "Everything updates live across every device"
+    ],
+    "speech": "Welcome to HotelPOS. One restaurant, five roles, and three kinds of client on one local network. The administrator and the cashier work on Windows terminals, the waiters on their phones, the kitchen on a tablet, and the manager on any of them. Everything updates live. Let us follow one day of service, role by role."
+  },
+  "closing": {
+    "heading": "Built for the floor",
+    "sub": "What runs underneath",
+    "bullets": [
+      "Clients tolerate Wi-Fi drops and reconnect on their own",
+      "Terminals are licensed; seats are managed from Admin",
+      "Nightly backups and LAN self-update on the server",
+      "GST-ready invoices and returns"
+    ],
+    "speech": "Behind the screens: the clients tolerate network drops and reconnect on their own, every terminal is licensed and managed from the Admin screen, the server takes nightly backups and updates the terminals over the network, and the invoices and returns are GST ready. Thank you for watching."
+  },
+  "setup": {
+    "role": "Technician",
+    "client": "Server PC, terminals, phones",
+    "title": "Set up HotelPOS",
+    "duties": [
+      "Install the HotelPOS server: it brings PostgreSQL and runs as a Windows service",
+      "Install the Windows client on every terminal",
+      "Add phones and tablets in the browser or with the Android app",
+      "First sign-in: restaurant settings, users, tables, menu, backup"
+    ],
+    "speech": "Chapter 0. Set up HotelPOS. One server PC, Windows terminals for the cashier and the admin, phones and tablets for the waiters and the kitchen. The server installer brings PostgreSQL with it; allow about thirty minutes for a first installation.",
+    "steps": [
+      {
+        "id": "what-goes-where",
+        "heading": "What goes where",
+        "boxes": [
+          [
+            "Server PC",
+            "HotelPOS API and its bundled PostgreSQL, both as Windows services. Always on, wired, static IP."
+          ],
+          [
+            "Windows terminals",
+            "Admin PC, billing counter, kitchen PC: HotelPOS-Client-Setup.exe"
+          ],
+          [
+            "Phones and tablets",
+            "Browser app at https://<server>:5001/app"
+          ],
+          [
+            "Android app",
+            "HotelPOS-Staff.apk for waiters and the kitchen"
+          ]
+        ],
+        "speech": "What goes where. One server PC runs PostgreSQL and the HotelPOS service. The cashier and the admin use the Windows client. Waiters and the kitchen use their phones and tablets, in the browser or with the Android app. Everything talks to the one server over the local network."
+      },
+      {
+        "id": "server-pc",
+        "heading": "The server PC",
+        "bullets": [
+          "Windows 10 or 11 Pro, or Windows Server 2019 or later, 64-bit",
+          "8 GB RAM, SSD with 20 GB free",
+          "Wired to the router, with a static IP address",
+          "Network profile set to Private; a UPS is strongly recommended",
+          "No .NET install needed: the package carries its own runtime"
+        ],
+        "speech": "The server PC. Windows 10 or 11 Pro, 8 gigabytes of memory, an SSD, wired to the router with a fixed IP address. Set the network profile to Private. A UPS is strongly recommended: a power cut during a write is the main risk to the database. No separate .NET install is needed."
+      },
+      {
+        "id": "server-setup",
+        "heading": "Run the server installer",
+        "sub": "HotelPOS-Server-Setup.exe, as administrator: PostgreSQL comes inside",
+        "bullets": [
+          "PostgreSQL page: keep \"Install the bundled PostgreSQL on this PC\"",
+          "Database page: localhost, port 5432, database hotelpos, user hotelpos, choose a password for that user",
+          "API port 5000"
+        ],
+        "code": "HotelPOS-Server-Setup-0.1.1.exe",
+        "speech": "Run HotelPOS Server Setup as administrator. PostgreSQL comes inside the package: on the PostgreSQL page keep the bundled option, and Setup creates the database cluster and its Windows service itself. On the Database page keep localhost and port 5432, the database and user hotelpos, and choose a password for that user. Keep the API port 5000."
+      },
+      {
+        "id": "admin-and-https",
+        "heading": "Administrator and HTTPS",
+        "bullets": [
+          "Administrator page: the first admin password. There is no default; it must be changed at the first sign-in",
+          "HTTPS page: leave both fields empty to create a LAN certificate automatically",
+          "Root CA for the phones: C:\\ProgramData\\HotelPOS\\Api\\hotelpos-root-ca.cer",
+          "Or enter the path of your own .pfx file and its password"
+        ],
+        "speech": "The Administrator page asks for the first admin password. There is no default password: this one is used once, and must be changed at the first sign-in. On the HTTPS page, leave both fields empty, and Setup creates a certificate for the local network. The root certificate for the phones is written to the ProgramData folder."
+      },
+      {
+        "id": "finish-and-check",
+        "heading": "Finish and check",
+        "bullets": [
+          "Registers the HotelPOS API Windows service: starts automatically, restarts after a failure",
+          "Opens the firewall for ports 5000 and 5001 on Private networks; PostgreSQL is blocked from the network",
+          "Starts the service and waits until it reports healthy",
+          "Check: http://localhost:5000/health answers Healthy"
+        ],
+        "code": "http://localhost:5000/health   ->   \"status\":\"Healthy\"",
+        "image": "desktop/admin/30-admin-server.png",
+        "speech": "Finish. The installer registers the HotelPOS API service, opens the firewall for ports 5000 and 5001, blocks PostgreSQL from the network, and starts the service. Check it: ask the server for localhost, port 5000, slash health. It answers Healthy. Later, the admin sees the same health on the Server screen."
+      },
+      {
+        "id": "install-terminals",
+        "heading": "Install the terminals",
+        "sub": "HotelPOS-Client-Setup-0.1.1.exe on every Windows terminal",
+        "bullets": [
+          "Run as administrator on the admin PC, the billing counter and the kitchen PC",
+          "First start: the server address and a terminal name such as BILLING-01, plus its type",
+          "Many terminals: a silent install with the server address"
+        ],
+        "code": "HotelPOS-Client-Setup-0.1.1.exe /VERYSILENT /SUPPRESSMSGBOXES /API=http://192.168.1.100:5000",
+        "image": "desktop/cashier/01-cashier-sign-in.png",
+        "speech": "Now the terminals. Run HotelPOS Client Setup as administrator on the admin PC, the billing counter and the kitchen PC. On the first start the app asks for the server address and a terminal name, like BILLING-01. For many terminals, run the installer silently with the server address on the command line."
+      },
+      {
+        "id": "phones-browser",
+        "heading": "Phones and tablets in the browser",
+        "bullets": [
+          "Install the root certificate hotelpos-root-ca.cer on the device",
+          "Open https://<server>:5001/app and add it to the home screen",
+          "Choose Waiter or Kitchen on the sign-in screen; the device registers as WEB-WAITER-xxxxxx",
+          "Kitchen tablets pick their station once on the Station tab"
+        ],
+        "code": "https://192.168.1.100:5001/app",
+        "image": "web/waiter/01-waiter-sign-in.png",
+        "speech": "Phones and tablets need no installer. Install the root certificate on the device, open the server address on port 5001, slash app, and add it to the home screen. It opens full screen like an app. On the sign-in screen choose Waiter or Kitchen for the device. It registers itself and appears under Devices."
+      },
+      {
+        "id": "android-app",
+        "heading": "The Android app: HotelPOS Staff",
+        "bullets": [
+          "Android 8 or newer; same Wi-Fi as the server; no store account, no internet",
+          "Get HotelPOS-Staff.apk from the server or by USB; allow the install",
+          "Server address, Test connection until it says Connected, Save",
+          "Sign in as Waiter or Kitchen; registers as APP-WAITER-xxxxxx; stays signed in",
+          "Update: install the newer APK over the old one"
+        ],
+        "code": "http://192.168.1.100:5000/updates/HotelPOS-Staff.apk",
+        "image": "desktop/admin/61-admin-devices-phase25.png",
+        "speech": "Or use the Android app, HotelPOS Staff. Download the APK from the server's updates folder in the phone's browser, or copy it by USB, and allow the install. The first screen asks for the server address: type it, tap Test connection until it says Connected, and Save. Sign in as Waiter or Kitchen. The phone appears under Devices on the admin terminal, where it can be renamed or deactivated. To update, install the newer APK over the old one."
+      },
+      {
+        "id": "first-sign-in",
+        "heading": "First sign-in",
+        "bullets": [
+          "Sign in as admin with the installer's password and set a new one",
+          "Restaurant settings: name, address, GSTIN, invoice prefix, business-day start",
+          "Users: one account per person. Sections and tables, menu, discounts and payments",
+          "Backup: check the folder and time, press Backup now once",
+          "Walk through the go-live checklist"
+        ],
+        "image": "desktop/admin/28-admin-settings.png",
+        "speech": "First sign-in. On the admin terminal sign in as admin with the installer's password, and set a new one. Fill the restaurant settings: name, address, GST number, invoice prefix and the start of the business day. Then users, one account per person, sections and tables, the menu, discounts and payments. Press Backup now once and confirm it shows OK. Finish with the go-live checklist."
+      },
+      {
+        "id": "roles",
+        "heading": "Five roles, one server",
+        "boxes": [
+          [
+            "Administrator",
+            "Windows terminal: users, floor, menu, printers, settings"
+          ],
+          [
+            "Waiter",
+            "Phone: browser app or Android app"
+          ],
+          [
+            "Kitchen",
+            "Tablet: browser app or Android app"
+          ],
+          [
+            "Cashier",
+            "Windows billing terminal"
+          ],
+          [
+            "Manager",
+            "Any terminal: dashboard, reports, GST, day end"
+          ]
+        ],
+        "speech": "Each person signs in with their own account and sees only what their role allows: the admin, the waiter, the kitchen, the cashier and the manager. Let us follow one day of service, role by role."
+      }
+    ]
+  },
+  "roles": {
+    "1": {
+      "file": "01-admin",
+      "folder": "01-admin-setup",
+      "role": "Administrator",
+      "client": "Windows desktop",
+      "title": "Set up the restaurant",
+      "duties": [
+        "Create staff users and assign roles",
+        "Define sections, tables and the floor plan",
+        "Maintain the menu, prices, taxes and pictures",
+        "Configure payment methods, printers and settings",
+        "Review the audit log of every change"
+      ],
+      "speech": "Chapter 1. Set up the restaurant. The administrator works on a Windows desktop. Responsibilities: create staff users and assign roles. Define sections, tables and the floor plan. Maintain the menu, prices, taxes and pictures. Configure payment methods, printers and settings. Review the audit log of every change."
+    },
+    "2": {
+      "file": "02-waiter",
+      "folder": "02-waiter-phone",
+      "role": "Waiter",
+      "client": "Phone (browser or Android app)",
+      "title": "Take orders on the floor",
+      "duties": [
+        "See table status as a list or on the floor map",
+        "Take dine-in and takeaway orders with options and notes",
+        "Send orders to the kitchen and print the KOT",
+        "Hold drafts, mark items served, request the bill",
+        "Keep working when the Wi-Fi drops"
+      ],
+      "speech": "Chapter 2. Take orders on the floor. The waiter works on a phone, in the browser or in the Android app. Responsibilities: see table status as a list or on the floor map. Take dine-in and takeaway orders with options and notes. Send orders to the kitchen and print the K.O.T. Hold drafts, mark items served, request the bill. Keep working when the Wi-Fi drops."
+    },
+    "3": {
+      "file": "03-kitchen",
+      "folder": "03-kitchen-tablet",
+      "role": "Kitchen",
+      "client": "Tablet (browser or Android app)",
+      "title": "Cook and serve",
+      "duties": [
+        "Watch orders arrive live on the kitchen board",
+        "Open a ticket with item pictures and notes",
+        "Accept, start and mark tickets ready",
+        "Notify waiters the moment food is ready"
+      ],
+      "speech": "Chapter 3. Cook and serve. The kitchen works on a tablet, in the browser or in the Android app. Responsibilities: watch orders arrive live on the kitchen board. Open a ticket with item pictures and notes. Accept, start and mark tickets ready. Notify waiters the moment food is ready."
+    },
+    "4": {
+      "file": "04-cashier",
+      "folder": "04-cashier-desktop",
+      "role": "Cashier",
+      "client": "Windows desktop",
+      "title": "Bill and collect",
+      "duties": [
+        "Open and close the shift with a cash count",
+        "Bill tables and takeaway orders from the queue",
+        "Apply discounts; take cash, split and wallet payments",
+        "Print invoices and watch the print queue",
+        "Record pay-outs and expenses; run the X report"
+      ],
+      "speech": "Chapter 4. Bill and collect. The cashier works on a Windows desktop. Responsibilities: open and close the shift with a cash count. Bill tables and takeaway orders from the queue. Apply discounts, take cash, split and wallet payments. Print invoices and watch the print queue. Record pay-outs and expenses, run the X report."
+    },
+    "5": {
+      "file": "05-manager",
+      "folder": "05-manager-desktop",
+      "role": "Manager",
+      "client": "Windows desktop",
+      "title": "Run the business",
+      "duties": [
+        "Live dashboard: sales, orders, occupancy, expenses, who is on duty",
+        "Manage reservations",
+        "Reports to Excel and PDF: daily, hourly, profit and loss, payments",
+        "Day End pre-check and GST for the month",
+        "Audit log of every action"
+      ],
+      "speech": "Chapter 5. Run the business. The manager works on any Windows desktop. Responsibilities: the live dashboard with sales, orders, occupancy, expenses and who is on duty. Manage reservations. Reports to Excel and PDF: daily, hourly, profit and loss, payments. Day End pre-check and GST for the month. The audit log of every action."
+    }
+  }
+}

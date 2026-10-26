@@ -576,6 +576,13 @@ public partial class LiveFlowScreenshots
         await StepAsync("Floor plan: section", "Open Floor plan, pick Demo Patio, place its tables on the canvas", "Both demo tables sit on the canvas", async () =>
         {
             plan = await DemoOpenAsync<FloorEditorViewModel>(shell, ModuleRegistry.FloorPlan, settleMs: 600);
+            // The section list loads asynchronously; on a slow run 600 ms is not enough (seen 2026-10-25: "not offered").
+            for (var wait = 0; wait < 30 && !plan.Sections.Any(s => s.Name == DemoSection); wait++)
+            {
+                await Task.Delay(200);
+                await Dispatcher.Yield(DispatcherPriority.Background);
+            }
+
             await H.SetAsync(plan, "SelectedSection", plan.Sections.FirstOrDefault(s => s.Name == DemoSection));
             Check(plan.SelectedSection is not null, "Demo Patio is not offered in the floor plan");
             await plan.LoadLayoutAsync();
