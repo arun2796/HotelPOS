@@ -28,6 +28,8 @@ $ErrorActionPreference = 'Stop'
 
 function Find-Psql {
     if ($PsqlPath -and (Test-Path $PsqlPath)) { return $PsqlPath }
+    $bundled = Join-Path (Split-Path $PSScriptRoot -Parent) 'pgsql\bin\psql.exe'   # the server package carries PostgreSQL (Phase 26)
+    if (Test-Path $bundled) { return $bundled }
     $onPath = Get-Command psql.exe -ErrorAction SilentlyContinue
     if ($onPath) { return $onPath.Source }
     $installed = Get-ChildItem "$env:ProgramFiles\PostgreSQL" -Directory -ErrorAction SilentlyContinue |

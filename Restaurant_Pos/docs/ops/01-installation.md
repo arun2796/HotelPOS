@@ -21,29 +21,25 @@ The server PC may also be used as the admin or billing terminal.
   be 10.0.8 or later (.NET 10 LTS; .NET 8 left support on 2026-11-10); `version.txt` in the package names it, and
   the release build refuses anything older. Never install a package marked `NOT-FOR-RELEASE.txt`.
 
-## 3. Install PostgreSQL
+## 3. PostgreSQL
 
-1. Install PostgreSQL 16 or later (the EDB Windows installer). Keep the default port 5432. Write down the password
-   of the `postgres` superuser and keep it with the venue's documents, not on the PC.
-2. The role and database HotelPOS uses (`hotelpos` / `hotelpos`) are created by the HotelPOS installer when you
-   enter the `postgres` password on its Database page (recommended). To prepare them yourself instead, open
-   **SQL Shell (psql)** as `postgres`:
+Since Phase 26 the server installer carries PostgreSQL: on a new server keep **Install the bundled PostgreSQL on this PC**
+on the PostgreSQL page and skip this section. Setup creates the database cluster in `C:\ProgramData\HotelPOS\pg\data`,
+the Windows service **HotelPOSDb** (local connections only) and a random superuser password, kept for the technician in
+`C:\ProgramData\HotelPOS\pg\postgres-password.txt` (readable by Administrators only).
 
-   ```sql
-   CREATE ROLE hotelpos LOGIN PASSWORD '<strong password>';
-   CREATE DATABASE hotelpos OWNER hotelpos;
-   ```
-
-   The API never needs the superuser. The installer checks that PostgreSQL answers before it continues, and
-   `scripts\new-database.ps1` does the same creation by hand later.
+Only when a PostgreSQL server already runs for HotelPOS (this PC or another one) choose **Use an existing PostgreSQL
+server**; then PostgreSQL 14 or later must be reachable, the role and database `hotelpos` are created by Setup from the
+`postgres` superuser password, and the superuser is never needed again. The API never needs the superuser.
 
 ## 4. Install the server
 
 1. Run `HotelPOS-Server-Setup-<version>.exe` as administrator.
-2. **Database** page: server `localhost`, port `5432`, database `hotelpos`, user `hotelpos`, and a password for that
-   user (choose one on a new installation, or the one from step 3). API port: `5000` unless something else uses it.
-   **Create the database** page: enter the `postgres` superuser password and Setup creates the role and database;
-   leave it empty when they already exist (upgrade, or prepared by hand).
+2. **PostgreSQL** page: keep the bundled PostgreSQL (section 3). **Database** page: server `localhost`, port `5432`,
+   database `hotelpos`, user `hotelpos`, and a password for that user (choose one on a new installation). API port: `5000`
+   unless something else uses it. With an existing PostgreSQL a **Create the database** page follows: enter the `postgres`
+   superuser password and Setup creates the role and database; leave it empty when they already exist (upgrade, or
+   prepared by hand).
 3. **Administrator** page: the first admin password. It is used once, when the admin account is created, and must
    be changed at the first sign-in. It is required on a new installation: there is no default password, and until
    it is changed the `admin` account can do nothing but sign in and change it.
@@ -51,7 +47,7 @@ The server PC may also be used as the admin or billing terminal.
    "HotelPOS Root CA" plus a server certificate for this PC's name and addresses), or enter the path of your own `.pfx`
    file and its password. The root CA file for the devices is written to `C:\ProgramData\HotelPOS\Api\hotelpos-root-ca.cer`.
    When upgrading, empty keeps the current certificate.
-5. Finish. The installer writes the settings, registers the **HotelPOS API** service (starts automatically,
+5. Finish. The installer writes the settings, registers the **HotelPOSDb** (bundled PostgreSQL) and **HotelPOS API** services (start automatically,
    restarts itself after a failure), opens the firewall for the API ports (5000 and 5001) on Private networks, blocks PostgreSQL
    from the network, starts the service and waits until it reports healthy.
 6. Check: open `http://localhost:5000/health` on the server. It should say `"status":"Healthy"`.

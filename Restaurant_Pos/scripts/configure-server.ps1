@@ -34,7 +34,13 @@ param(
     [string] $CertificatePassword,
     [string] $DataRoot = 'C:\ProgramData\HotelPOS',
     [string] $ServiceName = 'HotelPOSApi',
-    [switch] $ConfigOnly
+    [switch] $ConfigOnly,
+    # Phase 26: PostgreSQL shipped inside the server package (<InstallDir>\pgsql). With -BundledPostgres the script
+    # creates the database cluster, registers its Windows service and generates the superuser password itself.
+    [switch] $BundledPostgres,
+    [string] $PgBinDir,
+    [string] $PgDataDir,
+    [string] $PgServiceName = 'HotelPOSDb'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -54,10 +60,92 @@ if ($SettingsFile) {
     }
 }
 
+if ($SettingsFile -and "$($handover.BundledPostgres)" -eq '1') { $BundledPostgres = $true }
+
 $exe = Join-Path $InstallDir 'HotelPOS.Api.exe'
 $template = Join-Path $InstallDir 'appsettings.Production.template.json'
 $target = Join-Path $InstallDir 'appsettings.Production.json'
 if (-not (Test-Path $exe)) { throw "HotelPOS.Api.exe not found in $InstallDir." }
+
+# ---------------------------------------------------------------- bundled PostgreSQL (Phase 26)
+if ($BundledPostgres) {
+    if (-not $PgBinDir) { $PgBinDir = Join-Path $InstallDir 'pgsql\bin' }
+    if (-not $PgDataDir) { $PgDataDir = Join-Path $DataRoot 'pg\data' }
+    if (-not (Test-Path (Join-Path $PgBinDir 'initdb.exe'))) { throw "The bundled PostgreSQL was not found in $PgBinDir." }
+    $DbHost = 'localhost'
+    $pgRoot = Split-Path $PgDataDir -Parent
+    $passwordFile = Join-Path $pgRoot 'postgres-password.txt'
+    New-Item -ItemType Directory -Force $pgRoot | Out-Null
+
+    if (-not (Test-Path (Join-Path $PgDataDir 'PG_VERSION'))) {
+        # A new cluster. PostgreSQL refuses to run with administrator rights, so initdb runs as the service account
+        # (NetworkService) through a one-off scheduled task; the data folder is handed to that account first.
+        if (-not $SuperuserPassword) {
+            $pwBytes = New-Object byte[] 18
+            [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($pwBytes)
+            $SuperuserPassword = ([Convert]::ToBase64String($pwBytes) -replace '[^A-Za-z0-9]', 'x')
+        }
+        # Kept for the technician (restore, psql): readable by Administrators and SYSTEM only, like the settings file.
+        Set-Content -Path $passwordFile -Value $SuperuserPassword -Encoding ASCII -NoNewline
+        & icacls $pgRoot /inheritance:r /grant:r 'SYSTEM:(OI)(CI)F' 'Administrators:(OI)(CI)F' 'NT AUTHORITY\NETWORK SERVICE:(OI)(CI)M' | Out-Null
+        New-Item -ItemType Directory -Force $PgDataDir | Out-Null
+        $initLog = Join-Path $pgRoot 'initdb.log'
+        $initPwFile = Join-Path $pgRoot 'initdb-password.tmp'
+        Copy-Item $passwordFile $initPwFile -Force
+        # schtasks limits the task command to 261 characters, so the initdb command line lives in a small batch file.
+        $initCmdFile = Join-Path $pgRoot 'initdb.cmd'
+        Set-Content -Path $initCmdFile -Encoding ASCII -Value "@echo off`r`n`"$PgBinDir\initdb.exe`" -D `"$PgDataDir`" -U postgres -A scram-sha-256 --pwfile=`"$initPwFile`" -E UTF8 --locale=C > `"$initLog`" 2>&1`r`n"
+        $scheduler = Get-Service -Name Schedule -ErrorAction SilentlyContinue
+        if ($scheduler -and $scheduler.Status -ne 'Running') { Start-Service -Name Schedule }
+        # The task is only ever started by hand (/Run); a start time ahead of now keeps schtasks from warning (its warning
+        # about a past /ST comes with exit code 1 although the task is created).
+        $startAt = (Get-Date).AddMinutes(3).ToString('HH:mm')
+        $created = & schtasks /Create /F /TN 'HotelPOS-initdb' /SC ONCE /ST $startAt /RU 'NT AUTHORITY\NETWORKSERVICE' /TR "`"$initCmdFile`"" 2>&1
+        $createdText = ($created | ForEach-Object { "$_" }) -join ' '
+        if ($LASTEXITCODE -ne 0 -and $createdText -notmatch 'SUCCESS') { throw "Could not create the one-off task that initialises the database cluster: $createdText" }
+        $started = & schtasks /Run /TN 'HotelPOS-initdb' 2>&1
+        if ($LASTEXITCODE -ne 0) { throw "Could not start the initdb task: $(($started | ForEach-Object { "$_" }) -join ' ')" }
+        $deadline = (Get-Date).AddMinutes(5)
+        do {
+            Start-Sleep -Seconds 2
+            $state = (& schtasks /Query /TN 'HotelPOS-initdb' /FO LIST | Select-String 'Status:' | Select-Object -First 1).ToString()
+        } while ($state -match 'Running' -and (Get-Date) -lt $deadline)
+        $taskInfo = (& schtasks /Query /TN 'HotelPOS-initdb' /V /FO LIST 2>&1 | Select-String 'Last Run Result|Status:' | ForEach-Object { $_.Line.Trim() }) -join '; '
+        & schtasks /Delete /F /TN 'HotelPOS-initdb' | Out-Null
+        Remove-Item $initPwFile, $initCmdFile -Force -ErrorAction SilentlyContinue
+        if (-not (Test-Path (Join-Path $PgDataDir 'PG_VERSION'))) {
+            $said = if ((Test-Path $initLog) -and (Get-Item $initLog).Length -gt 0) { (Get-Content $initLog | Select-Object -Last 3) -join ' ' } else { 'initdb wrote nothing (a missing Visual C++ runtime makes it exit before it prints anything)' }
+            throw "initdb did not create the database cluster. $said. Task: $taskInfo"
+        }
+        Add-Content -Path (Join-Path $PgDataDir 'postgresql.conf') -Encoding ASCII -Value @"
+
+# HotelPOS (written by configure-server.ps1): local connections only, the API port is opened instead.
+listen_addresses = 'localhost'
+port = $DbPort
+logging_collector = on
+log_directory = 'log'
+"@
+        Write-Host "PostgreSQL cluster created in $PgDataDir."
+    } elseif (-not $SuperuserPassword -and (Test-Path $passwordFile)) {
+        $SuperuserPassword = (Get-Content $passwordFile -Raw).Trim()
+    }
+
+    if (-not (Get-Service -Name $PgServiceName -ErrorAction SilentlyContinue)) {
+        & (Join-Path $PgBinDir 'pg_ctl.exe') register -N $PgServiceName -D $PgDataDir -S auto -w | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "pg_ctl could not register the Windows service $PgServiceName." }
+        & sc.exe description $PgServiceName 'PostgreSQL database for HotelPOS (bundled with the server).' | Out-Null
+        & sc.exe failure $PgServiceName reset= 86400 actions= restart/5000/restart/15000/restart/60000 | Out-Null
+    }
+    if ((Get-Service -Name $PgServiceName).Status -ne 'Running') { Start-Service -Name $PgServiceName }
+    $ready = $false
+    for ($i = 0; $i -lt 30 -and -not $ready; $i++) {
+        & (Join-Path $PgBinDir 'pg_isready.exe') -h localhost -p $DbPort -q 2>$null
+        $ready = ($LASTEXITCODE -eq 0)
+        if (-not $ready) { Start-Sleep -Seconds 2 }
+    }
+    if (-not $ready) { throw "The bundled PostgreSQL service $PgServiceName did not start (see $PgDataDir\log)." }
+    Write-Host "PostgreSQL service '$PgServiceName' running on port $DbPort."
+}
 
 # Fail with a useful message now rather than a service that keeps restarting.
 $probe = New-Object Net.Sockets.TcpClient
@@ -79,7 +167,8 @@ if ($SuperuserPassword) {
 # Try the HotelPOS role's own credentials now (when psql is available) instead of letting the service discover a
 # missing role or wrong password after a two-minute wait.
 if ($DbPassword) {
-    $psqlExe = (Get-Command psql.exe -ErrorAction SilentlyContinue).Source
+    $psqlExe = Join-Path $InstallDir 'pgsql\bin\psql.exe'
+    if (-not (Test-Path $psqlExe)) { $psqlExe = (Get-Command psql.exe -ErrorAction SilentlyContinue).Source }
     if (-not $psqlExe) {
         $psqlExe = Get-ChildItem "$env:ProgramFiles\PostgreSQL" -Directory -ErrorAction SilentlyContinue |
             Sort-Object { [int]($_.Name -replace '\D', '0') } -Descending |
@@ -162,6 +251,14 @@ $settings.Kestrel.Endpoints.Https.Certificate.Path = $certPath
 $settings.Kestrel.Endpoints.Https.Certificate.Password = $certPassword
 $settings.Logging.Directory = Join-Path $DataRoot 'Api\logs'
 $settings.Media.RootPath = Join-Path $DataRoot 'Api\media'
+
+# Backups run pg_dump from the bundled PostgreSQL when the server carries one (Phase 26).
+$bundledBin = Join-Path $InstallDir 'pgsql\bin'
+if (Test-Path (Join-Path $bundledBin 'pg_dump.exe')) {
+    if (-not $settings.PSObject.Properties['Backup']) { $settings | Add-Member -NotePropertyName Backup -NotePropertyValue ([pscustomobject]@{}) }
+    if ($settings.Backup.PSObject.Properties['PgBinPath']) { $settings.Backup.PgBinPath = $bundledBin }
+    else { $settings.Backup | Add-Member -NotePropertyName PgBinPath -NotePropertyValue $bundledBin }
+}
 
 foreach ($folder in $settings.Logging.Directory, $settings.Media.RootPath, (Join-Path $DataRoot 'Backups')) {
     New-Item -ItemType Directory -Force -Path $folder | Out-Null

@@ -40,6 +40,10 @@ enabling HTTPS:
 & 'C:\Program Files\HotelPOS\Server\scripts\create-firewall-rule.ps1' -Port 5000 -Https     # also 5001
 ```
 
+The script uses the Windows firewall PowerShell cmdlets and falls back to `netsh advfirewall` on systems where their WMI
+provider is missing ("Invalid class", seen in Windows Sandbox). If both fail it only warns: the installation continues and the
+ports have to be opened by hand.
+
 It allows inbound TCP 5000 (and 5001) on Private networks and **blocks inbound TCP 5432**, so PostgreSQL cannot be
 reached from terminals even if another installer opened it. Check from a terminal:
 

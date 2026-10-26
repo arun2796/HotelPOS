@@ -25,7 +25,10 @@ param(
     [switch] $AllowOutdatedRuntime,
     [string] $InnoCompiler,
     # The vendor's licence private key (PEM) also signs updates\latest.json; terminals refuse an unsigned manifest.
-    [string] $VendorKey = (Join-Path $env:USERPROFILE '.hotelpos-vendor\license-private.pem')
+    [string] $VendorKey = (Join-Path $env:USERPROFILE '.hotelpos-vendor\license-private.pem'),
+    # PostgreSQL to bundle into the server package (Phase 26): a folder with bin, lib and share of a Windows x64 build.
+    # Default: artifacts\pg-binaries\pgsql (an EDB "binaries" zip extracted there), else the newest PostgreSQL installed here.
+    [string] $PgSource
 )
 
 $ErrorActionPreference = 'Stop'
@@ -80,6 +83,40 @@ if (Test-Path (Join-Path $out 'server\appsettings.Development.json')) {
 
 Copy-Item -Recurse (Join-Path $root 'scripts') (Join-Path $out 'server\scripts')
 Set-Content (Join-Path $out 'version.txt') "HotelPOS $version, ASP.NET Core $shipped, built $(Get-Date -Format s)"
+
+# Phase 26: PostgreSQL inside the server package (server\pgsql: bin, lib, share; pgAdmin, Stack Builder, docs and
+# headers are left out). configure-server.ps1 creates the cluster and the HotelPOSDb service from it at install time.
+if (-not $PgSource) {
+    $candidate = Join-Path $root 'artifacts\pg-binaries\pgsql'
+    if (Test-Path (Join-Path $candidate 'bin\postgres.exe')) {
+        $PgSource = $candidate
+    } else {
+        $PgSource = Get-ChildItem "$env:ProgramFiles\PostgreSQL" -Directory -ErrorAction SilentlyContinue |
+            Sort-Object { [int]($_.Name -replace '\D', '0') } -Descending |
+            Where-Object { Test-Path (Join-Path $_.FullName 'bin\postgres.exe') } |
+            Select-Object -First 1 -ExpandProperty FullName
+    }
+}
+if (-not $PgSource) { throw 'No PostgreSQL to bundle: pass -PgSource <folder with bin, lib, share> or install PostgreSQL on the build PC.' }
+$pgOut = Join-Path $out 'server\pgsql'
+foreach ($part in 'bin', 'lib', 'share') {
+    if (-not (Test-Path (Join-Path $PgSource $part))) { throw "PostgreSQL source $PgSource has no '$part' folder." }
+    Copy-Item -Recurse (Join-Path $PgSource $part) (Join-Path $pgOut $part)
+}
+Get-ChildItem (Join-Path $pgOut 'bin') -Include 'pgAdmin*', 'stackbuilder*' -Recurse -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force
+foreach ($notice in 'server_license.txt', 'COPYRIGHT', 'COPYRIGHT.txt') {
+    if (Test-Path (Join-Path $PgSource $notice)) { Copy-Item (Join-Path $PgSource $notice) $pgOut }
+}
+# The PostgreSQL binaries need the Visual C++ runtime, which the EDB installer would have installed: ship it app-local
+# next to the binaries (Microsoft allows redistributing these DLLs that way), so a clean PC needs nothing else.
+foreach ($dll in 'vcruntime140.dll', 'vcruntime140_1.dll', 'msvcp140.dll', 'msvcp140_1.dll', 'msvcp140_2.dll') {
+    $src = Join-Path $env:SystemRoot "System32\$dll"
+    if (-not (Test-Path $src)) { throw "Visual C++ runtime file $dll not found in System32; install the VC++ 2015-2022 x64 redistributable on the build PC." }
+    Copy-Item $src (Join-Path $pgOut "bin\$dll") -Force
+}
+$pgVersion = ((& (Join-Path $pgOut 'bin\postgres.exe') --version) -replace '^postgres \(PostgreSQL\) ', '').Trim()
+Write-Host "Bundled PostgreSQL $pgVersion from $PgSource"
+Add-Content (Join-Path $out 'version.txt') "PostgreSQL $pgVersion bundled (server\pgsql)"
 
 if (Test-Path $InnoCompiler) {
     # The client installer first: the server hosts it under /updates/ (server\updates, which the server installer then

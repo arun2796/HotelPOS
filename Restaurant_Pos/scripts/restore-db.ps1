@@ -36,6 +36,8 @@ $ErrorActionPreference = 'Stop'
 
 function Find-PgTool([string] $name) {
     if ($PgBin) { $candidate = Join-Path $PgBin "$name.exe"; if (Test-Path $candidate) { return $candidate }; throw "$name.exe not found in $PgBin" }
+    $bundled = Join-Path (Split-Path $PSScriptRoot -Parent) "pgsql\bin\$name.exe"   # the server package carries PostgreSQL (Phase 26)
+    if (Test-Path $bundled) { return $bundled }
     $onPath = Get-Command $name -ErrorAction SilentlyContinue
     if ($onPath) { return $onPath.Source }
     $installed = Get-ChildItem 'C:\Program Files\PostgreSQL' -Directory -ErrorAction SilentlyContinue |

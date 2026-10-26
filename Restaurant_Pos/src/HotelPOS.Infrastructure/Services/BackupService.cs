@@ -344,6 +344,13 @@ public static class PostgresTools
             return File.Exists(configured) ? configured : null;
         }
 
+        // The server installer carries PostgreSQL itself (pgsql\bin next to the API, Phase 26): preferred over PATH.
+        var bundled = Path.Combine(AppContext.BaseDirectory, "pgsql", "bin", file);
+        if (File.Exists(bundled))
+        {
+            return bundled;
+        }
+
         var onPath = (Environment.GetEnvironmentVariable("PATH") ?? string.Empty)
             .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
             .Select(dir => Path.Combine(dir.Trim(), file))
