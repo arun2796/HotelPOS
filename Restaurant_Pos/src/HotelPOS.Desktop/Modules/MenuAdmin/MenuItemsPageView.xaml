@@ -83,6 +83,8 @@
           <DataGridTextColumn Header="CATEGORY" Binding="{Binding CategoryName}" Width="0.9*" MinWidth="90" />
           <DataGridTextColumn Header="PRICE" Binding="{Binding Price, StringFormat=N2}" Width="0.7*" MinWidth="92"
                               ElementStyle="{StaticResource Text.GridNumber}" HeaderStyle="{StaticResource DataGrid.NumberHeader}" />
+          <DataGridTextColumn Header="PACKING" Binding="{Binding PackagingCharge, StringFormat=N2}" Width="0.6*" MinWidth="84"
+                              ElementStyle="{StaticResource Text.GridNumber}" HeaderStyle="{StaticResource DataGrid.NumberHeader}" />
           <DataGridTextColumn Header="TAX" Binding="{Binding TaxRatePercent, StringFormat={}{0:0.##}%}" Width="0.45*" MinWidth="52" />
           <DataGridTextColumn Header="SOURCE" Binding="{Binding StationName}" Width="1.1*" MinWidth="100" />
           <DataGridTextColumn Header="STOCK" Binding="{Binding ., Converter={StaticResource StockText}, Mode=OneWay}" Width="0.8*" MinWidth="96" />
@@ -179,9 +181,9 @@
               </StackPanel>
             </Grid>
 
-            <TextBlock Text="Packaging charge (parcel)" Style="{StaticResource Text.Label}" />
+            <TextBlock Text="Packing charge for parcel (0 = use the default in Settings)" Style="{StaticResource Text.Label}" />
             <TextBox Text="{Binding PackagingCharge, UpdateSourceTrigger=PropertyChanged}" MaxLength="10" Margin="0,0,0,12"
-                     ToolTip="Added per unit on take-away and delivery orders. 0 for none." />
+                     ToolTip="Added per unit when the item is packed as a parcel. 0 uses the restaurant-wide default from Admin > Settings > Orders and billing." />
 
             <TextBlock Text="Description (optional)" Style="{StaticResource Text.Label}" />
             <TextBox Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" MaxLength="500" TextWrapping="Wrap"

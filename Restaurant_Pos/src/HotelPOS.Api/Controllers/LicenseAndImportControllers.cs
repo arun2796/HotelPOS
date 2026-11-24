@@ -72,6 +72,14 @@ public sealed class ImportController : ApiControllerBase
     public async Task<IActionResult> Undo(CancellationToken cancellationToken) =>
         FromResult(await Sender.Send(new UndoImportCommand(), cancellationToken), message: "Import undone.");
 
+    // The blank Excel file to fill in and bring back through the import.
+    [HttpGet("template")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public IActionResult Template([FromQuery] ImportKind kind = ImportKind.Menu) => File(
+        kind == ImportKind.Menu ? HotelPOS.Infrastructure.Documents.ImportTemplates.Menu() : HotelPOS.Infrastructure.Documents.ImportTemplates.Customers(),
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        kind == ImportKind.Menu ? "menu-import-template.xlsx" : "customers-import-template.xlsx");
+
     [HttpGet("last")]
     [ProducesResponseType<ApiResponse<ImportBatchDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Last(CancellationToken cancellationToken) =>

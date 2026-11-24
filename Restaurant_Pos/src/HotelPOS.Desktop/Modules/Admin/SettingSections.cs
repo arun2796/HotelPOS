@@ -19,7 +19,7 @@ public static class SettingSections
     {
         (Restaurant, new[] { SettingKeys.RestaurantName, SettingKeys.Address, SettingKeys.Phone, SettingKeys.Gstin, SettingKeys.LogoFile, SettingKeys.CurrencySymbol, SettingKeys.DefaultSacCode }),
         (BusinessDay, new[] { SettingKeys.BusinessDayStartTime, SettingKeys.DayEndReminderTime, SettingKeys.AutoCloseOnFullPayment }),
-        (OrdersAndBilling, new[] { SettingKeys.AllowAnyWaiterToEditOrders, SettingKeys.AllowBillBeforeReady, SettingKeys.MaxCashierDiscountPercent, SettingKeys.RoundOffTotals, SettingKeys.TaxSplitDisplay, SettingKeys.UpiVpa, SettingKeys.UpiPayeeName }),
+        (OrdersAndBilling, new[] { SettingKeys.AllowAnyWaiterToEditOrders, SettingKeys.AllowBillBeforeReady, SettingKeys.MaxCashierDiscountPercent, SettingKeys.DefaultPackagingCharge, SettingKeys.RoundOffTotals, SettingKeys.TaxSplitDisplay, SettingKeys.UpiVpa, SettingKeys.UpiPayeeName }),
         (InvoicesAndPrinting, new[] { SettingKeys.InvoicePrefix, SettingKeys.InvoiceResetPolicy, SettingKeys.PrintInvoiceCopies, SettingKeys.ReceiptFooter, SettingKeys.KotShowPrices, SettingKeys.PdfPaper }),
         ("Kitchen", new[] { SettingKeys.KitchenWarnMinutes, SettingKeys.KitchenLateMinutes }),
         ("Cash", new[] { SettingKeys.CashVarianceApprovalLimit, SettingKeys.CashPayOutApprovalLimit, SettingKeys.CashBlindCount }),

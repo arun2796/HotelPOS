@@ -66,6 +66,7 @@ public sealed class DbSeeder
         new Setting(SettingKeys.AllowBillBeforeReady, "false", SettingDataType.Bool, "Allow requesting the bill before every kitchen ticket is ready (drinks-only tables).", true),
         new Setting(SettingKeys.PrintInvoiceCopies, "1", SettingDataType.Int, "Copies printed when an invoice is finalized (1-5).", true),
         new Setting(SettingKeys.KotShowPrices, "false", SettingDataType.Bool, "Print item prices on kitchen tickets.", true),
+        new Setting(SettingKeys.DefaultPackagingCharge, "0", SettingDataType.Decimal, "Packing charge added to each parcel item that has no packing charge of its own (0 = none).", true),
         new Setting(SettingKeys.LockoutThreshold, "5", SettingDataType.Int, "Consecutive failed login attempts before account lockout.", true),
         new Setting(SettingKeys.AuditRetentionDays, "0", SettingDataType.Int, "Delete audit entries older than this many days (0 keeps everything).", false),
         new Setting(SettingKeys.BackupEnabled, "true", SettingDataType.Bool, "Take the daily database backup automatically.", false),

@@ -31,6 +31,7 @@ internal static class SettingRules
             SettingKeys.LockoutMinutes => Range(v, 1, 1440, "Lockout minutes"),
             SettingKeys.AuditRetentionDays => Range(v, 0, 3650, "Audit retention days"),
             SettingKeys.MaxCashierDiscountPercent => Range(v, 0, 100, "The cashier discount limit"),
+            SettingKeys.DefaultPackagingCharge => Range(v, 0, 1000, "The packing charge"),
             SettingKeys.ReceiptFooter => v.Length > 300 ? "The receipt footer can have at most 300 characters." : null,
             _ => null,
         };

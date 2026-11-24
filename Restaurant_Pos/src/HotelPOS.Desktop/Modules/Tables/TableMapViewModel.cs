@@ -310,6 +310,37 @@ public sealed partial class TableMapViewModel : ViewModelBase, INavigationAware,
     [RelayCommand]
     private void SelectTable(TableTileViewModel? table) => SelectedTable = table;
 
+    // Dine-in order from anywhere on the map: pick a free table, and the table panel opens with its New order button.
+    [ObservableProperty]
+    private bool _isPickerOpen;
+
+    public ObservableCollection<TableTileViewModel> FreeTables { get; } = new();
+
+    public bool HasNoFreeTables => FreeTables.Count == 0;
+
+    [RelayCommand]
+    private void NewDineInOrder()
+    {
+        FreeTables.Clear();
+        foreach (var tile in _tiles.Values.Where(t => t.IsAvailable && !t.IsMerged).OrderBy(t => t.SectionName).ThenBy(t => t.Code, StringComparer.OrdinalIgnoreCase))
+        {
+            FreeTables.Add(tile);
+        }
+
+        OnPropertyChanged(nameof(HasNoFreeTables));
+        IsPickerOpen = !IsPickerOpen;
+    }
+
+    [RelayCommand]
+    private void PickFreeTable(TableTileViewModel? table)
+    {
+        IsPickerOpen = false;
+        if (table is not null)
+        {
+            SelectedTable = table;
+        }
+    }
+
     [RelayCommand]
     private Task RefreshMapAsync() => RefreshAsync();
 

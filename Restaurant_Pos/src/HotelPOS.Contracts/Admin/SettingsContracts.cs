@@ -56,6 +56,7 @@ public static class SettingKeys
     public const string AllowBillBeforeReady = "AllowBillBeforeReady";
     public const string PrintInvoiceCopies = "PrintInvoiceCopies";
     public const string KotShowPrices = "KotShowPrices";
+    public const string DefaultPackagingCharge = "DefaultPackagingCharge";
     public const string LockoutThreshold = "LockoutThreshold";
     public const string AuditRetentionDays = "AuditRetentionDays";
     public const string LockoutMinutes = "LockoutMinutes";

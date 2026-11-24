@@ -37,6 +37,9 @@ public interface IImportApi
     Task<ApiResult<ImportBatchDto>> UndoAsync(CancellationToken cancellationToken = default);
 
     Task<ApiResult<ImportBatchDto>> GetLastAsync(CancellationToken cancellationToken = default);
+
+    // The blank Excel file for this kind of import.
+    Task<ApiResult<byte[]>> DownloadTemplateAsync(ImportKind kind, CancellationToken cancellationToken = default);
 }
 
 public sealed class ImportApi : IImportApi
@@ -59,6 +62,9 @@ public sealed class ImportApi : IImportApi
 
     public Task<ApiResult<ImportBatchDto>> GetLastAsync(CancellationToken cancellationToken = default) =>
         _api.GetAsync<ImportBatchDto>("api/import/last", cancellationToken);
+
+    public Task<ApiResult<byte[]>> DownloadTemplateAsync(ImportKind kind, CancellationToken cancellationToken = default) =>
+        _api.DownloadAsync("api/import/template?kind=" + kind, cancellationToken);
 
     private static string ContentTypeOf(string fileName) =>
         fileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase) ? "text/csv" : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";

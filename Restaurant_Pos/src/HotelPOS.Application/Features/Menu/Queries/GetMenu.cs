@@ -1,6 +1,8 @@
+using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Cqrs;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
+using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Menu;
 using HotelPOS.Contracts.Security;
 using Microsoft.EntityFrameworkCore;
@@ -59,6 +61,8 @@ internal sealed class GetMenuHandler : IQueryHandler<GetMenuQuery, MenuDto>
             .ToListAsync(cancellationToken);
         var activeGroups = groups.Select(g => g.Id).ToHashSet();
 
+        // The charge a parcel of each item pays: its own, else the restaurant-wide one (Admin > Settings).
+        var defaultPackaging = await _db.DecimalSettingAsync(SettingKeys.DefaultPackagingCharge, 0m, cancellationToken);
         var items = await _db.MenuItems.AsNoTracking()
             .Where(i => i.IsActive && i.Category!.IsActive)
             .OrderBy(i => i.SortOrder)
@@ -99,7 +103,7 @@ internal sealed class GetMenuHandler : IQueryHandler<GetMenuQuery, MenuDto>
                 TaxRatePercent = i.TaxRate,
                 StationId = i.PreparationStationId,
                 IsAvailable = i.IsAvailable,
-                PackagingCharge = i.PackagingCharge,
+                PackagingCharge = i.PackagingCharge > 0m ? i.PackagingCharge : defaultPackaging,
                 StockMode = i.StockMode,
                 StockRemaining = i.StockRemaining,
                 ImageUrl = i.ImagePath is null ? null : MenuImageRoutes.UrlFor(i.ImagePath),

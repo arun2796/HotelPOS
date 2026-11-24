@@ -145,6 +145,31 @@ public sealed partial class ImportWizardViewModel : ViewModelBase, INavigationAw
     }
 
     [RelayCommand]
+    private async Task DownloadTemplateAsync()
+    {
+        var suggested = Kind == ImportKind.Menu ? "menu-import-template.xlsx" : "customers-import-template.xlsx";
+        var path = _files.PickSavePath(suggested, "Excel workbook (*.xlsx)|*.xlsx");
+        if (path is null)
+        {
+            return;
+        }
+
+        await ExecuteAsync(async () =>
+        {
+            var result = await _api.DownloadTemplateAsync(Kind);
+            if (!result.Success || result.Data is null)
+            {
+                ErrorMessage = ApiFailures.Describe(result);
+                return;
+            }
+
+            await File.WriteAllBytesAsync(path, result.Data);
+            _notifications.Success("Template saved. Fill it in, then choose it here.");
+            _files.Open(path);
+        });
+    }
+
+    [RelayCommand]
     private async Task ChooseFileAsync()
     {
         var path = _files.PickImportFile();

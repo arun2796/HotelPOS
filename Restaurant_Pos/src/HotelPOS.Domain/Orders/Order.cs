@@ -208,7 +208,7 @@ public sealed class Order : BaseEntity, IHasRowVersion
     public void RequestBill(DateTime nowUtc, bool allowBeforeReady)
     {
         var allowed = Status is OrderStatus.Served or OrderStatus.Ready
-            || (allowBeforeReady && OrderStateMachine.IsInKitchenBand(Status));
+            || ((allowBeforeReady || OrderType != OrderType.DineIn) && OrderStateMachine.IsInKitchenBand(Status));
         if (!allowed)
         {
             throw new DomainException(

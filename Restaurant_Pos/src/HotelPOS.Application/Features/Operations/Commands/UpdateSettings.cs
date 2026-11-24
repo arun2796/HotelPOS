@@ -37,11 +37,13 @@ internal sealed class UpdateSettingsHandler : ICommandHandler<UpdateSettingsComm
 {
     private readonly IAppDbContext _db;
     private readonly IAuditTrail _audit;
+    private readonly HotelPOS.Application.Features.Menu.MenuChanges _menuChanges;
 
-    public UpdateSettingsHandler(IAppDbContext db, IAuditTrail audit)
+    public UpdateSettingsHandler(IAppDbContext db, IAuditTrail audit, HotelPOS.Application.Features.Menu.MenuChanges menuChanges)
     {
         _db = db;
         _audit = audit;
+        _menuChanges = menuChanges;
     }
 
     public async Task<Result<IReadOnlyList<SettingDto>>> Handle(UpdateSettingsCommand command, CancellationToken cancellationToken)
@@ -101,7 +103,16 @@ internal sealed class UpdateSettingsHandler : ICommandHandler<UpdateSettingsComm
         if (newValues.Count > 0)
         {
             _audit.Add(AuditActions.SettingsUpdated, nameof(Setting), null, oldValues, newValues);
-            await _db.SaveChangesAsync(cancellationToken);
+
+            // The ordering menu carries the parcel charge, so terminals must reload it when the default changes.
+            if (newValues.ContainsKey(SettingKeys.DefaultPackagingCharge))
+            {
+                await _menuChanges.SaveAsync(cancellationToken);
+            }
+            else
+            {
+                await _db.SaveChangesAsync(cancellationToken);
+            }
         }
 
         var all = await _db.Settings.AsNoTracking().OrderBy(s => s.Key).ToListAsync(cancellationToken);

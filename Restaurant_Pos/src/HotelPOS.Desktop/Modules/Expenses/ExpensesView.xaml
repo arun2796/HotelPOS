@@ -29,19 +29,20 @@
         <ColumnDefinition Width="*" />
         <ColumnDefinition Width="Auto" />
       </Grid.ColumnDefinitions>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+      </Grid.RowDefinitions>
       <WrapPanel VerticalAlignment="Center" Margin="0,0,0,-8">
-        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,14,8">
-          <DatePicker SelectedDate="{Binding FromDate}" Width="136" ToolTip="From date"
-                      AutomationProperties.Name="Filter from date" />
-          <TextBlock Text="–" Margin="6,0" VerticalAlignment="Center" />
-          <DatePicker SelectedDate="{Binding ToDate}" Width="136" ToolTip="To date"
-                      AutomationProperties.Name="Filter to date" />
-        </StackPanel>
-        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,14,8">
-          <Button Content="Today" Command="{Binding QuickFilterTodayCommand}" Style="{StaticResource Button.Secondary}" />
-          <Button Content="This month" Command="{Binding QuickFilterThisMonthCommand}" Style="{StaticResource Button.Secondary}" Margin="6,0,0,0" />
-          <Button Content="Last 30 days" Command="{Binding QuickFilterLast30DaysCommand}" Style="{StaticResource Button.Secondary}" Margin="6,0,0,0" />
-        </StackPanel>
+        <!-- Each control is its own wrap item so nothing is cut off; the date boxes are wide enough for dd/MM/yyyy and the picker button. -->
+        <DatePicker SelectedDate="{Binding FromDate}" Width="176" ToolTip="From date" Margin="0,0,0,8"
+                    AutomationProperties.Name="Filter from date" />
+        <TextBlock Text="to" Style="{StaticResource Text.Caption}" Margin="8,0,8,8" VerticalAlignment="Center" />
+        <DatePicker SelectedDate="{Binding ToDate}" Width="176" ToolTip="To date" Margin="0,0,14,8"
+                    AutomationProperties.Name="Filter to date" />
+        <Button Content="Today" Command="{Binding QuickFilterTodayCommand}" Style="{StaticResource Button.Secondary}" Margin="0,0,6,8" />
+        <Button Content="This month" Command="{Binding QuickFilterThisMonthCommand}" Style="{StaticResource Button.Secondary}" Margin="0,0,6,8" />
+        <Button Content="Last 30 days" Command="{Binding QuickFilterLast30DaysCommand}" Style="{StaticResource Button.Secondary}" Margin="0,0,14,8" />
         <ComboBox ItemsSource="{Binding CategoryFilters}" SelectedItem="{Binding SelectedCategoryFilter}"
                   DisplayMemberPath="Name" Width="150" VerticalAlignment="Center" Margin="0,0,14,8"
                   ToolTip="Filter by category" AutomationProperties.Name="Category filter" />
@@ -60,9 +61,9 @@
         </StackPanel>
       </WrapPanel>
 
+      <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding SummaryText}" Style="{StaticResource Text.Caption}" FontSize="13"
+                 Margin="0,6,0,0" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
       <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top" Margin="16,0,0,0">
-        <TextBlock Text="{Binding SummaryText}" Style="{StaticResource Text.Caption}" FontSize="13" VerticalAlignment="Center"
-                   Margin="0,0,12,0" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
         <Button Command="{Binding LoadCommand}" ToolTip="Reload from server" VerticalAlignment="Center">
           <TextBlock Text="&#xE72C;" Style="{StaticResource Text.Icon}" />
         </Button>

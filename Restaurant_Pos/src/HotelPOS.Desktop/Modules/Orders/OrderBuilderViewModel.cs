@@ -8,8 +8,11 @@ using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Menu;
 using HotelPOS.Contracts.Orders;
+using HotelPOS.Contracts.Security;
+using HotelPOS.Desktop.Modules.Billing;
 using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
+using HotelPOS.Desktop.Services.Auth;
 using HotelPOS.Desktop.Services.Configuration;
 using HotelPOS.Desktop.Services.Menu;
 using HotelPOS.Desktop.Services.Navigation;
@@ -81,6 +84,8 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
     private readonly IDialogService _dialogs;
     private readonly INotificationService _notifications;
     private readonly IUserPreferences _preferences;
+    private readonly IBillingApi? _billingApi;
+    private readonly IAuthSession? _session;
     private OrderBuilderContext _context = new(0, string.Empty, OrderBuilderMode.NewOrder, 1);
     private string _orderRowVersion = string.Empty;
     private Guid? _pendingKey;
@@ -98,9 +103,13 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
         IDialogService dialogs,
         INotificationService notifications,
         IUserPreferences preferences,
-        IFloorApi? floorApi = null)
+        IFloorApi? floorApi = null,
+        IBillingApi? billingApi = null,
+        IAuthSession? session = null)
     {
         _floorApi = floorApi;
+        _billingApi = billingApi;
+        _session = session;
         _menuCache = menuCache;
         _ordersApi = ordersApi;
         _systemApi = systemApi;
@@ -149,7 +158,7 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
     private string _noteText = string.Empty;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(Title), nameof(IsDelivery), nameof(IsTakeaway), nameof(IsDineIn))]
+    [NotifyPropertyChangedFor(nameof(Title), nameof(IsDelivery), nameof(IsTakeaway), nameof(IsDineIn), nameof(CanChangeGuests), nameof(BillOnSend), nameof(SendText))]
     private OrderType _orderType = OrderType.DineIn;
 
     [ObservableProperty]
@@ -231,7 +240,11 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
 
     public bool CanSaveDraft => !IsAppendMode;
 
-    public bool CanChangeGuests => !IsAppendMode;
+    // Guests only matter at a table: a takeaway customer just says what they want.
+    public bool CanChangeGuests => !IsAppendMode && IsDineIn;
+
+    // A takeaway is paid at the counter while the kitchen cooks: sending it also generates the bill.
+    public bool BillOnSend => Mode == OrderBuilderMode.NewOrder && IsTakeaway;
 
     public string Title => Mode switch
     {
@@ -255,7 +268,7 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
         ? "Cart is empty"
         : $"{ItemCount} item{(ItemCount == 1 ? string.Empty : "s")} · total {_currency}{ApproxTotal.ToString("N2", CultureInfo.CurrentCulture)}";
 
-    public string SendText => IsSending ? "Sending…" : IsAppendMode ? "Send added items" : "Send to kitchen";
+    public string SendText => IsSending ? "Sending…" : IsAppendMode ? "Send added items" : BillOnSend ? "Bill & send to kitchen" : "Send to kitchen";
 
     public bool IsCartEmpty => Cart.Count == 0;
 
@@ -590,6 +603,12 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
                 _notifications.Success(submit
                     ? IsAppendMode ? $"Added items sent for order #{order.OrderNumber}." : $"Order #{order.OrderNumber} sent to the kitchen."
                     : $"Draft saved as order #{order.OrderNumber}.");
+                if (submit && BillOnSend)
+                {
+                    await BillTakeawayAsync(order);
+                    return;
+                }
+
                 if (_context.TableId.HasValue && OrderType == OrderType.DineIn)
                 {
                     await _navigation.NavigateToAsync(ModuleRegistry.Tables, _context.TableId.Value);
@@ -620,6 +639,33 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
 
                 return;
         }
+    }
+
+    // The order is with the kitchen; now its bill. A cashier (or manager or admin) goes straight to taking payment, a
+    // waiter's bill waits in the counter queue.
+    private async Task BillTakeawayAsync(OrderDetailDto order)
+    {
+        var bill = await _ordersApi.RequestBillAsync(order.Id, Guid.NewGuid());
+        if (!bill.Success || bill.Data is null)
+        {
+            _notifications.Error($"Order #{order.OrderNumber} is with the kitchen, but its bill could not be generated: {ApiFailures.Describe(bill)} Request it from Orders.", bill.CorrelationId);
+            await _navigation.NavigateToAsync(ModuleRegistry.Orders);
+            return;
+        }
+
+        var canCollect = _billingApi is not null && _session?.User?.Permissions.Contains(Permissions.BillingOperate) == true;
+        if (canCollect)
+        {
+            var claim = await _billingApi!.ClaimAsync(bill.Data.Id);
+            if (claim.Success || claim.HasError(ErrorCodes.BillClaimed))
+            {
+                await _navigation.NavigateToPageAsync<BillDetailViewModel>(bill.Data.Id);
+                return;
+            }
+        }
+
+        _notifications.Success($"Bill {bill.Data.BillNumber} for order #{order.OrderNumber} is waiting at the counter.");
+        await _navigation.NavigateToAsync(ModuleRegistry.Orders);
     }
 
     private static string DescribeRejection(ApiResult<OrderDetailDto> result)

@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using HotelPOS.Api.Common;
 using HotelPOS.Api.Tests.Support;
+using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Kitchen;
@@ -119,6 +120,40 @@ public class Phase27ApiTests : IClassFixture<ApiFactory>
         parcel.PackagingCharge.Should().Be(10m);
         parcel.ItemName.Should().EndWith("(Parcel)");
         order.Items.Single(i => !i.IsParcel).UnitPrice.Should().Be(item.Price);
+    }
+
+    [Fact]
+    public async Task DefaultPackingCharge_AppliesToParcelsOfItemsWithoutTheirOwn_AndReachesTheMenu()
+    {
+        var admin = await _factory.CreateAuthenticatedClientAsync("admin", ApiFactory.AdminPassword);
+        var waiter = await _factory.CreateAuthenticatedClientAsync("waiter1", ApiFactory.DemoPassword);
+        var table = await TableAsync(waiter, "T06");
+        int itemId;
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            itemId = await db.MenuItems.Where(m => m.IsActive && m.IsAvailable && m.PackagingCharge == 0m && m.StockMode == StockTrackingMode.None)
+                .OrderByDescending(m => m.Id).Select(m => m.Id).FirstAsync();
+        }
+
+        var save = await admin.PutAsJsonAsync("/api/admin/settings",
+            new UpdateSettingsRequest { Items = new[] { new SettingValue { Key = SettingKeys.DefaultPackagingCharge, Value = "7.50" } } }, PosJson.Options);
+        save.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var menuItem = (await MenuAsync(waiter)).Items.Single(i => i.Id == itemId);
+        menuItem.PackagingCharge.Should().Be(7.5m, "terminals preview the parcel price from the menu");
+
+        var order = await PostAsync<OrderDetailDto>(waiter, "/api/orders", new CreateOrderRequest
+        {
+            TableId = table.Id, GuestCount = 1, Submit = true,
+            Items = new[] { new OrderItemInput { MenuItemId = itemId, Quantity = 1, IsParcel = true } },
+        });
+        order.Items.Single().PackagingCharge.Should().Be(7.5m);
+        order.Items.Single().UnitPrice.Should().Be(menuItem.Price + 7.5m);
+
+        var tooMuch = await admin.PutAsJsonAsync("/api/admin/settings",
+            new UpdateSettingsRequest { Items = new[] { new SettingValue { Key = SettingKeys.DefaultPackagingCharge, Value = "-1" } } }, PosJson.Options);
+        tooMuch.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Fact]

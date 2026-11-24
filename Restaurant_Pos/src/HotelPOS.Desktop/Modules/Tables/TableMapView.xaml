@@ -36,6 +36,45 @@
         <ListBox Style="{StaticResource ChipList}" ItemsSource="{Binding ViewModes}" SelectedItem="{Binding ViewMode}"
                  Margin="0,0,16,0" AutomationProperties.Name="List or map view" ToolTip="Show the tables as a list or on the floor plan" />
       </StackPanel>
+      <Grid VerticalAlignment="Top" Margin="0,0,8,0" Visibility="{Binding CanTakeOrders, Converter={StaticResource BoolToVisibility}}">
+        <Button x:Name="DineInButton" Command="{Binding NewDineInOrderCommand}" ToolTip="Start a dine-in order: pick a free table">
+          <StackPanel Orientation="Horizontal">
+            <controls:Icon Kind="plus" Width="14" Height="14" Margin="0,0,6,0" />
+            <TextBlock Text="New dine-in order" />
+          </StackPanel>
+        </Button>
+        <Popup IsOpen="{Binding IsPickerOpen, Mode=TwoWay}" PlacementTarget="{Binding ElementName=DineInButton}" Placement="Bottom"
+               StaysOpen="False" AllowsTransparency="True" PopupAnimation="Fade">
+          <Border Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                  CornerRadius="8" Padding="12" Margin="8" MaxWidth="420" Effect="{DynamicResource Shadow.Popup}">
+            <StackPanel>
+              <TextBlock Text="Pick a free table" Style="{StaticResource Text.Subtitle}" Margin="0,0,0,8" />
+              <TextBlock Text="No table is free right now." Style="{StaticResource Text.Caption}"
+                         Visibility="{Binding HasNoFreeTables, Converter={StaticResource BoolToVisibility}}" />
+              <ItemsControl ItemsSource="{Binding FreeTables}" Focusable="False">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <WrapPanel />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate DataType="{x:Type tables:TableTileViewModel}">
+                    <Button Margin="0,0,6,6" MinWidth="88" Padding="10,6"
+                            Command="{Binding DataContext.PickFreeTableCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            CommandParameter="{Binding}" AutomationProperties.Name="{Binding Code}">
+                      <StackPanel>
+                        <TextBlock Text="{Binding Code}" FontWeight="Bold" HorizontalAlignment="Center" />
+                        <TextBlock Text="{Binding SectionName}" FontSize="11" Opacity="0.8" HorizontalAlignment="Center" />
+                        <TextBlock Text="{Binding GuestsDetailText}" FontSize="11" Opacity="0.8" HorizontalAlignment="Center" />
+                      </StackPanel>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </Border>
+        </Popup>
+      </Grid>
       <Button Command="{Binding NewTakeawayOrderCommand}" ToolTip="Start takeaway order" VerticalAlignment="Top" Margin="0,0,8,0"
               Visibility="{Binding CanTakeOrders, Converter={StaticResource BoolToVisibility}}">
         <StackPanel Orientation="Horizontal">
@@ -67,7 +106,7 @@
             <DataTemplate DataType="{x:Type tables:TableMapSectionViewModel}">
               <StackPanel Visibility="{Binding IsVisible, Converter={StaticResource BoolToVisibility}}" Margin="0,0,0,8">
                 <TextBlock Text="{Binding Name}" Style="{StaticResource Text.Subtitle}" Margin="0,8,0,10" />
-                <Viewbox Stretch="Uniform" StretchDirection="Both" HorizontalAlignment="Left" MaxHeight="520"
+                <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left" MaxHeight="520"
                          Visibility="{Binding UseCanvas, Converter={StaticResource BoolToVisibility}}">
                   <Border Width="{Binding CanvasWidth}" Height="{Binding CanvasHeight}" BorderBrush="{DynamicResource Brush.Border}"
                           BorderThickness="1" CornerRadius="8" Background="{DynamicResource Brush.Surface}">

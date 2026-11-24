@@ -1,5 +1,7 @@
+using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
+using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Menu;
 using HotelPOS.Contracts.Orders;
 using HotelPOS.Domain.Floor;
@@ -44,6 +46,11 @@ internal sealed class OrderItemFactory
             .Include(g => g.Options)
             .Where(g => groupIds.Contains(g.Id) && g.IsActive)
             .ToDictionaryAsync(g => g.Id, cancellationToken);
+
+        // Parcel items with no packing charge of their own pay the restaurant-wide one (Admin > Settings).
+        var defaultPackaging = inputs.Any(i => i.IsParcel)
+            ? await _db.DecimalSettingAsync(SettingKeys.DefaultPackagingCharge, 0m, cancellationToken)
+            : 0m;
 
         var result = new List<OrderItem>();
         for (var index = 0; index < inputs.Count; index++)
@@ -96,7 +103,7 @@ internal sealed class OrderItemFactory
 
             // A parcel pays the item's packaging charge. It is folded into the unit price, so the bill, GST and every
             // total follow without a separate line; the name says Parcel on the KOT and the invoice.
-            var packaging = input.IsParcel ? menuItem.PackagingCharge : 0m;
+            var packaging = !input.IsParcel ? 0m : menuItem.PackagingCharge > 0m ? menuItem.PackagingCharge : defaultPackaging;
             var lineName = input.IsParcel ? ParcelName(menuItem.Name) : menuItem.Name;
             result.Add(new OrderItem(
                 menuItem.Id,
