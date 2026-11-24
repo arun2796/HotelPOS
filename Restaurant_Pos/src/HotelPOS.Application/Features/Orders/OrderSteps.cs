@@ -211,7 +211,25 @@ internal sealed class OrderSteps
                 BatchNumber = t.BatchNumber,
                 StationCode = stations.GetValueOrDefault(t.PreparationStationId, string.Empty),
                 Status = t.Status,
+                SeatCode = t.SeatCode,
             }).ToList(),
+            SeatGroups = order.ActiveItems
+                .Where(i => !string.IsNullOrWhiteSpace(i.SeatCode))
+                .GroupBy(i => i.SeatCode!, StringComparer.OrdinalIgnoreCase)
+                .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
+                .Select(g =>
+                {
+                    var open = g.Select(i => ticketOf.GetValueOrDefault(i.Id)).Where(t => t is not null && t.Status != KitchenOrderStatus.Cancelled)
+                        .Select(t => t!.Status).ToList();
+                    return new SeatGroupStatusDto
+                    {
+                        SeatCode = g.Key,
+                        ItemCount = g.Count(),
+                        Quantity = g.Sum(i => i.Quantity),
+                        KitchenStatus = open.Count == 0 ? null : open.Min(),
+                    };
+                })
+                .ToList(),
             ApproxSubtotal = order.ApproxSubtotal,
             CanModify = canModify && OrderStateMachine.IsActive(order.Status),
             RowVersion = RowVersions.Encode(order.RowVersion),

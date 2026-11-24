@@ -100,3 +100,16 @@ internal sealed class MenuItemModifierGroupConfiguration : IEntityTypeConfigurat
         builder.HasOne(l => l.ModifierGroup).WithMany().HasForeignKey(l => l.ModifierGroupId).OnDelete(DeleteBehavior.Restrict);
     }
 }
+
+internal sealed class StockMovementConfiguration : IEntityTypeConfiguration<StockMovement>
+{
+    public void Configure(EntityTypeBuilder<StockMovement> builder)
+    {
+        builder.ToTable("StockMovements", t => t.HasCheckConstraint("CK_StockMovements_Type", "\"Type\" BETWEEN 1 AND 6"));
+        builder.Property(m => m.Remarks).HasMaxLength(StockLimits.ReasonMaxLength);
+        builder.HasOne<MenuItem>().WithMany().HasForeignKey(m => m.MenuItemId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(m => m.Order).WithMany().HasForeignKey(m => m.OrderId).OnDelete(DeleteBehavior.SetNull);
+        builder.HasIndex(m => new { m.MenuItemId, m.CreatedAt });
+        builder.HasIndex(m => m.OrderId);
+    }
+}

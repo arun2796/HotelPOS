@@ -132,6 +132,7 @@ internal sealed class KitchenTickets
         WaiterName = waiterName,
         StationId = ticket.PreparationStationId,
         StationCode = stationCode,
+        SeatCode = ticket.SeatCode,
         Status = ticket.Status,
         CreatedAtUtc = ticket.CreatedAt,
         AcceptedAtUtc = ticket.AcceptedAt,

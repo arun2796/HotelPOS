@@ -29,7 +29,7 @@ public class OrdersApiTests : IClassFixture<ApiFactory>
     {
         { "kitchen1", "GET", "/api/orders/active", HttpStatusCode.OK },
         { "cashier1", "GET", "/api/orders", HttpStatusCode.OK },
-        { "cashier1", "POST", "/api/orders", HttpStatusCode.Forbidden },
+        { "kitchen1", "POST", "/api/orders", HttpStatusCode.Forbidden },
         { "kitchen1", "POST", "/api/orders/1/cancel", HttpStatusCode.Forbidden },
         { "kitchen1", "POST", "/api/orders/1/items", HttpStatusCode.Forbidden },
     };

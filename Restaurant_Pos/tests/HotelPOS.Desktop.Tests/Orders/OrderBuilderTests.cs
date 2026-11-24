@@ -1,6 +1,7 @@
 using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Enums;
+using HotelPOS.Contracts.Floor;
 using HotelPOS.Contracts.Menu;
 using HotelPOS.Contracts.Orders;
 using HotelPOS.Desktop.Modules.Orders;
@@ -211,6 +212,45 @@ public sealed class OrderBuilderViewModelTests : IDisposable
         vm.ErrorMessage.Should().Be("Butter Naan is sold out.");
         vm.Cart.Should().ContainSingle();
         _drafts.Load(5)!.PendingKey.Should().BeNull();
+    }
+
+    // Found in the real-app run: another terminal took C+D while this screen was open, so a send of B+C was rejected, but the
+    // chips still showed D as free. After a rejection the seats must be re-read from the server.
+    [Fact]
+    public async Task ARejectedAppend_ReloadsTheSeatGroups_SoTheChipsShowWhatIsReallyTaken()
+    {
+        var table = new TableDto { Id = 5, Code = "T05", Capacity = 4, SeatCodes = new[] { "T05A", "T05B", "T05C", "T05D" } };
+        var floor = Substitute.For<IFloorApi>();
+        floor.GetMapAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(ApiResult<TableMapDto>.Ok(new TableMapDto
+        {
+            Sections = new[] { new TableMapSectionDto { Id = 1, Name = "Ground", Tables = new[] { table } } },
+        }));
+        var onServer = new[] { "T05A" };
+        _orders.GetAsync(7, Arg.Any<CancellationToken>()).Returns(_ => ApiResult<OrderDetailDto>.Ok(new OrderDetailDto
+        {
+            Id = 7,
+            SeatGroups = onServer.Select(s => new SeatGroupStatusDto { SeatCode = s }).ToList(),
+        }));
+        _orders.AppendItemsAsync(7, Arg.Any<AppendOrderItemsRequest>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(ApiResult<OrderDetailDto>.Fail(ErrorCodes.ValidationError, "Seat T05C already belongs to the seat group T05C+D."));
+        var cache = Substitute.For<IMenuCache>();
+        cache.Menu.Returns(Menu);
+        var system = Substitute.For<ISystemApi>();
+        system.GetPublicSettingsAsync(Arg.Any<CancellationToken>()).Returns(ApiResult<List<SettingDto>>.Ok(new List<SettingDto>()));
+        var vm = new OrderBuilderViewModel(cache, _orders, system, _drafts,
+            new OrderSubmitter(NullLogger<OrderSubmitter>.Instance), _navigation, _dialogs, Substitute.For<INotificationService>(), _preferences, floor);
+        await vm.OnNavigatedToAsync(new OrderBuilderContext(5, "T05", OrderBuilderMode.AppendItems, 4, OrderId: 7, OrderNumber: 1007));
+        vm.SeatPicks.Single(p => p.Code == "T05D").IsTaken.Should().BeFalse("the screen opened before the other terminal ordered");
+
+        onServer = new[] { "T05A", "T05C+D" };
+        vm.SeatPicks.Single(p => p.Code == "T05B").IsOn = true;
+        vm.SeatPicks.Single(p => p.Code == "T05C").IsOn = true;
+        vm.SelectedCategory = vm.Categories[1];
+        vm.AddItemCommand.Execute(vm.Items[0]);
+        await vm.SendCommand.ExecuteAsync(null);
+
+        vm.ErrorMessage.Should().Contain("already belongs");
+        vm.SeatPicks.Single(p => p.Code == "T05D").OwnerGroup.Should().Be("T05C+D");
     }
 
     [Fact]

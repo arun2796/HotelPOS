@@ -2,6 +2,7 @@ using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Features.Floor;
 using HotelPOS.Contracts.Enums;
+using HotelPOS.Contracts.Floor;
 using HotelPOS.Contracts.Orders;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Contracts.Security;
@@ -165,21 +166,34 @@ public sealed class TicketFactory
     public async Task<List<KitchenOrder>> CreateAsync(Order order, int batchNumber, CancellationToken cancellationToken)
     {
         var items = order.Items.Where(i => i.BatchNumber == batchNumber && i.Status == OrderItemStatus.Sent).ToList();
-        var byStation = items.GroupBy(i => i.PreparationStationId).ToList();
-        var stationIds = byStation.Select(g => g.Key).ToList();
+        // One ticket per station and seat group: a seat group's status is its own, never inherited from another group's dishes.
+        var byStation = items.GroupBy(i => (Station: i.PreparationStationId, Seat: i.SeatCode ?? string.Empty)).ToList();
+        var stationIds = byStation.Select(g => g.Key.Station).Distinct().ToList();
+        var seatGroups = byStation.Select(g => g.Key.Seat).Distinct().Count();
         var codes = await _db.PreparationStations.AsNoTracking()
             .Where(s => stationIds.Contains(s.Id))
             .ToDictionaryAsync(s => s.Id, s => s.Code, cancellationToken);
 
         var baseNumber = $"{order.OrderNumber}-{batchNumber}";
+        var stationCount = stationIds.Count;
         return byStation
-            .OrderBy(g => codes.GetValueOrDefault(g.Key, string.Empty), StringComparer.Ordinal)
-            .Select(g => new KitchenOrder(
-                order,
-                batchNumber,
-                g.Key,
-                byStation.Count == 1 ? baseNumber : $"{baseNumber}-{codes.GetValueOrDefault(g.Key, g.Key.ToString())}",
-                g))
+            .OrderBy(g => codes.GetValueOrDefault(g.Key.Station, string.Empty), StringComparer.Ordinal)
+            .ThenBy(g => g.Key.Seat, StringComparer.Ordinal)
+            .Select(g =>
+            {
+                var number = baseNumber;
+                if (stationCount > 1)
+                {
+                    number += "-" + codes.GetValueOrDefault(g.Key.Station, g.Key.Station.ToString());
+                }
+
+                if (seatGroups > 1)
+                {
+                    number += "-" + (g.Key.Seat.Length == 0 ? "T" : string.Concat(SeatSelection.Parse(g.Key.Seat).Select(s => s[^1])));
+                }
+
+                return new KitchenOrder(order, batchNumber, g.Key.Station, number, g, g.Key.Seat.Length == 0 ? null : g.Key.Seat);
+            })
             .ToList();
     }
 }

@@ -74,7 +74,7 @@ internal sealed class SubmitOrderHandler : ICommandHandler<SubmitOrderCommand, O
         }
 
         // The draft cart is checked again here: the supervisor may have run an item out since it was added.
-        var outOfStock = await _stock.ReserveAsync(order.Items, cancellationToken);
+        var outOfStock = await _stock.ReserveAsync(order.Items, cancellationToken, order.Id);
         if (outOfStock is not null)
         {
             return outOfStock;

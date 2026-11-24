@@ -17,7 +17,7 @@ namespace HotelPOS.Application.Features.Billing.Commands;
 
 // Sends an order's bill to the counter. Waiters and the cashier desk: the endpoint gates by role, there is no
 // permission for it; a waiter may only request the bill of their own order unless any waiter may edit orders.
-public sealed record RequestBillCommand(int OrderId) : ICommand<BillDetailDto>, IAuditedCommand, IBusinessDayGuarded
+public sealed record RequestBillCommand(int OrderId, bool SplitBySeat = false) : ICommand<BillDetailDto>, IAuditedCommand, IBusinessDayGuarded
 {
     public BusinessDayScope BusinessDayScope => BusinessDayScope.Today;
 }
@@ -107,9 +107,49 @@ internal sealed class RequestBillHandler : ICommandHandler<RequestBillCommand, B
             return AppErrors.Concurrency("order");
         }
 
+        // Guests seated apart (seats 1 and 2 together, seat 3, seat 4): one bill for each seat group, ready at the counter
+        // at once. The first group keeps this bill (A); the rest become B, C ...
+        var seatBills = new List<Bill>();
+        if (command.SplitBySeat)
+        {
+            var groups = bill.Items.GroupBy(i => i.SeatCode ?? string.Empty)
+                .OrderBy(g => g.Key.Length == 0 ? 1 : 0).ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase).ToList();
+            if (groups.Count >= 2 && groups.Count <= BillParts.MaxParts)
+            {
+                var roundOff = await _bills.RoundOffAsync(cancellationToken);
+                var part = 0;
+                try
+                {
+                    foreach (var group in groups.Skip(1))
+                    {
+                        var sibling = bill.SplitOff(group.Select(i => i.Id).ToList(), ++part, roundOff);
+                        sibling.LabelPart(tableCode, sibling.SplitIndex);
+                        _db.Bills.Add(sibling);
+                        seatBills.Add(sibling);
+                    }
+
+                    bill.LabelPart(tableCode, 0);
+                    await _db.SaveChangesAsync(cancellationToken);
+                }
+                catch (DomainException ex)
+                {
+                    return new AppError(ex.Code, ex.Message);
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    return AppErrors.Concurrency("order");
+                }
+            }
+        }
+
         _audit.Add(AuditActions.BillRequested, nameof(Bill), bill.Id.ToString(CultureInfo.InvariantCulture),
-            newValues: new { bill.BillNumber, order.OrderNumber, Table = tableCode, bill.GrandTotal });
-        _afterCommit.Enqueue(() => _events.PublishRequestedAsync(bill, order, tableCode));
+            newValues: new { bill.BillNumber, order.OrderNumber, Table = tableCode, bill.GrandTotal, SeatBills = seatBills.Count });
+        _afterCommit.Enqueue(() => _events.PublishRequestedAsync(bill, order, bill.TableCode));
+        foreach (var sibling in seatBills)
+        {
+            var seatBill = sibling;
+            _afterCommit.Enqueue(() => _events.PublishRequestedAsync(seatBill, order, seatBill.TableCode));
+        }
         if (table != null)
         {
             _afterCommit.Enqueue(() => _tableEvents.PublishStatusAsync(table, order.OrderNumber));

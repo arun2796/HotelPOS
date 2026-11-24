@@ -103,6 +103,41 @@ public sealed class MenuItemsController : ApiControllerBase
     public async Task<IActionResult> SetStock(int id, SetStockRequest request, CancellationToken cancellationToken) =>
         FromResult(await Sender.Send(new SetMenuItemStockCommand(id, request), cancellationToken), message: "Stock updated.");
 
+    // Waste or a counted correction: needs a reason, never takes the count below zero, one ledger row.
+    [HttpPost("{id:int}/stock/adjust")]
+    [Authorize(Policy = Permissions.StockAdjust)]
+    [ProducesResponseType<ApiResponse<MenuItemDto>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> AdjustStock(int id, AdjustStockRequest request, CancellationToken cancellationToken) =>
+        FromResult(await Sender.Send(new AdjustMenuItemStockCommand(id, request), cancellationToken), message: "Stock updated.");
+
+    // The count at or below which the item shows as Low stock.
+    [HttpPatch("{id:int}/stock/reorder-level")]
+    [Authorize(Policy = Permissions.MenuAvailability)]
+    [ProducesResponseType<ApiResponse<MenuItemDto>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> SetReorderLevel(int id, SetReorderLevelRequest request, CancellationToken cancellationToken) =>
+        FromResult(await Sender.Send(new SetReorderLevelCommand(id, request), cancellationToken), message: "Low-stock level saved.");
+
+    // Every counted item with prepared / reserved / sold / refilled / wasted today, available, status and who changed it last.
+    [HttpGet("stock/overview")]
+    [Authorize(Policy = Permissions.MenuView)]
+    [ProducesResponseType<ApiResponse<StockOverviewDto>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> StockOverview(CancellationToken cancellationToken) =>
+        FromResult(await Sender.Send(new GetStockOverviewQuery(), cancellationToken));
+
+    // The stock ledger across items for a business day: wastage, adjustments and who did what.
+    [HttpGet("stock/movements")]
+    [Authorize(Policy = Permissions.ReportsView)]
+    [ProducesResponseType<ApiResponse<IReadOnlyList<StockMovementDto>>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> StockMovements([FromQuery] HotelPOS.Contracts.Enums.StockMovementType? type, [FromQuery] int? userId, [FromQuery] DateOnly? day, [FromQuery] int take = 200, CancellationToken cancellationToken = default) =>
+        FromResult(await Sender.Send(new GetStockMovementsQuery(type, userId, day, take), cancellationToken));
+
+    // The ledger of one item: every change of its count, newest first, with today's sold / refilled / wasted.
+    [HttpGet("{id:int}/stock/history")]
+    [Authorize(Policy = Permissions.MenuView)]
+    [ProducesResponseType<ApiResponse<StockHistoryDto>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> StockHistory(int id, [FromQuery] int take = 100, CancellationToken cancellationToken = default) =>
+        FromResult(await Sender.Send(new GetStockHistoryQuery(id, take), cancellationToken));
+
     [HttpPost("{id:int}/image")]
     [Authorize(Policy = Permissions.MenuManage)]
     [Consumes("multipart/form-data")]

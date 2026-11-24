@@ -23,6 +23,10 @@
           <Grid>
             <StackPanel Orientation="Horizontal">
               <TextBlock Text="{Binding Ticket.TableCode}" FontSize="26" FontWeight="Bold" Foreground="{DynamicResource Brush.TextPrimary}" />
+              <Border Background="{DynamicResource Brush.PrimarySoft}" BorderBrush="{DynamicResource Brush.Primary}" BorderThickness="1" CornerRadius="8" Padding="8,2"
+                      Margin="10,0,0,0" VerticalAlignment="Center" Visibility="{Binding HasSeatGroup, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Text="{Binding SeatText}" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource Brush.PrimaryOnSoft}" />
+              </Border>
               <Border Background="{DynamicResource Brush.Primary}" CornerRadius="8" Padding="8,2" Margin="10,0,0,0" VerticalAlignment="Center"
                       Visibility="{Binding IsAddBatch, Converter={StaticResource BoolToVisibility}}">
                 <TextBlock Text="+ADD" Foreground="{DynamicResource Brush.PrimaryText}" FontWeight="Bold" FontSize="12" />
@@ -217,6 +221,7 @@
                     <Grid.RowDefinitions>
                       <RowDefinition Height="Auto" />
                       <RowDefinition Height="Auto" />
+                      <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
                       <ColumnDefinition Width="*" />
@@ -240,6 +245,25 @@
                       <Button Content="No count" Style="{StaticResource Button.Ghost}" Margin="6,0,0,0" CommandParameter="{Binding}"
                               Command="{Binding DataContext.ClearStockCountCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                     </StackPanel>
+                    <StackPanel Grid.Row="2" Grid.ColumnSpan="3" Orientation="Horizontal" Margin="0,6,0,0"
+                                Visibility="{Binding HasStockCount, Converter={StaticResource BoolToVisibility}}">
+                      <TextBox Width="190" Text="{Binding ReasonInput, UpdateSourceTrigger=PropertyChanged}" MaxLength="200"
+                               VerticalContentAlignment="Center" ToolTip="Why: dropped, expired, counted again" AutomationProperties.Name="Reason" />
+                      <Button Content="Waste" Style="{StaticResource Button.Ghost}" Margin="8,0,0,0" CommandParameter="{Binding}"
+                              ToolTip="Take the number above off the count as food thrown away (needs a reason)"
+                              Command="{Binding DataContext.WasteStockCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                      <Button Content="Correct ±" Style="{StaticResource Button.Ghost}" Margin="6,0,0,0" CommandParameter="{Binding}"
+                              ToolTip="Change the count by the signed number above, for example -3 or 5 (needs a reason)"
+                              Command="{Binding DataContext.CorrectStockCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                      <Button Content="History" Style="{StaticResource Button.Ghost}" Margin="6,0,0,0" CommandParameter="{Binding}"
+                              Command="{Binding DataContext.ShowStockHistoryCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                      <TextBox Width="64" Text="{Binding ReorderInput, UpdateSourceTrigger=PropertyChanged}" MaxLength="6" Margin="12,0,0,0"
+                               VerticalContentAlignment="Center" ToolTip="Show as low stock at this count or fewer (empty = the default)"
+                               AutomationProperties.Name="Low stock level" />
+                      <Button Content="Low at" Style="{StaticResource Button.Ghost}" Margin="6,0,0,0" CommandParameter="{Binding}"
+                              ToolTip="Save the low-stock level typed on the left"
+                              Command="{Binding DataContext.SetReorderLevelCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                    </StackPanel>
                   </Grid>
                   <DataTemplate.Triggers>
                     <DataTrigger Binding="{Binding IsAvailable}" Value="False">
@@ -252,6 +276,58 @@
             </ItemsControl>
           </ScrollViewer>
           <Button Grid.Row="2" Content="Close" HorizontalAlignment="Right" MinWidth="120" Margin="0,12,0,0" Command="{Binding CloseSoldOutCommand}" />
+        </Grid>
+      </Border>
+    </Grid>
+
+    <!-- Stock history: the ledger of one item -->
+    <Grid Grid.RowSpan="3" Grid.ColumnSpan="5" Background="{DynamicResource Brush.Overlay}" Margin="-16"
+          Visibility="{Binding IsHistoryOpen, Converter={StaticResource BoolToVisibility}}">
+      <Border Style="{StaticResource Dialog.Frame}" Width="760" MaxHeight="640" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <Grid>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
+          <TextBlock Text="{Binding HistoryTitle}" Style="{StaticResource Text.Title}" />
+          <TextBlock Grid.Row="1" Text="{Binding HistorySummary}" Style="{StaticResource Text.Caption}" Margin="0,4,0,12" />
+          <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" PanningMode="VerticalOnly">
+            <ItemsControl ItemsSource="{Binding History}" Focusable="False">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="{x:Type kitchen:StockHistoryRow}">
+                  <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="110" />
+                      <ColumnDefinition Width="130" />
+                      <ColumnDefinition Width="60" />
+                      <ColumnDefinition Width="90" />
+                      <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{Binding TimeText}" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="{Binding TypeText}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="2" Text="{Binding ChangeText}" FontWeight="Bold" VerticalAlignment="Center" Typography.NumeralAlignment="Tabular">
+                      <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                          <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
+                          <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsIncrease}" Value="True">
+                              <Setter Property="Foreground" Value="{DynamicResource Brush.Success}" />
+                            </DataTrigger>
+                          </Style.Triggers>
+                        </Style>
+                      </TextBlock.Style>
+                    </TextBlock>
+                    <TextBlock Grid.Column="3" Text="{Binding BalanceText}" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="4" Text="{Binding DetailText}" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                               ToolTip="{Binding DetailText}" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+          <Button Grid.Row="3" Content="Close" HorizontalAlignment="Right" MinWidth="120" Margin="0,12,0,0" Command="{Binding CloseHistoryCommand}" />
         </Grid>
       </Border>
     </Grid>

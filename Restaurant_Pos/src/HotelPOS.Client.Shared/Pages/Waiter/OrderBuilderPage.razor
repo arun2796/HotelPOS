@@ -91,14 +91,19 @@ else
             <div class="seat-picker" role="group" aria-label="Seat for the next dishes" data-testid="seat-picker">
                 <span class="seat-picker-label muted small">Seat</span>
                 <div class="chip-row seat-chips">
-                    <button type="button" class="chip-btn @(_seat is null ? "on" : null)" data-testid="seat-whole" aria-pressed="@(_seat is null ? "true" : "false")" @onclick="() => _seat = null">Whole table</button>
+                    <button type="button" class="chip-btn @(_seatsOn.Count == 0 ? "on" : null)" data-testid="seat-whole" aria-pressed="@(_seatsOn.Count == 0 ? "true" : "false")" @onclick="_seatsOn.Clear">Whole table</button>
                     @foreach (var code in _seatCodes)
                     {
                         var seat = code;
-                        <button type="button" class="chip-btn @(_seat == seat ? "on" : null)" data-testid="seat-chip" data-seat="@seat" aria-label="@($"Seat {seat}")"
-                                aria-pressed="@(_seat == seat ? "true" : "false")" @onclick="() => _seat = seat">@seat</button>
+                        var owner = SeatOwners.GetValueOrDefault(seat);
+                        <button type="button" class="chip-btn @(_seatsOn.Contains(seat) ? "on" : null) @(owner is not null ? "taken" : null)" data-testid="seat-chip" data-seat="@seat"
+                                data-taken="@(owner is not null ? "true" : "false")"
+                                aria-label="@(owner is null ? $"Seat {seat}, free" : $"Seat {seat}, already has dishes with the group {owner}")"
+                                title="@(owner is null ? $"Seat {seat} · free" : $"Seat {seat} · taken by the group {owner}. Tap to add to that group.")"
+                                aria-pressed="@(_seatsOn.Contains(seat) ? "true" : "false")" @onclick="() => ToggleSeat(seat)">@seat@(owner is not null ? " ●" : null)</button>
                     }
                 </div>
+                <div class="muted small seat-hint">Tap one seat, or several that share the order. ● Taken: already has dishes, tap to add to that group.</div>
             </div>
         }
         <button type="button" class="parcel-toggle @(_parcel ? "on" : null)" data-testid="parcel-toggle" aria-pressed="@(_parcel ? "true" : "false")" @onclick="() => _parcel = !_parcel">
@@ -234,7 +239,7 @@ else
         // Takeaway and delivery have no seats: nothing may still point at one.
         if (type != OrderType.DineIn)
         {
-            _seat = null;
+            _seatsOn.Clear();
             Change(_cart.ClearSeats);
         }
 
@@ -243,12 +248,69 @@ else
 
     // Seats of the table this order is for (its own plus those of tables merged into it); empty for takeaway/delivery.
     private IReadOnlyList<string> _seatCodes = Array.Empty<string>();
-    private string? _seat;
+    private readonly HashSet<string> _seatsOn = new(StringComparer.OrdinalIgnoreCase);
+    private IReadOnlyList<string> _serverSeatGroups = Array.Empty<string>();
     private bool _parcel;
 
     private bool ShowSeatPicker => _orderType == OrderType.DineIn && _seatCodes.Count > 0;
 
-    private string? ActiveSeat => ShowSeatPicker && _seat is not null && _seatCodes.Contains(_seat) ? _seat : null;
+    // The dishes tapped next are for these seats together ("T01A+B"); nothing tapped means the whole table.
+    private string? ActiveSeat => ShowSeatPicker && _seatsOn.Count > 0 ? SeatSelection.Join(_seatCodes.Where(_seatsOn.Contains)) : null;
+
+    // Which seat group already has dishes for each seat: the dishes in the cart and those already on the order.
+    private Dictionary<string, string> SeatOwners
+    {
+        get
+        {
+            var owner = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var raw in _serverSeatGroups.Concat(_cart.Lines.Select(l => l.SeatCode ?? string.Empty)).Where(g => !string.IsNullOrWhiteSpace(g)))
+            {
+                var group = SeatSelection.Join(SeatSelection.Parse(raw));
+                foreach (var seat in SeatSelection.Parse(group))
+                {
+                    owner.TryAdd(seat, group);
+                }
+            }
+
+            return owner;
+        }
+    }
+
+    // A seat belongs to one seat group: a taken seat selects its whole group (and nothing else), free seats select only
+    // free seats, so no seat can end up in two groups.
+    private void ToggleSeat(string seat)
+    {
+        var owners = SeatOwners;
+        var group = owners.GetValueOrDefault(seat);
+        var groupSeats = group is null ? new List<string>() : _seatCodes.Where(s => owners.GetValueOrDefault(s) == group).ToList();
+        if (_seatsOn.Contains(seat))
+        {
+            if (group is null)
+            {
+                _seatsOn.Remove(seat);
+            }
+            else
+            {
+                _seatsOn.RemoveWhere(groupSeats.Contains);
+            }
+
+            return;
+        }
+
+        if (group is not null)
+        {
+            _seatsOn.Clear();
+            foreach (var s in groupSeats)
+            {
+                _seatsOn.Add(s);
+            }
+
+            return;
+        }
+
+        _seatsOn.RemoveWhere(s => owners.ContainsKey(s));
+        _seatsOn.Add(seat);
+    }
 
     private void ToggleParcel(CartLine line) =>
         Change(() => _cart.SetParcel(line, !line.IsParcel, _menu?.Items.FirstOrDefault(i => i.Id == line.MenuItemId)?.PackagingCharge));
@@ -382,6 +444,16 @@ else
                 }
 
                 _seatCodes = await LoadSeatCodesAsync(detail.Table);
+            }
+
+            // Dishes already on the order own their seats too.
+            if (IsAppend && OrderId is { } existingId)
+            {
+                var existing = await Api.GetOrderAsync(existingId);
+                if (existing.Success && existing.Data is { } existingOrder)
+                {
+                    _serverSeatGroups = existingOrder.SeatGroups.Select(g => g.SeatCode).ToList();
+                }
             }
         }
 

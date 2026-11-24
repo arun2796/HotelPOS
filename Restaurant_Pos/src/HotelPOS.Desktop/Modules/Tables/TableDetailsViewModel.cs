@@ -91,6 +91,24 @@ public sealed partial class TableDetailsViewModel : ViewModelBase
     [ObservableProperty]
     private IReadOnlyList<OrderBatchViewModel> _batches = Array.Empty<OrderBatchViewModel>();
 
+    // "Seat A+B · Preparing": each seat group's own kitchen status, so one group's progress is never shown as another's.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSeatGroups))]
+    private IReadOnlyList<string> _seatGroupLines = Array.Empty<string>();
+
+    public bool HasSeatGroups => SeatGroupLines.Count > 0;
+
+    private static string SeatGroupText(HotelPOS.Contracts.Orders.SeatGroupStatusDto group) =>
+        $"Seat {group.SeatCode}  ·  " + group.KitchenStatus switch
+        {
+            null => "not sent",
+            HotelPOS.Contracts.Enums.KitchenOrderStatus.New => "waiting for the kitchen",
+            HotelPOS.Contracts.Enums.KitchenOrderStatus.Accepted => "accepted",
+            HotelPOS.Contracts.Enums.KitchenOrderStatus.Preparing => "preparing",
+            HotelPOS.Contracts.Enums.KitchenOrderStatus.Ready => "ready",
+            _ => "served",
+        };
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(NewOrderText))]
     private bool _hasLocalDraft;
@@ -189,6 +207,7 @@ public sealed partial class TableDetailsViewModel : ViewModelBase
         {
             Order = null;
             Batches = Array.Empty<OrderBatchViewModel>();
+            SeatGroupLines = Array.Empty<string>();
             RefreshCommands();
             return;
         }
@@ -203,6 +222,7 @@ public sealed partial class TableDetailsViewModel : ViewModelBase
         {
             Order = result.Data;
             var order = result.Data;
+            SeatGroupLines = order.SeatGroups.Select(SeatGroupText).ToList();
             Batches = order.Items
                 .GroupBy(i => i.BatchNumber)
                 .OrderBy(g => g.Key)
@@ -515,11 +535,25 @@ public sealed partial class TableDetailsViewModel : ViewModelBase
     private async Task RequestBillAsync()
     {
         var order = Order!;
+
+        // Guests seated apart (seats 1 and 2, seat 3, seat 4): offer a bill for each group, so the cashier has them ready.
+        var seatGroups = order.Items.Where(i => i.Status != OrderItemStatus.Cancelled)
+            .Select(i => string.IsNullOrWhiteSpace(i.SeatCode) ? string.Empty : i.SeatCode!).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var splitBySeat = false;
+        if (seatGroups.Count >= 2 && _billRequestKey is null)
+        {
+            splitBySeat = await _dialogs.ConfirmAsync(
+                "Separate bills?",
+                $"This table ordered for {seatGroups.Count} seat groups ({string.Join(", ", seatGroups.Select(s => s.Length == 0 ? "whole table" : s))}). Give each its own bill?",
+                "Separate bills",
+                "One bill");
+        }
+
         await ExecuteAsync(async () =>
         {
             // The key survives a lost response, so pressing again cannot create a second bill.
             _billRequestKey ??= Guid.NewGuid();
-            var result = await _ordersApi.RequestBillAsync(order.Id, _billRequestKey.Value);
+            var result = await _ordersApi.RequestBillAsync(order.Id, _billRequestKey.Value, default, splitBySeat);
             if (!result.IsConnectionFailure)
             {
                 _billRequestKey = null;
@@ -588,6 +622,12 @@ public sealed partial class TableDetailsViewModel : ViewModelBase
     {
         if (int.TryParse(GuestInput, out guests) && guests is >= FloorLimits.MinGuests and <= FloorLimits.MaxGuests)
         {
+            if (Table is { IsAvailable: true } free && guests > free.Capacity)
+            {
+                ErrorMessage = $"Table {free.Code} has {free.Capacity} seats. Seat {free.Capacity} guests, then merge another table for the rest.";
+                return false;
+            }
+
             return true;
         }
 

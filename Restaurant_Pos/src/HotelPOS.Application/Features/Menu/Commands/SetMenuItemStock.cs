@@ -55,6 +55,8 @@ internal sealed class SetMenuItemStockHandler : ICommandHandler<SetMenuItemStock
         }
 
         var before = new { item.StockMode, item.StockOpening, item.StockRemaining, item.IsAvailable };
+        var previous = item.StockRemaining ?? 0;
+        var adding = request.Add && request.Mode != StockTrackingMode.None;
         try
         {
             if (request.Add && request.Mode != StockTrackingMode.None)
@@ -72,6 +74,13 @@ internal sealed class SetMenuItemStockHandler : ICommandHandler<SetMenuItemStock
         }
 
         _db.Entry(item).State = EntityState.Modified;
+        if (request.Mode != StockTrackingMode.None)
+        {
+            var now = item.StockRemaining ?? 0;
+            _db.StockMovements.Add(new StockMovement(item.Id, adding ? StockMovementType.Refill : StockMovementType.Opening, previous, now - previous, now, null,
+                adding ? "Refill" : "Opening stock set"));
+        }
+
         _audit.Add(AuditActions.MenuItemStockChanged, nameof(MenuItem), item.Id.ToString(), before,
             new { item.StockMode, item.StockOpening, item.StockRemaining, item.IsAvailable });
         try

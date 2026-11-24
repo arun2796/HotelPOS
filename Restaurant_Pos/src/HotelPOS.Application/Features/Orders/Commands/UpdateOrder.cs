@@ -9,6 +9,7 @@ using HotelPOS.Contracts.Orders;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Contracts.Security;
 using HotelPOS.Domain.Orders;
+using Microsoft.EntityFrameworkCore;
 
 namespace HotelPOS.Application.Features.Orders.Commands;
 
@@ -31,14 +32,16 @@ public sealed class UpdateOrderRequestValidator : AbstractValidator<UpdateOrderR
 
 internal sealed class UpdateOrderHandler : ICommandHandler<UpdateOrderCommand, OrderDetailDto>
 {
+    private readonly IAppDbContext _db;
     private readonly IAuditTrail _audit;
     private readonly IAfterCommit _afterCommit;
     private readonly OrderSteps _orders;
     private readonly OrderEvents _events;
     private readonly TableEvents _tableEvents;
 
-    public UpdateOrderHandler(IAuditTrail audit, IAfterCommit afterCommit, OrderSteps orders, OrderEvents events, TableEvents tableEvents)
+    public UpdateOrderHandler(IAppDbContext db, IAuditTrail audit, IAfterCommit afterCommit, OrderSteps orders, OrderEvents events, TableEvents tableEvents)
     {
+        _db = db;
         _audit = audit;
         _afterCommit = afterCommit;
         _orders = orders;
@@ -63,6 +66,15 @@ internal sealed class UpdateOrderHandler : ICommandHandler<UpdateOrderCommand, O
         if (!OrderStateMachine.IsActive(order.Status))
         {
             return AppErrors.OrderLocked($"Order {order.OrderNumber} is {order.Status} and can no longer be changed.");
+        }
+
+        if (order.Table is { } seatedTable)
+        {
+            var seats = seatedTable.Capacity + await _db.Tables.Where(t => t.MergedIntoTableId == seatedTable.Id).SumAsync(t => t.Capacity, cancellationToken);
+            if (request.GuestCount > seats)
+            {
+                return AppErrors.Validation("guestCount", $"Table {seatedTable.Code} has {seats} seats, so {request.GuestCount} guests do not fit. Merge another table for a bigger party.");
+            }
         }
 
         var oldValues = new { order.GuestCount, order.Notes };

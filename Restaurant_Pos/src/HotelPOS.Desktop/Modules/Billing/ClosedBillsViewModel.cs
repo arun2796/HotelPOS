@@ -166,10 +166,28 @@ public sealed partial class ClosedBillsViewModel : ViewModelBase, INavigationAwa
             return;
         }
 
-        var reason = await _dialogs.PromptAsync("Refund", "Why is the money returned?", "Refund");
-        if (string.IsNullOrWhiteSpace(reason))
+        string? reason;
+        StockDisposition? disposition = null;
+        if (detail.RefundedAmount + amount >= detail.GrandTotal)
         {
-            return;
+            // The whole bill goes back: say why, and what happens to the food.
+            var answer = await _dialogs.PromptTwoWayAsync("Refund",
+                "Why is the money returned? Then say what happens to the food of this bill.", "Return to kitchen stock", "Waste");
+            if (answer is not { } choice)
+            {
+                return;
+            }
+
+            reason = choice.Reason;
+            disposition = choice.Second ? StockDisposition.Waste : StockDisposition.Restock;
+        }
+        else
+        {
+            reason = await _dialogs.PromptAsync("Refund", "Why is the money returned?", "Refund");
+            if (string.IsNullOrWhiteSpace(reason))
+            {
+                return;
+            }
         }
 
         // Each attempt carries a different approval, so each gets its own key.
@@ -182,6 +200,7 @@ public sealed partial class ClosedBillsViewModel : ViewModelBase, INavigationAwa
             Reason = reason.Trim(),
             Approval = approval,
             RowVersion = detail.RowVersion,
+            FoodDisposition = disposition,
         }, Guid.NewGuid()));
 
         if (result.Success && result.Data is not null)

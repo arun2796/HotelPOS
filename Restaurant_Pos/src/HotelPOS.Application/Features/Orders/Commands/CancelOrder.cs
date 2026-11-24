@@ -93,7 +93,7 @@ internal sealed class CancelOrderHandler : ICommandHandler<CancelOrderCommand, O
         }
 
         // Portions of dishes already with the kitchen go back on the stock count.
-        await _stock.RestoreAsync(order.Items.Where(i => i.Status == OrderItemStatus.Sent), cancellationToken);
+        await _stock.RestoreAsync(order.Items.Where(i => i.Status == OrderItemStatus.Sent), cancellationToken, order.Id);
 
         order.Cancel(_orders.UserId, request.Reason, _clock.UtcNow);
         if (table != null && table.CurrentOrderId == order.Id)

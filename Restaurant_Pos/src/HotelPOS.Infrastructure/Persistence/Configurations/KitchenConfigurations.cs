@@ -12,6 +12,7 @@ internal sealed class KitchenOrderConfiguration : IEntityTypeConfiguration<Kitch
     {
         builder.ToTable("KitchenOrders", t => t.HasCheckConstraint("CK_KitchenOrders_Status", ConfigurationHelpers.EnumCheck<KitchenOrderStatus>("Status")));
         builder.Property(k => k.TicketNumber).HasMaxLength(40).IsRequired();
+        builder.Property(k => k.SeatCode).HasMaxLength(16);
         builder.HasIndex(k => k.TicketNumber).IsUnique();
         builder.HasIndex(k => k.OrderId);
         builder.HasIndex(k => new { k.PreparationStationId, k.Status });

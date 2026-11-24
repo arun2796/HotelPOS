@@ -99,6 +99,11 @@ public sealed partial class TicketCardViewModel : ObservableObject
 
     public bool IsTakeaway => Ticket.OrderType == OrderType.Takeaway;
 
+    // Each seat group has tickets of its own: "Seat A+B" next to the table.
+    public bool HasSeatGroup => !string.IsNullOrWhiteSpace(Ticket.SeatCode);
+
+    public string SeatText => HasSeatGroup ? "Seat " + Ticket.SeatCode : string.Empty;
+
     public bool IsDelivery => Ticket.OrderType == OrderType.Delivery;
 
     public bool HasDeliveryInfo => IsDelivery && (!string.IsNullOrWhiteSpace(Ticket.CustomerName) || !string.IsNullOrWhiteSpace(Ticket.DeliveryAddress));
@@ -233,6 +238,14 @@ public sealed partial class SoldOutItemViewModel : ObservableObject
     // What the supervisor types before pressing SET COUNT / APPROX. / + ADD.
     [ObservableProperty]
     private string _stockInput = string.Empty;
+
+    // Why a waste or correction is made; the ledger keeps it.
+    [ObservableProperty]
+    private string _reasonInput = string.Empty;
+
+    // The count at or below which the item shows as Low stock on every screen.
+    [ObservableProperty]
+    private string _reorderInput = string.Empty;
 
     public string ActionText => IsAvailable ? "Mark sold out" : "Available again";
 
@@ -552,6 +565,128 @@ public sealed partial class KitchenDisplayViewModel : ViewModelBase, INavigation
 
     [RelayCommand]
     private Task ClearStockCountAsync(SoldOutItemViewModel? item) => ChangeStockAsync(item, StockTrackingMode.None, add: false);
+
+    // Waste: prepared food thrown away. Adjust: a counted correction (a minus takes off, a plus adds). Both need a reason.
+    [RelayCommand]
+    private Task WasteStockAsync(SoldOutItemViewModel? item) => AdjustStockAsync(item, StockMovementType.Waste);
+
+    [RelayCommand]
+    private Task CorrectStockAsync(SoldOutItemViewModel? item) => AdjustStockAsync(item, StockMovementType.Adjustment);
+
+    private async Task AdjustStockAsync(SoldOutItemViewModel? item, StockMovementType kind)
+    {
+        if (item is null)
+        {
+            return;
+        }
+
+        var styles = kind == StockMovementType.Waste ? NumberStyles.None : NumberStyles.AllowLeadingSign;
+        if (!int.TryParse(item.StockInput?.Trim(), styles, CultureInfo.InvariantCulture, out var quantity) || quantity == 0 || Math.Abs(quantity) > MaxStockCount)
+        {
+            _notifications.Error(kind == StockMovementType.Waste
+                ? $"Enter how many {item.Name} were lost (a whole number)."
+                : $"Enter the change for {item.Name}, for example -3 or 5.");
+            return;
+        }
+
+        var reason = item.ReasonInput?.Trim() ?? string.Empty;
+        if (reason.Length == 0)
+        {
+            _notifications.Error("Say why (for example: dropped, expired, counted again).");
+            return;
+        }
+
+        var result = await _menuApi.AdjustStockAsync(item.Id, new HotelPOS.Contracts.Menu.AdjustStockRequest { Kind = kind, Quantity = quantity, Reason = reason });
+        if (result.Success && result.Data is not null)
+        {
+            item.Apply(result.Data.IsAvailable, result.Data.StockMode, result.Data.StockRemaining);
+            item.StockInput = string.Empty;
+            item.ReasonInput = string.Empty;
+            _notifications.Success(kind == StockMovementType.Waste
+                ? $"{item.Name}: {quantity} written off, {item.StockText}."
+                : $"{item.Name}: corrected by {quantity:+0;-0}, {item.StockText}.");
+        }
+        else
+        {
+            _notifications.Error(ApiFailures.Describe(result), result.CorrelationId);
+        }
+    }
+
+    [RelayCommand]
+    private async Task SetReorderLevelAsync(SoldOutItemViewModel? item)
+    {
+        if (item is null)
+        {
+            return;
+        }
+
+        int? level = null;
+        if (item.ReorderInput?.Trim() is { Length: > 0 } text)
+        {
+            if (!int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out var parsed) || parsed > MaxStockCount)
+            {
+                _notifications.Error($"Enter a whole number from 0 to {MaxStockCount}.");
+                return;
+            }
+
+            level = parsed;
+        }
+
+        var result = await _menuApi.SetReorderLevelAsync(item.Id, new HotelPOS.Contracts.Menu.SetReorderLevelRequest { ReorderLevel = level });
+        if (result.Success)
+        {
+            item.ReorderInput = string.Empty;
+            _notifications.Success(level is null or 0
+                ? $"{item.Name}: low-stock warning back to the default."
+                : $"{item.Name}: shows as low stock at {level} or fewer.");
+        }
+        else
+        {
+            _notifications.Error(ApiFailures.Describe(result), result.CorrelationId);
+        }
+    }
+
+    // The ledger of an item: every change of its count with who, why and for which order.
+    public ObservableCollection<StockHistoryRow> History { get; } = new();
+
+    [ObservableProperty]
+    private bool _isHistoryOpen;
+
+    [ObservableProperty]
+    private string _historyTitle = string.Empty;
+
+    [ObservableProperty]
+    private string _historySummary = string.Empty;
+
+    [RelayCommand]
+    private async Task ShowStockHistoryAsync(SoldOutItemViewModel? item)
+    {
+        if (item is null)
+        {
+            return;
+        }
+
+        var result = await _menuApi.GetStockHistoryAsync(item.Id);
+        if (!result.Success || result.Data is null)
+        {
+            _notifications.Error(ApiFailures.Describe(result), result.CorrelationId);
+            return;
+        }
+
+        History.Clear();
+        foreach (var movement in result.Data.Movements)
+        {
+            History.Add(new StockHistoryRow(movement));
+        }
+
+        HistoryTitle = $"{result.Data.ItemName} · stock history";
+        HistorySummary = $"Today: {result.Data.Sold} sold, {result.Data.Refilled} refilled, {result.Data.Wasted} wasted"
+            + (result.Data.Remaining is { } left ? $" · {left} left now" : string.Empty);
+        IsHistoryOpen = true;
+    }
+
+    [RelayCommand]
+    private void CloseHistory() => IsHistoryOpen = false;
 
     private async Task ChangeStockAsync(SoldOutItemViewModel? item, StockTrackingMode mode, bool add)
     {

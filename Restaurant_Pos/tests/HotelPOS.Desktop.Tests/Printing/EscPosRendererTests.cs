@@ -29,6 +29,39 @@ public sealed class EscPosRendererTests
         lines.Should().NotContain(l => l.Text.Contains("260", StringComparison.Ordinal), "a kitchen ticket never shows prices unless asked");
     }
 
+    // What the kitchen printer actually prints for a seat-group ticket on merged tables (the same line layout the thermal
+    // printer receives); the text is written to the test output so it can be read like a print preview.
+    [Fact]
+    public void Kot_ShowsTheSeatGroupAndMergedTables_AndEachDishesSeat()
+    {
+        var kot = Kot() with
+        {
+            TableCode = "T04",
+            SeatGroup = "T04A+B",
+            MergedWith = "T05",
+            Items = new[]
+            {
+                new KotLine { Name = "Chicken Biryani", Quantity = 2, SeatCode = "T04A+B", Notes = "Seat T04A+B · less oil" },
+                new KotLine { Name = "Idli", Quantity = 3, SeatCode = "T04A+B", Notes = "Seat T04A+B" },
+            },
+        };
+
+        var lines = EscPosRenderer.Layout(kot, 48, "Rs.");
+        var text = lines.Select(l => l.Text).ToList();
+
+        text.Should().Contain("SEAT T04A+B");
+        text.Should().Contain("Merged: T04 + T05");
+        lines.Single(l => l.Text == "SEAT T04A+B").Is(LineStyle.Large).Should().BeTrue("the seat group is as large as the ticket number");
+        text.Should().Contain(l => l.Contains("Seat T04A+B · less oil", StringComparison.Ordinal), "each dish repeats its seat");
+        text.Single(l => l.StartsWith("Table T04", StringComparison.Ordinal)).Should().EndWith("Order #1025");
+        text.Should().OnlyContain(l => l.Length <= 48);
+        Console.WriteLine(string.Join(Environment.NewLine, text));
+
+        // a ticket of an older version (no seat group, no merge) prints exactly as before
+        var old = EscPosRenderer.Layout(Kot(), 48, "Rs.").Select(l => l.Text).ToList();
+        old.Should().NotContain(l => l.StartsWith("SEAT", StringComparison.Ordinal) || l.StartsWith("Merged", StringComparison.Ordinal));
+    }
+
     [Fact]
     public void Kot_58mm_WrapsLongItemNames()
     {

@@ -183,6 +183,11 @@ public sealed class Table : BaseEntity, IHasRowVersion
             throw new DomainException("At least one guest is required.");
         }
 
+        if (guestCount > Capacity)
+        {
+            throw new DomainException($"Table {Code} has {Capacity} seats, so {guestCount} guests do not fit. Seat {Capacity}, then merge another table for the rest.", ErrorCodes.ValidationError);
+        }
+
         Status = TableStatus.Occupied;
         GuestCount = guestCount;
         OccupiedAt = nowUtc;

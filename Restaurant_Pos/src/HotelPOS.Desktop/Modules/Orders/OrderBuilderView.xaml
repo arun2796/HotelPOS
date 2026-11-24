@@ -67,6 +67,10 @@
                      IsChecked="{Binding IsTakeaway, Mode=OneWay}" Command="{Binding SelectOrderTypeCommand}" CommandParameter="Takeaway" />
         <RadioButton Style="{StaticResource MaterialDesignTabRadioButton}" Content="Delivery" Margin="0,0,6,0"
                      IsChecked="{Binding IsDelivery, Mode=OneWay}" Command="{Binding SelectOrderTypeCommand}" CommandParameter="Delivery" />
+        <ComboBox ItemsSource="{Binding ForTableChoices}" SelectedItem="{Binding ForTable}" MinWidth="130" Height="34" Margin="10,0,0,0"
+                  VerticalContentAlignment="Center" ToolTip="Parcel for a table that is dining: the kitchen sees which table it belongs to"
+                  AutomationProperties.Name="Parcel for table"
+                  Visibility="{Binding ShowForTable, Converter={StaticResource BoolToVisibility}}" />
         <Button Style="{StaticResource Button.Base}" Height="34" Padding="10,0" Margin="10,0,0,0"
                 Visibility="{Binding IsDelivery, Converter={StaticResource BoolToVisibility}}"
                 Command="{Binding OpenDeliveryDetailsCommand}">
@@ -80,8 +84,11 @@
       <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right"
                   Visibility="{Binding CanChangeGuests, Converter={StaticResource BoolToVisibility}}">
         <Button Style="{StaticResource SquareKey}" Content="−" FontSize="20" Command="{Binding DecreaseGuestsCommand}" ToolTip="Fewer guests" />
-        <TextBlock Text="{Binding GuestText}" Style="{StaticResource Text.Body}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0" MinWidth="80"
-                   TextAlignment="Center" />
+        <!-- The waiter asks the table and types the number (or uses − and +): seats and the bill follow it. -->
+        <TextBox Text="{Binding GuestInputText, UpdateSourceTrigger=PropertyChanged}" Width="64" MinHeight="48" MaxLength="2" Margin="12,0,6,0"
+                 FontSize="20" FontWeight="SemiBold" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                 ToolTip="How many guests are for this bill" AutomationProperties.Name="Number of guests" />
+        <TextBlock Text="guests" Style="{StaticResource Text.Body}" VerticalAlignment="Center" Margin="0,0,12,0" />
         <Button Style="{StaticResource SquareKey}" Content="+" FontSize="20" Command="{Binding IncreaseGuestsCommand}" ToolTip="More guests" />
       </StackPanel>
     </Grid>
@@ -118,13 +125,49 @@
         <ColumnDefinition Width="Auto" />
         <ColumnDefinition Width="Auto" />
       </Grid.ColumnDefinitions>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+      </Grid.RowDefinitions>
       <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" MinHeight="48" VerticalContentAlignment="Center"
                md:HintAssist.Hint="Search name or code" AutomationProperties.Name="Search items" />
-      <!-- Seat the next dishes are for (4A..4D, limited by the table's capacity) -->
-      <ComboBox Grid.Column="1" MinWidth="140" MinHeight="48" Margin="8,0,0,0" VerticalContentAlignment="Center"
-                ItemsSource="{Binding SeatChoices}" SelectedItem="{Binding SelectedSeat}"
-                ToolTip="Seat the next dishes are for" AutomationProperties.Name="Seat"
-                Visibility="{Binding HasSeats, Converter={StaticResource BoolToVisibility}}" />
+      <!-- Seats the next dishes are for: tap one, or several that share the order (seats 1 and 2 together); none = the whole table.
+           Each seat (or group of seats) gets its own bill when the cashier splits by seat. -->
+      <StackPanel Grid.Row="1" Grid.ColumnSpan="3" Margin="0,10,0,0"
+                  Visibility="{Binding HasSeats, Converter={StaticResource BoolToVisibility}}">
+      <StackPanel Orientation="Horizontal">
+        <TextBlock Text="Seats" Style="{StaticResource Text.Label}" VerticalAlignment="Center" Margin="0,0,10,0" />
+        <ToggleButton Content="Whole table" Style="{StaticResource Toggle.Chip}" Margin="0,0,6,0"
+                      IsChecked="{Binding IsWholeTable, Mode=OneWay}" Command="{Binding ClearSeatPicksCommand}"
+                      AutomationProperties.Name="Whole table" />
+        <ItemsControl ItemsSource="{Binding SeatPicks}" Focusable="False">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Orientation="Horizontal" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="{x:Type orders:SeatPickViewModel}">
+              <ToggleButton Content="{Binding Label}" MinWidth="44" Margin="0,0,6,0"
+                            IsChecked="{Binding IsOn, Mode=TwoWay}" ToolTip="{Binding ToolTipText}"
+                            AutomationProperties.Name="{Binding ToolTipText}">
+                <ToggleButton.Style>
+                  <Style TargetType="ToggleButton" BasedOn="{StaticResource Toggle.Chip}">
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding IsTaken}" Value="True">
+                        <Setter Property="Foreground" Value="{DynamicResource Brush.Warning}" />
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </ToggleButton.Style>
+              </ToggleButton>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+        <TextBlock Style="{StaticResource Text.Caption}" Margin="0,4,0,0" TextWrapping="Wrap"
+                   Text="Tap the seats that share an order.  ● = taken: tap it to add to that seat group." />
+      </StackPanel>
       <!-- Parcel: the next dishes are packed to take away and carry the item's packaging charge -->
       <ToggleButton Grid.Column="2" Content="Parcel" Style="{StaticResource Toggle.Chip}" Margin="8,0,0,0"
                     IsChecked="{Binding IsParcelMode, Mode=TwoWay}"
@@ -165,6 +208,14 @@
                     <Border Style="{StaticResource Chip.Danger}" Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top"
                             Visibility="{Binding IsSoldOut, Converter={StaticResource BoolToVisibility}}">
                       <TextBlock Text="SOLD OUT" />
+                    </Border>
+                    <Border Style="{StaticResource Chip.Warning}" Margin="8" HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                            Visibility="{Binding ShowLowStock, Converter={StaticResource BoolToVisibility}}">
+                      <TextBlock Text="{Binding StockCountText}" />
+                    </Border>
+                    <Border Style="{StaticResource Chip.Neutral}" Margin="8" HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                            Visibility="{Binding ShowStockCount, Converter={StaticResource BoolToVisibility}}">
+                      <TextBlock Text="{Binding StockCountText}" />
                     </Border>
                     <!-- Pin to the Favourites chip (Phase 20.7): a corner star, 40 x 40 touch area, clicks do not add the item. -->
                     <Button HorizontalAlignment="Right" VerticalAlignment="Top" Width="36" Height="36" Padding="0" Margin="6" Background="{DynamicResource Brush.Surface}" BorderThickness="0"

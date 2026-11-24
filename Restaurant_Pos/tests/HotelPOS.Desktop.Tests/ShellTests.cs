@@ -66,7 +66,7 @@ public class ModuleRegistryTests
     {
         var keys = ModuleRegistry.ForRoles(new[] { Roles.Kitchen }).Select(m => m.Key).ToList();
 
-        keys.Should().BeEquivalentTo(ModuleRegistry.KitchenDisplay, ModuleRegistry.KitchenCompleted);
+        keys.Should().BeEquivalentTo(ModuleRegistry.KitchenDisplay, ModuleRegistry.KitchenCompleted, ModuleRegistry.KitchenStock);
     }
 
     [Fact]

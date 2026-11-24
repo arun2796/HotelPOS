@@ -227,6 +227,9 @@ public sealed record RefundRequest
     public string Reason { get; init; } = string.Empty;
     public ManagerApprovalDto? Approval { get; init; }
     public string RowVersion { get; init; } = string.Empty;
+
+    // Only used when this refund returns the whole bill: what happens to the food (see StockDisposition).
+    public Enums.StockDisposition? FoodDisposition { get; init; }
 }
 
 public sealed record VoidBillRequest
@@ -234,6 +237,10 @@ public sealed record VoidBillRequest
     public string Reason { get; init; } = string.Empty;
     public ManagerApprovalDto? Approval { get; init; }
     public string RowVersion { get; init; } = string.Empty;
+
+    // What happens to the food already sent to the kitchen. Left empty: it goes back on the count when the kitchen had
+    // not started it, and is written off when it had.
+    public Enums.StockDisposition? FoodDisposition { get; init; }
 }
 
 // Splits a table's bill into separate bills (one per guest or seat group). Every part lists the bill lines that move

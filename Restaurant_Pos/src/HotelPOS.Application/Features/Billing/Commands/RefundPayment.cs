@@ -4,8 +4,10 @@ using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Cqrs;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
+using HotelPOS.Application.Features.Orders;
 using HotelPOS.Application.Features.Shifts;
 using HotelPOS.Contracts.Billing;
+using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Contracts.Security;
 using HotelPOS.Domain.Billing;
@@ -46,6 +48,7 @@ internal sealed class RefundPaymentHandler : ICommandHandler<RefundPaymentComman
     private readonly BillEvents _events;
     private readonly ManagerApprovals _approvals;
     private readonly ShiftSteps _shifts;
+    private readonly OrderStock _stock;
 
     public RefundPaymentHandler(
         IAppDbContext db,
@@ -57,8 +60,10 @@ internal sealed class RefundPaymentHandler : ICommandHandler<RefundPaymentComman
         BillSteps bills,
         BillEvents events,
         ManagerApprovals approvals,
-        ShiftSteps shifts)
+        ShiftSteps shifts,
+        OrderStock stock)
     {
+        _stock = stock;
         _shifts = shifts;
         _db = db;
         _audit = audit;
@@ -100,7 +105,7 @@ internal sealed class RefundPaymentHandler : ICommandHandler<RefundPaymentComman
                 approvedBy = approval.IsSuccess ? approval.Value : 0;
                 return approval.Error;
             },
-            step: scope =>
+            step: async scope =>
             {
                 var bill = scope.Bill;
                 var refund = bill.Refund(request.PaymentId, request.Amount, request.Reason, _bills.UserId, _currentUser.DeviceId, idempotencyKey, _clock.UtcNow);
@@ -118,8 +123,18 @@ internal sealed class RefundPaymentHandler : ICommandHandler<RefundPaymentComman
                     bill.RefundedAmount,
                     ApprovedBy = approvedBy,
                 });
+
+                // The whole bill is refunded: the food goes back on the count or is written off, as the cashier chose.
+                if (bill.RefundedAmount >= bill.GrandTotal)
+                {
+                    var billed = bill.Items.Select(i => i.OrderItemId).ToHashSet();
+                    await _stock.DisposeAsync(
+                        scope.Order.Items.Where(i => billed.Contains(i.Id) && i.Status == OrderItemStatus.Sent).Select(i => (i, true)),
+                        request.FoodDisposition, request.Reason, scope.Order.Id, cancellationToken);
+                }
+
                 _afterCommit.Enqueue(() => _events.PublishBillUpdatedAsync(bill, BillChangeTypes.Refunded));
-                return Task.FromResult<AppError?>(null);
+                return null;
             },
             cancellationToken);
     }

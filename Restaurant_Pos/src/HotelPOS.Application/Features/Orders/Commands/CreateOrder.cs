@@ -121,6 +121,12 @@ internal sealed class CreateOrderHandler : ICommandHandler<CreateOrderCommand, O
             {
                 return AppErrors.TableNotAvailable(table.Code, TableMapping.ToDto(table));
             }
+
+            var seats = table.Capacity + await _db.Tables.Where(t => t.MergedIntoTableId == table.Id).SumAsync(t => t.Capacity, cancellationToken);
+            if (request.GuestCount > seats)
+            {
+                return AppErrors.Validation("guestCount", $"Table {table.Code} has {seats} seats, so {request.GuestCount} guests do not fit. Merge another table for a bigger party.");
+            }
         }
 
         var items = await _itemFactory.CreateAsync(request.Items, table?.Id, cancellationToken);
@@ -150,6 +156,7 @@ internal sealed class CreateOrderHandler : ICommandHandler<CreateOrderCommand, O
                 request.CustomerName, request.CustomerPhone, request.DeliveryAddress, request.DeliveryNotes);
 
         order.ReplaceDraftItems(items.Value);
+        _stock.LinkPending(order);
         order.RecordCreationKey(command.IdempotencyKey);
         if (request.Submit)
         {

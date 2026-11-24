@@ -76,6 +76,12 @@ public sealed record KitchenTicketDocument
     public int BatchNumber { get; init; }
     public bool IsAddition { get; init; }
     public string TableCode { get; init; } = string.Empty;
+
+    // The seat group this ticket is for ("T01A+B"); null for the whole table. Each seat group has its own ticket.
+    public string? SeatGroup { get; init; }
+
+    // The tables merged into this one ("T05, T06"); null when the table is not merged.
+    public string? MergedWith { get; init; }
     public string WaiterName { get; init; } = string.Empty;
     public string StationCode { get; init; } = string.Empty;
     public string StationName { get; init; } = string.Empty;

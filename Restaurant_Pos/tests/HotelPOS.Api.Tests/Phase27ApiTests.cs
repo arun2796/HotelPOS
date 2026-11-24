@@ -127,7 +127,7 @@ public class Phase27ApiTests : IClassFixture<ApiFactory>
     {
         var admin = await _factory.CreateAuthenticatedClientAsync("admin", ApiFactory.AdminPassword);
         var waiter = await _factory.CreateAuthenticatedClientAsync("waiter1", ApiFactory.DemoPassword);
-        var table = await TableAsync(waiter, "T06");
+        var table = await TableAsync(waiter, "O02");
         int itemId;
         await using (var scope = _factory.Services.CreateAsyncScope())
         {
@@ -154,6 +154,50 @@ public class Phase27ApiTests : IClassFixture<ApiFactory>
         var tooMuch = await admin.PutAsJsonAsync("/api/admin/settings",
             new UpdateSettingsRequest { Items = new[] { new SettingValue { Key = SettingKeys.DefaultPackagingCharge, Value = "-1" } } }, PosJson.Options);
         tooMuch.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task StockLedger_RecordsEveryMovement_AndWasteNeedsAReason()
+    {
+        var waiter = await _factory.CreateAuthenticatedClientAsync("waiter1", ApiFactory.DemoPassword);
+        var kitchen = await _factory.CreateAuthenticatedClientAsync("kitchen1", ApiFactory.DemoPassword);
+        var table = await TableAsync(waiter, "O01");
+        var item = (await MenuAsync(waiter)).Items.Last(i => i.ModifierGroupIds.Count == 0 && i.IsAvailable && i.Name != "Butter Naan");
+
+        (await kitchen.PatchAsJsonAsync($"/api/menu-items/{item.Id}/stock",
+            new SetStockRequest { Mode = StockTrackingMode.Exact, Quantity = 40 }, PosJson.Options)).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var order = await PostAsync<OrderDetailDto>(waiter, "/api/orders", new CreateOrderRequest
+        {
+            TableId = table.Id, GuestCount = 2, Submit = true,
+            Items = new[] { new OrderItemInput { MenuItemId = item.Id, Quantity = 10 } },
+        });
+        (await StockAsync(waiter, item.Id)).Should().Be(30);
+
+        // waste needs a reason, a plain number of portions, and can never take the count below zero
+        (await SendAsync(kitchen, $"/api/menu-items/{item.Id}/stock/adjust", new AdjustStockRequest { Kind = StockMovementType.Waste, Quantity = 2, Reason = "" }))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await SendAsync(kitchen, $"/api/menu-items/{item.Id}/stock/adjust", new AdjustStockRequest { Kind = StockMovementType.Waste, Quantity = 500, Reason = "Dropped" }))
+            .StatusCode.Should().NotBe(HttpStatusCode.OK);
+        (await StockAsync(waiter, item.Id)).Should().Be(30, "a refused change leaves the count alone");
+        (await SendAsync(waiter, $"/api/menu-items/{item.Id}/stock/adjust", new AdjustStockRequest { Kind = StockMovementType.Waste, Quantity = 1, Reason = "Tasted" }))
+            .StatusCode.Should().Be(HttpStatusCode.Forbidden, "only kitchen staff change the count");
+        (await SendAsync(kitchen, $"/api/menu-items/{item.Id}/stock/adjust", new AdjustStockRequest { Kind = StockMovementType.Waste, Quantity = 3, Reason = "Dropped tray" }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        (await StockAsync(waiter, item.Id)).Should().Be(27);
+
+        // cancelling the order puts its portions back; paying or reading the bill never moves the count
+        (await SendAsync(waiter, $"/api/orders/{order.Id}/cancel", new CancelOrderRequest { Reason = "Guest left" })).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await StockAsync(waiter, item.Id)).Should().Be(37);
+
+        var history = (await (await kitchen.GetAsync($"/api/menu-items/{item.Id}/stock/history")).ReadEnvelopeAsync<StockHistoryDto>()).Data!;
+        history.Movements.Select(m => m.Type).Should().Equal(
+            StockMovementType.OrderRelease, StockMovementType.Waste, StockMovementType.OrderReservation, StockMovementType.Opening);
+        history.Movements.Select(m => (m.PreviousQuantity, m.QuantityChanged, m.NewQuantity)).Should().Equal((27, 10, 37), (30, -3, 27), (40, -10, 30), (0, 40, 40));
+        history.Movements.Where(m => m.Type is StockMovementType.OrderReservation or StockMovementType.OrderRelease)
+            .Should().OnlyContain(m => m.OrderId == order.Id, "an order's movements point back at it");
+        history.Movements.Single(m => m.Type == StockMovementType.Waste).Remarks.Should().Be("Dropped tray");
+        history.Wasted.Should().Be(3);
     }
 
     [Fact]
@@ -191,7 +235,7 @@ public class Phase27ApiTests : IClassFixture<ApiFactory>
         var tooEarly = await SendAsync(waiter, $"/api/tables/{primary.Id}/merge", new MergeTablesRequest { CompanionTableId = companion.Id });
         tooEarly.StatusCode.Should().NotBe(HttpStatusCode.OK);
 
-        var occupied = await PostAsync<TableDto>(waiter, $"/api/tables/{primary.Id}/occupy", new OccupyTableRequest { GuestCount = 8, RowVersion = primary.RowVersion });
+        var occupied = await PostAsync<TableDto>(waiter, $"/api/tables/{primary.Id}/occupy", new OccupyTableRequest { GuestCount = Math.Min(8, primary.Capacity), RowVersion = primary.RowVersion });
         occupied.Status.Should().Be(TableStatus.Occupied);
 
         var merged = await SendAsync(waiter, $"/api/tables/{primary.Id}/merge", new MergeTablesRequest { CompanionTableId = companion.Id });
@@ -235,7 +279,7 @@ public class Phase27ApiTests : IClassFixture<ApiFactory>
         var waiter = await _factory.CreateAuthenticatedClientAsync("waiter1", ApiFactory.DemoPassword);
         var primary = await TableAsync(waiter, "T06");
         var companion = await TableAsync(waiter, "T07");
-        await PostAsync<TableDto>(waiter, $"/api/tables/{primary.Id}/occupy", new OccupyTableRequest { GuestCount = 6, RowVersion = primary.RowVersion });
+        await PostAsync<TableDto>(waiter, $"/api/tables/{primary.Id}/occupy", new OccupyTableRequest { GuestCount = Math.Min(6, primary.Capacity), RowVersion = primary.RowVersion });
         (await SendAsync(waiter, $"/api/tables/{primary.Id}/merge", new MergeTablesRequest { CompanionTableId = companion.Id })).StatusCode.Should().Be(HttpStatusCode.OK);
 
         (await SendAsync(waiter, $"/api/tables/{companion.Id}/unmerge", new { })).StatusCode.Should().Be(HttpStatusCode.OK);

@@ -122,6 +122,7 @@ public sealed record OrderDetailDto
     public string? CancelReason { get; init; }
     public IReadOnlyList<OrderItemDto> Items { get; init; } = Array.Empty<OrderItemDto>();
     public IReadOnlyList<OrderTicketDto> Tickets { get; init; } = Array.Empty<OrderTicketDto>();
+    public IReadOnlyList<SeatGroupStatusDto> SeatGroups { get; init; } = Array.Empty<SeatGroupStatusDto>();
     public OrderBillDto? Bill { get; init; }
 
     public decimal ApproxSubtotal { get; init; }
@@ -158,6 +159,20 @@ public sealed record OrderTicketDto
     public int BatchNumber { get; init; }
     public string StationCode { get; init; } = string.Empty;
     public KitchenOrderStatus Status { get; init; }
+
+    // The seat group this ticket is for; empty for the whole table. Each seat group has tickets of its own.
+    public string? SeatCode { get; init; }
+}
+
+// Where one seat group of the order stands in the kitchen: its dishes only, never another group's.
+public sealed record SeatGroupStatusDto
+{
+    public string SeatCode { get; init; } = string.Empty;
+    public int ItemCount { get; init; }
+    public int Quantity { get; init; }
+
+    // The least advanced of the group's open tickets; null while nothing of it has been sent, or all was cancelled.
+    public KitchenOrderStatus? KitchenStatus { get; init; }
 }
 
 public sealed record OrderItemModifierDto(int ModifierOptionId, string Name, decimal PriceDelta);

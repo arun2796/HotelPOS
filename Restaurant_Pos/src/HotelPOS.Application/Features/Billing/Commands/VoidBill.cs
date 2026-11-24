@@ -6,6 +6,7 @@ using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
 using HotelPOS.Application.Features.Floor;
 using HotelPOS.Application.Features.Kitchen;
+using HotelPOS.Application.Features.Orders;
 using HotelPOS.Contracts.Billing;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Realtime;
@@ -47,6 +48,7 @@ internal sealed class VoidBillHandler : ICommandHandler<VoidBillCommand, BillDet
     private readonly TableEvents _tableEvents;
     private readonly TableMerges _merges;
     private readonly IAppDbContext _db;
+    private readonly OrderStock _stock;
 
     public VoidBillHandler(
         IAppDbContext db,
@@ -59,9 +61,11 @@ internal sealed class VoidBillHandler : ICommandHandler<VoidBillCommand, BillDet
         ManagerApprovals approvals,
         KitchenSync kitchen,
         TableEvents tableEvents,
-        TableMerges merges)
+        TableMerges merges,
+        OrderStock stock)
     {
         _db = db;
+        _stock = stock;
         _merges = merges;
         _audit = audit;
         _afterCommit = afterCommit;
@@ -113,7 +117,16 @@ internal sealed class VoidBillHandler : ICommandHandler<VoidBillCommand, BillDet
                 }
 
                 bill.Void(request.Reason, now);
-                var openTickets = (await _kitchen.LoadTicketsAsync(order.Id, cancellationToken)).Where(t => t.IsOpen).ToList();
+                var allTickets = await _kitchen.LoadTicketsAsync(order.Id, cancellationToken);
+                var started = allTickets.SelectMany(t => t.Items.Select(i => (i.OrderItemId, t.Status)))
+                    .ToDictionary(x => x.OrderItemId, x => x.Status is KitchenOrderStatus.Preparing or KitchenOrderStatus.Ready or KitchenOrderStatus.Completed);
+
+                // The food that was with the kitchen goes back on the count, or is written off, as the cashier chose.
+                await _stock.DisposeAsync(
+                    order.Items.Where(i => i.Status == OrderItemStatus.Sent).Select(i => (i, started.GetValueOrDefault(i.Id))),
+                    request.FoodDisposition, request.Reason, order.Id, cancellationToken);
+
+                var openTickets = allTickets.Where(t => t.IsOpen).ToList();
                 foreach (var ticket in openTickets)
                 {
                     ticket.Cancel(now);

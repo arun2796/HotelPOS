@@ -46,6 +46,7 @@ internal static class MenuMapping
         StockMode = item.StockMode,
         StockOpening = item.StockOpening,
         StockRemaining = item.StockRemaining,
+        ReorderLevel = item.ReorderLevel,
         SortOrder = item.SortOrder,
         ModifierGroupIds = item.ModifierGroups.OrderBy(l => l.SortOrder).Select(l => l.ModifierGroupId).ToList(),
         RowVersion = RowVersions.Encode(item.RowVersion),

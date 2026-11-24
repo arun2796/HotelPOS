@@ -7,6 +7,7 @@ using HotelPOS.Application.Features.Kitchen;
 using HotelPOS.Application.Features.Templates;
 using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Enums;
+using HotelPOS.Contracts.Orders;
 using HotelPOS.Contracts.Print;
 using HotelPOS.Contracts.Security;
 using HotelPOS.Domain.Billing;
@@ -66,7 +67,7 @@ internal sealed class PrintDocuments
     public async Task<Result<KitchenTicketDocument>> KotAsync(int ticketId, TemplateLayout? layout, CancellationToken cancellationToken)
     {
         var ticket = await _db.KitchenOrders.AsNoTracking()
-            .Include(k => k.Order).ThenInclude(o => o!.Table)
+            .Include(k => k.Order).ThenInclude(o => o!.Table).ThenInclude(t => t!.MergedTables)
             .Include(k => k.Items).ThenInclude(i => i.OrderItem).ThenInclude(oi => oi!.Modifiers)
             .FirstOrDefaultAsync(k => k.Id == ticketId, cancellationToken);
         if (ticket?.Order is null)
@@ -93,7 +94,11 @@ internal sealed class PrintDocuments
             OrderNumber = order.OrderNumber,
             BatchNumber = ticket.BatchNumber,
             IsAddition = ticket.BatchNumber > 1,
-            TableCode = order.Table?.Code ?? string.Empty,
+            TableCode = order.Table?.Code ?? OrderChannels.TableLabel(order.OrderType, order.OrderNumber, null),
+            SeatGroup = ticket.SeatCode,
+            MergedWith = order.Table is { MergedTables.Count: > 0 } merged
+                ? string.Join(", ", merged.MergedTables.Select(t => t.Code).OrderBy(c => c, StringComparer.OrdinalIgnoreCase))
+                : null,
             WaiterName = await _sources.UserNameAsync(order.WaiterId, cancellationToken),
             StationCode = station?.Code ?? string.Empty,
             StationName = station?.Name ?? string.Empty,

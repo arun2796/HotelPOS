@@ -195,6 +195,18 @@ public sealed class EscPosRenderer
             Add(kot.IsAddition ? $"{kot.TicketNumber}  +ADD" : kot.TicketNumber, LineStyle.Center | LineStyle.Large, Wide);
             Duplicate(kot.CopyLabel);
             Pair($"Table {kot.TableCode}", $"Order #{kot.OrderNumber}");
+
+            // The seat group this ticket is for, and the tables merged into it, so the kitchen plates for the right guests.
+            if (!string.IsNullOrWhiteSpace(kot.SeatGroup))
+            {
+                Add("SEAT " + kot.SeatGroup, LineStyle.Center | LineStyle.Large | LineStyle.Bold, Wide);
+            }
+
+            if (!string.IsNullOrWhiteSpace(kot.MergedWith))
+            {
+                Add($"Merged: {kot.TableCode} + {kot.MergedWith}", LineStyle.Center | LineStyle.Bold);
+            }
+
             Pair(_template.ShowWaiter ? $"Waiter {kot.WaiterName}" : string.Empty, _template.ShowGuests ? $"Guests {kot.GuestCount}" : string.Empty);
             Pair($"Station {kot.StationCode}", Time(kot.CreatedAtUtc));
             Rule();

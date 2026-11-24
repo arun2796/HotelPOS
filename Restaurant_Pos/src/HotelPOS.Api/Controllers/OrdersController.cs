@@ -90,6 +90,6 @@ public sealed class OrdersController : ApiControllerBase
     [Idempotent]
     [Authorize(Roles = BillRequesters)]
     [ProducesResponseType<ApiResponse<BillDetailDto>>(StatusCodes.Status200OK)]
-    public async Task<IActionResult> RequestBill(int id, CancellationToken cancellationToken) =>
-        FromResult(await Sender.Send(new RequestBillCommand(id), cancellationToken), message: "Bill sent to the counter.");
+    public async Task<IActionResult> RequestBill(int id, [FromQuery] bool splitBySeat = false, CancellationToken cancellationToken = default) =>
+        FromResult(await Sender.Send(new RequestBillCommand(id, splitBySeat), cancellationToken), message: "Bill sent to the counter.");
 }

@@ -142,6 +142,7 @@ public sealed record MenuItemDto
     public StockTrackingMode StockMode { get; init; }
     public int? StockOpening { get; init; }
     public int? StockRemaining { get; init; }
+    public int? ReorderLevel { get; init; }
 
     public int SortOrder { get; init; }
     public IReadOnlyList<int> ModifierGroupIds { get; init; } = Array.Empty<int>();
@@ -229,6 +230,7 @@ public sealed record MenuEntryDto
     public decimal PackagingCharge { get; init; }
     public StockTrackingMode StockMode { get; init; }
     public int? StockRemaining { get; init; }
+    public int? ReorderLevel { get; init; }
     public string? ImageUrl { get; init; }
     public int SortOrder { get; init; }
     public IReadOnlyList<int> ModifierGroupIds { get; init; } = Array.Empty<int>();

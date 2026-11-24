@@ -159,6 +159,16 @@ public sealed class QuestPdfRenderer : IPdfRenderer
                     ("Table", document.TableCode),
                     ("Order", "#" + document.OrderNumber.ToString(CultureInfo.InvariantCulture)),
                 };
+                if (!string.IsNullOrWhiteSpace(document.SeatGroup))
+                {
+                    facts.Add(("Seat group", document.SeatGroup));
+                }
+
+                if (!string.IsNullOrWhiteSpace(document.MergedWith))
+                {
+                    facts.Add(("Merged with", document.MergedWith));
+                }
+
                 if (layout.ShowWaiter)
                 {
                     facts.Add(("Waiter", document.WaiterName));

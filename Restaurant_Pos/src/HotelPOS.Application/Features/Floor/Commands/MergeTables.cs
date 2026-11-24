@@ -5,6 +5,7 @@ using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
 using HotelPOS.Contracts.Floor;
 using HotelPOS.Contracts.Security;
+using Microsoft.EntityFrameworkCore;
 using HotelPOS.Domain.Common;
 using HotelPOS.Domain.Floor;
 
@@ -86,13 +87,15 @@ public sealed record UnmergeTableCommand(int CompanionTableId) : ICommand<TableD
 
 internal sealed class UnmergeTableHandler : ICommandHandler<UnmergeTableCommand, TableDto>
 {
+    private readonly IAppDbContext _db;
     private readonly IAuditTrail _audit;
     private readonly IAfterCommit _afterCommit;
     private readonly FloorTables _tables;
     private readonly TableEvents _events;
 
-    public UnmergeTableHandler(IAuditTrail audit, IAfterCommit afterCommit, FloorTables tables, TableEvents events)
+    public UnmergeTableHandler(IAppDbContext db, IAuditTrail audit, IAfterCommit afterCommit, FloorTables tables, TableEvents events)
     {
+        _db = db;
         _audit = audit;
         _afterCommit = afterCommit;
         _tables = tables;
@@ -114,6 +117,25 @@ internal sealed class UnmergeTableHandler : ICommandHandler<UnmergeTableCommand,
 
         // Tracked next to the companion, so Unmerge also takes it out of the primary table's list.
         var primary = await _tables.LoadAsync(primaryId, cancellationToken);
+        if (primary?.CurrentOrderId is { } openOrderId)
+        {
+            var seatsGivenBack = HotelPOS.Domain.Floor.TableSeats.CodesFor(companion.Code, companion.Capacity);
+            var used = await _db.OrderItems.AsNoTracking()
+                .Where(i => i.OrderId == openOrderId && i.Status != HotelPOS.Contracts.Enums.OrderItemStatus.Cancelled && i.SeatCode != null)
+                .Select(i => i.SeatCode!)
+                .ToListAsync(cancellationToken);
+            if (used.SelectMany(u => HotelPOS.Contracts.Floor.SeatSelection.Parse(u)).Any(s => seatsGivenBack.Contains(s, StringComparer.OrdinalIgnoreCase)))
+            {
+                return AppErrors.BusinessRule($"Seats of {companion.Code} are still used by the open order. Move or cancel those dishes before unmerging.");
+            }
+
+            var guests = await _db.Orders.AsNoTracking().Where(o => o.Id == openOrderId).Select(o => o.GuestCount).FirstOrDefaultAsync(cancellationToken);
+            if (guests > primary.Capacity)
+            {
+                return AppErrors.BusinessRule($"The table has {guests} guests but {primary.Code} seats only {primary.Capacity}. Lower the guest count before unmerging {companion.Code}.");
+            }
+        }
+
         var primaryCode = companion.MergedInto?.Code ?? string.Empty;
         companion.Unmerge();
         _audit.Add(AuditActions.TableUnmerged, nameof(Table), companion.Id.ToString(),

@@ -91,14 +91,14 @@ internal sealed class AppendOrderItemsHandler : ICommandHandler<AppendOrderItems
             return AppErrors.OrderLocked($"Order {order.OrderNumber} is {order.Status} and can no longer take items.");
         }
 
-        var items = await _itemFactory.CreateAsync(request.Items, order.TableId, cancellationToken);
+        var items = await _itemFactory.CreateAsync(request.Items, order.TableId, order.ActiveItems.Select(i => i.SeatCode), cancellationToken);
         if (items.IsFailure)
         {
             return items.Error!;
         }
 
         // "Process" commits the dishes: the kitchen's count goes down, or the captain is told something ran out.
-        var outOfStock = await _stock.ReserveAsync(items.Value, cancellationToken);
+        var outOfStock = await _stock.ReserveAsync(items.Value, cancellationToken, order.Id);
         if (outOfStock is not null)
         {
             return outOfStock;

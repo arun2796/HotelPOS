@@ -99,7 +99,7 @@ internal sealed class CancelOrderItemHandler : ICommandHandler<CancelOrderItemCo
         }
 
         var now = _clock.UtcNow;
-        await _stock.RestoreAsync(new[] { item }, cancellationToken);
+        await _stock.RestoreAsync(new[] { item }, cancellationToken, order.Id);
         item.CancelSent(_orders.UserId, request.Reason);
         ticket.CancelItem(itemId, now);
         _db.Entry(order).State = EntityState.Modified;

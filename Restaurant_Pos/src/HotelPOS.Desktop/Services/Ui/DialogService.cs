@@ -13,6 +13,14 @@ public interface IDialogService
     Task<string?> PromptAsync(string title, string message, string confirmText = "OK", bool isPassword = false, string cancelText = "Cancel");
 
     Task<ManagerApprovalDto?> RequestApprovalAsync(string title, string message);
+
+    // A reason box and two answer buttons (and Cancel): returns the reason and whether the second button was pressed, or
+    // null when cancelled or the reason is empty. A host without the second button answers with the first.
+    async Task<(string Reason, bool Second)?> PromptTwoWayAsync(string title, string message, string firstText, string secondText, string cancelText = "Cancel")
+    {
+        var reason = await PromptAsync(title, message, firstText, false, cancelText);
+        return string.IsNullOrWhiteSpace(reason) ? null : (reason.Trim(), false);
+    }
 }
 
 public sealed partial class DialogService : ObservableObject, IDialogService
@@ -46,6 +54,13 @@ public sealed partial class DialogService : ObservableObject, IDialogService
             : null;
     }
 
+    public async Task<(string Reason, bool Second)?> PromptTwoWayAsync(string title, string message, string firstText, string secondText, string cancelText = "Cancel")
+    {
+        var dialog = new DialogViewModel(title, message, firstText, cancelText, destructive: false, hasInput: true, isPassword: false) { SecondaryText = secondText };
+        var result = await ShowAsync(dialog);
+        return result.Confirmed && !string.IsNullOrWhiteSpace(result.Input) ? (result.Input!.Trim(), result.Second) : null;
+    }
+
     private async Task<DialogResult> ShowAsync(DialogViewModel dialog)
     {
         await _oneAtATime.WaitAsync();
@@ -62,7 +77,7 @@ public sealed partial class DialogService : ObservableObject, IDialogService
     }
 }
 
-public sealed record DialogResult(bool Confirmed, string? Input);
+public sealed record DialogResult(bool Confirmed, string? Input, bool Second = false);
 
 public sealed partial class DialogViewModel : ObservableObject
 {
@@ -92,6 +107,10 @@ public sealed partial class DialogViewModel : ObservableObject
 
     public bool NeedsApprover { get; init; }
 
+    // An optional second answer button next to the confirm button (for example "Return to stock" / "Waste").
+    public string? SecondaryText { get; init; }
+    public bool HasSecondary => SecondaryText is not null;
+
     [ObservableProperty]
     private string _input = string.Empty;
 
@@ -102,6 +121,9 @@ public sealed partial class DialogViewModel : ObservableObject
 
     [RelayCommand]
     private void Confirm() => _completion.TrySetResult(new DialogResult(true, Input));
+
+    [RelayCommand]
+    private void ConfirmSecond() => _completion.TrySetResult(new DialogResult(true, Input, Second: true));
 
     [RelayCommand]
     private void Cancel() => _completion.TrySetResult(new DialogResult(false, null));

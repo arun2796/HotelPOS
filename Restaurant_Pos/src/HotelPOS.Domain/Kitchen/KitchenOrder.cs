@@ -28,8 +28,9 @@ public sealed class KitchenOrder : BaseEntity, IHasRowVersion
     {
     }
 
-    public KitchenOrder(Order order, int batchNumber, int stationId, string ticketNumber, IEnumerable<OrderItem> items)
+    public KitchenOrder(Order order, int batchNumber, int stationId, string ticketNumber, IEnumerable<OrderItem> items, string? seatCode = null)
     {
+        SeatCode = string.IsNullOrWhiteSpace(seatCode) ? null : seatCode.Trim().ToUpperInvariant();
         OrderId = order.Id;
         Order = order;
         BatchNumber = batchNumber;
@@ -48,6 +49,9 @@ public sealed class KitchenOrder : BaseEntity, IHasRowVersion
     public string TicketNumber { get; private set; } = string.Empty;
     public int BatchNumber { get; private set; }
     public int PreparationStationId { get; private set; }
+
+    // The seat group this ticket is for; null for the whole table.
+    public string? SeatCode { get; private set; }
     public KitchenOrderStatus Status { get; private set; }
     public DateTime? AcceptedAt { get; private set; }
     public int? AcceptedBy { get; private set; }

@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Enums;
+using HotelPOS.Contracts.Floor;
 using HotelPOS.Contracts.Menu;
 using HotelPOS.Contracts.Orders;
 using HotelPOS.Contracts.Security;
@@ -45,6 +46,17 @@ public sealed partial class MenuTileViewModel : ObservableObject
     public string PriceText { get; }
 
     public bool IsSoldOut => !Item.IsAvailable;
+
+    // What is left of a counted item, as the waiter and cashier read it on the tile ("Only 4 left" when it is running low).
+    public StockStatus StockState => StockStatusRules.For(Item.StockMode, Item.StockRemaining, Item.IsAvailable, Item.ReorderLevel);
+
+    public bool ShowLowStock => StockState == StockStatus.Low;
+
+    public bool ShowStockCount => StockState == StockStatus.Available && Item.StockRemaining is not null;
+
+    public string StockCountText => Item.StockRemaining is { } left
+        ? (Item.StockMode == StockTrackingMode.Approximate ? $"About {left} left" : StockState == StockStatus.Low ? $"Only {left} left" : $"{left} left")
+        : string.Empty;
 
     public bool HasModifiers => Item.ModifierGroupIds.Count > 0;
 
@@ -138,7 +150,7 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
     private string _searchText = string.Empty;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(GuestText))]
+    [NotifyPropertyChangedFor(nameof(GuestText), nameof(GuestInputText))]
     private int _guestCount = 1;
 
     [ObservableProperty]
@@ -158,7 +170,7 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
     private string _noteText = string.Empty;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(Title), nameof(IsDelivery), nameof(IsTakeaway), nameof(IsDineIn), nameof(CanChangeGuests), nameof(BillOnSend), nameof(SendText), nameof(IsPackedOrder), nameof(ShowParcelControls))]
+    [NotifyPropertyChangedFor(nameof(Title), nameof(IsDelivery), nameof(IsTakeaway), nameof(IsDineIn), nameof(CanChangeGuests), nameof(BillOnSend), nameof(SendText), nameof(IsPackedOrder), nameof(ShowParcelControls), nameof(ShowForTable))]
     private OrderType _orderType = OrderType.DineIn;
 
     [ObservableProperty]
@@ -194,9 +206,150 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
     [RelayCommand]
     private void ToggleParcelMode() => IsParcelMode = !IsParcelMode;
 
-    public bool HasSeats => SeatChoices.Count > 1;
+    // Seats offered = the guests the waiter entered (2 guests at a 4-seater: seats A and B), never more than the table has.
+    public bool HasSeats => SeatPicks.Count > 1;
 
-    private string? SeatForNewLine => SelectedSeat == WholeTable || !SeatChoices.Contains(SelectedSeat) ? null : SelectedSeat;
+    private List<string> _allSeatCodes = new();
+
+    // The admin sets a table's seats (and merged tables add theirs): that is as many guests as can sit.
+    private int MaxGuests => IsDineIn && _allSeatCodes.Count > 0 ? _allSeatCodes.Count : 99;
+
+    private void RebuildSeatPicks()
+    {
+        if (_allSeatCodes.Count == 0)
+        {
+            return;
+        }
+
+        var keep = SeatPicks.Where(p => p.IsOn).Select(p => p.Code).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var shown = _allSeatCodes.Take(Math.Clamp(GuestCount, 1, _allSeatCodes.Count)).ToList();
+        SeatPicks.Clear();
+        foreach (var seat in shown)
+        {
+            var pick = new SeatPickViewModel(seat) { IsOn = keep.Contains(seat) };
+            pick.PropertyChanged += (sender, args) =>
+            {
+                if (args.PropertyName == nameof(SeatPickViewModel.IsOn))
+                {
+                    OnSeatPickChanged(sender as SeatPickViewModel);
+                }
+            };
+            SeatPicks.Add(pick);
+        }
+
+        RefreshSeatOwners();
+        OnSeatPickChanged();
+        OnPropertyChanged(nameof(HasSeats));
+    }
+
+    public bool HasForTableChoices => ForTableChoices.Count > 1;
+
+    public bool ShowForTable => IsTakeaway && Mode == OrderBuilderMode.NewOrder && HasForTableChoices;
+
+    private string? SeatForNewLine => SelectedSeat == WholeTable ? null : SelectedSeat;
+
+    // The seat chips: tap one seat, or several that share the order (1 and 2 eat together): the next dishes are for all of
+    // them, "T01A+B". None tapped means the whole table.
+    public ObservableCollection<SeatPickViewModel> SeatPicks { get; } = new();
+
+    public bool IsWholeTable => SeatPicks.All(p => !p.IsOn);
+
+    [RelayCommand]
+    private void ClearSeatPicks()
+    {
+        foreach (var pick in SeatPicks)
+        {
+            pick.IsOn = false;
+        }
+    }
+
+    private bool _adjustingSeats;
+
+    // The seat groups of dishes already sent for this order (loaded when dishes are added to it).
+    private IReadOnlyList<string> _serverSeatGroups = Array.Empty<string>();
+
+    // A seat belongs to one seat group: tapping a taken seat selects its whole group (and nothing else); tapping free seats
+    // selects only free seats; nothing can mix the two, so no seat ends up in two groups.
+    private void OnSeatPickChanged(SeatPickViewModel? changed = null)
+    {
+        if (_adjustingSeats)
+        {
+            return;
+        }
+
+        _adjustingSeats = true;
+        try
+        {
+            if (changed is not null)
+            {
+                if (changed.IsOn)
+                {
+                    foreach (var pick in SeatPicks.Where(p => !ReferenceEquals(p, changed)))
+                    {
+                        pick.IsOn = changed.OwnerGroup is { } group ? pick.OwnerGroup == group : pick.OwnerGroup is null && pick.IsOn;
+                    }
+
+                    if (changed.OwnerGroup is { } owner)
+                    {
+                        foreach (var pick in SeatPicks.Where(p => p.OwnerGroup == owner))
+                        {
+                            pick.IsOn = true;
+                        }
+                    }
+                }
+                else if (changed.OwnerGroup is { } offGroup)
+                {
+                    foreach (var pick in SeatPicks.Where(p => p.OwnerGroup == offGroup))
+                    {
+                        pick.IsOn = false;
+                    }
+                }
+            }
+        }
+        finally
+        {
+            _adjustingSeats = false;
+        }
+
+        var on = SeatPicks.Where(p => p.IsOn).Select(p => p.Code).ToList();
+        SelectedSeat = on.Count == 0 ? WholeTable : SeatSelection.Join(on);
+        OnPropertyChanged(nameof(IsWholeTable));
+    }
+
+    // Marks every seat with the group it already belongs to, from the cart and from the dishes already on the order.
+    private void RefreshSeatOwners()
+    {
+        var owner = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var raw in _serverSeatGroups.Concat(Cart.Select(c => c.SeatCode ?? string.Empty)).Where(g => !string.IsNullOrWhiteSpace(g)))
+        {
+            var group = SeatSelection.Join(SeatSelection.Parse(raw));
+            foreach (var seat in SeatSelection.Parse(group))
+            {
+                owner.TryAdd(seat, group);
+            }
+        }
+
+        _adjustingSeats = true;
+        try
+        {
+            foreach (var pick in SeatPicks)
+            {
+                pick.OwnerGroup = owner.GetValueOrDefault(pick.Code);
+            }
+        }
+        finally
+        {
+            _adjustingSeats = false;
+        }
+    }
+
+    // Takeaway for a table already dining: the kitchen sees which table the parcel belongs to.
+    public ObservableCollection<string> ForTableChoices { get; } = new();
+
+    [ObservableProperty]
+    private string? _forTable;
+
+    public const string NoTable = "No table";
 
     // A takeaway or delivery is packed to go: every dish is a parcel, so the Parcel switches are not offered.
     public bool IsPackedOrder => OrderType != OrderType.DineIn;
@@ -277,6 +430,26 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
 
     public string GuestText => GuestCount == 1 ? "1 guest" : $"{GuestCount} guests";
 
+    // The box the waiter types the number of guests into; anything that is not 1 to 99 is ignored until it is.
+    public string GuestInputText
+    {
+        get => GuestCount.ToString(CultureInfo.InvariantCulture);
+        set
+        {
+            if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var guests) && guests is >= 1 and <= 99)
+            {
+                if (guests > MaxGuests)
+                {
+                    ErrorMessage = $"This table has {MaxGuests} seats. Merge another table for a bigger party.";
+                    guests = MaxGuests;
+                    OnPropertyChanged(nameof(GuestInputText));
+                }
+
+                GuestCount = guests;
+            }
+        }
+    }
+
     public int ItemCount => Cart.Sum(c => c.Quantity);
 
     public decimal ApproxTotal => Cart.Sum(c => c.LineTotal);
@@ -319,24 +492,56 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
     {
         SeatChoices.Clear();
         SeatChoices.Add(WholeTable);
+        _allSeatCodes = new List<string>();
+        SeatPicks.Clear();
         SelectedSeat = WholeTable;
-        if (_context.TableId is { } tableId && OrderType == OrderType.DineIn)
+        ForTableChoices.Clear();
+        ForTableChoices.Add(NoTable);
+        ForTable = NoTable;
+        var map = _floorApi is null ? null : await _floorApi.GetMapAsync();
+        if (map is { Success: true, Data: not null })
         {
-            var map = _floorApi is null ? null : await _floorApi.GetMapAsync();
-            if (map is { Success: true, Data: not null })
+            var tables = map.Data.Sections.SelectMany(s => s.Tables).ToList();
+            if (_context.TableId is { } tableId && OrderType == OrderType.DineIn)
             {
-                var tables = map.Data.Sections.SelectMany(s => s.Tables).ToList();
                 foreach (var table in tables.Where(t => t.Id == tableId).Concat(tables.Where(t => t.MergedIntoTableId == tableId)))
                 {
                     foreach (var seat in table.SeatCodes)
                     {
                         SeatChoices.Add(seat);
+                        _allSeatCodes.Add(seat);
                     }
                 }
             }
+
+            foreach (var table in tables.Where(t => t.Status is not (TableStatus.Available or TableStatus.OutOfService)).OrderBy(t => t.Code, StringComparer.OrdinalIgnoreCase))
+            {
+                ForTableChoices.Add(table.Code);
+            }
         }
 
+        _serverSeatGroups = Array.Empty<string>();
+        await LoadServerSeatGroupsAsync();
+
+        RebuildSeatPicks();
         OnPropertyChanged(nameof(HasSeats));
+        OnPropertyChanged(nameof(IsWholeTable));
+        OnPropertyChanged(nameof(HasForTableChoices));
+    }
+
+    // The seat groups the order already has on the server (another terminal may have added some since this screen opened).
+    private async Task LoadServerSeatGroupsAsync()
+    {
+        if (_context.OrderId is not { } existingOrderId || OrderType != OrderType.DineIn)
+        {
+            return;
+        }
+
+        var existing = await _ordersApi.GetAsync(existingOrderId);
+        if (existing.Success && existing.Data is not null)
+        {
+            _serverSeatGroups = existing.Data.SeatGroups.Select(g => g.SeatCode).ToList();
+        }
     }
 
     public void OnNavigatedFrom() => _menuCache.Changed -= OnMenuChanged;
@@ -345,7 +550,11 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
 
     partial void OnSearchTextChanged(string value) => ShowItems();
 
-    partial void OnGuestCountChanged(int value) => SaveLocalDraft();
+    partial void OnGuestCountChanged(int value)
+    {
+        RebuildSeatPicks();
+        SaveLocalDraft();
+    }
 
     partial void OnIsSendingChanged(bool value) => OnPropertyChanged(nameof(SendText));
 
@@ -492,7 +701,16 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
     private void CancelNote() => NoteTarget = null;
 
     [RelayCommand]
-    private void IncreaseGuests() => GuestCount = Math.Min(GuestCount + 1, 99);
+    private void IncreaseGuests()
+    {
+        if (GuestCount >= MaxGuests)
+        {
+            ErrorMessage = $"This table has {MaxGuests} seats. Merge another table for a bigger party.";
+            return;
+        }
+
+        GuestCount = GuestCount + 1;
+    }
 
     [RelayCommand]
     private void DecreaseGuests() => GuestCount = Math.Max(GuestCount - 1, 1);
@@ -567,6 +785,7 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
             CustomerPhone = OrderType == OrderType.Delivery ? CustomerPhone : null,
             DeliveryAddress = OrderType == OrderType.Delivery ? DeliveryAddress : null,
             DeliveryNotes = OrderType == OrderType.Delivery ? DeliveryNotes : null,
+            Notes = OrderType == OrderType.Takeaway && ForTable is { Length: > 0 } forTable && forTable != NoTable ? $"Parcel for table {forTable}" : null,
             GuestCount = GuestCount,
             Items = Cart.Select(c => c.ToInput()).ToList(),
             Submit = submit,
@@ -640,6 +859,13 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
                 _pendingKey = null;
                 SaveLocalDraft();
                 ErrorMessage = DescribeRejection(outcome.LastResult);
+                if (_context.OrderId is not null)
+                {
+                    // Another terminal may have taken some of these seats: show what is really taken now, so the next tap is right.
+                    await LoadServerSeatGroupsAsync();
+                    RefreshSeatOwners();
+                }
+
                 return;
 
             default:
@@ -792,6 +1018,7 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
         OnPropertyChanged(nameof(ApproxTotal));
         OnPropertyChanged(nameof(SummaryText));
         OnPropertyChanged(nameof(IsCartEmpty));
+        RefreshSeatOwners();
         SaveLocalDraft();
     }
 

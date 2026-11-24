@@ -126,7 +126,7 @@ public sealed partial class TableMapViewModel : ViewModelBase, INavigationAware,
         _navigation = navigation;
         var roles = session.User?.Roles ?? Array.Empty<string>();
         var isManager = roles.Contains(Roles.Manager) || roles.Contains(Roles.Admin);
-        CanTakeOrders = roles.Contains(Roles.Waiter) || isManager;
+        CanTakeOrders = roles.Contains(Roles.Waiter) || roles.Contains(Roles.Cashier) || isManager;
         Details = new TableDetailsViewModel(floorApi, ordersApi, drafts, navigation, dialogs, notifications, ApplyTable, RefreshAsync, CanTakeOrders, isManager,
             roles.Contains(Roles.Cashier), reservationsApi, () => _tiles.Values);
     }

@@ -2,6 +2,7 @@ using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
 using HotelPOS.Contracts.Admin;
+using HotelPOS.Contracts.Floor;
 using HotelPOS.Contracts.Menu;
 using HotelPOS.Contracts.Orders;
 using HotelPOS.Domain.Floor;
@@ -21,6 +22,19 @@ internal sealed class OrderItemFactory
 
     public Task<Result<List<OrderItem>>> CreateAsync(IReadOnlyList<OrderItemInput> inputs, CancellationToken cancellationToken) =>
         CreateAsync(inputs, null, cancellationToken);
+
+    // existingSeatGroups: the seat groups the order already has (dishes added later), so a seat cannot end up in two groups.
+    public async Task<Result<List<OrderItem>>> CreateAsync(IReadOnlyList<OrderItemInput> inputs, int? tableId, IEnumerable<string?> existingSeatGroups, CancellationToken cancellationToken)
+    {
+        var created = await CreateAsync(inputs, tableId, cancellationToken);
+        if (created.IsFailure)
+        {
+            return created;
+        }
+
+        var conflict = SeatSelection.FindConflict(existingSeatGroups.Concat(created.Value.Select(i => i.SeatCode)));
+        return conflict is null ? created : AppErrors.Validation("items", conflict);
+    }
 
     // tableId: the order's table, so seat codes ("4A") can be checked against it and the tables merged into it.
     public async Task<Result<List<OrderItem>>> CreateAsync(IReadOnlyList<OrderItemInput> inputs, int? tableId, CancellationToken cancellationToken)
@@ -70,8 +84,14 @@ internal sealed class OrderItemFactory
             string? seatCode = null;
             if (!string.IsNullOrWhiteSpace(input.SeatCode))
             {
-                seatCode = input.SeatCode.Trim().ToUpperInvariant();
-                if (seatTables.Count == 0 || !TableSeats.IsValid(seatTables, seatCode))
+                var chosenSeats = SeatSelection.Parse(input.SeatCode);
+                seatCode = SeatSelection.Join(chosenSeats);
+                if (seatCode.Length > SeatSelection.MaxLength)
+                {
+                    return AppErrors.Validation(field, "Too many seats are selected together. Choose fewer seats, or leave the seat empty for the whole table.");
+                }
+
+                if (seatTables.Count == 0 || chosenSeats.Count == 0 || chosenSeats.Any(s => !TableSeats.IsValid(seatTables, s)))
                 {
                     var offered = seatTables.Count == 0 ? "this order has no table" : "its seats are " + string.Join(", ", seatTables.SelectMany(t => TableSeats.CodesFor(t.Code, t.Capacity)));
                     return AppErrors.Validation(field, $"Seat {seatCode} does not exist: {offered}.");
@@ -118,6 +138,12 @@ internal sealed class OrderItemFactory
                 input.IsParcel,
                 packaging,
                 seatCode));
+        }
+
+        var inputConflict = SeatSelection.FindConflict(result.Select(i => i.SeatCode));
+        if (inputConflict is not null)
+        {
+            return AppErrors.Validation("items", inputConflict);
         }
 
         return result;

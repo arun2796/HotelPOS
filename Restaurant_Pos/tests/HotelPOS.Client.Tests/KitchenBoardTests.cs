@@ -243,7 +243,9 @@ public class KitchenBoardTests : TestContext
         var handler = Board();
         var page = await RenderBoardAsync(handler);
 
-        await page.Find("article[data-ticket='1'] button[data-action=accept]").ClickAsync(new MouseEventArgs());
+        // Find and click in one step on the render thread: the page re-renders on its own after start-up (the realtime
+        // connection attempt, the clock), and a button found before that render has no handler any more.
+        await page.InvokeAsync(() => page.Find("article[data-ticket='1'] button[data-action=accept]").Click());
 
         handler.Posts.Should().Equal("/api/kitchen/orders/1/accept");
         page.FindAll("[data-testid=ticket-detail]").Should().BeEmpty();

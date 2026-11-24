@@ -159,6 +159,7 @@ public sealed partial class RolesViewModel : ViewModelBase, INavigationAware, IR
         (Permissions.OrdersCancelAny, "Orders", "Cancel orders or items placed by others"),
 
         (Permissions.KitchenOperate, "Kitchen", "Manage tickets on Kitchen Display"),
+        (Permissions.StockAdjust, "Kitchen", "Record kitchen waste and correct the stock count (with a reason)"),
 
         // Phase 22. A permission missing here is invisible on this page and is stripped from a role on save.
         (Permissions.ReservationsView, "Reservations", "See reservations and the reserved-soon table badge"),

@@ -50,6 +50,7 @@ public static class AuditActions
     public const string TableMerged = "Table.Merged";
     public const string TableUnmerged = "Table.Unmerged";
     public const string MenuItemStockChanged = "MenuItem.StockChanged";
+    public const string MenuItemStockAdjusted = "MenuItem.StockAdjusted";
 
     public const string CategoryCreated = "Category.Created";
     public const string CategoryUpdated = "Category.Updated";

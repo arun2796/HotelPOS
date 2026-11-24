@@ -281,6 +281,7 @@ public class ScreenRenderingTests
 
             await waiterShell.NavigateToAsync(ModuleRegistry.MyOrders, null);
             rendered.Add(await RenderScreenAsync(env, waiterShell, "23-waiter-my-orders"));
+            await SeatChipsOnTheRealScreenAsync(env, waiterShell);
             waiterShell.Dispose();
 
             env.Session.Start(TestData.Login("kitchen1", roles: "Kitchen"));
@@ -539,6 +540,157 @@ public class ScreenRenderingTests
         bodyFontFiles.Should().HaveCount(4).And.OnlyContain(f => f.StartsWith("inter-"));
     }
 
+    // The real Windows ordering screen (the shipped XAML with its bindings, driven through the chips' own automation peers):
+    // free and taken seats, the ownership tooltip, group selection, free-seat multi-select, no mixing, the seat group saved on
+    // the dish, and an order reopened with its seats already owned. It runs inside AllScreens_RenderWithoutXamlOrBindingErrors
+    // (WPF allows one Application per process), so its bindings are checked for errors too.
+    private static async Task SeatChipsOnTheRealScreenAsync(Environment env, ShellViewModel shell)
+    {
+        {
+            var floor = Substitute.For<IFloorApi>();
+            floor.GetMapAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(ApiResult<TableMapDto>.Ok(new TableMapDto
+            {
+                Sections = new[]
+                {
+                    new TableMapSectionDto
+                    {
+                        Id = 1, Name = "Ground Floor",
+                        Tables = new[] { new TableDto { Id = 5, Code = "T05", Capacity = 4, Status = TableStatus.Occupied, GuestCount = 4, SeatCodes = new[] { "T05A", "T05B", "T05C", "T05D" } } },
+                    },
+                },
+            }));
+            var orders = Substitute.For<IOrdersApi>();
+            orders.GetAsync(77, Arg.Any<CancellationToken>()).Returns(ApiResult<OrderDetailDto>.Ok(new OrderDetailDto
+            {
+                Id = 77, OrderNumber = 1077, TableId = 5, Status = OrderStatus.Submitted, GuestCount = 4,
+                SeatGroups = new[] { new SeatGroupStatusDto { SeatCode = "T05A+B", ItemCount = 1, Quantity = 1, KitchenStatus = KitchenOrderStatus.Preparing } },
+            }));
+
+            // ---- a new order for table T05
+            var builder = env.Create<OrderBuilderViewModel>(floor, orders);
+            await shell.ShowPageAsync(builder, new OrderBuilderContext(5, "T05", OrderBuilderMode.NewOrder, 4));
+            var screen = await InspectAsync(env, shell, "60-order-builder-seats-1", root => SeatChips(root));
+            screen.Should().HaveCount(4, "four guests at a four-seat table: four seats");
+            screen.Select(c => c.Content).Should().Equal("A", "B", "C", "D");
+            screen.Select(c => c.Tooltip).Should().OnlyContain(t => t.EndsWith("free"), "nobody has ordered yet: every seat is free");
+
+            // seats A and B together
+            await InspectAsync(env, shell, null, root => { Toggle(root, "T05A"); Toggle(root, "T05B"); return SeatChips(root); });
+            builder.SelectedSeat.Should().Be("T05A+B", "two free seats can be selected together");
+            builder.AddItemCommand.Execute(builder.Items.Single(i => i.Name == "Veg Spring Roll"));
+            builder.Cart.Single().SeatCode.Should().Be("T05A+B", "the dish is saved with the group of both seats");
+
+            var afterAdd = await InspectAsync(env, shell, "61-order-builder-seats-2", root => SeatChips(root));
+            afterAdd.Select(c => c.Content).Should().Equal("A ●", "B ●", "C", "D");
+            afterAdd[0].Tooltip.Should().Contain("T05A+B").And.Contain("already has dishes");
+            afterAdd.Select(c => c.IsChecked).Should().Equal(true, true, false, false);
+
+            // a free seat can be picked alone, and replaces the group selection: free and taken seats are never mixed
+            await InspectAsync(env, shell, null, root => { Toggle(root, "T05C"); return SeatChips(root); });
+            builder.SelectedSeat.Should().Be("T05C");
+            await InspectAsync(env, shell, null, root => { Toggle(root, "T05D"); return SeatChips(root); });
+            builder.SelectedSeat.Should().Be("T05C+D", "free seats can be selected together");
+            var mixed = await InspectAsync(env, shell, null, root => { Toggle(root, "T05A"); return SeatChips(root); });
+            builder.SelectedSeat.Should().Be("T05A+B", "tapping a taken seat selects its complete group and nothing else");
+            mixed.Select(c => c.IsChecked).Should().Equal(true, true, false, false);
+            builder.OnNavigatedFrom();
+
+            // ---- the order is opened again later to add dishes: the group is still owned
+            var reopened = env.Create<OrderBuilderViewModel>(floor, orders);
+            await shell.ShowPageAsync(reopened, new OrderBuilderContext(5, "T05", OrderBuilderMode.AppendItems, 4, 77, 1077));
+            var again = await InspectAsync(env, shell, "62-order-builder-seats-reopened", root => SeatChips(root));
+            again.Select(c => c.Content).Should().Equal("A ●", "B ●", "C", "D");
+            await InspectAsync(env, shell, null, root => { Toggle(root, "T05B"); return SeatChips(root); });
+            reopened.SelectedSeat.Should().Be("T05A+B", "seat B belongs to the group A+B, so the whole group is selected");
+
+            reopened.OnNavigatedFrom();
+        }
+    }
+
+    private sealed record SeatChip(string Seat, string Content, string Tooltip, bool IsChecked);
+
+    private static List<SeatChip> SeatChips(DependencyObject root)
+    {
+        var chips = new List<SeatChip>();
+        foreach (var button in Descendants<System.Windows.Controls.Primitives.ToggleButton>(root))
+        {
+            var name = System.Windows.Automation.AutomationProperties.GetName(button);
+            if (name.StartsWith("Seat T", StringComparison.Ordinal))
+            {
+                chips.Add(new SeatChip(name.Split(' ')[1], button.Content?.ToString() ?? string.Empty, name, button.IsChecked == true));
+            }
+        }
+
+        return chips;
+    }
+
+    // Presses a seat chip the way a click does: through its automation peer.
+    private static void Toggle(DependencyObject root, string seat)
+    {
+        var button = Descendants<System.Windows.Controls.Primitives.ToggleButton>(root)
+            .Single(b => System.Windows.Automation.AutomationProperties.GetName(b).StartsWith("Seat " + seat, StringComparison.Ordinal));
+        var peer = System.Windows.Automation.Peers.UIElementAutomationPeer.CreatePeerForElement(button);
+        ((System.Windows.Automation.Provider.IToggleProvider)peer.GetPattern(System.Windows.Automation.Peers.PatternInterface.Toggle)!).Toggle();
+    }
+
+    private static IEnumerable<T> Descendants<T>(DependencyObject parent)
+        where T : DependencyObject
+    {
+        var count = VisualTreeHelper.GetChildrenCount(parent);
+        for (var i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is T match)
+            {
+                yield return match;
+            }
+
+            foreach (var inner in Descendants<T>(child))
+            {
+                yield return inner;
+            }
+        }
+    }
+
+    // Renders the screen like RenderOnceAsync, runs the inspection on the live visual tree, and optionally saves a picture.
+    private static async Task<List<SeatChip>> InspectAsync(Environment env, object screen, string? name, Func<DependencyObject, List<SeatChip>> inspect)
+    {
+        env.Main.CurrentScreen = screen;
+        var window = new MainWindow { DataContext = env.Main };
+        var root = (FrameworkElement)window.Content;
+        window.Content = null;
+        var host = new Border { Child = root, Background = (Brush)Application.Current.Resources["Brush.Background"] };
+        TextElement.SetFontFamily(host, (FontFamily)Application.Current.Resources["Font.Body"]);
+        host.SetResourceReference(TextElement.FontSizeProperty, "Font.Size.Body");
+        TextElement.SetForeground(host, (Brush)Application.Current.Resources["Brush.TextPrimary"]);
+        host.DataContext = env.Main;
+        host.Measure(new Size(Width, Height));
+        host.Arrange(new Rect(0, 0, Width, Height));
+        await Dispatcher.Yield(DispatcherPriority.ContextIdle);
+        host.UpdateLayout();
+        await Dispatcher.Yield(DispatcherPriority.ContextIdle);
+        host.UpdateLayout();
+
+        var result = inspect(host);
+        await Dispatcher.Yield(DispatcherPriority.ContextIdle);
+        host.UpdateLayout();
+        result = SeatChips(host);
+
+        if (name is not null)
+        {
+            var bitmap = new RenderTargetBitmap(Width, Height, 96, 96, PixelFormats.Pbgra32);
+            bitmap.Render(host);
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(bitmap));
+            await using var file = File.Create(Path.Combine(OutputDirectory, name + ".png"));
+            encoder.Save(file);
+        }
+
+        host.Child = null;
+        window.Close();
+        return result;
+    }
+
     // Every light screen is also rendered in the dark theme ("-dark"), so both themes are checked for binding errors
     // and can be reviewed side by side.
     private static async Task<string> RenderScreenAsync(Environment env, object screen, string name)
@@ -792,6 +944,8 @@ public class ScreenRenderingTests
         public MainViewModel Main { get; }
 
         public T Create<T>() => ActivatorUtilities.CreateInstance<T>(_provider);
+
+        public T Create<T>(params object[] parameters) => ActivatorUtilities.CreateInstance<T>(_provider, parameters);
 
         public T Get<T>()
             where T : notnull => _provider.GetRequiredService<T>();

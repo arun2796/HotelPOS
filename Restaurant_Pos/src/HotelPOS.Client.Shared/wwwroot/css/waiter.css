@@ -113,7 +113,8 @@
 
 /* Phase 27: seat picker + parcel toggle ahead of the menu (they apply to the dishes tapped next), seat/parcel chips on a line. */
 .dish-prefs { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; margin: 4px 0 10px; }
-.seat-picker { display: flex; align-items: center; gap: 8px; flex: 1 1 0; min-width: 0; }
+.seat-picker { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; flex: 1 1 0; min-width: 0; }
+.seat-hint { flex: 0 0 100%; }
 .seat-picker-label { flex: none; }
 .seat-chips { flex: 1 1 auto; min-width: 0; }
 .order-line-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }

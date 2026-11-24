@@ -94,7 +94,7 @@ public class FloorTests : DatabaseTestBase
         // Two terminals press OCCUPY on the same version of the table at the same moment.
         var results = await Task.WhenAll(
             SendAsync(new OccupyTableCommand(table.Id, new OccupyTableRequest { GuestCount = 2, RowVersion = table.RowVersion })),
-            SendAsync(new OccupyTableCommand(table.Id, new OccupyTableRequest { GuestCount = 5, RowVersion = table.RowVersion })));
+            SendAsync(new OccupyTableCommand(table.Id, new OccupyTableRequest { GuestCount = 3, RowVersion = table.RowVersion })));
 
         results.Count(r => r.IsSuccess).Should().Be(1);
         var loser = results.Single(r => r.IsFailure);
@@ -120,7 +120,7 @@ public class FloorTests : DatabaseTestBase
 
         tableA.Occupy(2, Clock.UtcNow);
         await dbA.SaveChangesAsync();
-        tableB.Occupy(5, Clock.UtcNow);
+        tableB.Occupy(3, Clock.UtcNow);
         var act = () => dbB.SaveChangesAsync();
 
         await act.Should().ThrowAsync<DbUpdateConcurrencyException>();

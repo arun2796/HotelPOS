@@ -22,6 +22,9 @@ public static class Permissions
     public const string MenuManage = "menu.manage";
     public const string MenuAvailability = "menu.availability";
 
+    // Waste and counted corrections of the kitchen stock (the count itself is set with MenuAvailability).
+    public const string StockAdjust = "stock.adjust";
+
     public const string OrdersCreate = "orders.create";
     public const string OrdersEditAny = "orders.edit.any";
     public const string OrdersCancelAny = "orders.cancel.any";
@@ -53,7 +56,7 @@ public static class Permissions
         UsersManage, RolesManage, SettingsManage, DevicesManage, AuditView, BackupManage, ServerManage,
         TablesView, TablesOperate, TablesManage, FloorLayoutManage,
         ReservationsView, ReservationsManage,
-        MenuView, MenuManage, MenuAvailability,
+        MenuView, MenuManage, MenuAvailability, StockAdjust,
         OrdersCreate, OrdersEditAny, OrdersCancelAny,
         KitchenOperate,
         BillingOperate, BillingDiscount, BillingVoid, BillingRefund,

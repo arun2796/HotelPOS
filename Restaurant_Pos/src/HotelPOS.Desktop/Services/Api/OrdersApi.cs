@@ -24,7 +24,8 @@ public interface IOrdersApi
 
     Task<ApiResult<OrderDetailDto>> CancelItemAsync(int id, int itemId, CancelOrderItemRequest request, CancellationToken cancellationToken = default);
 
-    Task<ApiResult<BillDetailDto>> RequestBillAsync(int id, Guid idempotencyKey, CancellationToken cancellationToken = default);
+    // splitBySeat: one bill for each seat group of the table (A, B, C ...).
+    Task<ApiResult<BillDetailDto>> RequestBillAsync(int id, Guid idempotencyKey, CancellationToken cancellationToken = default, bool splitBySeat = false);
 }
 
 public sealed class OrdersApi : IOrdersApi
@@ -63,6 +64,6 @@ public sealed class OrdersApi : IOrdersApi
     public Task<ApiResult<OrderDetailDto>> CancelItemAsync(int id, int itemId, CancelOrderItemRequest request, CancellationToken cancellationToken = default) =>
         _api.PostAsync<OrderDetailDto>($"api/orders/{id}/items/{itemId}/cancel", request, cancellationToken);
 
-    public Task<ApiResult<BillDetailDto>> RequestBillAsync(int id, Guid idempotencyKey, CancellationToken cancellationToken = default) =>
-        _api.PostAsync<BillDetailDto>($"api/orders/{id}/request-bill", null, cancellationToken, new ApiRequestOptions { IdempotencyKey = idempotencyKey });
+    public Task<ApiResult<BillDetailDto>> RequestBillAsync(int id, Guid idempotencyKey, CancellationToken cancellationToken = default, bool splitBySeat = false) =>
+        _api.PostAsync<BillDetailDto>($"api/orders/{id}/request-bill" + (splitBySeat ? "?splitBySeat=true" : string.Empty), null, cancellationToken, new ApiRequestOptions { IdempotencyKey = idempotencyKey });
 }

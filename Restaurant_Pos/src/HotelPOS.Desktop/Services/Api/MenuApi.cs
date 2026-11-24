@@ -24,6 +24,16 @@ public interface IMenuApi
 
     Task<ApiResult<MenuItemDto>> SetStockAsync(int id, SetStockRequest request, CancellationToken cancellationToken = default);
 
+    Task<ApiResult<MenuItemDto>> AdjustStockAsync(int id, AdjustStockRequest request, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<StockHistoryDto>> GetStockHistoryAsync(int id, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<MenuItemDto>> SetReorderLevelAsync(int id, SetReorderLevelRequest request, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<StockOverviewDto>> GetStockOverviewAsync(CancellationToken cancellationToken = default);
+
+    Task<ApiResult<List<StockMovementDto>>> GetStockMovementsAsync(HotelPOS.Contracts.Enums.StockMovementType? type, DateOnly? day, CancellationToken cancellationToken = default);
+
     Task<ApiResult<MenuItemDto>> UploadImageAsync(int id, Stream content, string fileName, CancellationToken cancellationToken = default);
 
     Task<ApiResult<MenuItemDto>> RemoveImageAsync(int id, CancellationToken cancellationToken = default);
@@ -96,6 +106,34 @@ public sealed class MenuApi : IMenuApi
 
     public Task<ApiResult<MenuItemDto>> SetAvailabilityAsync(int id, bool isAvailable, CancellationToken cancellationToken = default) =>
         _api.PatchAsync<MenuItemDto>($"api/menu-items/{id}/availability", new SetAvailabilityRequest { IsAvailable = isAvailable }, cancellationToken);
+
+    public Task<ApiResult<MenuItemDto>> AdjustStockAsync(int id, AdjustStockRequest request, CancellationToken cancellationToken = default) =>
+        _api.PostAsync<MenuItemDto>($"api/menu-items/{id}/stock/adjust", request, cancellationToken);
+
+    public Task<ApiResult<MenuItemDto>> SetReorderLevelAsync(int id, SetReorderLevelRequest request, CancellationToken cancellationToken = default) =>
+        _api.PatchAsync<MenuItemDto>($"api/menu-items/{id}/stock/reorder-level", request, cancellationToken);
+
+    public Task<ApiResult<StockOverviewDto>> GetStockOverviewAsync(CancellationToken cancellationToken = default) =>
+        _api.GetAsync<StockOverviewDto>("api/menu-items/stock/overview", cancellationToken);
+
+    public Task<ApiResult<List<StockMovementDto>>> GetStockMovementsAsync(HotelPOS.Contracts.Enums.StockMovementType? type, DateOnly? day, CancellationToken cancellationToken = default)
+    {
+        var query = new List<string>();
+        if (type is { } t)
+        {
+            query.Add("type=" + (int)t);
+        }
+
+        if (day is { } d)
+        {
+            query.Add("day=" + d.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture));
+        }
+
+        return _api.GetAsync<List<StockMovementDto>>("api/menu-items/stock/movements" + (query.Count == 0 ? string.Empty : "?" + string.Join("&", query)), cancellationToken);
+    }
+
+    public Task<ApiResult<StockHistoryDto>> GetStockHistoryAsync(int id, CancellationToken cancellationToken = default) =>
+        _api.GetAsync<StockHistoryDto>($"api/menu-items/{id}/stock/history", cancellationToken);
 
     public Task<ApiResult<MenuItemDto>> SetStockAsync(int id, SetStockRequest request, CancellationToken cancellationToken = default) =>
         _api.PatchAsync<MenuItemDto>($"api/menu-items/{id}/stock", request, cancellationToken);

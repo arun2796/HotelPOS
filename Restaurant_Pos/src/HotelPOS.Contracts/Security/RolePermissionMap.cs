@@ -11,7 +11,7 @@ public static class RolePermissionMap
             Permissions.AuditView,
             Permissions.TablesView, Permissions.TablesOperate, Permissions.TablesManage,
             Permissions.ReservationsView, Permissions.ReservationsManage,
-            Permissions.MenuView, Permissions.MenuManage, Permissions.MenuAvailability,
+            Permissions.MenuView, Permissions.MenuManage, Permissions.MenuAvailability, Permissions.StockAdjust,
             Permissions.OrdersCreate, Permissions.OrdersEditAny, Permissions.OrdersCancelAny,
             Permissions.KitchenOperate,
             Permissions.BillingOperate, Permissions.BillingDiscount, Permissions.BillingVoid, Permissions.BillingRefund,
@@ -28,11 +28,11 @@ public static class RolePermissionMap
         [Roles.Kitchen] = new[]
         {
             // The table map has been readable by every role since Phase 2.
-            Permissions.TablesView, Permissions.MenuView, Permissions.MenuAvailability, Permissions.KitchenOperate,
+            Permissions.TablesView, Permissions.MenuView, Permissions.MenuAvailability, Permissions.StockAdjust, Permissions.KitchenOperate,
         },
         [Roles.Cashier] = new[]
         {
-            Permissions.TablesView, Permissions.TablesOperate, Permissions.MenuView,
+            Permissions.TablesView, Permissions.TablesOperate, Permissions.MenuView, Permissions.OrdersCreate,
             Permissions.ReservationsView, Permissions.ReservationsManage,
             Permissions.BillingOperate, Permissions.BillingDiscount,
             Permissions.ShiftOperate,

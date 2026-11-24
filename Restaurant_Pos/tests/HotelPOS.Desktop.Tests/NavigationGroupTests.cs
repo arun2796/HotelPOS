@@ -17,7 +17,7 @@ public class NavigationGroupTests
         groups.Select(g => g.Group).Should().Equal(
             "Overview", "Service", "Cash & Day End", "Reports & Tax", "Set-up", "People", "Devices", "System");
         Keys(groups, "Overview").Should().Equal("dashboard");
-        Keys(groups, "Service").Should().Equal("tables", "reservations", "my-orders", "orders", "kitchen-display", "kitchen-completed", "billing", "closed-bills");
+        Keys(groups, "Service").Should().Equal("tables", "takeaway", "reservations", "my-orders", "orders", "kitchen-display", "kitchen-completed", "kitchen-stock", "billing", "closed-bills");
         Keys(groups, "Cash & Day End").Should().Equal("shifts", "day-end", "day-end-history", "expenses");
         Keys(groups, "Reports & Tax").Should().Equal("reports", "gst", "period-close");
         Keys(groups, "Set-up").Should().Equal("menu", "floor", "floor-plan", "discounts", "import");

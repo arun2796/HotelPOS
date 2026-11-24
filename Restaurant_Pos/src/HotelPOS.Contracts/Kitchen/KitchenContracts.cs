@@ -17,6 +17,9 @@ public sealed record KitchenTicketDto
     public string WaiterName { get; init; } = string.Empty;
     public int StationId { get; init; }
     public string StationCode { get; init; } = string.Empty;
+
+    // The seat group the ticket is for ("T01A+B"); empty for the whole table. A ticket never mixes seat groups.
+    public string? SeatCode { get; init; }
     public KitchenOrderStatus Status { get; init; }
     public DateTime CreatedAtUtc { get; init; }
     public DateTime? AcceptedAtUtc { get; init; }

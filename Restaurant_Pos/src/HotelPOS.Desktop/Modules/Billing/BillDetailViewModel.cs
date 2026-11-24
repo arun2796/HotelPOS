@@ -1108,15 +1108,19 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
             return;
         }
 
-        var reason = await _dialogs.PromptAsync("Void bill", $"Void invoice {Bill.InvoiceNumber}? The order is cancelled and the table released. Enter the reason.", "Void bill");
-        if (string.IsNullOrWhiteSpace(reason))
+        var answer = await _dialogs.PromptTwoWayAsync("Void bill",
+            $"Void invoice {Bill.InvoiceNumber}? The order is cancelled and the table released. Enter the reason, then say what happens to the food already sent to the kitchen.",
+            "Return to kitchen stock", "Waste");
+        if (answer is not { } choice)
         {
             return;
         }
 
+        var reason = choice.Reason;
+        var disposition = choice.Second ? StockDisposition.Waste : StockDisposition.Restock;
         var bill = Bill;
         var result = await Approvals.WithApprovalAsync(_dialogs, _billingApi, ApprovalActions.Void, "voiding a bill",
-            approval => _billingApi.VoidAsync(bill.Id, new VoidBillRequest { Reason = reason, Approval = approval, RowVersion = bill.RowVersion }));
+            approval => _billingApi.VoidAsync(bill.Id, new VoidBillRequest { Reason = reason, Approval = approval, RowVersion = bill.RowVersion, FoodDisposition = disposition }));
         if (result.Success)
         {
             _notifications.Success($"Invoice {bill.InvoiceNumber} voided.");

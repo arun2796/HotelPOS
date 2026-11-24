@@ -478,3 +478,6 @@ svg.ic { flex: none; vertical-align: middle; }
 
 /* One clear icon in search fields: the app draws its own, so hide the browser's. */
 input[type=search]::-webkit-search-cancel-button, input[type=search]::-webkit-search-decoration { -webkit-appearance: none; appearance: none; display: none; }
+
+/* A seat that already has dishes: tinted, so the waiter sees which seats are taken. */
+.chip-btn.taken:not(.on) { border-color: var(--warning, #b45309); color: var(--warning, #b45309); }

@@ -41,6 +41,7 @@ public static class ModuleRegistry
     public const string MyOrders = "my-orders";
     public const string KitchenDisplay = "kitchen-display";
     public const string KitchenCompleted = "kitchen-completed";
+    public const string KitchenStock = "kitchen-stock";
     public const string Billing = "billing";
     public const string ClosedBills = "closed-bills";
     public const string Reports = "reports";
@@ -86,12 +87,12 @@ public static class ModuleRegistry
         new(Tables, "Tables", "", "Service", new[] { Roles.Admin, Roles.Manager, Roles.Waiter, Roles.Cashier }, 2,
             "Live table status and orders.", typeof(TableMapViewModel)),
         // A shortcut into the order builder on its Takeaway tab: no table, no guests, the bill follows the kitchen order.
-        new(Takeaway, "Takeaway", "\uE719", "Service", new[] { Roles.Admin, Roles.Manager, Roles.Waiter }, 2,
+        new(Takeaway, "Takeaway", "\uE719", "Service", new[] { Roles.Admin, Roles.Manager, Roles.Waiter, Roles.Cashier }, 2,
             "Start a takeaway order: pick the items, then bill and send to the kitchen.", typeof(OrderBuilderViewModel),
             DefaultParameter: new OrderBuilderContext(null, string.Empty, OrderBuilderMode.NewOrder, 1, OrderType: OrderType.Takeaway)),
         new(Reservations, "Reservations", "", "Service", new[] { Roles.Admin, Roles.Manager, Roles.Waiter, Roles.Cashier }, 22,
             "Book, view, seat and manage table reservations.", typeof(ReservationsViewModel)),
-        new(MyOrders, "My Orders", "", "Service", new[] { Roles.Admin, Roles.Manager, Roles.Waiter }, 4,
+        new(MyOrders, "My Orders", "", "Service", new[] { Roles.Admin, Roles.Manager, Roles.Waiter, Roles.Cashier }, 4,
             "Your active orders, with ready orders highlighted.", typeof(MyOrdersViewModel)),
         new(Orders, "Orders", "", "Service", Management, 21,
             "Every active order in the restaurant: search, filter by status, sort and open the table.", typeof(ActiveOrdersViewModel)),
@@ -99,6 +100,8 @@ public static class ModuleRegistry
             "New, preparing and ready tickets with large touch buttons.", typeof(KitchenDisplayViewModel)),
         new(KitchenCompleted, "Completed Orders", "", "Service", new[] { Roles.Admin, Roles.Manager, Roles.Kitchen }, 5,
             "Tickets completed today with preparation times.", typeof(CompletedOrdersViewModel)),
+        new(KitchenStock, "Kitchen stock", "\uE7BF", "Service", new[] { Roles.Admin, Roles.Manager, Roles.Kitchen }, 5,
+            "Prepared, reserved, sold, refilled and wasted quantities, what is left and its status, live.", typeof(KitchenStockViewModel)),
         new(Billing, "Billing", "", "Service", new[] { Roles.Admin, Roles.Manager, Roles.Cashier }, 6,
             "Pending bills, discounts, tax and split payments.", typeof(CashierWorkspaceViewModel)),
         new(ClosedBills, "Closed Bills", "", "Service", new[] { Roles.Admin, Roles.Manager, Roles.Cashier }, 6,
@@ -173,6 +176,7 @@ public static class ModuleRegistry
         [MyOrders] = Permissions.OrdersCreate,
         [KitchenDisplay] = Permissions.KitchenOperate,
         [KitchenCompleted] = Permissions.KitchenOperate,
+        [KitchenStock] = Permissions.MenuAvailability,
         [Billing] = Permissions.BillingOperate,
         [ClosedBills] = Permissions.BillingOperate,
         [PrintLog] = Permissions.BillingOperate,

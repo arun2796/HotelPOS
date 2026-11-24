@@ -273,6 +273,42 @@ public sealed class WaiterScreensTests : TestContext
     };
 
     [Fact]
+    public async Task Builder_SeatChips_SelectSeveralSeatsTogether_AndATakenSeatSelectsItsWholeGroup()
+    {
+        var handler = new RouteHandler
+        {
+            Respond = r => (r.Method.Method, r.RequestUri!.AbsolutePath) switch
+            {
+                ("GET", "/api/menu") => Menu,
+                ("GET", "/api/tables/5") => new TableDetailDto
+                {
+                    Table = new TableDto { Id = 5, Code = "T05", Status = TableStatus.Occupied, GuestCount = 4, SeatCodes = new[] { "T05A", "T05B", "T05C", "T05D" } },
+                },
+                _ => null,
+            },
+        };
+        var page = await RenderBuilderAsync(handler);
+        IReadOnlyList<AngleSharp.Dom.IElement> Chips() => page.FindAll("[data-testid=seat-chip]");
+
+        // seats A and B together, then a dish for them
+        await page.InvokeAsync(() => Chips()[0].Click());
+        await page.InvokeAsync(() => Chips()[1].Click());
+        Chips().Select(c => c.GetAttribute("aria-pressed")).Should().Equal("true", "true", "false", "false");
+        await page.InvokeAsync(() => page.FindAll("button.chip-btn").Single(c => c.TextContent == "Breads").Click());
+        await page.InvokeAsync(() => page.FindAll("button.item-card")[0].Click());
+
+        // A and B now belong to one group: shown as taken; C and D are free
+        Chips().Select(c => c.GetAttribute("data-taken")).Should().Equal("true", "true", "false", "false");
+
+        // a free seat selects only free seats; a taken seat selects its whole group again
+        await page.InvokeAsync(() => Chips()[2].Click());
+        Chips().Select(c => c.GetAttribute("aria-pressed")).Should().Equal("false", "false", "true", "false");
+        await page.InvokeAsync(() => Chips()[0].Click());
+        Chips().Select(c => c.GetAttribute("aria-pressed")).Should().Equal(new[] { "true", "true", "false", "false" }, "tapping one seat of a group picks the whole group");
+        await StopRealtimeAsync();
+    }
+
+    [Fact]
     public async Task Builder_MenuCards_ShowPictureOrInitials_PriceAndOptionsHint_AndTheHeaderNamesTheTable()
     {
         var page = await RenderBuilderAsync(MenuHandler());

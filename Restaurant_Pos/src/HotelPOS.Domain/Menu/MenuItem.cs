@@ -83,6 +83,19 @@ public sealed class MenuItem : BaseEntity, IHasRowVersion
 
     public bool IsStockTracked => StockMode != StockTrackingMode.None && StockRemaining is not null;
 
+    // The count at or below which the item shows as Low stock; null uses the default.
+    public int? ReorderLevel { get; private set; }
+
+    public void SetReorderLevel(int? level)
+    {
+        if (level is < 0 or > 100000)
+        {
+            throw new DomainException("The low-stock level must be between 0 and 100000.");
+        }
+
+        ReorderLevel = level is null or 0 ? null : level;
+    }
+
     public void SetPackagingCharge(decimal charge) =>
         PackagingCharge = MenuGuard.Money(charge, 0m, MenuLimits.MaxPrice, "Packaging charge");
 
