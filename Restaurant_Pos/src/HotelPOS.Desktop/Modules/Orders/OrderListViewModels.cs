@@ -58,22 +58,27 @@ public abstract partial class OrderListViewModelBase : ViewModelBase, INavigatio
     private readonly IOrdersApi _ordersApi;
     private readonly IRealtimeClient _realtime;
     private readonly INavigationService _navigation;
+    private readonly IBillingApi? _billingApi;
     private readonly List<IDisposable> _subscriptions = new();
     private int _refreshing;
 
-    protected OrderListViewModelBase(IOrdersApi ordersApi, IRealtimeClient realtime, INavigationService navigation, IAuthSession session)
+    protected OrderListViewModelBase(IOrdersApi ordersApi, IRealtimeClient realtime, INavigationService navigation, IAuthSession session, IBillingApi? billingApi = null)
     {
         _ordersApi = ordersApi;
         _realtime = realtime;
         _navigation = navigation;
+        _billingApi = billingApi;
         Session = session;
         var roles = session.User?.Roles ?? Array.Empty<string>();
+        CanTakePayment = roles.Any(r => r is Roles.Cashier or Roles.Manager or Roles.Admin);
         CanOpenTables = roles.Any(r => r is Roles.Waiter or Roles.Cashier or Roles.Manager or Roles.Admin);
     }
 
     public ObservableCollection<OrderRow> Rows { get; } = new();
 
     public bool CanOpenTables { get; }
+
+    public bool CanTakePayment { get; }
 
     public abstract string EmptyText { get; }
 
@@ -151,11 +156,11 @@ public abstract partial class OrderListViewModelBase : ViewModelBase, INavigatio
     private Task RefreshListAsync() => RefreshAsync();
 
     [RelayCommand]
-    private Task OpenAsync(OrderRow? row)
+    private async Task OpenAsync(OrderRow? row)
     {
         if (row is null)
         {
-            return Task.CompletedTask;
+            return;
         }
 
         if (row.IsDraft)
@@ -168,10 +173,21 @@ public abstract partial class OrderListViewModelBase : ViewModelBase, INavigatio
                 row.Order.Id,
                 row.Order.OrderNumber,
                 row.Order.OrderType);
-            return _navigation.NavigateToPageAsync<OrderBuilderViewModel>(ctx);
+            await _navigation.NavigateToPageAsync<OrderBuilderViewModel>(ctx);
+            return;
         }
 
-        return CanOpenTables ? _navigation.NavigateToAsync(ModuleRegistry.Tables, row.Order.TableId) : Task.CompletedTask;
+        if (row.Order.TableId is null)
+        {
+            // Takeaway or delivery: no table; the next step is its bill.
+            ErrorMessage = await TablelessOrders.OpenAsync(row.Order, _navigation, _ordersApi, _billingApi, CanTakePayment);
+            return;
+        }
+
+        if (CanOpenTables)
+        {
+            await _navigation.NavigateToAsync(ModuleRegistry.Tables, row.Order.TableId);
+        }
     }
 
     // Any event payload: the list is simply reloaded.
@@ -180,8 +196,8 @@ public abstract partial class OrderListViewModelBase : ViewModelBase, INavigatio
 
 public sealed class MyOrdersViewModel : OrderListViewModelBase
 {
-    public MyOrdersViewModel(IOrdersApi ordersApi, IRealtimeClient realtime, INavigationService navigation, IAuthSession session)
-        : base(ordersApi, realtime, navigation, session)
+    public MyOrdersViewModel(IOrdersApi ordersApi, IRealtimeClient realtime, INavigationService navigation, IAuthSession session, IBillingApi? billingApi = null)
+        : base(ordersApi, realtime, navigation, session, billingApi)
     {
     }
 

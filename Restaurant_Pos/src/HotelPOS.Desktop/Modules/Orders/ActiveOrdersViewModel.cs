@@ -55,16 +55,19 @@ public sealed partial class ActiveOrdersViewModel : ViewModelBase, INavigationAw
     private readonly IOrdersApi _ordersApi;
     private readonly IRealtimeClient _realtime;
     private readonly INavigationService _navigation;
+    private readonly IBillingApi? _billingApi;
     private readonly List<IDisposable> _subscriptions = new();
     private List<OrderSummaryDto> _all = new();
     private int _refreshing;
 
-    public ActiveOrdersViewModel(IOrdersApi ordersApi, IRealtimeClient realtime, INavigationService navigation, IAuthSession session)
+    public ActiveOrdersViewModel(IOrdersApi ordersApi, IRealtimeClient realtime, INavigationService navigation, IAuthSession session, IBillingApi? billingApi = null)
     {
         _ordersApi = ordersApi;
         _realtime = realtime;
         _navigation = navigation;
+        _billingApi = billingApi;
         var roles = session.User?.Roles ?? Array.Empty<string>();
+        CanTakePayment = roles.Any(r => r is Roles.Cashier or Roles.Manager or Roles.Admin);
         CanOpenTables = roles.Any(r => r is Roles.Waiter or Roles.Cashier or Roles.Manager or Roles.Admin);
         Filters.Add(new OrderStatusFilter(null, "All", 0));
         _selectedFilter = Filters[0];
@@ -73,6 +76,8 @@ public sealed partial class ActiveOrdersViewModel : ViewModelBase, INavigationAw
     }
 
     public bool CanOpenTables { get; }
+
+    public bool CanTakePayment { get; }
 
     public ObservableCollection<OrderRow> Rows { get; } = new();
 
@@ -339,11 +344,11 @@ public sealed partial class ActiveOrdersViewModel : ViewModelBase, INavigationAw
 
     /// <summary>"View" or "Resume": the table behind the order, or the builder for drafts.</summary>
     [RelayCommand]
-    private Task OpenAsync(OrderRow? row)
+    private async Task OpenAsync(OrderRow? row)
     {
         if (row is null)
         {
-            return Task.CompletedTask;
+            return;
         }
 
         if (row.IsDraft)
@@ -356,12 +361,21 @@ public sealed partial class ActiveOrdersViewModel : ViewModelBase, INavigationAw
                 row.Order.Id,
                 row.Order.OrderNumber,
                 row.Order.OrderType);
-            return _navigation.NavigateToPageAsync<OrderBuilderViewModel>(ctx);
+            await _navigation.NavigateToPageAsync<OrderBuilderViewModel>(ctx);
+            return;
         }
 
-        return row.Order.TableId is { } tableId && CanOpenTables
-            ? _navigation.NavigateToAsync(ModuleRegistry.Tables, tableId)
-            : Task.CompletedTask;
+        if (row.Order.TableId is null)
+        {
+            // Takeaway or delivery: no table; the next step is its bill.
+            ErrorMessage = await TablelessOrders.OpenAsync(row.Order, _navigation, _ordersApi, _billingApi, CanTakePayment);
+            return;
+        }
+
+        if (row.Order.TableId is { } tableId && CanOpenTables)
+        {
+            await _navigation.NavigateToAsync(ModuleRegistry.Tables, tableId);
+        }
     }
 
     [RelayCommand]

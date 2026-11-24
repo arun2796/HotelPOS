@@ -128,6 +128,7 @@
       <!-- Parcel: the next dishes are packed to take away and carry the item's packaging charge -->
       <ToggleButton Grid.Column="2" Content="Parcel" Style="{StaticResource Toggle.Chip}" Margin="8,0,0,0"
                     IsChecked="{Binding IsParcelMode, Mode=TwoWay}"
+                    Visibility="{Binding ShowParcelControls, Converter={StaticResource BoolToVisibility}}"
                     ToolTip="Pack the next dishes to take away (the packaging charge is added)" AutomationProperties.Name="Parcel mode" />
     </Grid>
     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" PanningMode="VerticalOnly">
@@ -252,6 +253,7 @@
                           <TextBlock Text="&#xE70F;" Style="{StaticResource Text.Icon}" FontSize="16" />
                         </Button>
                         <Button Margin="8,0,0,0" Padding="10,0" MinHeight="44" FontSize="13" FontWeight="SemiBold"
+                                Visibility="{Binding DataContext.ShowParcelControls, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}"
                                 ToolTip="Pack this dish as a parcel (packaging charge)" Content="{Binding ParcelText}"
                                 Command="{Binding DataContext.ToggleParcelCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}">
                           <Button.Style>

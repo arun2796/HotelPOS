@@ -1,3 +1,4 @@
+using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Security;
 using HotelPOS.Desktop.Modules.Admin;
 using HotelPOS.Desktop.Modules.Billing;
@@ -15,6 +16,7 @@ using HotelPOS.Desktop.Modules.Printing;
 using HotelPOS.Desktop.Modules.Reports;
 using HotelPOS.Desktop.Modules.Reservations;
 using HotelPOS.Desktop.Modules.Tables;
+using HotelPOS.Desktop.Services.Orders;
 
 namespace HotelPOS.Desktop.Services.Navigation;
 
@@ -35,6 +37,7 @@ public static class ModuleRegistry
     public const string Dashboard = "dashboard";
     public const string CashierHome = "cashier-home";
     public const string Tables = "tables";
+    public const string Takeaway = "takeaway";
     public const string MyOrders = "my-orders";
     public const string KitchenDisplay = "kitchen-display";
     public const string KitchenCompleted = "kitchen-completed";
@@ -82,6 +85,10 @@ public static class ModuleRegistry
 
         new(Tables, "Tables", "", "Service", new[] { Roles.Admin, Roles.Manager, Roles.Waiter, Roles.Cashier }, 2,
             "Live table status and orders.", typeof(TableMapViewModel)),
+        // A shortcut into the order builder on its Takeaway tab: no table, no guests, the bill follows the kitchen order.
+        new(Takeaway, "Takeaway", "\uE719", "Service", new[] { Roles.Admin, Roles.Manager, Roles.Waiter }, 2,
+            "Start a takeaway order: pick the items, then bill and send to the kitchen.", typeof(OrderBuilderViewModel),
+            DefaultParameter: new OrderBuilderContext(null, string.Empty, OrderBuilderMode.NewOrder, 1, OrderType: OrderType.Takeaway)),
         new(Reservations, "Reservations", "", "Service", new[] { Roles.Admin, Roles.Manager, Roles.Waiter, Roles.Cashier }, 22,
             "Book, view, seat and manage table reservations.", typeof(ReservationsViewModel)),
         new(MyOrders, "My Orders", "", "Service", new[] { Roles.Admin, Roles.Manager, Roles.Waiter }, 4,
@@ -162,6 +169,7 @@ public static class ModuleRegistry
     private static readonly IReadOnlyDictionary<string, string> ModulePermissions = new Dictionary<string, string>
     {
         [Tables] = Permissions.TablesOperate,
+        [Takeaway] = Permissions.OrdersCreate,
         [MyOrders] = Permissions.OrdersCreate,
         [KitchenDisplay] = Permissions.KitchenOperate,
         [KitchenCompleted] = Permissions.KitchenOperate,

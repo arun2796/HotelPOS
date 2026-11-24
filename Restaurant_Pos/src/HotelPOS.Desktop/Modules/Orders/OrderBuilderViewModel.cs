@@ -158,7 +158,7 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
     private string _noteText = string.Empty;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(Title), nameof(IsDelivery), nameof(IsTakeaway), nameof(IsDineIn), nameof(CanChangeGuests), nameof(BillOnSend), nameof(SendText))]
+    [NotifyPropertyChangedFor(nameof(Title), nameof(IsDelivery), nameof(IsTakeaway), nameof(IsDineIn), nameof(CanChangeGuests), nameof(BillOnSend), nameof(SendText), nameof(IsPackedOrder), nameof(ShowParcelControls))]
     private OrderType _orderType = OrderType.DineIn;
 
     [ObservableProperty]
@@ -197,6 +197,23 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
     public bool HasSeats => SeatChoices.Count > 1;
 
     private string? SeatForNewLine => SelectedSeat == WholeTable || !SeatChoices.Contains(SelectedSeat) ? null : SelectedSeat;
+
+    // A takeaway or delivery is packed to go: every dish is a parcel, so the Parcel switches are not offered.
+    public bool IsPackedOrder => OrderType != OrderType.DineIn;
+    public bool ShowParcelControls => !IsPackedOrder;
+
+    partial void OnOrderTypeChanged(OrderType value)
+    {
+        if (value == OrderType.DineIn)
+        {
+            return;
+        }
+
+        foreach (var line in Cart.Where(c => !c.IsParcel))
+        {
+            line.IsParcel = true;
+        }
+    }
 
     public bool IsDineIn => OrderType == OrderType.DineIn;
     public bool IsTakeaway => OrderType == OrderType.Takeaway;
@@ -357,7 +374,7 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
             Name = tile.Item.Name,
             UnitPrice = tile.Item.Price,
             PackagingCharge = tile.Item.PackagingCharge,
-            IsParcel = IsParcelMode,
+            IsParcel = IsParcelMode || IsPackedOrder,
             SeatCode = SeatForNewLine,
         });
     }
@@ -365,7 +382,7 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
     [RelayCommand]
     private void ToggleParcel(CartItemViewModel? line)
     {
-        if (line is not null)
+        if (line is not null && !IsPackedOrder)
         {
             line.IsParcel = !line.IsParcel;
             OnCartChanged();
@@ -397,7 +414,7 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
         if (Picker?.TryBuild() is { } line)
         {
             var packaging = _menuCache.Menu?.Items.FirstOrDefault(i => i.Id == line.MenuItemId)?.PackagingCharge ?? 0m;
-            AddLine(line with { PackagingCharge = packaging, IsParcel = IsParcelMode, SeatCode = SeatForNewLine });
+            AddLine(line with { PackagingCharge = packaging, IsParcel = IsParcelMode || IsPackedOrder, SeatCode = SeatForNewLine });
             Picker = null;
         }
     }
@@ -653,15 +670,11 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
             return;
         }
 
-        var canCollect = _billingApi is not null && _session?.User?.Permissions.Contains(Permissions.BillingOperate) == true;
-        if (canCollect)
+        // The cashier workspace (Billing) opens the bill, claims it and has the payment column ready.
+        if (_session?.User?.Permissions.Contains(Permissions.BillingOperate) == true)
         {
-            var claim = await _billingApi!.ClaimAsync(bill.Data.Id);
-            if (claim.Success || claim.HasError(ErrorCodes.BillClaimed))
-            {
-                await _navigation.NavigateToPageAsync<BillDetailViewModel>(bill.Data.Id);
-                return;
-            }
+            await _navigation.NavigateToAsync(ModuleRegistry.Billing, bill.Data.Id);
+            return;
         }
 
         _notifications.Success($"Bill {bill.Data.BillNumber} for order #{order.OrderNumber} is waiting at the counter.");
