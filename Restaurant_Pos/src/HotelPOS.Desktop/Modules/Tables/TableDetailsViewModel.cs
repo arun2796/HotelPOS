@@ -43,6 +43,7 @@ public sealed partial class TableDetailsViewModel : ViewModelBase
     private readonly bool _isManager;
     private readonly bool _isCashier;
     private readonly IReservationsApi? _reservationsApi;
+    private readonly Func<IEnumerable<TableTileViewModel>>? _mergeCandidates;
     private Guid? _billRequestKey;
 
     public TableDetailsViewModel(
@@ -57,8 +58,10 @@ public sealed partial class TableDetailsViewModel : ViewModelBase
         bool canTakeOrders,
         bool isManager = false,
         bool isCashier = false,
-        IReservationsApi? reservationsApi = null)
+        IReservationsApi? reservationsApi = null,
+        Func<IEnumerable<TableTileViewModel>>? mergeCandidates = null)
     {
+        _mergeCandidates = mergeCandidates;
         _floorApi = floorApi;
         _ordersApi = ordersApi;
         _drafts = drafts;
@@ -104,7 +107,7 @@ public sealed partial class TableDetailsViewModel : ViewModelBase
 
     public string OrderStatusText => Order is null ? string.Empty : StatusLabels.For(Order.Status);
 
-    public string OrderTotalText => Order is null ? string.Empty : $"approx. {Order.ApproxSubtotal.ToString("N2", CultureInfo.CurrentCulture)}";
+    public string OrderTotalText => Order is null ? string.Empty : $"Total {Order.ApproxSubtotal.ToString("N2", CultureInfo.CurrentCulture)}";
 
     public bool HasBill => Order?.Bill is not null;
 
@@ -122,9 +125,24 @@ public sealed partial class TableDetailsViewModel : ViewModelBase
 
     public bool ShowSeatReservation => Table is { HasUpcomingReservation: true, IsAvailable: true };
 
-    public bool ShowRelease => Table is { IsOccupied: true, CurrentOrderId: null };
+    public bool ShowRelease => Table is { IsOccupied: true, CurrentOrderId: null, IsMerged: false };
 
-    public bool ShowNewOrder => _canTakeOrders && Table is { CurrentOrderId: null } table && (table.IsAvailable || table.IsOccupied);
+    public bool ShowNewOrder => _canTakeOrders && Table is { CurrentOrderId: null, IsMerged: false } table && (table.IsAvailable || table.IsOccupied);
+
+    // Merge: a party too big for one table pushes a second, free table against it. Only while the party is seated
+    // and the bill has not been asked for.
+    public bool ShowMerge => _canTakeOrders && Table is { IsMerged: false } table
+        && table.Status is TableStatus.Occupied or TableStatus.Ordering or TableStatus.Preparing or TableStatus.Ready;
+
+    public bool ShowUnmerge => _canTakeOrders && Table is { IsMerged: true };
+
+    [ObservableProperty]
+    private bool _isMergePickerOpen;
+
+    [ObservableProperty]
+    private IReadOnlyList<TableTileViewModel> _mergeChoices = Array.Empty<TableTileViewModel>();
+
+    public bool HasMergeChoices => MergeChoices.Count > 0;
 
     public bool ShowOpenOrder => Order is { Status: OrderStatus.Draft, CanModify: true };
 
@@ -139,7 +157,7 @@ public sealed partial class TableDetailsViewModel : ViewModelBase
     public bool ShowRequestBill => Order is { Bill: null, Status: OrderStatus.Served or OrderStatus.Ready } order
         && (order.CanModify || _isCashier || _isManager);
 
-    public string NewOrderText => HasLocalDraft ? "RESUME ORDER" : "NEW ORDER";
+    public string NewOrderText => HasLocalDraft ? "Resume order" : "New order";
 
     public void Show(TableTileViewModel? table)
     {
@@ -312,6 +330,83 @@ public sealed partial class TableDetailsViewModel : ViewModelBase
             }
 
             HandleFailure(result, "released");
+        });
+        RefreshCommands();
+    }
+
+    private bool CanMerge() => !IsBusy && ShowMerge;
+
+    // Opens the list of free tables to push against this one.
+    [RelayCommand(CanExecute = nameof(CanMerge))]
+    private void Merge()
+    {
+        var table = Table;
+        if (table is null)
+        {
+            return;
+        }
+
+        MergeChoices = (_mergeCandidates?.Invoke() ?? Array.Empty<TableTileViewModel>())
+            .Where(t => t.Id != table.Id && t.IsAvailable && !t.IsMerged && t.Status == TableStatus.Available)
+            .OrderBy(t => t.Code, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        OnPropertyChanged(nameof(HasMergeChoices));
+        IsMergePickerOpen = true;
+    }
+
+    [RelayCommand]
+    private void CancelMerge() => IsMergePickerOpen = false;
+
+    [RelayCommand]
+    private async Task MergeWithAsync(TableTileViewModel? companion)
+    {
+        var table = Table;
+        if (table is null || companion is null)
+        {
+            return;
+        }
+
+        IsMergePickerOpen = false;
+        await ExecuteAsync(async () =>
+        {
+            var result = await _floorApi.MergeAsync(table.Id, companion.Id);
+            if (result.Success)
+            {
+                _notifications.Success($"Table {companion.Code} merged into table {table.Code}. Orders now go on one bill.");
+                await _refreshMap();
+                return;
+            }
+
+            ErrorMessage = ApiFailures.Describe(result);
+        });
+        RefreshCommands();
+    }
+
+    private bool CanUnmerge() => !IsBusy && ShowUnmerge;
+
+    [RelayCommand(CanExecute = nameof(CanUnmerge))]
+    private async Task UnmergeAsync()
+    {
+        var table = Table;
+        if (table is null || !await _dialogs.ConfirmAsync(
+                "Unmerge table",
+                $"Take table {table.Code} out of the merged party? It becomes free again.",
+                "Unmerge"))
+        {
+            return;
+        }
+
+        await ExecuteAsync(async () =>
+        {
+            var result = await _floorApi.UnmergeAsync(table.Id);
+            if (result.Success)
+            {
+                _notifications.Success($"Table {table.Code} is free again.");
+                await _refreshMap();
+                return;
+            }
+
+            ErrorMessage = ApiFailures.Describe(result);
         });
         RefreshCommands();
     }
@@ -505,13 +600,15 @@ public sealed partial class TableDetailsViewModel : ViewModelBase
         SeatReservationCommand.NotifyCanExecuteChanged();
         ServeCommand.NotifyCanExecuteChanged();
         RequestBillCommand.NotifyCanExecuteChanged();
-        foreach (var name in new[] { nameof(ShowSeatReservation), nameof(ShowServe), nameof(ShowRequestBill), nameof(ShowOccupy), nameof(ShowRelease), nameof(ShowNewOrder), nameof(ShowOpenOrder), nameof(ShowAddItems), nameof(ShowCancelOrder), nameof(NewOrderText) })
+        foreach (var name in new[] { nameof(ShowSeatReservation), nameof(ShowServe), nameof(ShowRequestBill), nameof(ShowOccupy), nameof(ShowRelease), nameof(ShowMerge), nameof(ShowUnmerge), nameof(ShowNewOrder), nameof(ShowOpenOrder), nameof(ShowAddItems), nameof(ShowCancelOrder), nameof(NewOrderText) })
         {
             OnPropertyChanged(name);
         }
 
         OccupyCommand.NotifyCanExecuteChanged();
         ReleaseCommand.NotifyCanExecuteChanged();
+        MergeCommand.NotifyCanExecuteChanged();
+        UnmergeCommand.NotifyCanExecuteChanged();
         NewOrderCommand.NotifyCanExecuteChanged();
         OpenOrderCommand.NotifyCanExecuteChanged();
         AddItemsCommand.NotifyCanExecuteChanged();
@@ -521,7 +618,9 @@ public sealed partial class TableDetailsViewModel : ViewModelBase
     private static OrderLineViewModel ToLine(OrderItemDto item, bool canCancel) => new(
         item.Id,
         $"{item.Quantity} × {item.ItemName}",
-        string.Join(" · ", item.Modifiers.Select(m => m.Name).Concat(item.Notes is null ? Array.Empty<string>() : new[] { $"“{item.Notes}”" })),
+        string.Join(" · ", (string.IsNullOrWhiteSpace(item.SeatCode) ? Array.Empty<string>() : new[] { $"Seat {item.SeatCode}" })
+            .Concat(item.Modifiers.Select(m => m.Name))
+            .Concat(item.Notes is null ? Array.Empty<string>() : new[] { $"“{item.Notes}”" })),
         item.LineTotal.ToString("N2", CultureInfo.CurrentCulture),
         item.Status == OrderItemStatus.Cancelled,
         canCancel);

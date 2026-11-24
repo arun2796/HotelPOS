@@ -104,6 +104,17 @@ internal sealed class KitchenTickets
         return await GetAsync(id, cancellationToken);
     }
 
+    // The seat the dish is for goes first on every ticket view ("Seat 4A · no onion").
+    internal static string? SeatNotes(string? seatCode, string? notes)
+    {
+        if (string.IsNullOrWhiteSpace(seatCode))
+        {
+            return notes;
+        }
+
+        return string.IsNullOrWhiteSpace(notes) ? $"Seat {seatCode}" : $"Seat {seatCode} · {notes}";
+    }
+
     private static KitchenTicketDto ToDto(KitchenOrder ticket, string waiterName, string stationCode, IReadOnlyDictionary<int, string> images) => new()
     {
         Id = ticket.Id,
@@ -133,9 +144,11 @@ internal sealed class KitchenTickets
             OrderItemId = i.OrderItemId,
             Name = i.OrderItem?.ItemName ?? string.Empty,
             Quantity = i.Quantity,
-            Notes = i.OrderItem?.Notes,
+            Notes = SeatNotes(i.OrderItem?.SeatCode, i.OrderItem?.Notes),
             Modifiers = i.OrderItem?.Modifiers.Select(m => m.Name).ToList() ?? new List<string>(),
             IsCancelled = i.IsCancelled,
+            IsParcel = i.OrderItem?.IsParcel ?? false,
+            SeatCode = i.OrderItem?.SeatCode,
             ImageUrl = i.OrderItem is not null && images.TryGetValue(i.OrderItem.MenuItemId, out var url) ? url : null,
         }).ToList(),
         RowVersion = RowVersions.Encode(ticket.RowVersion),

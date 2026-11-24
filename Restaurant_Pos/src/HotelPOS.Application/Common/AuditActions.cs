@@ -46,6 +46,10 @@ public static class AuditActions
     public const string TableOutOfService = "Table.OutOfService";
     public const string TableInService = "Table.InService";
     public const string TableReleasedByManager = "Table.ReleasedByManager";
+    public const string BillSplit = "Bill.Split";
+    public const string TableMerged = "Table.Merged";
+    public const string TableUnmerged = "Table.Unmerged";
+    public const string MenuItemStockChanged = "MenuItem.StockChanged";
 
     public const string CategoryCreated = "Category.Created";
     public const string CategoryUpdated = "Category.Updated";

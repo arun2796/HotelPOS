@@ -107,11 +107,16 @@ internal sealed class BillSteps
             ? await _db.Devices.AsNoTracking().Where(d => d.Id == deviceId).Select(d => d.Name).FirstOrDefaultAsync(cancellationToken)
             : null;
         var split = await _db.SettingAsync(SettingKeys.TaxSplitDisplay, cancellationToken);
+        var siblingIds = await _db.Bills.AsNoTracking()
+            .Where(b => b.OrderId == bill.OrderId && b.Status != BillStatus.Voided)
+            .OrderBy(b => b.SplitIndex).Select(b => b.Id).ToListAsync(cancellationToken);
         string? Name(int? userId) => userId is { } u ? users.GetValueOrDefault(u) : null;
 
         return new BillDetailDto
         {
             Id = bill.Id,
+            SplitIndex = bill.SplitIndex,
+            SiblingBillIds = siblingIds.Count > 1 ? siblingIds : Array.Empty<int>(),
             BillNumber = bill.BillNumber,
             InvoiceNumber = bill.InvoiceNumber,
             OrderId = bill.OrderId,
@@ -128,6 +133,7 @@ internal sealed class BillSteps
             {
                 Id = i.Id,
                 OrderItemId = i.OrderItemId,
+                SeatCode = i.SeatCode,
                 ItemName = i.ItemName,
                 Quantity = i.Quantity,
                 UnitPrice = i.UnitPrice,
@@ -202,6 +208,7 @@ internal sealed class BillSteps
             b.BillNumber,
             b.InvoiceNumber,
             b.OrderId,
+            b.SplitIndex,
             OrderNumber = _db.Orders.Where(o => o.Id == b.OrderId).Select(o => o.OrderNumber).FirstOrDefault(),
             OrderType = _db.Orders.Where(o => o.Id == b.OrderId).Select(o => o.OrderType).FirstOrDefault(),
             b.TableCode,
@@ -225,6 +232,7 @@ internal sealed class BillSteps
             return new BillSummaryDto
             {
                 Id = r.Id,
+                SplitIndex = r.SplitIndex,
                 BillNumber = r.BillNumber,
                 InvoiceNumber = r.InvoiceNumber,
                 OrderId = r.OrderId,

@@ -13,6 +13,7 @@ public static class BillChangeTypes
     public const string Reopened = "Reopened";
     public const string Voided = "Voided";
     public const string Refunded = "Refunded";
+    public const string Split = "Split";
 }
 
 public sealed record BillRequestedEvent : RealtimeEvent

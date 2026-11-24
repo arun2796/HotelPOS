@@ -32,7 +32,7 @@
       <Button Grid.Column="1" Command="{Binding RefreshCommand}" ToolTip="Reload from the server">
         <TextBlock Text="&#xE72C;" Style="{StaticResource Text.Icon}" />
       </Button>
-      <Button Grid.Column="2" Content="BACKUP NOW" Command="{Binding BackupNowCommand}" Style="{StaticResource Button.Primary}" Margin="8,0,0,0" />
+      <Button Grid.Column="2" Content="Backup now" Command="{Binding BackupNowCommand}" Style="{StaticResource Button.Primary}" Margin="8,0,0,0" />
     </Grid>
 
     <Border Grid.Row="1" Style="{StaticResource Banner.Error}" Margin="0,0,0,12"

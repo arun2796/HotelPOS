@@ -10,7 +10,20 @@
         }
     </span>
     <div class="order-line-main">
-        <div class="order-line-name">@Quantity × @Name</div>
+        <div class="order-line-name">@Quantity × @DisplayName</div>
+        @if (!string.IsNullOrEmpty(SeatCode) || IsParcel)
+        {
+            <div class="order-line-tags">
+                @if (!string.IsNullOrEmpty(SeatCode))
+                {
+                    <span class="chip info" data-testid="line-seat">Seat @SeatCode</span>
+                }
+                @if (IsParcel)
+                {
+                    <span class="chip warning" data-testid="line-parcel"><Icon Name="shopping-bag" Size="12" /> Parcel</span>
+                }
+            </div>
+        }
         @if (!string.IsNullOrEmpty(Modifiers))
         {
             <div class="order-line-mods muted small">@Modifiers</div>
@@ -41,6 +54,14 @@
     [Parameter] public string? ImageUrl { get; set; }
 
     [Parameter] public bool Cancelled { get; set; }
+
+    /// <summary>"4A": the seat the dish is for; null/empty = the whole table (nothing shown).</summary>
+    [Parameter] public string? SeatCode { get; set; }
+
+    /// <summary>Shows the "Parcel" chip; the server's " (Parcel)" name suffix is then dropped so it is not said twice.</summary>
+    [Parameter] public bool IsParcel { get; set; }
+
+    private string DisplayName => IsParcel ? OrderComposer.StripParcelSuffix(Name) : Name;
 
     private string Initials
     {

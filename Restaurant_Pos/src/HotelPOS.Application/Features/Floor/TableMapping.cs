@@ -10,7 +10,7 @@ internal static class TableMapping
     public static TableDto ToDto(Table table, ReservationSummaryDto? upcomingReservation = null) =>
         ToDto(table, table.Section?.Name ?? string.Empty, upcomingReservation);
 
-    public static TableDto ToDto(Table table, string sectionName, ReservationSummaryDto? upcomingReservation = null) => new()
+    public static TableDto ToDto(Table table, string sectionName, ReservationSummaryDto? upcomingReservation = null, decimal? orderTotal = null) => new()
     {
         Id = table.Id,
         Code = table.Code,
@@ -24,6 +24,11 @@ internal static class TableMapping
         IsActive = table.IsActive,
         CurrentOrderId = table.CurrentOrderId,
         CurrentOrderNumber = table.CurrentOrder?.OrderNumber,
+        CurrentOrderTotal = orderTotal,
+        MergedIntoTableId = table.MergedIntoTableId,
+        MergedIntoTableCode = table.MergedInto?.Code,
+        MergedTableCodes = table.MergedTables.Select(t => t.Code).OrderBy(c => c, StringComparer.OrdinalIgnoreCase).ToList(),
+        SeatCodes = TableSeats.CodesFor(table.Code, table.Capacity),
         UpcomingReservation = upcomingReservation,
         PosX = table.PosX,
         PosY = table.PosY,

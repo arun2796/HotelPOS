@@ -8,6 +8,7 @@ using HotelPOS.Contracts.Auth;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Security;
 using HotelPOS.Domain.Administration;
+using HotelPOS.Application.Features.Operations;
 using Microsoft.EntityFrameworkCore;
 
 namespace HotelPOS.Application.Features.Operations.Commands;
@@ -64,6 +65,10 @@ internal sealed class UpdateSettingsHandler : ICommandHandler<UpdateSettingsComm
             else if (!Setting.IsValidValue(setting.DataType, item.Value.Trim()))
             {
                 errors.Add(new ApiError(ErrorCodes.ValidationError, $"'{item.Value}' is not a valid {setting.DataType} value.", item.Key));
+            }
+            else if (SettingRules.Check(setting.Key, item.Value) is { } problem)
+            {
+                errors.Add(new ApiError(ErrorCodes.ValidationError, problem, item.Key));
             }
             else if (setting.Key == SettingKeys.PasswordMinLength
                 && int.Parse(item.Value.Trim(), System.Globalization.CultureInfo.InvariantCulture) is var length

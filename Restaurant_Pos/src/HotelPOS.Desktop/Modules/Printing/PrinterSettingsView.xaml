@@ -119,7 +119,7 @@
                         Visibility="{Binding Error, Converter={StaticResource StringToVisibility}}">
                   <TextBlock Text="{Binding Error}" Style="{StaticResource Text.Error}" TextWrapping="Wrap" />
                 </Border>
-                <Button Content="TEST PRINT" MinHeight="48" Margin="0,16,0,0" IsEnabled="{Binding IsEnabled}"
+                <Button Content="Test print" MinHeight="48" Margin="0,16,0,0" IsEnabled="{Binding IsEnabled}"
                         Command="{Binding DataContext.TestPrintCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                         CommandParameter="{Binding}" />
                 <!-- The test outcome as a coloured banner (green sent, red failed) rather than grey small print. -->

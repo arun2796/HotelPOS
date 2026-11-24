@@ -23,7 +23,10 @@ public sealed class OrderItem : BaseEntity
         int? taxId,
         decimal taxRatePercent,
         int preparationStationId,
-        IEnumerable<OrderItemModifier> modifiers)
+        IEnumerable<OrderItemModifier> modifiers,
+        bool isParcel = false,
+        decimal packagingCharge = 0m,
+        string? seatCode = null)
     {
         if (quantity is < 1 or > OrderLimits.MaxQuantity)
         {
@@ -40,7 +43,18 @@ public sealed class OrderItem : BaseEntity
         PreparationStationId = preparationStationId;
         _modifiers.AddRange(modifiers);
         Status = OrderItemStatus.Draft;
+        IsParcel = isParcel;
+        PackagingCharge = packagingCharge;
+        SeatCode = string.IsNullOrWhiteSpace(seatCode) ? null : seatCode.Trim().ToUpperInvariant();
     }
+
+    // A parcel's packaging charge is already inside UnitPrice (billing needs no extra line); it is kept apart so
+    // the screens can show what part of the price is packing.
+    public bool IsParcel { get; private set; }
+    public decimal PackagingCharge { get; private set; }
+
+    // "4A": the table code plus the seat letter the dish is for. Null means the whole table.
+    public string? SeatCode { get; private set; }
 
     public int OrderId { get; private set; }
     public int BatchNumber { get; private set; }

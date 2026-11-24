@@ -23,12 +23,21 @@ public sealed class CartLine
 
     public decimal ModifierTotal { get; init; }
 
-    public decimal LineTotal => (UnitPrice + ModifierTotal) * Quantity;
+    /// <summary>Takeaway packed with a dine-in meal: the packaging charge is added to the line and the KOT says "Parcel".</summary>
+    public bool IsParcel { get; set; }
+
+    /// <summary>"4A" = table code + seat letter; null = the whole table.</summary>
+    public string? SeatCode { get; set; }
+
+    /// <summary>The item's packaging charge per unit, added to <see cref="LineTotal"/> only while <see cref="IsParcel"/> is on.</summary>
+    public decimal PackagingCharge { get; set; }
+
+    public decimal LineTotal => (UnitPrice + ModifierTotal + (IsParcel ? PackagingCharge : 0m)) * Quantity;
 
     public string DetailText => string.Join(", ", ModifierNames.Concat(string.IsNullOrWhiteSpace(Notes) ? Array.Empty<string>() : new[] { $"“{Notes}”" }));
 
-    /// <summary>Two lines merge when item, options and note are the same — the desktop Order Builder does the same.</summary>
-    public string MergeKey => $"{MenuItemId}|{string.Join(",", ModifierOptionIds.OrderBy(i => i))}|{Notes}";
+    /// <summary>Two lines merge when item, options, note, parcel flag and seat are the same — the desktop Order Builder does the same.</summary>
+    public string MergeKey => $"{MenuItemId}|{string.Join(",", ModifierOptionIds.OrderBy(i => i))}|{Notes}|{(IsParcel ? "P" : "-")}|{SeatCode}";
 }
 
 /// <summary>
@@ -68,7 +77,7 @@ public sealed class OrderComposer
 
     public bool IsEmpty => _lines.Count == 0;
 
-    public void Add(MenuEntryDto item, IReadOnlyList<MenuModifierOptionDto> options, int quantity, string? notes)
+    public void Add(MenuEntryDto item, IReadOnlyList<MenuModifierOptionDto> options, int quantity, string? notes, bool isParcel = false, string? seatCode = null)
     {
         var line = new CartLine
         {
@@ -80,6 +89,9 @@ public sealed class OrderComposer
             ModifierOptionIds = options.Select(o => o.Id).ToList(),
             ModifierNames = options.Select(o => o.Name).ToList(),
             ModifierTotal = options.Sum(o => o.PriceDelta),
+            IsParcel = isParcel,
+            SeatCode = string.IsNullOrWhiteSpace(seatCode) ? null : seatCode.Trim(),
+            PackagingCharge = item.PackagingCharge,
         };
 
         var existing = _lines.FirstOrDefault(l => l.MergeKey == line.MergeKey);
@@ -111,6 +123,47 @@ public sealed class OrderComposer
 
     public void SetQuantity(CartLine line, int quantity) => line.Quantity = Math.Clamp(quantity, 1, OrderLimits.MaxQuantity);
 
+    /// <summary>
+    /// Turns the parcel flag of one line on or off. <paramref name="packagingCharge"/> (the menu's current charge) replaces the
+    /// stored one when given. The line then merges into an identical line if there is one.
+    /// </summary>
+    public void SetParcel(CartLine line, bool parcel, decimal? packagingCharge = null)
+    {
+        line.IsParcel = parcel;
+        if (packagingCharge is { } charge)
+        {
+            line.PackagingCharge = charge;
+        }
+
+        MergeInto(line);
+    }
+
+    /// <summary>Drops every seat (the order is no longer for a table, or the table has no seats); identical lines then merge.</summary>
+    public void ClearSeats()
+    {
+        foreach (var line in _lines.ToList())
+        {
+            if (line.SeatCode is not null)
+            {
+                line.SeatCode = null;
+                MergeInto(line);
+            }
+        }
+    }
+
+    // After a flag changed: fold the line into an earlier identical one (quantities add up to the per-line maximum).
+    private void MergeInto(CartLine line)
+    {
+        var twin = _lines.FirstOrDefault(l => !ReferenceEquals(l, line) && l.MergeKey == line.MergeKey);
+        if (twin is null)
+        {
+            return;
+        }
+
+        twin.Quantity = Math.Min(twin.Quantity + line.Quantity, OrderLimits.MaxQuantity);
+        _lines.Remove(line);
+    }
+
     public void Clear()
     {
         _lines.Clear();
@@ -124,6 +177,8 @@ public sealed class OrderComposer
             Quantity = l.Quantity,
             Notes = l.Notes,
             ModifierOptionIds = l.ModifierOptionIds,
+            IsParcel = l.IsParcel,
+            SeatCode = l.SeatCode,
         }).ToList();
 
     public WebDraft ToDraft(int tableId, int? orderId, Guid? pendingKey) => new()
@@ -143,6 +198,9 @@ public sealed class OrderComposer
             ModifierOptionIds = l.ModifierOptionIds,
             ModifierNames = l.ModifierNames,
             ModifierTotal = l.ModifierTotal,
+            IsParcel = l.IsParcel,
+            SeatCode = l.SeatCode,
+            PackagingCharge = l.PackagingCharge,
         }).ToList(),
     };
 
@@ -161,6 +219,9 @@ public sealed class OrderComposer
             ModifierOptionIds = l.ModifierOptionIds,
             ModifierNames = l.ModifierNames,
             ModifierTotal = l.ModifierTotal,
+            IsParcel = l.IsParcel,
+            SeatCode = l.SeatCode,
+            PackagingCharge = l.PackagingCharge,
         }));
     }
 
@@ -172,15 +233,26 @@ public sealed class OrderComposer
         _lines.AddRange(order.Items.Where(i => i.Status != OrderItemStatus.Cancelled).Select(i => new CartLine
         {
             MenuItemId = i.MenuItemId,
-            Name = i.ItemName,
-            UnitPrice = i.UnitPrice,
+            // The server folds the packaging charge into UnitPrice and appends " (Parcel)" to the name; undo both so the
+            // cart shows the dish and adds the charge itself (a re-send would otherwise charge and label it twice).
+            Name = i.IsParcel ? StripParcelSuffix(i.ItemName) : i.ItemName,
+            UnitPrice = i.IsParcel ? i.UnitPrice - i.PackagingCharge : i.UnitPrice,
             Quantity = Math.Clamp(i.Quantity, 1, OrderLimits.MaxQuantity),
             Notes = i.Notes,
             ModifierOptionIds = i.Modifiers.Select(m => m.ModifierOptionId).ToList(),
             ModifierNames = i.Modifiers.Select(m => m.Name).ToList(),
             ModifierTotal = i.Modifiers.Sum(m => m.PriceDelta),
+            IsParcel = i.IsParcel,
+            SeatCode = string.IsNullOrWhiteSpace(i.SeatCode) ? null : i.SeatCode,
+            PackagingCharge = i.PackagingCharge,
         }));
     }
+
+    public const string ParcelSuffix = " (Parcel)";
+
+    /// <summary>"Dal Makhani (Parcel)" becomes "Dal Makhani"; any other name is returned as it is.</summary>
+    public static string StripParcelSuffix(string name) =>
+        name.EndsWith(ParcelSuffix, StringComparison.Ordinal) ? name[..^ParcelSuffix.Length] : name;
 
     public static string? TrimNotes(string? notes)
     {

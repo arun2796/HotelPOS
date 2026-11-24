@@ -97,6 +97,12 @@ public sealed class MenuItemsController : ApiControllerBase
         FromResult(await Sender.Send(new SetMenuItemAvailabilityCommand(id, request), cancellationToken),
             message: request.IsAvailable ? "Item available again." : "Item marked sold out.");
 
+    [HttpPatch("{id:int}/stock")]
+    [Authorize(Policy = Permissions.MenuAvailability)]
+    [ProducesResponseType<ApiResponse<MenuItemDto>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> SetStock(int id, SetStockRequest request, CancellationToken cancellationToken) =>
+        FromResult(await Sender.Send(new SetMenuItemStockCommand(id, request), cancellationToken), message: "Stock updated.");
+
     [HttpPost("{id:int}/image")]
     [Authorize(Policy = Permissions.MenuManage)]
     [Consumes("multipart/form-data")]

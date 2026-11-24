@@ -9,7 +9,7 @@
 .tables-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin: 2px 0 10px; }
 .tables-toolbar .segmented { flex: none; }
 .tables-toolbar-controls { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; margin-left: auto; }
-.tables-toolbar .segment { min-height: var(--touch); padding: 0 12px; font-size: var(--fs-caption); }
+.tables-toolbar .segment { min-height: var(--touch); padding: 0 10px; font-size: var(--fs-14); }
 /* Phone width: the summary takes its own line and the two switches share one full-width row (wrapping to two
    equal rows when the labels do not fit) instead of stacking right-aligned beside wrapped text. */
 @media (max-width: 479px) {
@@ -37,6 +37,7 @@
 .floor-tile-body { display: flex; flex-direction: column; align-items: center; line-height: 1.1; }
 .floor-tile .table-code { font-weight: 600; }
 .floor-tile-res { position: absolute; top: 2px; right: 4px; }
+.floor-tile-merge { position: absolute; top: 2px; left: 4px; }
 @container (max-width: 63px) { .floor-tile-meta { display: none; } }
 .map-hint { margin: 4px 0 8px; }
 
@@ -53,15 +54,19 @@
 .table-card.st-ready { --tc: var(--success-text); --tb: var(--success-soft); --tbd: var(--success); border-color: var(--success); box-shadow: inset 0 3px 0 0 var(--success), inset 0 0 0 1px var(--success); }
 .table-card.st-outofservice { opacity: 0.75; }
 .table-card-head { display: flex; align-items: center; justify-content: space-between; gap: 4px; width: 100%; flex-wrap: wrap; /* a long "26 h 40 min" timer wraps under the code instead of widening the page */ }
-.table-code { font-size: 22px; font-weight: 700; line-height: 1; color: var(--text); }
+.table-code { font-size: var(--fs-20); font-weight: 700; line-height: 1; color: var(--text); }
 .table-elapsed { display: inline-flex; align-items: center; gap: 2px; font-size: var(--fs-caption); color: var(--text-2); font-weight: 500; white-space: nowrap; }
 .table-card.st-preparing .table-elapsed, .table-card.st-billing .table-elapsed { color: var(--tc); font-weight: 600; } /* the waits that matter read in the tone */
 .table-card .status-badge { padding: 2px 8px 2px 6px; font-size: var(--fs-caption); max-width: 100%; }
 .table-card .status-badge { align-items: flex-start; line-height: 1.2; }
-.table-card .status-badge span { min-width: 0; white-space: normal; overflow-wrap: anywhere; } /* the label wraps to two lines, never cut: status is never colour alone */
+.table-card .status-badge span { min-width: 0; white-space: normal; overflow-wrap: normal; word-break: normal; } /* the label wraps between words, never mid-word: status is never colour alone */
 .table-meta { display: flex; align-items: center; justify-content: space-between; gap: 4px; width: 100%; margin-top: auto; }
 .table-order { font-weight: 600; color: var(--text); }
-.table-draft { margin-top: 2px; font-size: 11px; padding: 1px 6px; }
+.table-draft { margin-top: 2px; font-size: var(--fs-12); padding: 1px 6px; }
+.table-total { font-size: var(--fs-label); font-weight: 700; color: var(--text); }
+.table-merge { margin-top: 2px; max-width: 100%; font-size: var(--fs-12); padding: 1px 6px; gap: 4px; white-space: normal; overflow-wrap: anywhere; }
+.merge-note { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.merge-note .chip { gap: 4px; }
 
 /* ---- W3: home. KPI tiles are links (tap = go there), quick actions are 72 px targets, activity = the bell feed. ---- */
 .kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
@@ -71,8 +76,8 @@
 .kpi-link .kpi-icon { background: var(--tb); color: var(--tc); }
 .quick-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .quick-action { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 72px; padding: 8px;
-  border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); color: var(--text); font-weight: 600; font-size: var(--fs-label); cursor: pointer; }
-.quick-action svg { color: var(--primary); }
+  border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); color: var(--text); font-weight: 600; font-size: var(--fs-14); cursor: pointer; }
+.quick-action svg { color: var(--primary-fg); }
 .quick-action.primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
 .quick-action.primary svg { color: var(--on-primary); }
 .activity { list-style: none; margin: 0; padding: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card); }
@@ -87,7 +92,7 @@
 
 /* ---- W4: order builder. Picture cards (initials when no picture), sticky CartBar, review sheet, ItemOptionsSheet. ---- */
 .item-card { position: relative; }
-.item-initials { font-size: 26px; font-weight: 700; color: var(--text-3); letter-spacing: 0.02em; }
+.item-initials { font-size: var(--fs-24); font-weight: 700; color: var(--text-2); letter-spacing: 0.02em; }
 .item-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 2px 6px; padding-right: 40px; /* clear of the round + button */ }
 .item-options-hint { white-space: nowrap; font-size: var(--fs-caption); }
 .item-add { position: absolute; right: 8px; bottom: 8px; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px;
@@ -96,25 +101,25 @@
 .item-star { display: inline-flex; align-items: center; justify-content: center; color: var(--text-2); }
 .item-star.on { color: var(--warning); }
 .item-star.on svg { fill: currentColor; }
-.cart-bar h2 { font-size: var(--fs-section); margin: 0; }
-.cart-hint { padding: 6px 0; }
-.cart-thumbs { display: flex; gap: 10px; padding: 8px 0 2px; }
-.thumb { position: relative; width: 44px; height: 44px; border-radius: var(--radius-button); background: var(--surface-subtle); overflow: visible;
-  display: inline-flex; align-items: center; justify-content: center; }
-.thumb img { width: 100%; height: 100%; object-fit: cover; border-radius: var(--radius-button); }
-.thumb-initials { font-weight: 700; color: var(--text-2); font-size: var(--fs-label); }
-.thumb-qty { position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--danger); color: var(--on-primary);
-  font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; }
-.thumb.more { font-weight: 700; color: var(--text-2); }
 .cart-bar-foot, .review-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
 .cart-total-wrap { display: flex; flex-direction: column; line-height: 1.1; }
 .cart-total { font-size: var(--fs-amount); }
 .review-lines { max-height: none; }
 .cart-line { display: block; padding: 0; }
 .cart-line .order-line { border-bottom: 0; padding-bottom: 4px; }
-.cart-line-controls { display: flex; align-items: center; gap: 4px; padding: 0 0 8px; border-bottom: 1px solid var(--border-subtle); }
+.cart-line-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 0 0 8px; border-bottom: 1px solid var(--border-subtle); }
 .cart-line-controls .btn.icon { min-width: var(--touch); min-height: var(--touch); }
 .danger-text { color: var(--danger-text); }
+
+/* Phase 27: seat picker + parcel toggle ahead of the menu (they apply to the dishes tapped next), seat/parcel chips on a line. */
+.dish-prefs { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; margin: 4px 0 10px; }
+.seat-picker { display: flex; align-items: center; gap: 8px; flex: 1 1 0; min-width: 0; }
+.seat-picker-label { flex: none; }
+.seat-chips { flex: 1 1 auto; min-width: 0; }
+.order-line-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.order-line-tags .chip { gap: 4px; }
+.cart-line-parcel { min-height: var(--touch); padding: 0 10px; display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-label); }
+.cart-line-parcel.on { background: var(--warning-soft); color: var(--warning-text); font-weight: 700; }
 .review-add { margin: 10px 0; }
 .review-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: var(--touch); font-weight: 600; }
 .review-notes { margin-top: 8px; }
@@ -160,12 +165,12 @@
 .action-list { display: flex; flex-direction: column; gap: 8px; }
 .action-row { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 0 12px 0 10px; border: 1px solid var(--border); border-radius: var(--radius-card);
   background: var(--surface); color: var(--text); font-weight: 600; font-size: var(--fs-body); text-align: left; cursor: pointer; }
-.action-row:disabled { opacity: 0.5; cursor: default; }
+.action-row:disabled { background: var(--state-disabled-bg); color: var(--state-disabled-fg); border-color: var(--border); cursor: not-allowed; }
 .action-ico { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: var(--radius-button); background: var(--surface-subtle); color: var(--text-2); }
 .action-label { flex: 1; }
 .action-chev { color: var(--text-3); }
 .action-row.primary { border-color: var(--primary); }
-.action-row.primary .action-ico { background: var(--primary-soft); color: var(--primary); }
+.action-row.primary .action-ico { background: var(--primary-soft); color: var(--primary-fg); }
 .action-row.danger { border-color: var(--danger-text); color: var(--danger-text); margin-top: 8px; }
 .action-row.danger .action-ico { background: var(--danger-soft); color: var(--danger-text); }
 
@@ -185,11 +190,11 @@
 .settings-pref:last-child { border-bottom: 0; }
 .settings-pref-name { flex: 1; min-width: 0; }
 .settings-pref-toggles { display: flex; gap: 12px; flex: none; }
-.toggle { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; font-size: var(--fs-label); color: var(--text-2); }
+.toggle { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; min-width: 44px; font-size: var(--fs-14); color: var(--text-2); }
 .toggle input { width: 20px; height: 20px; accent-color: var(--primary); }
 .signin-card { padding: 24px 20px 20px; text-align: center; }
 .signin-hero { display: flex; justify-content: center; margin-bottom: 12px; }
-.signin-mark { display: inline-flex; align-items: center; justify-content: center; width: 88px; height: 88px; border-radius: 50%; background: var(--primary-soft); color: var(--primary); }
+.signin-mark { display: inline-flex; align-items: center; justify-content: center; width: 88px; height: 88px; border-radius: 50%; background: var(--primary-soft); color: var(--primary-fg); }
 .signin-brand { color: var(--text-2); font-size: var(--fs-label); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
 .signin-title { font-size: var(--fs-title); margin: 2px 0 16px; }
 .signin-card .field { text-align: left; }
@@ -213,3 +218,39 @@
 .kitchen-progress .timeline-dot { width: 26px; height: 26px; }
 .kitchen-progress .timeline-step::before { top: 12px; }
 .order-card-total { font-weight: 700; }
+
+/* ---- Phase 25 pass 5: audit fixes ---- */
+/* Cart bar: one compact row (about 70 px) = what is in the order + estimated total on the left, Review on the right. Guests,
+   line pictures and notes live in the review sheet. */
+.cart-bar { padding: 8px 12px; }
+.cart-bar-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.cart-bar-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cart-bar h2 { margin: 0; font-size: var(--fs-14); font-weight: 600; color: var(--text-2); }
+.cart-bar .cart-total-wrap { flex-direction: row; align-items: baseline; gap: 6px; }
+.cart-bar .cart-total { font-size: var(--fs-20); }
+.cart-bar .btn.lg { flex: none; min-height: var(--touch); white-space: nowrap; }
+
+/* Review sheet footer: the total on its own line, then two equal buttons that never wrap their labels. */
+.review-foot { flex-direction: column; align-items: stretch; }
+.review-foot .cart-total-wrap { flex-direction: row; justify-content: space-between; align-items: baseline; }
+.review-foot > .row { gap: 8px; }
+.review-foot > .row .btn { flex: 1 1 0; white-space: nowrap; }
+
+/* Seat picker and Parcel share one row: the seats scroll sideways, Parcel stays put at the right. */
+.parcel-toggle { flex: none; display: inline-flex; align-items: center; gap: 8px; min-height: var(--touch); padding: 0 14px 0 8px; border: 1px solid var(--border);
+  border-radius: 999px; background: var(--surface); color: var(--text); font-weight: 600; white-space: nowrap; cursor: pointer; }
+.parcel-toggle.on, .parcel-toggle[aria-pressed="true"] { background: var(--warning-soft); border-color: var(--warning); color: var(--warning-text); }
+.switch { position: relative; flex: none; width: 40px; height: 24px; border-radius: 999px; background: var(--border-strong); transition: background 0.15s; }
+.switch-knob { position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: var(--on-primary);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); transition: transform 0.15s; }
+.parcel-toggle.on .switch, .parcel-toggle[aria-pressed="true"] .switch { background: var(--warning); }
+.parcel-toggle.on .switch-knob, .parcel-toggle[aria-pressed="true"] .switch-knob { transform: translateX(16px); }
+@media (prefers-reduced-motion: reduce) { .switch, .switch-knob { transition: none; } }
+@media (hover: hover) { .parcel-toggle:not(.on):hover { background: var(--state-hover); } .btn.cart-line-parcel.on:hover:not(:disabled) { background: var(--warning-soft); } }
+.parcel-toggle:active { transform: scale(0.98); }
+
+/* Free tables read as "Empty" in muted text instead of a green status badge; a busy table keeps its badge. */
+.table-empty { font-size: var(--fs-12); color: var(--text-2); font-weight: 500; line-height: 1.3; }
+
+/* Table card focus ring keeps the stripe (the card's own box-shadow). */
+.table-card:focus-visible, .table-card.st-ready:focus-visible { outline: none; box-shadow: inset 0 3px 0 0 var(--tbd), var(--focus-ring); }

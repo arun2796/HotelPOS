@@ -72,9 +72,11 @@ internal sealed class UpdateMenuItemHandler : ICommandHandler<UpdateMenuItemComm
         var oldValues = new { item.Name, item.Code, item.CategoryId, item.Price, item.TaxId, item.PreparationStationId, item.IsAvailable, item.IsActive };
         item.Update(request.CategoryId, request.Name, request.Code, request.Description, request.Price,
             request.TaxId, request.PreparationStationId, request.SortOrder);
-        item.SetAvailability(request.IsAvailable);
+        // A counted item that has run to zero stays sold out until the kitchen loads more.
+        item.SetAvailability(request.IsAvailable && !(item.IsStockTracked && (item.StockRemaining ?? 0) <= 0));
         item.SetModifierGroups(request.ModifierGroupIds);
         item.SetHsnSac(request.HsnSac);
+        item.SetPackagingCharge(request.PackagingCharge);
         if (request.IsActive)
         {
             item.Activate();

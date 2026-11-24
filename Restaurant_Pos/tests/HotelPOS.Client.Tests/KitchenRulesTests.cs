@@ -46,7 +46,7 @@ public class KitchenRulesTests
         KitchenRules.ColumnOf(KitchenOrderStatus.Completed).Should().BeNull();
         KitchenRules.ColumnOf(KitchenOrderStatus.Cancelled).Should().BeNull();
         KitchenRules.ActionsFor(KitchenOrderStatus.Completed).Should().BeEmpty();
-        KitchenRules.Label(KitchenRules.Complete).Should().Be("DONE");
+        KitchenRules.Label(KitchenRules.Complete).Should().Be("Done");
     }
 
     [Fact]

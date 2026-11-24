@@ -129,13 +129,13 @@
               <StackPanel>
                 <TextBlock Text="Before" Style="{StaticResource Text.Label}" />
                 <TextBox Text="{Binding FormattedOldValues, Mode=OneWay}" IsReadOnly="True"
-                         FontFamily="Consolas, Courier New, monospace" FontSize="11" Margin="0,4,0,0"
+                         FontFamily="Consolas, Courier New, monospace" FontSize="12" Margin="0,4,0,0"
                          TextWrapping="Wrap" AcceptsReturn="True" Background="{DynamicResource Brush.SurfaceSubtle}" />
               </StackPanel>
               <StackPanel Grid.Column="2">
                 <TextBlock Text="After" Style="{StaticResource Text.Label}" />
                 <TextBox Text="{Binding FormattedNewValues, Mode=OneWay}" IsReadOnly="True"
-                         FontFamily="Consolas, Courier New, monospace" FontSize="11" Margin="0,4,0,0"
+                         FontFamily="Consolas, Courier New, monospace" FontSize="12" Margin="0,4,0,0"
                          TextWrapping="Wrap" AcceptsReturn="True" Background="{DynamicResource Brush.SurfaceSubtle}" />
               </StackPanel>
             </Grid>

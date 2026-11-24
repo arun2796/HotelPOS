@@ -4,7 +4,7 @@
 
 @if (Auth.IsSignedIn)
 {
-    <span class="conn @Css" title="Real-time connection">@Text</span>
+    <span class="conn @Css" title="Real-time connection"><span class="conn-text">@Text</span></span>
 }
 
 @code {

@@ -78,7 +78,7 @@
                      Text="Paste the key exactly as received (it starts with HPOS1-). It takes effect at once; nothing needs restarting." />
           <TextBox Text="{Binding KeyText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="96"
                    VerticalScrollBarVisibility="Auto" FontFamily="Consolas" AutomationProperties.Name="Licence key" />
-          <Button Content="APPLY KEY" Command="{Binding ApplyKeyCommand}" Style="{StaticResource Button.Primary}"
+          <Button Content="Apply key" Command="{Binding ApplyKeyCommand}" Style="{StaticResource Button.Primary}"
                   HorizontalAlignment="Right" Margin="0,12,0,0" MinHeight="48" />
         </StackPanel>
       </Border>

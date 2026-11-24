@@ -42,6 +42,17 @@ public sealed record TableDto
 
     public int? CurrentOrderNumber { get; init; }
 
+    // Running amount of the table's open order (items before tax and discounts), shown on the cashier's tile.
+    public decimal? CurrentOrderTotal { get; init; }
+
+    // Merge: a companion table points at the primary table whose party it joined; the primary lists its companions.
+    public int? MergedIntoTableId { get; init; }
+    public string? MergedIntoTableCode { get; init; }
+    public IReadOnlyList<string> MergedTableCodes { get; init; } = Array.Empty<string>();
+
+    // The seat codes of this table ("4A".."4D"), limited by its capacity.
+    public IReadOnlyList<string> SeatCodes { get; init; } = Array.Empty<string>();
+
     public Reservations.ReservationSummaryDto? UpcomingReservation { get; init; }
 
     // Floor-plan geometry in layout units (px at 100%); all null until the table is placed.
@@ -111,6 +122,12 @@ public sealed record OccupyTableRequest
 {
     public int GuestCount { get; init; }
     public string RowVersion { get; init; } = string.Empty;
+}
+
+// The captain merges a companion table into the table the party sits at (a party of ten on a 6-seater and a 4-seater).
+public sealed record MergeTablesRequest
+{
+    public int CompanionTableId { get; init; }
 }
 
 public static class FloorLimits

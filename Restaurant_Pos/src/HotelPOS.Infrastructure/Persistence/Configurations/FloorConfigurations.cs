@@ -46,6 +46,12 @@ internal sealed class TableConfiguration : IEntityTypeConfiguration<Table>
             .WithMany()
             .HasForeignKey(t => t.SectionId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(t => t.MergedInto)
+            .WithMany(t => t.MergedTables)
+            .HasForeignKey(t => t.MergedIntoTableId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(t => t.MergedIntoTableId);
     }
 }
 

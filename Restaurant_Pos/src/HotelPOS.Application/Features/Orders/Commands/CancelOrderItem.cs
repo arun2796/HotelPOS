@@ -39,6 +39,7 @@ internal sealed class CancelOrderItemHandler : ICommandHandler<CancelOrderItemCo
     private readonly OrderSteps _orders;
     private readonly OrderEvents _events;
     private readonly KitchenSync _kitchen;
+    private readonly OrderStock _stock;
 
     public CancelOrderItemHandler(
         IAppDbContext db,
@@ -47,8 +48,10 @@ internal sealed class CancelOrderItemHandler : ICommandHandler<CancelOrderItemCo
         IClock clock,
         OrderSteps orders,
         OrderEvents events,
-        KitchenSync kitchen)
+        KitchenSync kitchen,
+        OrderStock stock)
     {
+        _stock = stock;
         _db = db;
         _audit = audit;
         _afterCommit = afterCommit;
@@ -88,11 +91,15 @@ internal sealed class CancelOrderItemHandler : ICommandHandler<CancelOrderItemCo
                 return AppErrors.Forbidden("Only the waiter who took this order or a manager can cancel its items.");
             case KitchenOrderStatus.Preparing when !mayCancelAny:
                 return AppErrors.Forbidden($"{item.ItemName} is already being prepared. Only a manager can cancel it.");
+            // Same rule as cancelling a whole order: once the kitchen has started, the reason is required.
+            case KitchenOrderStatus.Preparing when string.IsNullOrWhiteSpace(request.Reason):
+                return AppErrors.Validation("reason", "Enter the reason for cancelling a dish that is being prepared.");
             case KitchenOrderStatus.Ready or KitchenOrderStatus.Completed or KitchenOrderStatus.Cancelled:
                 return AppErrors.InvalidState($"{item.ItemName} is already {ticket.Status} and cannot be cancelled.", await _orders.GetDetailAsync(id, cancellationToken));
         }
 
         var now = _clock.UtcNow;
+        await _stock.RestoreAsync(new[] { item }, cancellationToken);
         item.CancelSent(_orders.UserId, request.Reason);
         ticket.CancelItem(itemId, now);
         _db.Entry(order).State = EntityState.Modified;

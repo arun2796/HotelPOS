@@ -81,7 +81,7 @@ public static class ModuleRegistry
             "Pending bills, your open shift, expected cash and the business day at a glance.", typeof(CashierHomeViewModel)),
 
         new(Tables, "Tables", "", "Service", new[] { Roles.Admin, Roles.Manager, Roles.Waiter, Roles.Cashier }, 2,
-            "Live table map: occupy tables, open orders and follow their status.", typeof(TableMapViewModel)),
+            "Live table status and orders.", typeof(TableMapViewModel)),
         new(Reservations, "Reservations", "", "Service", new[] { Roles.Admin, Roles.Manager, Roles.Waiter, Roles.Cashier }, 22,
             "Book, view, seat and manage table reservations.", typeof(ReservationsViewModel)),
         new(MyOrders, "My Orders", "", "Service", new[] { Roles.Admin, Roles.Manager, Roles.Waiter }, 4,

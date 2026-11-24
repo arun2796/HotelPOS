@@ -156,7 +156,7 @@
               <StackPanel Orientation="Horizontal">
                 <TextBlock Text="{Binding DiscountLabel}" Style="{StaticResource Text.Body}" Foreground="{DynamicResource Brush.TextSecondary}"
                            VerticalAlignment="Center" MaxWidth="230" TextTrimming="CharacterEllipsis" />
-                <Button Content="DISCOUNT" Command="{Binding ShowDiscountCommand}" Style="{StaticResource Button.Link}" Margin="8,0,0,0"
+                <Button Content="Discount" Command="{Binding ShowDiscountCommand}" Style="{StaticResource Button.Link}" Margin="8,0,0,0"
                         Visibility="{Binding IsPaid, Converter={StaticResource InverseBoolToVisibility}}"
                         IsEnabled="{Binding CanEdit}" />
               </StackPanel>
@@ -216,8 +216,8 @@
             <ColumnDefinition Width="1*" />
           </Grid.ColumnDefinitions>
           <Button Content="{Binding FinalizeText}" Command="{Binding FinalizeCommand}" Style="{StaticResource ActionButton}" IsEnabled="{Binding CanFinalize}" />
-          <Button Grid.Column="1" Content="REOPEN" Command="{Binding ReopenCommand}" Style="{StaticResource ActionButton}" IsEnabled="{Binding CanReopen}" />
-          <Button Grid.Column="2" Content="VOID" Command="{Binding VoidCommand}" Style="{StaticResource ActionButton}" Foreground="{DynamicResource Brush.Danger}"
+          <Button Grid.Column="1" Content="Reopen" Command="{Binding ReopenCommand}" Style="{StaticResource ActionButton}" IsEnabled="{Binding CanReopen}" />
+          <Button Grid.Column="2" Content="Void" Command="{Binding VoidCommand}" Style="{StaticResource ActionButton}" Foreground="{DynamicResource Brush.Danger}"
                   IsEnabled="{Binding CanVoid}" />
         </Grid>
       </StackPanel>
@@ -275,8 +275,8 @@
                   <TextBox Grid.Column="4" Text="{Binding ManualReason, UpdateSourceTrigger=PropertyChanged}" MaxLength="300" ToolTip="Reason" />
                 </Grid>
                 <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                  <Button Content="APPLY" Command="{Binding ApplyManualCommand}" Style="{StaticResource Button.Primary}" MinWidth="120" />
-                  <Button Content="REMOVE DISCOUNT" Command="{Binding RemoveDiscountCommand}" Margin="12,0,0,0"
+                  <Button Content="Apply" Command="{Binding ApplyManualCommand}" Style="{StaticResource Button.Primary}" MinWidth="120" />
+                  <Button Content="Remove discount" Command="{Binding RemoveDiscountCommand}" Margin="12,0,0,0"
                           Visibility="{Binding HasDiscount, Converter={StaticResource BoolToVisibility}}" />
                 </StackPanel>
               </StackPanel>
@@ -312,7 +312,7 @@
                   <Button Content="Manage customers…" Command="{Binding ManageCustomersCommand}" Style="{StaticResource Button.Link}" HorizontalAlignment="Left" Margin="0,6,0,0" />
                   <TextBlock Text="{Binding PickedCustomerName, StringFormat='Picked: {0}'}" Style="{StaticResource Text.Caption}" Margin="0,6,0,0"
                              Visibility="{Binding PickedCustomerName, Converter={StaticResource StringToVisibility}}" />
-                  <Button Content="CLEAR CUSTOMER" Command="{Binding ClearCustomerCommand}" HorizontalAlignment="Left" MinHeight="44" Margin="0,8,0,0"
+                  <Button Content="Clear customer" Command="{Binding ClearCustomerCommand}" HorizontalAlignment="Left" MinHeight="44" Margin="0,8,0,0"
                           ToolTip="Take the customer off this bill"
                           Visibility="{Binding CanClearCustomer, Converter={StaticResource BoolToVisibility}}" />
                 </StackPanel>
@@ -344,7 +344,7 @@
                 </Grid>
                 <TextBlock Text="Place of supply is the restaurant's own state unless the service is supplied in another state (then IGST applies)."
                            Style="{StaticResource Text.Caption}" TextWrapping="Wrap" />
-                <Button Content="SAVE" Command="{Binding SaveCustomerCommand}" Style="{StaticResource Button.Primary}" MinWidth="120"
+                <Button Content="Save" Command="{Binding SaveCustomerCommand}" Style="{StaticResource Button.Primary}" MinWidth="120"
                         HorizontalAlignment="Left" Margin="0,16,0,0" />
               </StackPanel>
 
@@ -482,8 +482,8 @@
                 <Grid>
                   <TextBlock Text="Invoice preview" Style="{StaticResource Text.Label}" VerticalAlignment="Center" />
                   <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Content="PRINT PREVIEW" Command="{Binding PreviewInvoiceCommand}" MinHeight="40" />
-                    <Button Content="PRINT" Command="{Binding PrintInvoiceCommand}" Style="{StaticResource Button.Primary}" MinHeight="40" MinWidth="110" Margin="8,0,0,0" />
+                    <Button Content="Print preview" Command="{Binding PreviewInvoiceCommand}" MinHeight="40" />
+                    <Button Content="Print" Command="{Binding PrintInvoiceCommand}" Style="{StaticResource Button.Primary}" MinHeight="40" MinWidth="110" Margin="8,0,0,0" />
                   </StackPanel>
                 </Grid>
                 <Border BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="6" Padding="20" Margin="0,8,0,0"
@@ -556,8 +556,8 @@
                 <ItemsControl ItemsSource="{Binding PaymentRows}" ItemTemplate="{StaticResource AmountRowTemplate}" Focusable="False"
                               Width="360" Margin="0,12,0,0" />
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,16,0,0">
-                  <Button Content="PRINT RECEIPT" Command="{Binding PrintReceiptCommand}" MinHeight="44" MinWidth="150" />
-                  <Button Content="PRINT INVOICE" Command="{Binding PrintInvoiceCommand}" MinHeight="44" MinWidth="150" Margin="8,0,0,0" />
+                  <Button Content="Print receipt" Command="{Binding PrintReceiptCommand}" MinHeight="44" MinWidth="150" />
+                  <Button Content="Print invoice" Command="{Binding PrintInvoiceCommand}" MinHeight="44" MinWidth="150" Margin="8,0,0,0" />
                 </StackPanel>
               </StackPanel>
 
@@ -571,10 +571,10 @@
           <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
             <Button Content="Close" Command="{Binding ClosePanelCommand}" MinWidth="110" MinHeight="52"
                     Visibility="{Binding IsDonePanel, Converter={StaticResource InverseBoolToVisibility}}" />
-            <Button Content="CONFIRM" Command="{Binding ConfirmPaymentCommand}" Style="{StaticResource Button.Primary}"
+            <Button Content="Confirm" Command="{Binding ConfirmPaymentCommand}" Style="{StaticResource Button.Primary}"
                     MinWidth="160" MinHeight="52" Margin="12,0,0,0" IsEnabled="{Binding Payment.IsValid, FallbackValue=False}"
                     Visibility="{Binding IsPaymentPanel, Converter={StaticResource BoolToVisibility}}" />
-            <Button Content="NEXT BILL" Command="{Binding NextBillCommand}" Style="{StaticResource Button.Primary}"
+            <Button Content="Next bill" Command="{Binding NextBillCommand}" Style="{StaticResource Button.Primary}"
                     MinWidth="160" MinHeight="52"
                     Visibility="{Binding IsDonePanel, Converter={StaticResource BoolToVisibility}}" />
           </StackPanel>

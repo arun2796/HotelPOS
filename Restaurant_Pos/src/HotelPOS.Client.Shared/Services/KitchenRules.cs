@@ -78,11 +78,11 @@ public static class KitchenRules
 
     public static string Label(string action) => action switch
     {
-        Accept => "ACCEPT",
-        Start => "START",
-        Ready => "READY",
-        Complete => "DONE",
-        Recall => "RECALL",
+        Accept => "Accept",
+        Start => "Start",
+        Ready => "Ready",
+        Complete => "Done",
+        Recall => "Recall",
         _ => action.ToUpperInvariant(),
     };
 
@@ -96,8 +96,28 @@ public static class KitchenRules
             || ticket.TicketNumber.Contains(q, StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>The words on the big button (the status badge keeps the short "READY").</summary>
-    public static string ButtonLabel(string action) => action == Ready ? "MARK READY" : Label(action);
+    /// <summary>The words on the big button (the status badge keeps the short "Ready").</summary>
+    public static string ButtonLabel(string action) => action == Ready ? "Mark ready" : Label(action);
+
+    /// <summary>Splits the server's "Seat 4A · no onion" into ("Seat 4A", "no onion"); notes without a leading seat segment come back as (null, notes).</summary>
+    public static (string? Seat, string? Note) SplitSeat(string? notes)
+    {
+        if (string.IsNullOrWhiteSpace(notes) || !notes.StartsWith("Seat ", StringComparison.Ordinal))
+        {
+            return (null, notes);
+        }
+
+        const string separator = " · ";
+        var cut = notes.IndexOf(separator, StringComparison.Ordinal);
+        var seat = cut < 0 ? notes : notes[..cut];
+        if (seat.Length <= 5 || seat.IndexOf(' ', 5) >= 0)
+        {
+            return (null, notes);
+        }
+
+        var rest = cut < 0 ? null : notes[(cut + separator.Length)..].Trim();
+        return (seat, string.IsNullOrEmpty(rest) ? null : rest);
+    }
 
     public static bool IsAddedItems(KitchenTicketDto ticket) => ticket.BatchNumber > 1;
 

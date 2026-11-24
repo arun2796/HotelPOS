@@ -283,7 +283,7 @@ public sealed class WaiterScreensTests : TestContext
 
         page.Find("#menu-search").Should().NotBeNull("the search keeps its id for the Favourites tests");
         page.Find(".item-card img").GetAttribute("src").Should().Be("http://127.0.0.1:1/images/menu/cb1.jpg", "pictures come from the host-resolved ImageUrl");
-        page.Find(".item-options-hint").TextContent.Should().Be("+ options");
+        page.Find(".item-options-hint").TextContent.Should().Be("Customise");
 
         await page.InvokeAsync(() => page.FindAll("button.chip-btn").Single(c => c.TextContent == "Breads").Click());
         page.FindAll(".item-initials").Select(i => i.TextContent).Should().Equal("BN", "GN");
@@ -515,10 +515,10 @@ public sealed class WaiterScreensTests : TestContext
     }
 
     [Theory]
-    [InlineData(OrderStatus.Submitted, true, KitchenOrderStatus.New, false, "add-items|edit|cancel")]
-    [InlineData(OrderStatus.Preparing, true, KitchenOrderStatus.Preparing, false, "add-items|edit|cancel")]
-    [InlineData(OrderStatus.Ready, true, KitchenOrderStatus.Ready, false, "add-items|edit|serve|request-bill|cancel")]
-    [InlineData(OrderStatus.Served, false, KitchenOrderStatus.Completed, false, "request-bill")]
+    [InlineData(OrderStatus.Submitted, true, KitchenOrderStatus.New, false, "add-items|edit|merge|cancel")]
+    [InlineData(OrderStatus.Preparing, true, KitchenOrderStatus.Preparing, false, "add-items|edit|merge|cancel")]
+    [InlineData(OrderStatus.Ready, true, KitchenOrderStatus.Ready, false, "add-items|edit|serve|request-bill|merge|cancel")]
+    [InlineData(OrderStatus.Served, false, KitchenOrderStatus.Completed, false, "request-bill|merge")]
     [InlineData(OrderStatus.BillRequested, false, KitchenOrderStatus.Completed, true, "")]
     [InlineData(OrderStatus.Paid, false, KitchenOrderStatus.Completed, true, "")]
     public async Task Details_ActionList_OffersOnlyTheActionsValidForTheStatus_DestructiveLast(OrderStatus status, bool canModify, KitchenOrderStatus ticket, bool bill, string expected)
@@ -552,7 +552,7 @@ public sealed class WaiterScreensTests : TestContext
     {
         var handler = new RouteHandler { Respond = r => r.RequestUri!.AbsolutePath == "/api/tables/5" ? Table5(TableStatus.Occupied, null) : null };
         var page = await RenderDetailsAsync(handler);
-        page.FindAll("[data-action]").Select(b => b.GetAttribute("data-action")).Should().Equal("new-order", "release");
+        page.FindAll("[data-action]").Select(b => b.GetAttribute("data-action")).Should().Equal("new-order", "merge", "release");
         page.FindAll(".tabs").Should().BeEmpty("no order, no Details / Items / Timeline");
 
         await page.InvokeAsync(() => page.Find("[data-action=release]").Click());

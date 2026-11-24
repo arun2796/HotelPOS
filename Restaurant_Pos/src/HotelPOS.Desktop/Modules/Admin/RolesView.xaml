@@ -58,10 +58,10 @@
                       <TextBlock Text="{Binding RoleName}" Style="{StaticResource Text.Subtitle}" />
                       <Border Background="{DynamicResource Brush.PrimarySoft}" CornerRadius="3" Padding="4,1" Margin="8,0,0,0"
                               Visibility="{Binding IsSystem, Converter={StaticResource BoolToVisibility}}">
-                        <TextBlock Text="System" FontSize="10" Foreground="{DynamicResource Brush.Primary}" />
+                        <TextBlock Text="System" FontSize="12" Foreground="{DynamicResource Brush.Primary}" />
                       </Border>
                     </StackPanel>
-                    <TextBlock Text="{Binding Description}" Style="{StaticResource Text.Caption}" FontSize="11" Margin="0,2,0,0" />
+                    <TextBlock Text="{Binding Description}" Style="{StaticResource Text.Caption}" FontSize="12" Margin="0,2,0,0" />
                   </StackPanel>
                 </Border>
               </DataTemplate>

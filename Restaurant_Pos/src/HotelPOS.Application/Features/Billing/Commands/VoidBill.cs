@@ -7,9 +7,11 @@ using HotelPOS.Application.Common.Results;
 using HotelPOS.Application.Features.Floor;
 using HotelPOS.Application.Features.Kitchen;
 using HotelPOS.Contracts.Billing;
+using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Contracts.Security;
 using HotelPOS.Domain.Billing;
+using Microsoft.EntityFrameworkCore;
 
 namespace HotelPOS.Application.Features.Billing.Commands;
 
@@ -43,8 +45,11 @@ internal sealed class VoidBillHandler : ICommandHandler<VoidBillCommand, BillDet
     private readonly ManagerApprovals _approvals;
     private readonly KitchenSync _kitchen;
     private readonly TableEvents _tableEvents;
+    private readonly TableMerges _merges;
+    private readonly IAppDbContext _db;
 
     public VoidBillHandler(
+        IAppDbContext db,
         IAuditTrail audit,
         IAfterCommit afterCommit,
         IClock clock,
@@ -53,8 +58,11 @@ internal sealed class VoidBillHandler : ICommandHandler<VoidBillCommand, BillDet
         BillEvents events,
         ManagerApprovals approvals,
         KitchenSync kitchen,
-        TableEvents tableEvents)
+        TableEvents tableEvents,
+        TableMerges merges)
     {
+        _db = db;
+        _merges = merges;
         _audit = audit;
         _afterCommit = afterCommit;
         _clock = clock;
@@ -81,6 +89,29 @@ internal sealed class VoidBillHandler : ICommandHandler<VoidBillCommand, BillDet
             {
                 var (bill, order, table) = (scope.Bill, scope.Order, scope.Table);
                 var now = _clock.UtcNow;
+
+                // Voiding a split bill voids every part (the order is cancelled), unless a part was already paid.
+                var parts = await _db.Bills.Where(b => b.OrderId == order.Id && b.Id != bill.Id && b.Status != BillStatus.Voided).ToListAsync(cancellationToken);
+                if (parts.Any(p => p.Status == BillStatus.Settled || p.PaidAmount > 0))
+                {
+                    return AppErrors.BusinessRule("Another part of this table's bill was already paid. Refund that part first; a split bill cannot be voided once a part is paid.");
+                }
+
+                foreach (var part in parts)
+                {
+                    if (part.Status == BillStatus.Finalized)
+                    {
+                        part.Void(request.Reason, now);
+                    }
+                    else
+                    {
+                        part.Reopen(request.Reason, now);
+                    }
+
+                    var voided = part;
+                    _afterCommit.Enqueue(() => _events.PublishBillUpdatedAsync(voided, BillChangeTypes.Voided));
+                }
+
                 bill.Void(request.Reason, now);
                 var openTickets = (await _kitchen.LoadTicketsAsync(order.Id, cancellationToken)).Where(t => t.IsOpen).ToList();
                 foreach (var ticket in openTickets)
@@ -92,6 +123,7 @@ internal sealed class VoidBillHandler : ICommandHandler<VoidBillCommand, BillDet
                 if (table != null && table.CurrentOrderId == order.Id)
                 {
                     table.DetachOrder(keepGuestsSeated: false);
+                    await _merges.ReleaseCompanionsAsync(table, cancellationToken);
                 }
 
                 _audit.Add(AuditActions.BillVoided, nameof(Bill), bill.Id.ToString(CultureInfo.InvariantCulture), newValues: new

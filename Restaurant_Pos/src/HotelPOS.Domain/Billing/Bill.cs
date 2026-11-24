@@ -34,6 +34,10 @@ public sealed class Bill : BaseEntity, IHasRowVersion
     }
 
     public int BillNumber { get; private set; }
+
+    // 0 for the bill RequestBill creates; 1, 2 ... for the parts split off it (see SplitOff).
+    public int SplitIndex { get; private set; }
+
     public string? InvoiceNumber { get; private set; }
     public int OrderId { get; private set; }
     public string TableCode { get; private set; } = string.Empty;
@@ -119,10 +123,81 @@ public sealed class Bill : BaseEntity, IHasRowVersion
         ClaimExpiresAt = null;
     }
 
+    // Moves the chosen lines to a new bill for the same order (a guest or seat group paying on their own). The new bill
+    // starts Open with the same customer and discount rules; a fixed-amount discount is shared by subtotal so the parts
+    // add up to the original. Only an Open, unpaid bill can be split, and at least one line must stay behind.
+    public Bill SplitOff(IReadOnlyCollection<int> billItemIds, int splitIndex, bool roundOff)
+    {
+        EnsureOpen("split");
+        if (PaidAmount > 0)
+        {
+            throw new DomainException("Payments were already taken on this bill. It cannot be split.", ErrorCodes.InvalidStateTransition);
+        }
+
+        var moving = _items.Where(i => billItemIds.Contains(i.Id)).ToList();
+        if (moving.Count == 0 || moving.Count != billItemIds.Distinct().Count())
+        {
+            throw new DomainException("Choose the bill lines to move to the new bill.", ErrorCodes.ValidationError);
+        }
+
+        if (moving.Count == _items.Count)
+        {
+            throw new DomainException("At least one line must stay on this bill.", ErrorCodes.ValidationError);
+        }
+
+        var movedSubtotal = moving.Sum(i => i.LineSubtotal);
+        var keptSubtotal = _items.Where(i => !moving.Contains(i)).Sum(i => i.LineSubtotal);
+        var sibling = new Bill
+        {
+            OrderId = OrderId,
+            TableCode = TableCode,
+            WaiterId = WaiterId,
+            Status = BillStatus.Open,
+            PaymentStatus = PaymentStatus.Pending,
+            SplitIndex = splitIndex,
+            CustomerName = CustomerName,
+            CustomerPhone = CustomerPhone,
+            CustomerGstin = CustomerGstin,
+            CustomerLegalName = CustomerLegalName,
+            CustomerStateCode = CustomerStateCode,
+            PlaceOfSupply = PlaceOfSupply,
+            SupplyType = SupplyType,
+            DiscountId = DiscountId,
+            DiscountType = DiscountType,
+            DiscountValue = DiscountValue,
+            DiscountReason = DiscountReason,
+            DiscountApprovedBy = DiscountApprovedBy,
+        };
+
+        if (DiscountType == Contracts.Enums.DiscountType.FixedAmount && DiscountValue is { } fixedAmount && movedSubtotal + keptSubtotal > 0)
+        {
+            var share = decimal.Round(fixedAmount * movedSubtotal / (movedSubtotal + keptSubtotal), 2, MidpointRounding.AwayFromZero);
+            sibling.DiscountValue = share;
+            DiscountValue = fixedAmount - share;
+        }
+
+        _items.RemoveAll(i => moving.Contains(i));
+        sibling._items.AddRange(moving);
+        Recalculate(roundOff);
+        sibling.Recalculate(roundOff);
+        return sibling;
+    }
+
+    // Shown on the cashier's queue and the receipt: "T04 (B)" for the second part of table T04's bill.
+    public void LabelPart(string baseTableCode, int splitIndex)
+    {
+        TableCode = $"{baseTableCode} ({BillParts.Letter(splitIndex)})";
+    }
+
     public void ApplyDiscount(int? discountId, DiscountType type, decimal value, string? reason, int? approvedBy, bool roundOff)
     {
         EnsureOpen("discounted");
         Discount.CheckValue(type, value);
+        if (type == Contracts.Enums.DiscountType.FixedAmount && value > Subtotal)
+        {
+            throw new DomainException($"A fixed discount of {value:0.00} is more than the bill subtotal of {Subtotal:0.00}.", ErrorCodes.ValidationError);
+        }
+
         DiscountId = discountId;
         DiscountType = type;
         DiscountValue = value;
@@ -144,7 +219,16 @@ public sealed class Bill : BaseEntity, IHasRowVersion
 
     public void SetCustomer(string? name, string? phone, string? gstin, string? legalName = null, string? stateCode = null, string? placeOfSupply = null)
     {
-        EnsurePending("changed");
+        // An invoice number is already issued once the bill is finalized: its customer and GST type are fixed then.
+        if (Status != BillStatus.Open)
+        {
+            throw new DomainException(
+                Status == BillStatus.Finalized
+                    ? $"Invoice {InvoiceNumber} is already issued, so its customer cannot change. Reopen the bill first."
+                    : $"Bill {BillNumber} is {Status} and its customer cannot be changed.",
+                ErrorCodes.InvalidStateTransition);
+        }
+
         var cleanGstin = Clean(gstin)?.ToUpperInvariant();
         if (cleanGstin is not null && Gstin.Validate(cleanGstin) is { } problem)
         {
@@ -401,10 +485,14 @@ public sealed class BillItem
         UnitPrice = line.UnitPrice;
         ModifiersAmount = line.ModifiersAmount;
         TaxRatePercent = line.TaxRatePercent;
+        SeatCode = line.SeatCode;
     }
 
     public int Id { get; private set; }
     public int BillId { get; private set; }
+
+    // Copied from the order line: the seat the dish was ordered for ("4A"), null for the whole table.
+    public string? SeatCode { get; private set; }
     public int OrderItemId { get; private set; }
     public string ItemName { get; private set; } = string.Empty;
     public int Quantity { get; private set; }
@@ -419,7 +507,7 @@ public sealed class BillItem
     public decimal TaxAmount { get; private set; }
     public decimal LineTotal { get; private set; }
 
-    internal BillLineInput ToInput() => new(OrderItemId, ItemName, Quantity, UnitPrice, ModifiersAmount, TaxRatePercent);
+    internal BillLineInput ToInput() => new(OrderItemId, ItemName, Quantity, UnitPrice, ModifiersAmount, TaxRatePercent, false, SeatCode);
 
     internal void Apply(BillLineResult result)
     {

@@ -28,6 +28,7 @@ AM--C  POST   api/billing/{id:int}/payments
 AM--C  POST   api/billing/{id:int}/refunds
 AM--C  POST   api/billing/{id:int}/release
 AM--C  POST   api/billing/{id:int}/reopen
+AM--C  POST   api/billing/{id:int}/split
 AM--C  POST   api/billing/{id:int}/void
 AMWKC  GET    api/categories
 AM---  POST   api/categories
@@ -89,6 +90,7 @@ AM---  PUT    api/menu-items/{id:int}
 AM-K-  PATCH  api/menu-items/{id:int}/availability
 AM---  DELETE api/menu-items/{id:int}/image
 AM---  POST   api/menu-items/{id:int}/image
+AM-K-  PATCH  api/menu-items/{id:int}/stock
 AMWKC  GET    api/modifier-groups
 AM---  POST   api/modifier-groups
 AM---  DELETE api/modifier-groups/{id:int}
@@ -183,9 +185,11 @@ AM---  DELETE api/tables/{id:int}
 AMWKC  GET    api/tables/{id:int}
 AM---  PUT    api/tables/{id:int}
 AM---  POST   api/tables/{id:int}/in-service
+AMW-C  POST   api/tables/{id:int}/merge
 AMW-C  POST   api/tables/{id:int}/occupy
 AM---  POST   api/tables/{id:int}/out-of-service
 AMW-C  POST   api/tables/{id:int}/release
+AMW-C  POST   api/tables/{id:int}/unmerge
 AMWKC  GET    api/taxes
 A----  POST   api/taxes
 A----  DELETE api/taxes/{id:int}

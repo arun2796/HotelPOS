@@ -37,6 +37,8 @@ internal sealed class CancelOrderHandler : ICommandHandler<CancelOrderCommand, O
     private readonly OrderEvents _events;
     private readonly KitchenSync _kitchen;
     private readonly TableEvents _tableEvents;
+    private readonly TableMerges _merges;
+    private readonly OrderStock _stock;
 
     public CancelOrderHandler(
         IAuditTrail audit,
@@ -45,8 +47,12 @@ internal sealed class CancelOrderHandler : ICommandHandler<CancelOrderCommand, O
         OrderSteps orders,
         OrderEvents events,
         KitchenSync kitchen,
-        TableEvents tableEvents)
+        TableEvents tableEvents,
+        TableMerges merges,
+        OrderStock stock)
     {
+        _merges = merges;
+        _stock = stock;
         _audit = audit;
         _afterCommit = afterCommit;
         _clock = clock;
@@ -86,10 +92,14 @@ internal sealed class CancelOrderHandler : ICommandHandler<CancelOrderCommand, O
             ticket.Cancel(_clock.UtcNow);
         }
 
+        // Portions of dishes already with the kitchen go back on the stock count.
+        await _stock.RestoreAsync(order.Items.Where(i => i.Status == OrderItemStatus.Sent), cancellationToken);
+
         order.Cancel(_orders.UserId, request.Reason, _clock.UtcNow);
         if (table != null && table.CurrentOrderId == order.Id)
         {
             table.DetachOrder(order.OpenedOnOccupiedTable);
+            await _merges.ReleaseCompanionsAsync(table, cancellationToken);
         }
 
         _audit.Add(AuditActions.OrderCancelled, nameof(Order), order.Id.ToString(),

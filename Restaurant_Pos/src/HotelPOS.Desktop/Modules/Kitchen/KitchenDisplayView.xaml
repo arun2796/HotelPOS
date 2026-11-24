@@ -48,7 +48,7 @@
                   Visibility="{Binding HasDeliveryInfo, Converter={StaticResource BoolToVisibility}}">
             <StackPanel>
               <TextBlock Text="{Binding DeliveryRecipient}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource Brush.TextPrimary}" />
-              <TextBlock Text="{Binding DeliveryAddress}" FontSize="11" Foreground="{DynamicResource Brush.TextSecondary}" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding DeliveryAddress}" FontSize="12" Foreground="{DynamicResource Brush.TextSecondary}" TextWrapping="Wrap" />
             </StackPanel>
           </Border>
           <TextBlock Style="{StaticResource Text.Caption}" Margin="0,2,0,8">
@@ -71,9 +71,9 @@
                   <StackPanel>
                     <TextBlock x:Name="LineText" Text="{Binding Text}" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap"
                                Foreground="{DynamicResource Brush.TextPrimary}" />
-                    <TextBlock Text="{Binding Modifiers}" Margin="18,0,0,0" FontSize="14" Foreground="{DynamicResource Brush.TextSecondary}" TextWrapping="Wrap"
+                    <TextBlock Text="{Binding Modifiers}" Margin="0,2,0,0" FontSize="14" Foreground="{DynamicResource Brush.TextSecondary}" TextWrapping="Wrap"
                                Visibility="{Binding HasModifiers, Converter={StaticResource BoolToVisibility}}" />
-                    <TextBlock Text="{Binding Notes}" Margin="18,0,0,0" FontSize="14" FontStyle="Italic" Foreground="{DynamicResource Brush.Warning}" TextWrapping="Wrap"
+                    <TextBlock Text="{Binding Notes}" Margin="0,2,0,0" FontSize="14" FontStyle="Italic" Foreground="{DynamicResource Brush.WarningText}" TextWrapping="Wrap"
                                Visibility="{Binding HasNotes, Converter={StaticResource BoolToVisibility}}" />
                   </StackPanel>
                 </DockPanel>
@@ -87,22 +87,22 @@
             </ItemsControl.ItemTemplate>
           </ItemsControl>
           <WrapPanel Margin="0,10,0,0" IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBool}}">
-            <Button Style="{StaticResource TicketButton}" Content="ACCEPT" CommandParameter="{Binding}"
+            <Button Style="{StaticResource TicketButton}" Content="Accept" CommandParameter="{Binding}"
                     Command="{Binding DataContext.AcceptCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                     Visibility="{Binding ShowAccept, Converter={StaticResource BoolToVisibility}}" />
-            <Button Style="{StaticResource TicketButton}" Content="START" CommandParameter="{Binding}"
+            <Button Style="{StaticResource TicketButton}" Content="Start" CommandParameter="{Binding}"
                     Background="{DynamicResource Brush.Primary}" BorderBrush="{DynamicResource Brush.Primary}" Foreground="{DynamicResource Brush.PrimaryText}"
                     Command="{Binding DataContext.StartCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                     Visibility="{Binding ShowStart, Converter={StaticResource BoolToVisibility}}" />
-            <Button Style="{StaticResource TicketButton}" Content="READY" CommandParameter="{Binding}"
-                    Background="{DynamicResource Brush.Success}" BorderBrush="{DynamicResource Brush.Success}" Foreground="{DynamicResource Brush.PrimaryText}"
+            <Button Style="{StaticResource TicketButton}" Content="Ready" CommandParameter="{Binding}"
+                    Background="{DynamicResource Brush.Warning}" BorderBrush="{DynamicResource Brush.Warning}" Foreground="{DynamicResource Brush.OnWarning}"
                     Command="{Binding DataContext.ReadyCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                     Visibility="{Binding ShowReady, Converter={StaticResource BoolToVisibility}}" />
-            <Button Style="{StaticResource TicketButton}" Content="DONE" CommandParameter="{Binding}"
+            <Button Style="{StaticResource TicketButton}" Content="Done" CommandParameter="{Binding}"
                     Background="{DynamicResource Brush.Success}" BorderBrush="{DynamicResource Brush.Success}" Foreground="{DynamicResource Brush.PrimaryText}"
                     Command="{Binding DataContext.DoneCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                     Visibility="{Binding ShowDone, Converter={StaticResource BoolToVisibility}}" />
-            <Button Style="{StaticResource TicketButton}" Content="RECALL" CommandParameter="{Binding}"
+            <Button Style="{StaticResource TicketButton}" Content="Recall" CommandParameter="{Binding}"
                     Command="{Binding DataContext.RecallCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                     Visibility="{Binding ShowRecall, Converter={StaticResource BoolToVisibility}}" />
           </WrapPanel>
@@ -187,21 +187,21 @@
     </Border>
 
     <DockPanel Grid.Row="2" Grid.Column="0">
-      <TextBlock DockPanel.Dock="Top" Text="{Binding NewHeader}" Style="{StaticResource Text.Subtitle}" Margin="0,0,0,8" />
+      <TextBlock DockPanel.Dock="Top" Text="{Binding NewHeader}" Style="{StaticResource Text.Subtitle}" Foreground="{DynamicResource Brush.Info}" Margin="0,0,0,8" />
       <ItemsControl Style="{StaticResource TicketColumn}" ItemsSource="{Binding NewTickets}" />
     </DockPanel>
     <DockPanel Grid.Row="2" Grid.Column="2">
-      <TextBlock DockPanel.Dock="Top" Text="{Binding PreparingHeader}" Style="{StaticResource Text.Subtitle}" Margin="0,0,0,8" />
+      <TextBlock DockPanel.Dock="Top" Text="{Binding PreparingHeader}" Style="{StaticResource Text.Subtitle}" Foreground="{DynamicResource Brush.WarningText}" Margin="0,0,0,8" />
       <ItemsControl Style="{StaticResource TicketColumn}" ItemsSource="{Binding PreparingTickets}" />
     </DockPanel>
     <DockPanel Grid.Row="2" Grid.Column="4">
-      <TextBlock DockPanel.Dock="Top" Text="{Binding ReadyHeader}" Style="{StaticResource Text.Subtitle}" Margin="0,0,0,8" />
+      <TextBlock DockPanel.Dock="Top" Text="{Binding ReadyHeader}" Style="{StaticResource Text.Subtitle}" Foreground="{DynamicResource Brush.Success}" Margin="0,0,0,8" />
       <ItemsControl Style="{StaticResource TicketColumn}" ItemsSource="{Binding ReadyTickets}" />
     </DockPanel>
 
     <Grid Grid.RowSpan="3" Grid.ColumnSpan="5" Background="{DynamicResource Brush.Overlay}" Margin="-16"
           Visibility="{Binding IsSoldOutOpen, Converter={StaticResource BoolToVisibility}}">
-      <Border Style="{StaticResource Dialog.Frame}" Width="560" MaxHeight="640" HorizontalAlignment="Center" VerticalAlignment="Center">
+      <Border Style="{StaticResource Dialog.Frame}" Width="720" MaxHeight="640" HorizontalAlignment="Center" VerticalAlignment="Center">
         <Grid>
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -213,10 +213,33 @@
             <ItemsControl ItemsSource="{Binding MenuItems}" Focusable="False">
               <ItemsControl.ItemTemplate>
                 <DataTemplate DataType="{x:Type kitchen:SoldOutItemViewModel}">
-                  <Grid Margin="0,0,0,8">
-                    <TextBlock x:Name="Name" Text="{Binding Name}" FontSize="16" VerticalAlignment="Center" Foreground="{DynamicResource Brush.TextPrimary}" />
-                    <Button HorizontalAlignment="Right" MinWidth="170" Content="{Binding ActionText}" CommandParameter="{Binding}"
+                  <Grid Margin="0,0,0,12">
+                    <Grid.RowDefinitions>
+                      <RowDefinition Height="Auto" />
+                      <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="Auto" />
+                      <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="Name" Text="{Binding Name}" FontSize="16" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource Brush.TextPrimary}" />
+                    <TextBlock Grid.Column="1" Text="{Binding StockText}" Style="{StaticResource Text.Caption}" FontSize="14" VerticalAlignment="Center" Margin="12,0,12,0" />
+                    <Button Grid.Column="2" MinWidth="170" Content="{Binding ActionText}" CommandParameter="{Binding}"
                             Command="{Binding DataContext.ToggleAvailabilityCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                    <StackPanel Grid.Row="1" Grid.ColumnSpan="3" Orientation="Horizontal" Margin="0,6,0,0">
+                      <TextBox Width="90" Text="{Binding StockInput, UpdateSourceTrigger=PropertyChanged}" MaxLength="6"
+                               VerticalContentAlignment="Center" ToolTip="Count, whole number 0 to 100000" />
+                      <Button Content="Set count" Style="{StaticResource Button.Base}" Margin="8,0,0,0" CommandParameter="{Binding}"
+                              Command="{Binding DataContext.SetStockCountCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                      <Button Content="Approx." Style="{StaticResource Button.Ghost}" Margin="6,0,0,0" CommandParameter="{Binding}"
+                              ToolTip="Estimated portions: the count only guides, orders are not refused"
+                              Command="{Binding DataContext.SetStockApproximateCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                      <Button Content="+ ADD" Style="{StaticResource Button.Ghost}" Margin="6,0,0,0" CommandParameter="{Binding}"
+                              Command="{Binding DataContext.AddStockCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                      <Button Content="No count" Style="{StaticResource Button.Ghost}" Margin="6,0,0,0" CommandParameter="{Binding}"
+                              Command="{Binding DataContext.ClearStockCountCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                    </StackPanel>
                   </Grid>
                   <DataTemplate.Triggers>
                     <DataTrigger Binding="{Binding IsAvailable}" Value="False">

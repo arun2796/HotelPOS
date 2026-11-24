@@ -585,7 +585,7 @@
                     <RowDefinition Height="Auto" />
                   </Grid.RowDefinitions>
                   <StackPanel VerticalAlignment="Bottom" Margin="1,0">
-                    <TextBlock Text="{Binding CompactAmount}" Style="{StaticResource Text.Caption}" FontSize="10"
+                    <TextBlock Text="{Binding CompactAmount}" Style="{StaticResource Text.Caption}" FontSize="12"
                                HorizontalAlignment="Center" Margin="0,0,0,2" />
                     <Border CornerRadius="4,4,1,1" MinHeight="3"
                             Height="{Binding Height, Converter={StaticResource BarHeight}, ConverterParameter=130}">
@@ -602,7 +602,7 @@
                     </Border>
                   </StackPanel>
                   <Border Grid.Row="1" Height="1" Background="{DynamicResource Brush.Border}" />
-                  <TextBlock Grid.Row="2" Text="{Binding Label}" Style="{StaticResource Text.Caption}" FontSize="10"
+                  <TextBlock Grid.Row="2" Text="{Binding Label}" Style="{StaticResource Text.Caption}" FontSize="12"
                              HorizontalAlignment="Center" Margin="0,4,0,0" />
                 </Grid>
               </DataTemplate>

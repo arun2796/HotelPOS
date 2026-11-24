@@ -3,6 +3,7 @@ using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
 using HotelPOS.Application.Features.Billing;
+using HotelPOS.Application.Features.Kitchen;
 using HotelPOS.Application.Features.Templates;
 using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Enums;
@@ -106,9 +107,11 @@ internal sealed class PrintDocuments
             {
                 Name = i.OrderItem?.ItemName ?? string.Empty,
                 Quantity = i.Quantity,
-                Notes = i.OrderItem?.Notes,
+                Notes = KitchenTickets.SeatNotes(i.OrderItem?.SeatCode, i.OrderItem?.Notes),
                 Modifiers = i.OrderItem?.Modifiers.Select(m => m.Name).ToList() ?? new List<string>(),
                 IsCancelled = i.IsCancelled,
+                IsParcel = i.OrderItem?.IsParcel ?? false,
+                SeatCode = i.OrderItem?.SeatCode,
                 UnitPrice = showPrices ? i.OrderItem?.UnitPrice : null,
             }).ToList(),
         };

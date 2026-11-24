@@ -59,7 +59,7 @@ internal sealed class ReplaceOrderItemsHandler : ICommandHandler<ReplaceOrderIte
             return AppErrors.InvalidState($"Order {order.OrderNumber} was already sent; add items as a new batch instead.");
         }
 
-        var items = await _itemFactory.CreateAsync(request.Items, cancellationToken);
+        var items = await _itemFactory.CreateAsync(request.Items, order.TableId, cancellationToken);
         if (items.IsFailure)
         {
             return items.Error!;

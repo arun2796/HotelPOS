@@ -12,11 +12,15 @@
             var t = tile.Table;
             <button type="button" class="floor-tile st-@StatusLabels.TableClass(t.Status) @(tile.Geometry.Shape == TableShape.Round ? "round" : null)"
                     data-testid="floor-tile" data-table-id="@t.Id" data-status="@t.Status" style="@TileStyle(tile.Geometry)"
-                    title="@t.Code, @TextFormat.Count(t.Capacity, "seat"), @StatusPresentation.For(t.Status).Label"
+                    title="@TileTitle(t)"
                     @onclick="() => OnOpen.InvokeAsync(t)">
                 <span class="floor-tile-body" style="@CounterRotate(tile.Geometry)">
                     <span class="table-code">@t.Code</span>
                     <span class="floor-tile-meta small">@t.Capacity</span>
+                    @if (t.MergedIntoTableId is not null || t.MergedTableCodes.Count > 0)
+                    {
+                        <span class="floor-tile-merge" data-testid="table-merge-mark" aria-label="@(MergeTitle(t).TrimStart(',', ' '))"><Icon Name="swap" Size="12" /></span>
+                    }
                     @if (t.UpcomingReservation is { } upcoming)
                     {
                         <span class="floor-tile-res" data-testid="table-reservation-badge" title="@upcoming.StartTimeUtc.ToLocalTime().ToString("t") (@upcoming.PartySize)"><Icon Name="calendar" Size="12" /></span>
@@ -45,6 +49,15 @@
         .Where(g => g.HasLayout && g.PosX.HasValue && g.PosY.HasValue && g.Width.HasValue && g.Height.HasValue && Tables.ContainsKey(g.TableId))
         .Select(g => new Tile(Tables[g.TableId], g))
         .ToList();
+
+    private static string TileTitle(TableDto t) =>
+        $"{t.Code}, {TextFormat.Count(t.Capacity, "seat")}, {StatusPresentation.For(t.Status).Label}{MergeTitle(t)}";
+
+    // ", merged into T4" on a companion, ", merged with T5" on the primary; nothing for a table that is not merged.
+    private static string MergeTitle(TableDto t) =>
+        !string.IsNullOrEmpty(t.MergedIntoTableCode) ? $", merged into {t.MergedIntoTableCode}"
+        : t.MergedTableCodes.Count > 0 ? $", merged with {string.Join(", ", t.MergedTableCodes)}"
+        : string.Empty;
 
     private double LayoutWidth => Placed.Max(p => p.Geometry.PosX!.Value + p.Geometry.Width!.Value) + Margin;
 

@@ -602,7 +602,7 @@
               </Grid>
               <Border x:Name="PartShortcut" Grid.Column="2" CornerRadius="4" Padding="6,1" Margin="8,0,0,0" VerticalAlignment="Center"
                       Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1">
-                <TextBlock Text="{TemplateBinding ShortcutHint}" FontSize="11" Foreground="{DynamicResource Brush.TextSecondary}" />
+                <TextBlock Text="{TemplateBinding ShortcutHint}" FontSize="12" Foreground="{DynamicResource Brush.TextSecondary}" />
               </Border>
             </Grid>
           </Border>
@@ -683,16 +683,16 @@
   <Style x:Key="Tabs" TargetType="ListBox" BasedOn="{StaticResource Hub.Tabs}" />
   <Style x:Key="Tabs.Item" TargetType="ListBoxItem" BasedOn="{StaticResource Hub.Tab}" />
 
-  <!-- Segmented: a pill group (Today / 7 Days / 30 Days); the selected segment is a raised white pill. -->
+  <!-- Segmented: a rectangular button group (Today / 7 Days / 30 Days); the selected segment is solid green with white text. -->
   <Style x:Key="Segmented.Item" TargetType="ListBoxItem">
     <Setter Property="FocusVisualStyle" Value="{StaticResource Focus.Visual}" />
     <Setter Property="Cursor" Value="Hand" />
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="ListBoxItem">
-          <Border x:Name="Root" CornerRadius="{StaticResource Radius.Pill}" Padding="14,0" MinHeight="30" Background="Transparent"
+          <Border x:Name="Root" CornerRadius="7" Padding="14,0" MinHeight="34" Background="Transparent"
                   BorderThickness="1" BorderBrush="Transparent"
-                  TextElement.Foreground="{DynamicResource Brush.TextSecondary}" TextElement.FontSize="{DynamicResource Font.Size.Button}"
+                  TextElement.Foreground="{DynamicResource Brush.TextPrimary}" TextElement.FontSize="{DynamicResource Font.Size.Button}"
                   TextElement.FontWeight="SemiBold" SnapsToDevicePixels="True">
             <ContentPresenter VerticalAlignment="Center" />
           </Border>
@@ -701,9 +701,9 @@
               <Setter TargetName="Root" Property="TextElement.Foreground" Value="{DynamicResource Brush.TextPrimary}" />
             </Trigger>
             <Trigger Property="IsSelected" Value="True">
-              <Setter TargetName="Root" Property="Background" Value="{DynamicResource Brush.Surface}" />
-              <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
-              <Setter TargetName="Root" Property="TextElement.Foreground" Value="{DynamicResource Brush.Primary}" />
+              <Setter TargetName="Root" Property="Background" Value="{DynamicResource Brush.Primary}" />
+              <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource Brush.Primary}" />
+              <Setter TargetName="Root" Property="TextElement.Foreground" Value="{DynamicResource Brush.PrimaryText}" />
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>
@@ -728,7 +728,7 @@
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="ListBox">
-          <Border Background="{TemplateBinding Background}" CornerRadius="{StaticResource Radius.Pill}" Padding="{TemplateBinding Padding}">
+          <Border Background="{TemplateBinding Background}" BorderBrush="{DynamicResource Brush.BorderStrong}" BorderThickness="1.5" CornerRadius="10" Padding="{TemplateBinding Padding}">
             <ItemsPresenter />
           </Border>
         </ControlTemplate>
@@ -819,7 +819,7 @@
             <Border x:Name="Card" CornerRadius="10" Padding="12,8" Background="{DynamicResource Brush.SidebarHover}">
               <StackPanel>
                 <DockPanel>
-                  <TextBlock DockPanel.Dock="Right" Text="{TemplateBinding Version}" FontSize="11" VerticalAlignment="Center"
+                  <TextBlock DockPanel.Dock="Right" Text="{TemplateBinding Version}" FontSize="12" VerticalAlignment="Center"
                              Foreground="{DynamicResource Brush.SidebarTextMuted}" />
                   <controls:StatusBadge Display="{Binding Display, RelativeSource={RelativeSource TemplatedParent}}" OnDark="True" />
                 </DockPanel>

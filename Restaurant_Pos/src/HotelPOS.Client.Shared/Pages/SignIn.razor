@@ -105,6 +105,16 @@
 
     private Task SetTypeAsync(string key) => SetTypeAsync(Enum.Parse<DeviceType>(key));
 
+    // Where to go after signing in: the return URL, unless it belongs to the other role's app (a kitchen user must not land on
+    // the waiter's home, nor a waiter on the kitchen board).
+    internal static string Destination(IReadOnlyList<string>? roles, string? returnUrl)
+    {
+        var target = returnUrl ?? string.Empty;
+        var kitchenOnly = roles is { Count: > 0 } && roles.All(r => string.Equals(r, "Kitchen", StringComparison.OrdinalIgnoreCase));
+        var kitchenPage = target.TrimStart('/').StartsWith("kitchen", StringComparison.OrdinalIgnoreCase);
+        return kitchenOnly && !kitchenPage ? "kitchen" : !kitchenOnly && kitchenPage ? string.Empty : target;
+    }
+
     private async Task SetTypeAsync(DeviceType type)
     {
         _type = type;
@@ -127,7 +137,7 @@
 
             await Realtime.StartAsync();
             // A password set by an administrator must be replaced first; the server allows nothing else until then.
-            Navigation.NavigateTo(result.Data?.User.MustChangePassword == true ? "change-password" : ReturnUrl ?? string.Empty, replace: true);
+            Navigation.NavigateTo(result.Data?.User.MustChangePassword == true ? "change-password" : Destination(result.Data?.User.Roles, ReturnUrl), replace: true);
         }
         finally
         {

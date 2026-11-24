@@ -205,11 +205,13 @@ public sealed partial class TicketCardViewModel : ObservableObject
 
 public sealed partial class SoldOutItemViewModel : ObservableObject
 {
-    public SoldOutItemViewModel(int id, string name, bool isAvailable)
+    public SoldOutItemViewModel(int id, string name, bool isAvailable, StockTrackingMode stockMode = StockTrackingMode.None, int? stockRemaining = null)
     {
         Id = id;
         Name = name;
         _isAvailable = isAvailable;
+        _stockMode = stockMode;
+        _stockRemaining = stockRemaining;
     }
 
     public int Id { get; }
@@ -217,10 +219,46 @@ public sealed partial class SoldOutItemViewModel : ObservableObject
     public string Name { get; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ActionText))]
+    [NotifyPropertyChangedFor(nameof(ActionText), nameof(StockText))]
     private bool _isAvailable;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StockText), nameof(HasStockCount))]
+    private StockTrackingMode _stockMode;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StockText))]
+    private int? _stockRemaining;
+
+    // What the supervisor types before pressing SET COUNT / APPROX. / + ADD.
+    [ObservableProperty]
+    private string _stockInput = string.Empty;
+
     public string ActionText => IsAvailable ? "Mark sold out" : "Available again";
+
+    public bool HasStockCount => StockMode != StockTrackingMode.None;
+
+    public string StockText
+    {
+        get
+        {
+            if (StockMode == StockTrackingMode.None || StockRemaining is not { } left)
+            {
+                return IsAvailable ? "No count" : "Sold out";
+            }
+
+            return StockMode == StockTrackingMode.Approximate
+                ? string.Create(CultureInfo.CurrentCulture, $"Approx. {left} left")
+                : string.Create(CultureInfo.CurrentCulture, $"{left} left");
+        }
+    }
+
+    public void Apply(bool isAvailable, StockTrackingMode stockMode, int? stockRemaining)
+    {
+        IsAvailable = isAvailable;
+        StockMode = stockMode;
+        StockRemaining = stockRemaining;
+    }
 }
 
 public sealed partial class KitchenDisplayViewModel : ViewModelBase, INavigationAware, IRefreshable, IDisposable
@@ -243,6 +281,8 @@ public sealed partial class KitchenDisplayViewModel : ViewModelBase, INavigation
     private TimeSpan _serverClockOffset;
     private bool _loadingStations;
     private bool _showPictures;
+    private bool _listeningToMenu;
+    private const int MaxStockCount = 100000;
 
     public KitchenDisplayViewModel(
         IKitchenApi kitchenApi,
@@ -347,6 +387,7 @@ public sealed partial class KitchenDisplayViewModel : ViewModelBase, INavigation
         }
 
         _subscriptions.Clear();
+        StopListeningToMenu();
         _timer?.Cancel();
         _timer?.Dispose();
         _timer = null;
@@ -442,17 +483,117 @@ public sealed partial class KitchenDisplayViewModel : ViewModelBase, INavigation
             await _menuCache.RefreshAsync();
         }
 
-        MenuItems.Clear();
-        foreach (var item in (_menuCache.Menu?.Items ?? Array.Empty<Contracts.Menu.MenuEntryDto>()).OrderBy(i => i.Name, StringComparer.CurrentCulture))
+        SyncMenuItems(rebuild: true);
+        if (!_listeningToMenu)
         {
-            MenuItems.Add(new SoldOutItemViewModel(item.Id, item.Name, item.IsAvailable));
+            _menuCache.Changed += OnMenuCacheChanged;
+            _listeningToMenu = true;
         }
 
         IsSoldOutOpen = true;
     }
 
     [RelayCommand]
-    private void CloseSoldOut() => IsSoldOutOpen = false;
+    private void CloseSoldOut()
+    {
+        IsSoldOutOpen = false;
+        StopListeningToMenu();
+    }
+
+    private void OnMenuCacheChanged(object? sender, EventArgs e) => SyncMenuItems(rebuild: false);
+
+    private void StopListeningToMenu()
+    {
+        if (_listeningToMenu)
+        {
+            _menuCache.Changed -= OnMenuCacheChanged;
+            _listeningToMenu = false;
+        }
+    }
+
+    // Fills the availability/stock list from the menu cache. A cache change updates the rows in place so a half-typed count is kept.
+    private void SyncMenuItems(bool rebuild)
+    {
+        var entries = (_menuCache.Menu?.Items ?? Array.Empty<Contracts.Menu.MenuEntryDto>()).OrderBy(i => i.Name, StringComparer.CurrentCulture).ToList();
+        var sameItems = !rebuild && entries.Count == MenuItems.Count && entries.Select(e => e.Id).SequenceEqual(MenuItems.Select(m => m.Id));
+        if (sameItems)
+        {
+            for (var i = 0; i < entries.Count; i++)
+            {
+                MenuItems[i].Apply(entries[i].IsAvailable, entries[i].StockMode, entries[i].StockRemaining);
+            }
+
+            return;
+        }
+
+        var typed = MenuItems.ToDictionary(m => m.Id, m => m.StockInput);
+        MenuItems.Clear();
+        foreach (var item in entries)
+        {
+            var row = new SoldOutItemViewModel(item.Id, item.Name, item.IsAvailable, item.StockMode, item.StockRemaining);
+            if (!rebuild && typed.TryGetValue(item.Id, out var input))
+            {
+                row.StockInput = input;
+            }
+
+            MenuItems.Add(row);
+        }
+    }
+
+    [RelayCommand]
+    private Task SetStockCountAsync(SoldOutItemViewModel? item) => ChangeStockAsync(item, StockTrackingMode.Exact, add: false);
+
+    [RelayCommand]
+    private Task SetStockApproximateAsync(SoldOutItemViewModel? item) => ChangeStockAsync(item, StockTrackingMode.Approximate, add: false);
+
+    [RelayCommand]
+    private Task AddStockAsync(SoldOutItemViewModel? item)
+        => ChangeStockAsync(item, item is { StockMode: not StockTrackingMode.None } ? item.StockMode : StockTrackingMode.Exact, add: true);
+
+    [RelayCommand]
+    private Task ClearStockCountAsync(SoldOutItemViewModel? item) => ChangeStockAsync(item, StockTrackingMode.None, add: false);
+
+    private async Task ChangeStockAsync(SoldOutItemViewModel? item, StockTrackingMode mode, bool add)
+    {
+        if (item is null)
+        {
+            return;
+        }
+
+        int? quantity = null;
+        if (mode != StockTrackingMode.None)
+        {
+            if (!int.TryParse(item.StockInput?.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var parsed) || parsed < 0 || parsed > MaxStockCount)
+            {
+                _notifications.Error($"Enter a whole number from 0 to {MaxStockCount} for {item.Name}.");
+                return;
+            }
+
+            if (add && parsed == 0)
+            {
+                _notifications.Error($"Enter how many to add for {item.Name}.");
+                return;
+            }
+
+            quantity = parsed;
+        }
+
+        var result = await _menuApi.SetStockAsync(item.Id, new Contracts.Menu.SetStockRequest { Mode = mode, Quantity = quantity, Add = add });
+        if (result.Success && result.Data is not null)
+        {
+            item.Apply(result.Data.IsAvailable, result.Data.StockMode, result.Data.StockRemaining);
+            item.StockInput = string.Empty;
+            _notifications.Success(mode == StockTrackingMode.None
+                ? $"{item.Name}: stock count switched off."
+                : add
+                    ? $"{item.Name}: {quantity} added, {item.StockText}."
+                    : $"{item.Name}: stock set to {quantity}.");
+        }
+        else
+        {
+            _notifications.Error(ApiFailures.Describe(result), result.CorrelationId);
+        }
+    }
 
     [RelayCommand]
     private async Task ToggleAvailabilityAsync(SoldOutItemViewModel? item)

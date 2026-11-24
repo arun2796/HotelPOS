@@ -9,7 +9,8 @@ public sealed record BillLineInput(
     decimal UnitPrice,
     decimal ModifiersAmount,
     decimal TaxRatePercent,
-    bool IsCancelled = false);
+    bool IsCancelled = false,
+    string? SeatCode = null);
 
 public sealed record BillDiscountInput(DiscountType Type, decimal Value);
 

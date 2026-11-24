@@ -103,9 +103,9 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
             <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-              <Button Content="REPRINT INVOICE" Command="{Binding ReprintInvoiceCommand}" MinHeight="44" />
-              <Button Content="PREVIEW" Command="{Binding PreviewInvoiceCommand}" MinHeight="44" Margin="8,0,0,0" />
-              <Button Content="SAVE PDF" Command="{Binding SaveInvoicePdfCommand}" MinHeight="44" Margin="8,0,0,0" />
+              <Button Content="Reprint invoice" Command="{Binding ReprintInvoiceCommand}" MinHeight="44" />
+              <Button Content="Preview" Command="{Binding PreviewInvoiceCommand}" MinHeight="44" Margin="8,0,0,0" />
+              <Button Content="Save PDF" Command="{Binding SaveInvoicePdfCommand}" MinHeight="44" Margin="8,0,0,0" />
             </StackPanel>
           </StackPanel>
         </ScrollViewer>

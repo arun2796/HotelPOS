@@ -5,6 +5,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:orders="clr-namespace:HotelPOS.Desktop.Modules.Orders"
+             xmlns:controls="clr-namespace:HotelPOS.Desktop.Controls"
              xmlns:contracts="clr-namespace:HotelPOS.Contracts.Menu;assembly=HotelPOS.Contracts"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance orders:OrderBuilderViewModel}"
@@ -36,9 +37,9 @@
       <RowDefinition Height="*" />
     </Grid.RowDefinitions>
     <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="190" />
+      <ColumnDefinition Width="188" />
       <ColumnDefinition Width="*" />
-      <ColumnDefinition Width="380" />
+      <ColumnDefinition Width="360" />
     </Grid.ColumnDefinitions>
 
     <Grid Grid.ColumnSpan="3" Margin="0,0,0,12">
@@ -96,16 +97,11 @@
       </Border>
     </StackPanel>
 
-    <ListBox Grid.Row="2" Style="{StaticResource ChipList}" ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory}"
-             ScrollViewer.VerticalScrollBarVisibility="Auto">
-      <ListBox.ItemsPanel>
-        <ItemsPanelTemplate>
-          <StackPanel />
-        </ItemsPanelTemplate>
-      </ListBox.ItemsPanel>
+    <ListBox Grid.Row="2" Style="{StaticResource Cat.List}" ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory}"
+             ScrollViewer.VerticalScrollBarVisibility="Auto" AutomationProperties.Name="Menu categories">
       <ListBox.ItemTemplate>
         <DataTemplate DataType="{x:Type contracts:MenuCategoryDto}">
-          <TextBlock Text="{Binding Name}" Width="140" TextTrimming="CharacterEllipsis" />
+          <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
         </DataTemplate>
       </ListBox.ItemTemplate>
     </ListBox>
@@ -116,48 +112,61 @@
       <RowDefinition Height="*" />
     </Grid.RowDefinitions>
     <!-- Search-as-you-type over item name and code across the whole menu (Phase 20.7). -->
-    <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" MinHeight="44" Margin="0,0,0,10" VerticalContentAlignment="Center"
-             md:HintAssist.Hint="Search name or code" AutomationProperties.Name="Search items" />
+    <Grid Margin="0,0,0,10">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+      <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" MinHeight="48" VerticalContentAlignment="Center"
+               md:HintAssist.Hint="Search name or code" AutomationProperties.Name="Search items" />
+      <!-- Seat the next dishes are for (4A..4D, limited by the table's capacity) -->
+      <ComboBox Grid.Column="1" MinWidth="140" MinHeight="48" Margin="8,0,0,0" VerticalContentAlignment="Center"
+                ItemsSource="{Binding SeatChoices}" SelectedItem="{Binding SelectedSeat}"
+                ToolTip="Seat the next dishes are for" AutomationProperties.Name="Seat"
+                Visibility="{Binding HasSeats, Converter={StaticResource BoolToVisibility}}" />
+      <!-- Parcel: the next dishes are packed to take away and carry the item's packaging charge -->
+      <ToggleButton Grid.Column="2" Content="Parcel" Style="{StaticResource Toggle.Chip}" Margin="8,0,0,0"
+                    IsChecked="{Binding IsParcelMode, Mode=TwoWay}"
+                    ToolTip="Pack the next dishes to take away (the packaging charge is added)" AutomationProperties.Name="Parcel mode" />
+    </Grid>
     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" PanningMode="VerticalOnly">
       <ItemsControl ItemsSource="{Binding Items}" Focusable="False">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate>
-            <WrapPanel />
+            <controls:AdaptivePanel MinItemWidth="210" ItemHeight="232" />
           </ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
           <DataTemplate DataType="{x:Type orders:MenuTileViewModel}">
             <!-- Food-image card (Phase 17): picture on top (neutral placeholder when the item has none), name,
                  price and the options hint below. Same command, parameter and sold-out rule as before. -->
-            <Button Width="172" Margin="0,0,12,12" Padding="0" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
+            <Button Margin="0,0,12,12" Padding="0" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
                     Background="{DynamicResource Brush.Surface}"
                     IsEnabled="{Binding IsSoldOut, Converter={StaticResource InverseBool}}"
                     Command="{Binding DataContext.AddItemCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                     CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name}">
               <Grid>
                 <Grid.RowDefinitions>
-                  <RowDefinition Height="112" />
-                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="140" />
+                  <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
-                <Border Background="{DynamicResource Brush.SurfaceSubtle}" CornerRadius="8,8,0,0" ClipToBounds="True">
-                  <!-- ClipToBounds ignores CornerRadius in WPF; the mask rounds the picture's top corners to match. -->
-                  <Border.OpacityMask>
-                    <VisualBrush>
-                      <VisualBrush.Visual>
-                        <Border Width="170" Height="112" CornerRadius="8,8,0,0" Background="Black" />
-                      </VisualBrush.Visual>
-                    </VisualBrush>
-                  </Border.OpacityMask>
+                <Border x:Name="ImageHost" CornerRadius="8,8,0,0" Background="{DynamicResource Brush.SurfaceSubtle}">
+                  <!-- the picture is the border's own brush, so its top corners round with the card -->
+                  <Border CornerRadius="8,8,0,0">
+                    <Border.Background>
+                      <ImageBrush ImageSource="{Binding ImageFile, Converter={StaticResource ImageFile}}" Stretch="UniformToFill" />
+                    </Border.Background>
                   <Grid>
                     <TextBlock Text="&#xEB9F;" Style="{StaticResource Text.Icon}" FontSize="30" HorizontalAlignment="Center"
                                VerticalAlignment="Center" Foreground="{DynamicResource Brush.TextTertiary}" />
-                    <Image Source="{Binding ImageFile, Converter={StaticResource ImageFile}}" Stretch="UniformToFill" />
+                    
                     <Border Style="{StaticResource Chip.Danger}" Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top"
                             Visibility="{Binding IsSoldOut, Converter={StaticResource BoolToVisibility}}">
                       <TextBlock Text="SOLD OUT" />
                     </Border>
                     <!-- Pin to the Favourites chip (Phase 20.7): a corner star, 40 x 40 touch area, clicks do not add the item. -->
-                    <Button HorizontalAlignment="Right" VerticalAlignment="Top" Width="40" Height="40" Padding="0" Margin="2" Background="Transparent" BorderThickness="0"
+                    <Button HorizontalAlignment="Right" VerticalAlignment="Top" Width="36" Height="36" Padding="0" Margin="6" Background="{DynamicResource Brush.Surface}" BorderThickness="0"
                             Command="{Binding DataContext.TogglePinCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}"
                             ToolTip="Pin to Favourites" AutomationProperties.Name="Pin to Favourites">
                       <TextBlock FontSize="22" Text="&#x2606;" Foreground="{DynamicResource Brush.Primary}">
@@ -173,16 +182,31 @@
                       </TextBlock>
                     </Button>
                   </Grid>
+                  </Border>
                 </Border>
-                <StackPanel Grid.Row="1" Margin="12,8,12,10">
-                  <TextBlock Text="{Binding Name}" TextWrapping="Wrap" MaxHeight="40" FontSize="14" FontWeight="SemiBold"
-                             TextTrimming="CharacterEllipsis" Foreground="{DynamicResource Brush.TextPrimary}" />
-                  <Grid Margin="0,4,0,0">
-                    <TextBlock Text="{Binding PriceText}" Foreground="{DynamicResource Brush.Primary}" FontWeight="SemiBold" />
-                    <TextBlock Text="+ options" Style="{StaticResource Text.Caption}" HorizontalAlignment="Right"
-                               Visibility="{Binding HasModifiers, Converter={StaticResource BoolToVisibility}}" />
-                  </Grid>
-                </StackPanel>
+                <Grid Grid.Row="1" Margin="12,8,10,10">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+                  <StackPanel>
+                    <TextBlock Text="{Binding Name}" TextWrapping="Wrap" MaxHeight="44" FontSize="16" FontWeight="SemiBold" TextAlignment="Left"
+                               TextTrimming="CharacterEllipsis" Foreground="{DynamicResource Brush.TextPrimary}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                      <TextBlock Text="{Binding PriceText}" Foreground="{DynamicResource Brush.Primary}" FontSize="16" FontWeight="Bold"
+                                 Typography.NumeralAlignment="Tabular" VerticalAlignment="Center" />
+                      <Border Style="{StaticResource Chip.Neutral}" Margin="8,0,0,0" VerticalAlignment="Center"
+                              Visibility="{Binding HasModifiers, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock Text="Options" />
+                      </Border>
+                    </StackPanel>
+                  </StackPanel>
+                  <!-- the card is the button; this is only the "add" affordance -->
+                  <Border Grid.Column="1" Width="36" Height="36" CornerRadius="18" Background="{DynamicResource Brush.Primary}" VerticalAlignment="Bottom">
+                    <TextBlock Text="+" FontSize="22" FontWeight="SemiBold" Foreground="{DynamicResource Brush.PrimaryText}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0" />
+                  </Border>
+                </Grid>
               </Grid>
             </Button>
           </DataTemplate>
@@ -210,7 +234,7 @@
                   <Border BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,0,0,1" Padding="0,8">
                     <StackPanel>
                       <Grid>
-                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="15" Foreground="{DynamicResource Brush.TextPrimary}"
+                        <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" FontSize="15" Foreground="{DynamicResource Brush.TextPrimary}"
                                    TextWrapping="Wrap" Margin="0,0,80,0" />
                         <TextBlock Text="{Binding LineTotalText}" HorizontalAlignment="Right" Foreground="{DynamicResource Brush.TextPrimary}" />
                       </Grid>
@@ -226,6 +250,21 @@
                         <Button Style="{StaticResource SquareKey}" Margin="16,0,0,0" ToolTip="Note for the kitchen"
                                 Command="{Binding DataContext.EditNoteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}">
                           <TextBlock Text="&#xE70F;" Style="{StaticResource Text.Icon}" FontSize="16" />
+                        </Button>
+                        <Button Margin="8,0,0,0" Padding="10,0" MinHeight="44" FontSize="13" FontWeight="SemiBold"
+                                ToolTip="Pack this dish as a parcel (packaging charge)" Content="{Binding ParcelText}"
+                                Command="{Binding DataContext.ToggleParcelCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}">
+                          <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource Button.Base}">
+                              <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsParcel}" Value="True">
+                                  <Setter Property="Background" Value="{DynamicResource Brush.PrimarySoft}" />
+                                  <Setter Property="BorderBrush" Value="{DynamicResource Brush.Primary}" />
+                                  <Setter Property="Foreground" Value="{DynamicResource Brush.PrimaryOnSoft}" />
+                                </DataTrigger>
+                              </Style.Triggers>
+                            </Style>
+                          </Button.Style>
                         </Button>
                         <Button Style="{StaticResource SquareKey}" Margin="8,0,0,0" ToolTip="Remove"
                                 Command="{Binding DataContext.RemoveCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}">
@@ -247,7 +286,7 @@
               <ColumnDefinition Width="Auto" />
               <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            <Button Content="SAVE DRAFT" MinHeight="56" Margin="0,0,10,0" Command="{Binding SaveDraftCommand}"
+            <Button Content="Save draft" MinHeight="56" Margin="0,0,10,0" Command="{Binding SaveDraftCommand}"
                     Visibility="{Binding CanSaveDraft, Converter={StaticResource BoolToVisibility}}" />
             <Button Grid.Column="1" Content="{Binding SendText}" Style="{StaticResource Button.Primary}" MinHeight="56" FontSize="17"
                     Command="{Binding SendCommand}" />

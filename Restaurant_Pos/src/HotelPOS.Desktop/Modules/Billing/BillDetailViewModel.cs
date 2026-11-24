@@ -33,6 +33,31 @@ public enum BillPanel
     Payment,
     Preview,
     Done,
+    Split,
+}
+
+// One row of the split picker: a seat ("T01A") or the whole table, with what was ordered for it and the bill (A, B, C ...)
+// it will be paid on. A stays on the bill being split; any other letter becomes a new bill.
+public sealed partial class SplitGroupViewModel : ObservableObject
+{
+    public SplitGroupViewModel(string label, IReadOnlyList<BillItemDto> items)
+    {
+        Label = label;
+        Items = items;
+        ItemsText = string.Join(", ", items.Select(i => $"{i.Quantity} × {i.ItemName}"));
+        TotalText = Money.Format(items.Sum(i => i.LineSubtotal));
+    }
+
+    public string Label { get; }
+
+    public IReadOnlyList<BillItemDto> Items { get; }
+
+    public string ItemsText { get; }
+
+    public string TotalText { get; }
+
+    [ObservableProperty]
+    private string _part = "A";
 }
 
 // Detail is the one-line summary ("Spicy, Extra raita (+30.00 each) · Note: less oil"); the workspace's OrderLine shows
@@ -112,8 +137,91 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
         nameof(DiscountText), nameof(TaxRows), nameof(HasRoundOff), nameof(RoundOffText), nameof(GrandTotalText), nameof(HasPayments),
         nameof(PaymentRows), nameof(PaidText), nameof(BalanceText), nameof(IsHeldByOther), nameof(HeldByText), nameof(CanEdit), nameof(CanPay),
         nameof(CanFinalize), nameof(FinalizeText), nameof(CanReopen), nameof(CanVoid), nameof(CanTakeOver), nameof(CustomerText), nameof(CanClearCustomer), nameof(StatusText),
-        nameof(InvoiceTitle), nameof(Display), nameof(GuestsText), nameof(WaiterText), nameof(RequestedText), nameof(IsPaid), nameof(CanConfirmPayment))]
+        nameof(InvoiceTitle), nameof(Display), nameof(GuestsText), nameof(WaiterText), nameof(RequestedText), nameof(IsPaid), nameof(CanConfirmPayment),
+        nameof(CanSplit), nameof(HasParts), nameof(PartsText))]
     private BillDetailDto? _bill;
+
+    // Split bill: the parts of this table's bill are separate queue cards, each paid on its own.
+    public bool HasParts => Bill is { SiblingBillIds.Count: > 1 };
+
+    public string PartsText => Bill is { SiblingBillIds.Count: > 1 } bill
+        ? $"This table's bill is split into {bill.SiblingBillIds.Count} bills ({BillParts.Letter(bill.SplitIndex)} is open here). Each is finalized and paid on its own; the other parts are in the queue. The table is free when all are paid."
+        : string.Empty;
+
+    public bool CanSplit => Bill is { IsClaimedByMe: true, Status: BillStatus.Open, PaidAmount: 0, Items.Count: > 1 } && !IsBusy;
+
+    public ObservableCollection<SplitGroupViewModel> SplitGroups { get; } = new();
+
+    public IReadOnlyList<string> PartLetters { get; } = Enumerable.Range(0, BillParts.MaxParts).Select(BillParts.Letter).ToList();
+
+    public bool IsSplitPanel => ActivePanel == BillPanel.Split;
+
+    [RelayCommand]
+    private void ShowSplit()
+    {
+        if (Bill is null || !CanSplit)
+        {
+            return;
+        }
+
+        SplitGroups.Clear();
+        var bySeat = Bill.Items.GroupBy(i => i.SeatCode ?? string.Empty)
+            .OrderBy(g => g.Key.Length == 0 ? 1 : 0).ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase);
+        foreach (var group in bySeat)
+        {
+            SplitGroups.Add(new SplitGroupViewModel(group.Key.Length == 0 ? "Whole table" : $"Seat {group.Key}", group.ToList()));
+        }
+
+        PanelError = SplitGroups.Count < 2
+            ? "All items are for the same seat (or have no seat), so there is nothing to split. Ask the captain to enter dishes with a seat."
+            : null;
+        ActivePanel = BillPanel.Split;
+    }
+
+    // A bill for every seat: the first stays here (A), the rest become B, C ...
+    [RelayCommand]
+    private void SplitEachSeat()
+    {
+        for (var i = 0; i < SplitGroups.Count; i++)
+        {
+            SplitGroups[i].Part = BillParts.Letter(Math.Min(i, BillParts.MaxParts - 1));
+        }
+    }
+
+    [RelayCommand]
+    private async Task ConfirmSplitAsync()
+    {
+        if (Bill is null || !CanSplit)
+        {
+            return;
+        }
+
+        var staying = SplitGroups.Where(g => g.Part == "A").ToList();
+        var moving = SplitGroups.Where(g => g.Part != "A").GroupBy(g => g.Part).OrderBy(g => g.Key, StringComparer.Ordinal).ToList();
+        if (staying.Count == 0)
+        {
+            PanelError = "Keep at least one seat on bill A (it stays on this bill).";
+            return;
+        }
+
+        if (moving.Count == 0)
+        {
+            PanelError = "Choose another bill (B, C ...) for at least one seat.";
+            return;
+        }
+
+        var request = new SplitBillRequest
+        {
+            RowVersion = Bill.RowVersion,
+            Parts = moving.Select(g => new SplitBillPart { BillItemIds = g.SelectMany(x => x.Items).Select(i => i.Id).ToList() }).ToList(),
+        };
+        var billId = Bill.Id;
+        if (await RunAsync(() => _billingApi.SplitAsync(billId, request), $"Split into {moving.Count + 1} bills. The other parts are in the queue.", inPanel: true))
+        {
+            ActivePanel = BillPanel.None;
+        }
+    }
+
 
     // Phase 21.3 header pills.
     public StatusDisplay Display => Bill is null ? default : BillQueueItemViewModel.DisplayFor(Bill.Status, Bill.PaidAmount);
@@ -132,7 +240,7 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
     public bool HasOrderNotes => OrderNotes.Length > 0;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsPanelOpen), nameof(IsOverlayOpen), nameof(IsDiscountPanel), nameof(IsCustomerPanel), nameof(IsPaymentPanel), nameof(IsPreviewPanel), nameof(IsDonePanel),
+    [NotifyPropertyChangedFor(nameof(IsPanelOpen), nameof(IsOverlayOpen), nameof(IsSplitPanel), nameof(IsDiscountPanel), nameof(IsCustomerPanel), nameof(IsPaymentPanel), nameof(IsPreviewPanel), nameof(IsDonePanel),
         nameof(PaymentError))]
     private BillPanel _activePanel;
 
@@ -352,7 +460,7 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
     public bool IsPanelOpen => ActivePanel != BillPanel.None;
 
     /// <summary>The overlays that are still overlays in the workspace (discount, customer, invoice preview); payment and paid are inline.</summary>
-    public bool IsOverlayOpen => ActivePanel is BillPanel.Discount or BillPanel.Customer or BillPanel.Preview;
+    public bool IsOverlayOpen => ActivePanel is BillPanel.Discount or BillPanel.Customer or BillPanel.Preview or BillPanel.Split;
 
     public bool IsDiscountPanel => ActivePanel == BillPanel.Discount;
 
@@ -1024,7 +1132,7 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
 
     protected override void OnBusyChanged()
     {
-        foreach (var name in new[] { nameof(CanEdit), nameof(CanPay), nameof(CanFinalize), nameof(CanReopen), nameof(CanVoid), nameof(CanConfirmPayment) })
+        foreach (var name in new[] { nameof(CanEdit), nameof(CanPay), nameof(CanFinalize), nameof(CanReopen), nameof(CanVoid), nameof(CanConfirmPayment), nameof(CanSplit) })
         {
             OnPropertyChanged(name);
         }

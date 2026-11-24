@@ -15,16 +15,20 @@
             }
             @if (!Item.IsAvailable)
             {
-                <span class="chip danger sold">SOLD OUT</span>
+                <span class="chip danger sold">Sold out</span>
             }
         </div>
         <div class="item-body">
             <div class="item-name">@Item.Name</div>
             <div class="item-meta">
                 <span class="price num-tab">@Item.Price.ToString("N2")</span>
+                @if (StockHint is { } hint)
+                {
+                    <span class="muted small item-stock-hint" data-testid="item-stock">@hint</span>
+                }
                 @if (Item.ModifierGroupIds.Count > 0)
                 {
-                    <span class="muted small item-options-hint">+ options</span>
+                    <span class="muted small item-options-hint">Customise</span>
                 }
             </div>
         </div>
@@ -49,4 +53,14 @@
     [Parameter] public EventCallback OnPick { get; set; }
 
     [Parameter] public EventCallback OnTogglePin { get; set; }
+
+    // "12 left" / "Approx. 40 left" for a counted dish that can still be ordered; nothing otherwise.
+    private string? StockHint => Item.IsAvailable && Item.StockRemaining is { } left
+        ? Item.StockMode switch
+        {
+            StockTrackingMode.Exact => $"{left:N0} left",
+            StockTrackingMode.Approximate => $"Approx. {left:N0} left",
+            _ => null,
+        }
+        : null;
 }

@@ -30,6 +30,8 @@ internal sealed class GetTableHandler : IQueryHandler<GetTableQuery, TableDetail
         var table = await _db.Tables.AsNoTracking()
             .Include(t => t.Section)
             .Include(t => t.CurrentOrder)
+            .Include(t => t.MergedInto)
+            .Include(t => t.MergedTables)
             .FirstOrDefaultAsync(t => t.Id == request.Id, cancellationToken);
         if (table is null)
         {
@@ -62,6 +64,19 @@ internal sealed class GetTableHandler : IQueryHandler<GetTableQuery, TableDetail
 
         var upcomingDto = upcoming is null ? null : HotelPOS.Application.Features.Reservations.ReservationMapping.ToSummaryDto(upcoming, table.Code);
 
-        return new TableDetailDto { Table = TableMapping.ToDto(table, upcomingDto), CurrentOrder = currentOrder, ServerTimeUtc = serverTime };
+        decimal? orderTotal = null;
+        if (table.CurrentOrderId is { } totalOrderId)
+        {
+            orderTotal = await _db.OrderItems.AsNoTracking()
+                .Where(i => i.OrderId == totalOrderId && i.Status != OrderItemStatus.Cancelled)
+                .SumAsync(i => (i.UnitPrice + i.Modifiers.Sum(m => m.PriceDelta)) * i.Quantity, cancellationToken);
+        }
+
+        return new TableDetailDto
+        {
+            Table = TableMapping.ToDto(table, table.Section?.Name ?? string.Empty, upcomingDto, orderTotal),
+            CurrentOrder = currentOrder,
+            ServerTimeUtc = serverTime,
+        };
     }
 }

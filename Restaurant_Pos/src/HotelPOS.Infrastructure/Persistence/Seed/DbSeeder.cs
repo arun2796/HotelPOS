@@ -232,7 +232,9 @@ public sealed class DbSeeder
     {
         if (!await _db.PreparationStations.AnyAsync(cancellationToken))
         {
+            // The client's two kitchen sources: Main (batch / pre-cooked) and Live (made to order: tandoor, flat-top).
             _db.PreparationStations.Add(new PreparationStation("Main Kitchen", "MAIN", 1));
+            _db.PreparationStations.Add(new PreparationStation("Live Kitchen", "LIVE", 2));
             await _db.SaveChangesAsync(cancellationToken);
         }
     }

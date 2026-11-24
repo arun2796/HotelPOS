@@ -234,7 +234,7 @@
                 <Border CornerRadius="8" MinWidth="16" Height="16" Padding="4,0" Margin="0,-10,-12,0"
                         HorizontalAlignment="Right" VerticalAlignment="Top" Background="{DynamicResource Brush.Danger}"
                         Visibility="{Binding Notices.HasUnread, Converter={StaticResource BoolToVisibility}}">
-                  <TextBlock Text="{Binding Notices.UnreadCount}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource Brush.PrimaryText}"
+                  <TextBlock Text="{Binding Notices.UnreadCount}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource Brush.PrimaryText}"
                              HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
               </Grid>
@@ -450,9 +450,9 @@
                       <Border CornerRadius="4" Padding="6,1" Margin="0,0,6,0" BorderThickness="1"
                               BorderBrush="{DynamicResource Brush.Border}"
                               Visibility="{Binding Shortcut, Converter={StaticResource StringToVisibility}}">
-                        <TextBlock Text="{Binding Shortcut}" FontSize="11" Foreground="{DynamicResource Brush.TextSecondary}" />
+                        <TextBlock Text="{Binding Shortcut}" FontSize="12" Foreground="{DynamicResource Brush.TextSecondary}" />
                       </Border>
-                      <TextBlock Text="{Binding Group}" FontSize="11" Foreground="{DynamicResource Brush.TextTertiary}" />
+                      <TextBlock Text="{Binding Group}" FontSize="12" Foreground="{DynamicResource Brush.TextTertiary}" />
                     </StackPanel>
                   </Grid>
                 </DataTemplate>

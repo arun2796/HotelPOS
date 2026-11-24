@@ -30,6 +30,9 @@ public interface IBillingApi
 
     Task<ApiResult<BillDetailDto>> ReopenAsync(int id, ReopenBillRequest request, CancellationToken cancellationToken = default);
 
+    // Separate bills for the guests of one table (by seat); only on an open bill.
+    Task<ApiResult<BillDetailDto>> SplitAsync(int id, SplitBillRequest request, CancellationToken cancellationToken = default);
+
     Task<ApiResult<BillDetailDto>> VoidAsync(int id, VoidBillRequest request, CancellationToken cancellationToken = default);
 
     Task<ApiResult<BillDetailDto>> RefundAsync(int id, RefundRequest request, Guid idempotencyKey, CancellationToken cancellationToken = default);
@@ -97,6 +100,9 @@ public sealed class BillingApi : IBillingApi
 
     public Task<ApiResult<BillDetailDto>> AddPaymentAsync(int id, AddPaymentRequest request, Guid idempotencyKey, CancellationToken cancellationToken = default) =>
         _api.PostAsync<BillDetailDto>($"api/billing/{id}/payments", request, cancellationToken, new ApiRequestOptions { IdempotencyKey = idempotencyKey });
+
+    public Task<ApiResult<BillDetailDto>> SplitAsync(int id, SplitBillRequest request, CancellationToken cancellationToken = default) =>
+        _api.PostAsync<BillDetailDto>($"api/billing/{id}/split", request, cancellationToken);
 
     public Task<ApiResult<BillDetailDto>> ReopenAsync(int id, ReopenBillRequest request, CancellationToken cancellationToken = default) =>
         _api.PostAsync<BillDetailDto>($"api/billing/{id}/reopen", request, cancellationToken);

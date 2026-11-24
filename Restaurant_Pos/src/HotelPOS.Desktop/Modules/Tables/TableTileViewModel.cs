@@ -51,8 +51,32 @@ public sealed partial class TableTileViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(StatusLine))]
     private int? _currentOrderNumber;
 
+    // The open order's running amount; shown after the status on the cashier's tile.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StatusLine), nameof(TotalText))]
+    private decimal? _currentOrderTotal;
+
+    public string TotalText => CurrentOrderTotal is > 0 ? HotelPOS.Desktop.Modules.Billing.Money.Format(CurrentOrderTotal.Value) : string.Empty;
+
     [ObservableProperty]
     private string _rowVersion = string.Empty;
+
+    // Merge: a companion table points at the table whose party it joined; the primary lists its companions.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsMerged), nameof(StatusLine), nameof(MergeText), nameof(HasMergeInfo))]
+    private int? _mergedIntoTableId;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StatusLine), nameof(MergeText))]
+    private string? _mergedIntoTableCode;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasCompanions), nameof(StatusLine), nameof(MergeText), nameof(HasMergeInfo))]
+    private IReadOnlyList<string> _mergedTableCodes = Array.Empty<string>();
+
+    // "4A".."4D": the seats of this table, limited by its capacity.
+    [ObservableProperty]
+    private IReadOnlyList<string> _seatCodes = Array.Empty<string>();
 
     [ObservableProperty]
     private string _elapsedText = string.Empty;
@@ -113,6 +137,16 @@ public sealed partial class TableTileViewModel : ObservableObject
 
     public bool IsAvailable => Status == TableStatus.Available;
 
+    public bool IsMerged => MergedIntoTableId is not null;
+
+    public bool HasCompanions => MergedTableCodes.Count > 0;
+
+    public bool HasMergeInfo => IsMerged || HasCompanions;
+
+    public string MergeText => IsMerged
+        ? $"Merged into table {MergedIntoTableCode}"
+        : HasCompanions ? $"Merged with {string.Join(", ", MergedTableCodes)}" : string.Empty;
+
     public bool IsOccupied => Status == TableStatus.Occupied;
 
     public string StatusText => DescribeStatus(Status);
@@ -120,7 +154,11 @@ public sealed partial class TableTileViewModel : ObservableObject
     /// <summary>Icon name from the single status map (StatusPresentation), drawn next to the status word on the tile.</summary>
     public string StatusIcon => StatusPresentation.For(Status).Icon;
 
-    public string StatusLine => CurrentOrderNumber is { } number ? $"{StatusText} · #{number}" : StatusText;
+    public string StatusLine => IsMerged
+        ? $"Merged → {MergedIntoTableCode}"
+        : (CurrentOrderNumber is { } number ? $"{StatusText} · #{number}" : StatusText)
+            + (HasCompanions ? $" + {string.Join(",", MergedTableCodes)}" : string.Empty)
+            + (TotalText.Length > 0 ? $" · {TotalText}" : string.Empty);
 
     public string GuestsText => GuestCount is { } guests
         ? $"{guests} / {Capacity} guests"
@@ -148,8 +186,13 @@ public sealed partial class TableTileViewModel : ObservableObject
         OccupiedAtUtc = table.OccupiedAtUtc;
         CurrentOrderId = table.CurrentOrderId;
         CurrentOrderNumber = table.CurrentOrderNumber;
+        CurrentOrderTotal = table.CurrentOrderTotal;
         UpcomingReservation = table.UpcomingReservation;
         RowVersion = table.RowVersion;
+        MergedIntoTableId = table.MergedIntoTableId;
+        MergedIntoTableCode = table.MergedIntoTableCode;
+        MergedTableCodes = table.MergedTableCodes;
+        SeatCodes = table.SeatCodes;
         PosX = table.PosX;
         PosY = table.PosY;
         Width = table.Width;
@@ -176,6 +219,14 @@ public sealed partial class TableTileViewModel : ObservableObject
         OccupiedAtUtc = change.OccupiedAtUtc;
         CurrentOrderId = change.OrderId;
         CurrentOrderNumber = change.OrderNumber;
+        if (change.OrderId is null)
+        {
+            CurrentOrderTotal = null;
+        }
+
+        MergedIntoTableId = change.MergedIntoTableId;
+        MergedIntoTableCode = change.MergedIntoTableCode;
+        MergedTableCodes = change.MergedTableCodes;
         if (!string.IsNullOrEmpty(change.EntityVersion))
         {
             RowVersion = change.EntityVersion;

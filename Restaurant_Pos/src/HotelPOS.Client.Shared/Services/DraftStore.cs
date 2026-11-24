@@ -20,6 +20,13 @@ public sealed record WebDraftLine
     public IReadOnlyList<string> ModifierNames { get; init; } = Array.Empty<string>();
 
     public decimal ModifierTotal { get; init; }
+
+    /// <summary>Optional, so drafts saved before parcel and seats existed still load (not parcel, whole table).</summary>
+    public bool IsParcel { get; init; }
+
+    public string? SeatCode { get; init; }
+
+    public decimal PackagingCharge { get; init; }
 }
 
 /// <summary>An unsent order kept on this device, per table — the browser twin of the desktop LocalDraft.</summary>

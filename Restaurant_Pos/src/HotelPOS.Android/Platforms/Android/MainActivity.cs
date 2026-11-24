@@ -4,6 +4,7 @@ using Android.Content.PM;
 using Android.Content.Res;
 using Android.OS;
 using Android.Views;
+using AndroidX.Activity;
 using AndroidX.Core.View;
 
 namespace HotelPOS.Android;
@@ -23,6 +24,9 @@ public class MainActivity : MauiAppCompatActivity
         Window?.AddFlags(WindowManagerFlags.KeepScreenOn);
         ApplySystemBarInsets();
         TakeRoute(Intent);
+        // The hardware Back button walks back through the pages the web view has shown; only at the first page does it
+        // send the app to the background (it used to leave the app from any depth).
+        OnBackPressedDispatcher.AddCallback(this, new BackThroughWebHistory(this));
     }
 
     // A tapped system notification carries the page to open; Routes.razor picks it up once the app is in front.
@@ -89,6 +93,49 @@ public class MainActivity : MauiAppCompatActivity
         var controller = WindowCompat.GetInsetsController(Window, Window.DecorView);
         controller.AppearanceLightStatusBars = !dark;
         controller.AppearanceLightNavigationBars = !dark;
+    }
+
+    private sealed class BackThroughWebHistory : OnBackPressedCallback
+    {
+        private readonly MainActivity _activity;
+
+        public BackThroughWebHistory(MainActivity activity)
+            : base(true)
+        {
+            _activity = activity;
+        }
+
+        public override void HandleOnBackPressed()
+        {
+            if (FindWebView(_activity.Window?.DecorView) is { } web && web.CanGoBack())
+            {
+                web.GoBack();
+                return;
+            }
+
+            _activity.MoveTaskToBack(true);
+        }
+
+        private static global::Android.Webkit.WebView? FindWebView(global::Android.Views.View? view)
+        {
+            if (view is global::Android.Webkit.WebView web)
+            {
+                return web;
+            }
+
+            if (view is ViewGroup group)
+            {
+                for (var i = 0; i < group.ChildCount; i++)
+                {
+                    if (FindWebView(group.GetChildAt(i)) is { } found)
+                    {
+                        return found;
+                    }
+                }
+            }
+
+            return null;
+        }
     }
 
     private sealed class SystemBarsPadding : Java.Lang.Object, IOnApplyWindowInsetsListener

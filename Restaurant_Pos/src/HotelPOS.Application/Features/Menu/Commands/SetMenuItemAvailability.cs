@@ -38,6 +38,11 @@ internal sealed class SetMenuItemAvailabilityHandler : ICommandHandler<SetMenuIt
             return AppErrors.NotFound("Menu item", command.Id);
         }
 
+        if (isAvailable && item.IsStockTracked && (item.StockRemaining ?? 0) <= 0)
+        {
+            return AppErrors.BusinessRule($"{item.Name} has no stock left. Set a new stock count to put it back on.");
+        }
+
         if (item.IsAvailable == isAvailable)
         {
             return await _items.GetAsync(command.Id, cancellationToken);

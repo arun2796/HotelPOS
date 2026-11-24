@@ -21,6 +21,12 @@ public sealed record OrderItemInput
     public int Quantity { get; init; } = 1;
     public string? Notes { get; init; }
     public IReadOnlyList<int> ModifierOptionIds { get; init; } = Array.Empty<int>();
+
+    // Takeaway packed with a dine-in meal: the item's packaging charge is added and the KOT is marked "Parcel".
+    public bool IsParcel { get; init; }
+
+    // "4A": the seat the dish is for (table code + letter, limited by the table's capacity). Null = whole table.
+    public string? SeatCode { get; init; }
 }
 
 public sealed record CreateOrderRequest
@@ -136,6 +142,9 @@ public sealed record OrderItemDto
     public decimal TaxRatePercent { get; init; }
     public int PreparationStationId { get; init; }
     public OrderItemStatus Status { get; init; }
+    public bool IsParcel { get; init; }
+    public decimal PackagingCharge { get; init; }
+    public string? SeatCode { get; init; }
     public IReadOnlyList<OrderItemModifierDto> Modifiers { get; init; } = Array.Empty<OrderItemModifierDto>();
     public decimal LineTotal { get; init; }
     public int? TicketId { get; init; }

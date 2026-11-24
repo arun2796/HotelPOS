@@ -1,3 +1,5 @@
+using HotelPOS.Contracts.Enums;
+
 namespace HotelPOS.Contracts.Menu;
 
 public static class MenuLimits
@@ -136,10 +138,24 @@ public sealed record MenuItemDto
 
     public string? HsnSac { get; init; }
 
+    public decimal PackagingCharge { get; init; }
+    public StockTrackingMode StockMode { get; init; }
+    public int? StockOpening { get; init; }
+    public int? StockRemaining { get; init; }
+
     public int SortOrder { get; init; }
     public IReadOnlyList<int> ModifierGroupIds { get; init; } = Array.Empty<int>();
 
     public string RowVersion { get; init; } = string.Empty;
+}
+
+// The kitchen supervisor's stock count. Mode None stops counting; Exact / Approximate restart the count at Quantity
+// (Add = true adds Quantity to what is left instead, for a second vessel).
+public sealed record SetStockRequest
+{
+    public StockTrackingMode Mode { get; init; }
+    public int? Quantity { get; init; }
+    public bool Add { get; init; }
 }
 
 public sealed record MenuItemQuery
@@ -162,6 +178,7 @@ public sealed record CreateMenuItemRequest
     public bool IsAvailable { get; init; } = true;
     public IReadOnlyList<int> ModifierGroupIds { get; init; } = Array.Empty<int>();
     public string? HsnSac { get; init; }
+    public decimal PackagingCharge { get; init; }
 }
 
 public sealed record UpdateMenuItemRequest
@@ -178,6 +195,7 @@ public sealed record UpdateMenuItemRequest
     public bool IsActive { get; init; } = true;
     public IReadOnlyList<int> ModifierGroupIds { get; init; } = Array.Empty<int>();
     public string? HsnSac { get; init; }
+    public decimal PackagingCharge { get; init; }
     public string RowVersion { get; init; } = string.Empty;
 }
 
@@ -208,6 +226,9 @@ public sealed record MenuEntryDto
     public decimal TaxRatePercent { get; init; }
     public int StationId { get; init; }
     public bool IsAvailable { get; init; }
+    public decimal PackagingCharge { get; init; }
+    public StockTrackingMode StockMode { get; init; }
+    public int? StockRemaining { get; init; }
     public string? ImageUrl { get; init; }
     public int SortOrder { get; init; }
     public IReadOnlyList<int> ModifierGroupIds { get; init; } = Array.Empty<int>();

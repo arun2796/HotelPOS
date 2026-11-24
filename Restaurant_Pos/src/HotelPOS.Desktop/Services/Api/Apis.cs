@@ -192,6 +192,11 @@ public interface IFloorApi
 
     Task<ApiResult<TableDto>> ReleaseAsync(int id, CancellationToken cancellationToken = default);
 
+    // Merge: the companion table joins the party at table `id`; unmerge takes a companion table back out.
+    Task<ApiResult<TableDto>> MergeAsync(int id, int companionTableId, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<TableDto>> UnmergeAsync(int companionTableId, CancellationToken cancellationToken = default);
+
     Task<ApiResult<TableDto>> SetOutOfServiceAsync(int id, bool outOfService, CancellationToken cancellationToken = default);
 
     Task<ApiResult<TableDto>> CreateTableAsync(CreateTableRequest request, CancellationToken cancellationToken = default);
@@ -222,6 +227,12 @@ public sealed class FloorApi : IFloorApi
 
     public Task<ApiResult<TableDto>> OccupyAsync(int id, OccupyTableRequest request, CancellationToken cancellationToken = default) =>
         _api.PostAsync<TableDto>($"api/tables/{id}/occupy", request, cancellationToken);
+
+    public Task<ApiResult<TableDto>> MergeAsync(int id, int companionTableId, CancellationToken cancellationToken = default) =>
+        _api.PostAsync<TableDto>($"api/tables/{id}/merge", new MergeTablesRequest { CompanionTableId = companionTableId }, cancellationToken);
+
+    public Task<ApiResult<TableDto>> UnmergeAsync(int companionTableId, CancellationToken cancellationToken = default) =>
+        _api.PostAsync<TableDto>($"api/tables/{companionTableId}/unmerge", new { }, cancellationToken);
 
     public Task<ApiResult<TableDto>> ReleaseAsync(int id, CancellationToken cancellationToken = default) =>
         _api.PostAsync<TableDto>($"api/tables/{id}/release", null, cancellationToken);

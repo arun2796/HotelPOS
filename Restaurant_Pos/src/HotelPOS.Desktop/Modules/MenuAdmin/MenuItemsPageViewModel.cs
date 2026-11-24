@@ -1,8 +1,11 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.IO;
+using System.Windows.Data;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HotelPOS.Contracts.Common;
+using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Menu;
 using HotelPOS.Desktop.Modules.Common;
 using HotelPOS.Desktop.Services.Api;
@@ -12,6 +15,28 @@ using HotelPOS.Desktop.Services.Ui;
 namespace HotelPOS.Desktop.Modules.MenuAdmin;
 
 public sealed record LookupOption(int? Id, string Name);
+
+// The STOCK column of the items grid: "42 left", "Approx. 80 left", or empty when the item has no count.
+public sealed class MenuItemStockTextConverter : IValueConverter
+{
+    public static string Describe(StockTrackingMode mode, int? remaining)
+    {
+        if (mode == StockTrackingMode.None || remaining is not { } left)
+        {
+            return string.Empty;
+        }
+
+        return mode == StockTrackingMode.Approximate
+            ? string.Create(CultureInfo.CurrentCulture, $"Approx. {left} left")
+            : string.Create(CultureInfo.CurrentCulture, $"{left} left");
+    }
+
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => value is MenuItemDto item ? Describe(item.StockMode, item.StockRemaining) : string.Empty;
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}
 
 public sealed partial class ModifierChoiceViewModel : ObservableObject
 {
@@ -55,6 +80,10 @@ public sealed partial class MenuItemEditorViewModel : ObservableObject
 
     [ObservableProperty]
     private string _price = string.Empty;
+
+    // Parcel/packaging charge added per unit on take-away and delivery orders; 0 means none.
+    [ObservableProperty]
+    private string _packagingCharge = "0";
 
     [ObservableProperty]
     private LookupOption? _tax;
@@ -123,6 +152,7 @@ public sealed partial class MenuItemEditorViewModel : ObservableObject
         ItemId = 0;
         Name = Code = Description = RowVersion = HsnSac = string.Empty;
         Price = string.Empty;
+        PackagingCharge = "0";
         SortOrder = "0";
         IsAvailable = IsActive = true;
         ImageUrl = ImageFile = null;
@@ -147,6 +177,7 @@ public sealed partial class MenuItemEditorViewModel : ObservableObject
         Description = item.Description ?? string.Empty;
         HsnSac = item.HsnSac ?? string.Empty;
         Price = FormNumbers.Money(item.Price);
+        PackagingCharge = FormNumbers.Money(item.PackagingCharge);
         SortOrder = FormNumbers.Integer(item.SortOrder);
         IsAvailable = item.IsAvailable;
         IsActive = item.IsActive;
@@ -180,12 +211,17 @@ public sealed partial class MenuItemEditorViewModel : ObservableObject
 
         if (Category is null || Station is null)
         {
-            return "Select a category and a preparation station.";
+            return "Select a category and a source (kitchen).";
         }
 
         if (!FormNumbers.TryParseMoney(Price, out var price) || price < 0 || decimal.Round(price, 2) != price)
         {
             return "Enter a price such as 180 or 180.50.";
+        }
+
+        if (!FormNumbers.TryParseMoney(PackagingCharge, out var packaging) || packaging < 0 || decimal.Round(packaging, 2) != packaging)
+        {
+            return "Enter a packaging charge such as 0 or 10.50.";
         }
 
         return int.TryParse(SortOrder, out var order) && order is >= 0 and <= MenuLimits.MaxSortOrder
@@ -196,6 +232,7 @@ public sealed partial class MenuItemEditorViewModel : ObservableObject
     public CreateMenuItemRequest ToCreateRequest()
     {
         FormNumbers.TryParseMoney(Price, out var price);
+        FormNumbers.TryParseMoney(PackagingCharge, out var packaging);
         return new CreateMenuItemRequest
         {
             CategoryId = Category!.Id,
@@ -203,6 +240,7 @@ public sealed partial class MenuItemEditorViewModel : ObservableObject
             Code = string.IsNullOrWhiteSpace(Code) ? null : Code.Trim(),
             Description = string.IsNullOrWhiteSpace(Description) ? null : Description.Trim(),
             Price = price,
+            PackagingCharge = packaging,
             TaxId = Tax?.Id,
             HsnSac = string.IsNullOrWhiteSpace(HsnSac) ? null : HsnSac.Trim(),
             PreparationStationId = Station!.Id,
@@ -222,6 +260,7 @@ public sealed partial class MenuItemEditorViewModel : ObservableObject
             Code = create.Code,
             Description = create.Description,
             Price = create.Price,
+            PackagingCharge = create.PackagingCharge,
             TaxId = create.TaxId,
             HsnSac = create.HsnSac,
             PreparationStationId = create.PreparationStationId,

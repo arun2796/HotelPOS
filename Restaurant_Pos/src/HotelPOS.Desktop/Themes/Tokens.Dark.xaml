@@ -16,19 +16,19 @@
   <SolidColorBrush x:Key="Brush.Overlay" Color="#B3000000" />
 
   <!-- Borders -->
-  <SolidColorBrush x:Key="Brush.Border" Color="#273246" />
+  <SolidColorBrush x:Key="Brush.Border" Color="#33405A" />
   <SolidColorBrush x:Key="Brush.BorderSubtle" Color="#1F2A3D" />
   <SolidColorBrush x:Key="Brush.BorderStrong" Color="#3B4A63" />
 
   <!-- Text -->
   <SolidColorBrush x:Key="Brush.TextPrimary" Color="#E6EAF0" />
   <SolidColorBrush x:Key="Brush.TextSecondary" Color="#A3ACBA" />
-  <SolidColorBrush x:Key="Brush.TextTertiary" Color="#6F7A8C" />
+  <SolidColorBrush x:Key="Brush.TextTertiary" Color="#8791A3" />
 
   <!-- Inputs -->
   <SolidColorBrush x:Key="Brush.InputBackground" Color="#1B2537" />
   <SolidColorBrush x:Key="Brush.InputBackgroundFocus" Color="#161F2E" />
-  <SolidColorBrush x:Key="Brush.InputBorder" Color="#33405A" />
+  <SolidColorBrush x:Key="Brush.InputBorder" Color="#6B7C99" />
   <SolidColorBrush x:Key="Brush.Focus" Color="#93C5FD" />
 
   <!-- Accent and semantic colours -->
@@ -37,6 +37,13 @@
   <SolidColorBrush x:Key="Brush.PrimaryText" Color="#FFFFFF" />
   <SolidColorBrush x:Key="Brush.PrimarySoft" Color="#123A26" />
   <SolidColorBrush x:Key="Brush.Link" Color="#4ADE80" />
+  <SolidColorBrush x:Key="Brush.PrimaryOnSoft" Color="#4ADE80" />
+  <SolidColorBrush x:Key="Brush.DangerHover" Color="#E11D48" />
+  <SolidColorBrush x:Key="Brush.DisabledBg" Color="#1F2A3D" />
+  <SolidColorBrush x:Key="Brush.DisabledFg" Color="#7B889A" />
+  <SolidColorBrush x:Key="Brush.BillingFluor" Color="#D4FF1E" />
+  <SolidColorBrush x:Key="Brush.BillingFluorBorder" Color="#7FB800" />
+  <SolidColorBrush x:Key="Brush.BillingFluorText" Color="#10200A" />
   <SolidColorBrush x:Key="Brush.Info" Color="#60A5FA" />
   <SolidColorBrush x:Key="Brush.InfoSoft" Color="#0B1E3F" />
   <SolidColorBrush x:Key="Brush.Danger" Color="#E11D48" />
@@ -68,7 +75,7 @@
   <SolidColorBrush x:Key="Brush.SidebarText" Color="#CBD5E1" />
   <SolidColorBrush x:Key="Brush.SidebarTextActive" Color="#FFFFFF" />
   <SolidColorBrush x:Key="Brush.SidebarTextMuted" Color="#8A9BB2" />
-  <SolidColorBrush x:Key="Brush.SidebarHover" Color="#141E2E" />
+  <SolidColorBrush x:Key="Brush.SidebarHover" Color="#1B2A40" />
   <SolidColorBrush x:Key="Brush.SidebarSelected" Color="#078747" />
   <SolidColorBrush x:Key="Brush.SidebarAccent" Color="#FFFFFF" />
   <SolidColorBrush x:Key="Brush.SidebarDivider" Color="#273246" />
@@ -76,11 +83,11 @@
 
   <!-- Table and ticket states (Phase 21 D8): colour = tone. Ready is the solid success fill, Available the soft one
        (SuccessSoft + this colour as border); Preparing stays amber 700, Billing takes the warning orange. Identical in both themes. -->
-  <SolidColorBrush x:Key="Brush.Status.Available" Color="#16A34A" />
+  <SolidColorBrush x:Key="Brush.Status.Available" Color="#15803D" />
   <SolidColorBrush x:Key="Brush.Status.Occupied" Color="#2563EB" />
   <SolidColorBrush x:Key="Brush.Status.Ordering" Color="#2563EB" />
   <SolidColorBrush x:Key="Brush.Status.Preparing" Color="#B45309" />
-  <SolidColorBrush x:Key="Brush.Status.Ready" Color="#16A34A" />
+  <SolidColorBrush x:Key="Brush.Status.Ready" Color="#15803D" />
   <SolidColorBrush x:Key="Brush.Status.Billing" Color="#F59E0B" />
   <SolidColorBrush x:Key="Brush.Status.OutOfService" Color="#94A3B8" />
 

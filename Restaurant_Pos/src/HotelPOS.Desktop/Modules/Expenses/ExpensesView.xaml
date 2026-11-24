@@ -66,6 +66,23 @@
         <Button Command="{Binding LoadCommand}" ToolTip="Reload from server" VerticalAlignment="Center">
           <TextBlock Text="&#xE72C;" Style="{StaticResource Text.Icon}" />
         </Button>
+        <Button Command="{Binding OpenCategoriesDrawerCommand}" ToolTip="Manage expense categories"
+                Margin="8,0,0,0" VerticalAlignment="Center"
+                AutomationProperties.Name="Expense categories">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Text="&#xE8D2;" Style="{StaticResource Text.Icon}" FontSize="13" VerticalAlignment="Center" />
+            <TextBlock Text="Categories" Margin="6,0,0,0" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <Button Command="{Binding NewExpenseCommand}" Style="{StaticResource Button.Primary}"
+                Margin="8,0,0,0" VerticalAlignment="Center"
+                Visibility="{Binding CanManage, Converter={StaticResource BoolToVisibility}}"
+                AutomationProperties.Name="Record expense">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Text="&#xE710;" Style="{StaticResource Text.Icon}" FontSize="14" VerticalAlignment="Center" />
+            <TextBlock Text="Record expense" Margin="8,0,0,0" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
       </StackPanel>
     </Grid>
 

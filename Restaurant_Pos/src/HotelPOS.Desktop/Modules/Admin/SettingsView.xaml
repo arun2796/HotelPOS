@@ -23,7 +23,7 @@
               <TextBlock Text="{Binding DisplayName}" Style="{StaticResource Text.Subtitle}" />
               <Border Background="{DynamicResource Brush.WarningSoft}" CornerRadius="4" Padding="6,1" Margin="10,0,0,0"
                       VerticalAlignment="Center" Visibility="{Binding IsDirty, Converter={StaticResource BoolToVisibility}}">
-                <TextBlock Text="Edited" FontSize="11" Foreground="{DynamicResource Brush.TextPrimary}" />
+                <TextBlock Text="Edited" FontSize="12" Foreground="{DynamicResource Brush.TextPrimary}" />
               </Border>
             </StackPanel>
             <TextBlock Text="{Binding Description}" Style="{StaticResource Text.Caption}" Margin="0,2,0,0" TextWrapping="Wrap" />

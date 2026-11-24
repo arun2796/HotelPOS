@@ -49,6 +49,46 @@
             </StackPanel>
           </Border>
 
+          <Border Style="{StaticResource Banner.Info}" Margin="0,10,0,0"
+                  Visibility="{Binding Table.HasMergeInfo, Converter={StaticResource BoolToVisibility}}">
+            <TextBlock Text="{Binding Table.MergeText}" TextWrapping="Wrap" FontWeight="SemiBold" Foreground="{DynamicResource Brush.TextPrimary}" />
+          </Border>
+
+          <Border Background="{DynamicResource Brush.SurfaceAlt}" CornerRadius="8" Padding="12" Margin="0,10,0,0"
+                  Visibility="{Binding IsMergePickerOpen, Converter={StaticResource BoolToVisibility}}">
+            <StackPanel>
+              <TextBlock Text="Merge which table into this party?" FontWeight="SemiBold" Foreground="{DynamicResource Brush.TextPrimary}" />
+              <TextBlock Text="No free table to merge." Margin="0,4,0,0">
+                <TextBlock.Style>
+                  <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding HasMergeChoices}" Value="False">
+                        <Setter Property="Visibility" Value="Visible" />
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </TextBlock.Style>
+              </TextBlock>
+              <ItemsControl ItemsSource="{Binding MergeChoices}" Margin="0,6,0,0" Focusable="False">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <WrapPanel />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Button Style="{StaticResource Button.Base}" MinHeight="44" MinWidth="76" Margin="0,0,6,6"
+                            Content="{Binding Code}"
+                            Command="{Binding DataContext.MergeWithCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            CommandParameter="{Binding}" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <Button Content="Cancel" Style="{StaticResource Button.Ghost}" HorizontalAlignment="Left" Command="{Binding CancelMergeCommand}" />
+            </StackPanel>
+          </Border>
+
           <Grid Margin="0,14,0,12">
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="*" />
@@ -172,34 +212,38 @@
         <WrapPanel.Resources>
           <Style TargetType="Button" BasedOn="{StaticResource Button.Base}">
             <Setter Property="MinHeight" Value="52" />
-            <Setter Property="Width" Value="156" />
+            <Setter Property="Width" Value="148" />
             <Setter Property="Margin" Value="0,0,8,8" />
             <Setter Property="FontSize" Value="15" />
           </Style>
         </WrapPanel.Resources>
-        <Button Content="OCCUPY" Command="{Binding OccupyCommand}"
+        <Button Content="Occupy" Command="{Binding OccupyCommand}"
                 Visibility="{Binding ShowOccupy, Converter={StaticResource BoolToVisibility}}" />
-        <Button Content="SEAT RESERVATION" Command="{Binding SeatReservationCommand}"
+        <Button Content="Seat reservation" Command="{Binding SeatReservationCommand}"
                 Background="{DynamicResource Brush.Primary}" BorderBrush="{DynamicResource Brush.Primary}" Foreground="{DynamicResource Brush.PrimaryText}"
                 Visibility="{Binding ShowSeatReservation, Converter={StaticResource BoolToVisibility}}" />
         <Button Content="{Binding NewOrderText}" Command="{Binding NewOrderCommand}"
                 Background="{DynamicResource Brush.Primary}" BorderBrush="{DynamicResource Brush.Primary}" Foreground="{DynamicResource Brush.PrimaryText}"
                 Visibility="{Binding ShowNewOrder, Converter={StaticResource BoolToVisibility}}" />
-        <Button Content="OPEN ORDER" Command="{Binding OpenOrderCommand}"
+        <Button Content="Open order" Command="{Binding OpenOrderCommand}"
                 Background="{DynamicResource Brush.Primary}" BorderBrush="{DynamicResource Brush.Primary}" Foreground="{DynamicResource Brush.PrimaryText}"
                 Visibility="{Binding ShowOpenOrder, Converter={StaticResource BoolToVisibility}}" />
-        <Button Content="SERVED" Command="{Binding ServeCommand}"
+        <Button Content="Served" Command="{Binding ServeCommand}"
                 Background="{DynamicResource Brush.Success}" BorderBrush="{DynamicResource Brush.Success}" Foreground="{DynamicResource Brush.PrimaryText}"
                 Visibility="{Binding ShowServe, Converter={StaticResource BoolToVisibility}}" />
-        <Button Content="REQUEST BILL" Command="{Binding RequestBillCommand}"
+        <Button Content="Request bill" Command="{Binding RequestBillCommand}"
                 Background="{DynamicResource Brush.Status.Billing}" BorderBrush="{DynamicResource Brush.Status.Billing}" Foreground="{DynamicResource Brush.PrimaryText}"
                 Visibility="{Binding ShowRequestBill, Converter={StaticResource BoolToVisibility}}" />
-        <Button Content="ADD ITEMS" Command="{Binding AddItemsCommand}"
+        <Button Content="Add items" Command="{Binding AddItemsCommand}"
                 Background="{DynamicResource Brush.Primary}" BorderBrush="{DynamicResource Brush.Primary}" Foreground="{DynamicResource Brush.PrimaryText}"
                 Visibility="{Binding ShowAddItems, Converter={StaticResource BoolToVisibility}}" />
-        <Button Content="RELEASE" Command="{Binding ReleaseCommand}"
+        <Button Content="Merge table" Command="{Binding MergeCommand}"
+                Visibility="{Binding ShowMerge, Converter={StaticResource BoolToVisibility}}" />
+        <Button Content="Unmerge" Command="{Binding UnmergeCommand}"
+                Visibility="{Binding ShowUnmerge, Converter={StaticResource BoolToVisibility}}" />
+        <Button Content="Release" Command="{Binding ReleaseCommand}"
                 Visibility="{Binding ShowRelease, Converter={StaticResource BoolToVisibility}}" />
-        <Button Content="CANCEL ORDER" Command="{Binding CancelOrderCommand}" Foreground="{DynamicResource Brush.Danger}"
+        <Button Content="Cancel order" Command="{Binding CancelOrderCommand}" Foreground="{DynamicResource Brush.Danger}"
                 Visibility="{Binding ShowCancelOrder, Converter={StaticResource BoolToVisibility}}" />
       </WrapPanel>
     </Grid>

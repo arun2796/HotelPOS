@@ -35,12 +35,12 @@
       <ItemsControl ItemsSource="{Binding Rows}" Focusable="False">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate>
-            <WrapPanel />
+            <controls:AdaptivePanel MinItemWidth="300" />
           </ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
           <DataTemplate DataType="{x:Type orders:OrderRow}">
-            <Button x:Name="Row" Width="280" Margin="0,0,12,12" Padding="16,12" HorizontalContentAlignment="Stretch"
+            <Button x:Name="Row" Margin="0,0,12,12" Padding="16,12" HorizontalContentAlignment="Stretch"
                     Background="{DynamicResource Brush.Surface}" CommandParameter="{Binding}"
                     Command="{Binding DataContext.OpenCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
               <StackPanel>

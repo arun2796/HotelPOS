@@ -41,6 +41,7 @@ internal sealed class AppendOrderItemsHandler : ICommandHandler<AppendOrderItems
     private readonly OrderItemFactory _itemFactory;
     private readonly TicketFactory _tickets;
     private readonly KitchenSync _kitchen;
+    private readonly OrderStock _stock;
 
     public AppendOrderItemsHandler(
         IAppDbContext db,
@@ -50,8 +51,10 @@ internal sealed class AppendOrderItemsHandler : ICommandHandler<AppendOrderItems
         OrderEvents events,
         OrderItemFactory itemFactory,
         TicketFactory tickets,
-        KitchenSync kitchen)
+        KitchenSync kitchen,
+        OrderStock stock)
     {
+        _stock = stock;
         _db = db;
         _audit = audit;
         _afterCommit = afterCommit;
@@ -88,10 +91,17 @@ internal sealed class AppendOrderItemsHandler : ICommandHandler<AppendOrderItems
             return AppErrors.OrderLocked($"Order {order.OrderNumber} is {order.Status} and can no longer take items.");
         }
 
-        var items = await _itemFactory.CreateAsync(request.Items, cancellationToken);
+        var items = await _itemFactory.CreateAsync(request.Items, order.TableId, cancellationToken);
         if (items.IsFailure)
         {
             return items.Error!;
+        }
+
+        // "Process" commits the dishes: the kitchen's count goes down, or the captain is told something ran out.
+        var outOfStock = await _stock.ReserveAsync(items.Value, cancellationToken);
+        if (outOfStock is not null)
+        {
+            return outOfStock;
         }
 
         var batch = order.AppendBatch(items.Value);

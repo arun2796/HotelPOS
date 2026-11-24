@@ -63,6 +63,13 @@ public sealed class BillingController : ApiControllerBase
         FromResult(await Sender.Send(new ClearBillDiscountCommand(id, rowVersion ?? string.Empty), cancellationToken),
             message: "Discount removed.");
 
+    // Separate bills for the guests of one table (by seat or by lines); only before the bill is finalized.
+    [Authorize(Policy = Permissions.BillingOperate)]
+    [HttpPost("{id:int}/split")]
+    [ProducesResponseType<ApiResponse<BillDetailDto>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> Split(int id, SplitBillRequest request, CancellationToken cancellationToken) =>
+        FromResult(await Sender.Send(new SplitBillCommand(id, request), cancellationToken), message: "Bill split.");
+
     [Authorize(Policy = Permissions.BillingOperate)]
     [HttpPut("{id:int}/customer")]
     [ProducesResponseType<ApiResponse<BillDetailDto>>(StatusCodes.Status200OK)]

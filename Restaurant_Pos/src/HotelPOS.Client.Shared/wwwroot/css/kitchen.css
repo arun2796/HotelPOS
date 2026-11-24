@@ -14,10 +14,10 @@
 .kds-menu .device-card { margin-top: 4px; }
 
 /* ---- K2 KPI strip, toolbar, columns ---- */
-.kds-kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
+.kds-kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; flex: 1 1 520px; min-width: 0; }
 .kds-kpis .kpi { min-width: 0; }
 @media (max-width: 719px) { .kds-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-.kds-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.kds-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: none; }
 .kds-updated { text-align: right; }
 .kds-colhead { margin: 4px 0 8px; }
 .kds-colhead .kds-head { margin: 0; font-size: var(--fs-section); }
@@ -29,20 +29,22 @@
 .ticket.selected { box-shadow: 0 0 0 3px var(--primary-soft); }
 .ticket-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; min-height: var(--touch); }
 .ticket-id { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; min-width: 0; }
-.ticket-table { font-size: 28px; line-height: 1.1; margin-right: 4px; }
+.ticket-table { font-size: var(--fs-28); line-height: 1.1; margin-right: 4px; }
 .ticket-elapsed { font-size: var(--fs-label); font-weight: 700; display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; }
 .ticket-meta { font-size: var(--fs-label); margin-top: 2px; }
-.ticket-lines { list-style: none; margin: 10px 0 0; padding: 0; font-size: 20px; }
+.ticket-lines { list-style: none; margin: 10px 0 0; padding: 0; font-size: var(--fs-20); }
 .ticket-lines li { padding: 4px 0; border-top: 1px solid var(--border); }
 .ticket-lines li:first-child { border-top: 0; }
-.ticket-qty { font-size: 24px; margin-right: 4px; }
-.ticket-mods { margin-left: 34px; font-size: 15px; }
-.ticket-note { display: flex; align-items: flex-start; gap: 6px; margin-left: 34px; color: var(--warning-text); font-weight: 700; font-size: 16px; }
+.ticket-qty { font-size: var(--fs-24); margin-right: 4px; }
+.ticket-mods { margin-left: 34px; font-size: var(--fs-16); }
+.ticket-note { display: flex; align-items: flex-start; gap: 6px; margin-left: 34px; color: var(--warning-text); font-weight: 700; font-size: var(--fs-16); }
 .ticket-note::before { content: none; }
 .kds-detail .ticket-note { margin-left: 0; }
 .ticket-actions { display: flex; gap: 8px; margin-top: 12px; }
-.ticket .ticket-actions .btn.lg { flex: 1; min-height: 56px; font-size: 18px; font-weight: 700; letter-spacing: 0.02em; }
+.ticket .ticket-actions .btn.lg { flex: 1; min-height: 56px; font-size: var(--fs-18); font-weight: 700; }
 .btn.warning { background: var(--warning); border-color: var(--warning); color: var(--on-warning, var(--text)); }
+.btn.warning:hover:not(:disabled) { background: var(--warning); filter: brightness(0.94); }
+.btn.warning:disabled, .btn.outline:disabled { background: var(--state-disabled-bg); border-color: var(--border); color: var(--state-disabled-fg); }
 .btn.outline { background: transparent; border: 2px solid var(--text-2); color: var(--text); }
 
 /* ---- K4 detail pane ---- */
@@ -56,11 +58,24 @@
 @media (min-width: 720px) { .kds-done { grid-template-columns: repeat(2, 1fr); } }
 @media (min-width: 1280px) { .kds-done { grid-template-columns: repeat(3, 1fr); } }
 .kds-done .ticket { margin-bottom: 0; }
-.kds-done .ticket-lines { font-size: 17px; }
+.kds-done .ticket-lines { font-size: var(--fs-18); }
 .kds-times { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: var(--fs-label); margin-top: 8px; }
 .kds-station-list { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 12px; }
 @media (min-width: 720px) { .kds-station-list { grid-template-columns: repeat(2, 1fr); } }
 .kds-station-list .btn { justify-content: flex-start; }
+
+/* ---- Phase 27: stock counts. One card per dish: name + count chip, then a number field and four 44 px buttons that wrap. ---- */
+.stock-filters { margin: 8px 0 4px; }
+.stock-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr; gap: 8px; }
+@media (min-width: 900px) { .stock-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stock-list .stock-row { margin-top: 0; }
+.stock-head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; }
+.stock-name { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; font-size: var(--fs-section); }
+.stock-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
+.stock-qty { flex: 0 0 88px; }
+.stock-qty .input { text-align: right; }
+.stock-controls .btn { min-height: var(--touch); padding: 0 10px; font-size: var(--fs-14); white-space: nowrap; }
+.input[aria-invalid="true"] { border-color: var(--danger); }
 
 /* ---- Phone (under 600 px): the kitchen board on a waiter-sized screen. Designed for tablets; this keeps it usable
    when a phone opens it. Tokens only. ---- */
@@ -79,3 +94,22 @@
   .kds-kpis .kpi:last-child { grid-column: 1 / -1; }
   .kds-updated { flex-basis: 100%; text-align: left; }
 }
+
+/* ---- Phase 25 pass 5: audit fixes ---- */
+/* One toolbar row: the KPI strip on the left, the Delayed / Oldest-first switches and the refresh time on the right. */
+.kds-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 10px; }
+.kds-toolbar .kds-updated { text-align: right; }
+/* Columns: a 3 px tone stripe on top and a heading in the same tone (New = info, Preparing = warning, Ready = success). */
+.kds-col { --kc: var(--neutral); --kt: var(--text-2); border-top: 3px solid var(--kc); padding-top: 8px; }
+.kds-col.new { --kc: var(--info); --kt: var(--info-text); }
+.kds-col.preparing { --kc: var(--warning); --kt: var(--warning-text); }
+.kds-col.ready { --kc: var(--success); --kt: var(--success-text); }
+.kds-col .kds-head { color: var(--kt); }
+/* The seat a dish is for: a small neutral tag next to the dish name (amber is kept for real notes). */
+.ticket-seat { display: inline-flex; align-items: center; padding: 1px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-subtle);
+  color: var(--text-2); font-size: var(--fs-13); font-weight: 600; white-space: nowrap; }
+.ticket-line { flex-wrap: wrap; }
+@media (max-width: 599px) { .kds-bar { display: block; } .kds-bar .kds-toolbar { margin-top: 8px; } }
+
+/* KPI labels stay on one line: "Completed today" used to wrap out of its tile. */
+.kds-kpis .kpi-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; font-size: var(--fs-13, 13px); }

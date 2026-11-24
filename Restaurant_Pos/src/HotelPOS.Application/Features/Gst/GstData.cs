@@ -225,6 +225,8 @@ internal sealed class GstDataLoader
             return new List<GstNote>();
         }
 
+        var allRefundIds = await _db.Payments.AsNoTracking().Where(p => p.RefundOfPaymentId != null).OrderBy(p => p.Id).Select(p => p.Id).ToListAsync(cancellationToken);
+        var noteNumber = allRefundIds.Select((id, index) => (id, number: index + 1)).ToDictionary(x => x.id, x => x.number);
         var billIds = refunds.Select(r => r.BillId).Distinct().ToList();
         var bills = _db.Bills.AsNoTracking().Where(b => billIds.Contains(b.Id));
         var rows = (await ReadBillsAsync(bills, cancellationToken)).ToDictionary(b => b.Id);
@@ -243,7 +245,7 @@ internal sealed class GstDataLoader
             var lines = invoice.Lines.Select(l =>
                 new GstRateLine(l.Rate, Money(l.Taxable * share), GstSplit.Of(Money(l.Tax.Total * share), invoice.InterState))).ToList();
             var date = calendar.DayOf(refund.PaidAt);
-            notes.Add(new GstNote(refund.Id, "CN-" + refund.Id.ToString("000000", CultureInfo.InvariantCulture), date, invoice.Number, -refund.Amount,
+            notes.Add(new GstNote(refund.Id, "CN-" + noteNumber[refund.Id].ToString("000000", CultureInfo.InvariantCulture), date, invoice.Number, -refund.Amount,
                 invoice.Type, invoice.Ctin, invoice.Pos, invoice.InterState, lines));
         }
 

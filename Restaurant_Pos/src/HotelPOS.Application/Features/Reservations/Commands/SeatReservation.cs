@@ -33,14 +33,17 @@ internal sealed class SeatReservationHandler : ICommandHandler<SeatReservationCo
     private readonly IAuditTrail _audit;
     private readonly IAfterCommit _afterCommit;
     private readonly ReservationEvents _events;
+    private readonly HotelPOS.Application.Features.Floor.TableEvents _tableEvents;
 
     public SeatReservationHandler(
         IAppDbContext db,
         IClock clock,
         IAuditTrail audit,
         IAfterCommit afterCommit,
-        ReservationEvents events)
+        ReservationEvents events,
+        HotelPOS.Application.Features.Floor.TableEvents tableEvents)
     {
+        _tableEvents = tableEvents;
         _db = db;
         _clock = clock;
         _audit = audit;
@@ -76,7 +79,10 @@ internal sealed class SeatReservationHandler : ICommandHandler<SeatReservationCo
             return AppErrors.TableNotAvailable(reservation.Table.Code);
         }
 
+        // Seating the party takes the table in the same step, so nobody else can open it in between.
         reservation.Seat(_clock.UtcNow);
+        reservation.Table.Occupy(reservation.PartySize, _clock.UtcNow);
+        var seatedTable = reservation.Table;
 
         try
         {
@@ -95,6 +101,7 @@ internal sealed class SeatReservationHandler : ICommandHandler<SeatReservationCo
             new { reservation.Id, Table = reservation.Table.Code, reservation.SeatedAtUtc });
 
         _afterCommit.Enqueue(() => _events.PublishChangedAsync(reservation, reservation.Table.Code));
+        _afterCommit.Enqueue(() => _tableEvents.PublishStatusAsync(seatedTable));
 
         return ReservationMapping.ToDto(reservation);
     }

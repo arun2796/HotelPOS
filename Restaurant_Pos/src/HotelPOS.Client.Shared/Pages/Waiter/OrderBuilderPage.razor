@@ -50,14 +50,14 @@ else
 
     @if (!IsAppend)
     {
-        <div class="channel-chips" data-testid="channel-chips" style="display: flex; gap: 8px; margin-bottom: 12px; overflow-x: auto;">
-            <button type="button" class="filter-chip @(_orderType == OrderType.DineIn ? "on" : null)" @onclick="() => SetOrderType(OrderType.DineIn)">
+        <div class="channel-chips" data-testid="channel-chips" style="display: flex; gap: 8px; margin-bottom: 12px; overflow-x: auto; padding: 4px;">
+            <button type="button" class="filter-chip @(_orderType == OrderType.DineIn ? "on" : null)" aria-pressed="@(_orderType == OrderType.DineIn ? "true" : "false")" @onclick="() => SetOrderType(OrderType.DineIn)">
                 <Icon Name="users" Size="16" /> Dine-In @(_tableCode is not null ? $"({_tableCode})" : null)
             </button>
-            <button type="button" class="filter-chip @(_orderType == OrderType.Takeaway ? "on" : null)" @onclick="() => SetOrderType(OrderType.Takeaway)">
+            <button type="button" class="filter-chip @(_orderType == OrderType.Takeaway ? "on" : null)" aria-pressed="@(_orderType == OrderType.Takeaway ? "true" : "false")" @onclick="() => SetOrderType(OrderType.Takeaway)">
                 <Icon Name="shopping-bag" Size="16" /> Takeaway
             </button>
-            <button type="button" class="filter-chip @(_orderType == OrderType.Delivery ? "on" : null)" @onclick="() => SetOrderType(OrderType.Delivery)">
+            <button type="button" class="filter-chip @(_orderType == OrderType.Delivery ? "on" : null)" aria-pressed="@(_orderType == OrderType.Delivery ? "true" : "false")" @onclick="() => SetOrderType(OrderType.Delivery)">
                 <Icon Name="truck" Size="16" /> Delivery
             </button>
             @if (_orderType == OrderType.Delivery)
@@ -75,13 +75,36 @@ else
     <div class="chip-row">
         @if (Favourites.Items(_menu).Count > 0)
         {
-            <button id="chip-favourites" class="chip-btn @(ChipOn(FavouritesStore.CategoryId) ? "on" : null)" @onclick="() => SelectCategory(FavouritesStore.CategoryId)">@FavouritesStore.CategoryName</button>
+            <button id="chip-favourites" class="chip-btn @(ChipOn(FavouritesStore.CategoryId) ? "on" : null)" aria-pressed="@(ChipOn(FavouritesStore.CategoryId) ? "true" : "false")" @onclick="() => SelectCategory(FavouritesStore.CategoryId)">@FavouritesStore.CategoryName</button>
         }
         @foreach (var category in _menu.Categories.OrderBy(c => c.SortOrder))
         {
             var c = category;
-            <button class="chip-btn @(ChipOn(c.Id) ? "on" : null)" @onclick="() => SelectCategory(c.Id)">@c.Name</button>
+            <button class="chip-btn @(ChipOn(c.Id) ? "on" : null)" aria-pressed="@(ChipOn(c.Id) ? "true" : "false")" @onclick="() => SelectCategory(c.Id)">@c.Name</button>
         }
+    </div>
+
+    @* Seat and Parcel apply to the dishes tapped next, like the desktop Order Builder; each cart line can still be changed. *@
+    <div class="dish-prefs" data-testid="dish-prefs">
+        @if (ShowSeatPicker)
+        {
+            <div class="seat-picker" role="group" aria-label="Seat for the next dishes" data-testid="seat-picker">
+                <span class="seat-picker-label muted small">Seat</span>
+                <div class="chip-row seat-chips">
+                    <button type="button" class="chip-btn @(_seat is null ? "on" : null)" data-testid="seat-whole" aria-pressed="@(_seat is null ? "true" : "false")" @onclick="() => _seat = null">Whole table</button>
+                    @foreach (var code in _seatCodes)
+                    {
+                        var seat = code;
+                        <button type="button" class="chip-btn @(_seat == seat ? "on" : null)" data-testid="seat-chip" data-seat="@seat" aria-label="@($"Seat {seat}")"
+                                aria-pressed="@(_seat == seat ? "true" : "false")" @onclick="() => _seat = seat">@seat</button>
+                    }
+                </div>
+            </div>
+        }
+        <button type="button" class="parcel-toggle @(_parcel ? "on" : null)" data-testid="parcel-toggle" aria-pressed="@(_parcel ? "true" : "false")" @onclick="() => _parcel = !_parcel">
+            <span class="switch" aria-hidden="true"><span class="switch-knob"></span></span>
+            <span class="parcel-label">Parcel</span>
+        </button>
     </div>
 
     <div class="items">
@@ -96,14 +119,14 @@ else
         <EmptyState Small="true" Icon="search" Text="@(IsSearching ? "No dish matches that." : "Nothing in this category.")" />
     }
 
-    <CartBar Cart="_cart" ImageUrl="LineImage" ShowGuests="@(!IsAppend)" GuestsChanged="g => Guests = g" Busy="_sending"
+    <CartBar Cart="_cart" Busy="_sending"
              ReviewLabel="@(IsAppend ? "Review added items" : "Review order")" OnReview="() => _review = true" />
 }
 
 @* Review = the confirm-before-send step: every line with its controls, order notes, then one Send button. *@
 @if (_review && _menu is not null)
 {
-    <BottomSheet Open="true" Title="@(IsAppend ? "Added items" : IsEdit ? "Edit draft" : $"Order · {_tableCode ?? $"table {TableId}"}")" OnClose="() => _review = false">
+    <BottomSheet Open="true" Title="@(IsAppend ? "Added items" : IsEdit ? "Edit draft" : _tableCode is null ? "Review order" : $"Order · {_tableCode}")" OnClose="() => _review = false">
         @if (_cart.IsEmpty)
         {
             <EmptyState Small="true" Text="Nothing in the order yet." />
@@ -115,7 +138,7 @@ else
                 {
                     var l = line;
                     <CartLineRow Line="l" ImageUrl="@LineImage(l)" OnIncrease="() => Change(() => _cart.Increase(l))" OnDecrease="() => Change(() => _cart.Decrease(l))"
-                                 OnEdit="() => EditLine(l)" OnDelete="() => Change(() => _cart.Remove(l))" />
+                                 OnEdit="() => EditLine(l)" OnDelete="() => Change(() => _cart.Remove(l))" OnToggleParcel="() => ToggleParcel(l)" />
                 }
             </div>
         }
@@ -136,7 +159,7 @@ else
 
         <div class="review-foot">
             <div class="cart-total-wrap">
-                <span class="muted small">approx. total</span>
+                <span class="muted small">Total</span>
                 <b class="cart-total num-tab">@_cart.ApproxTotal.ToString("N2")</b>
             </div>
             <div class="row">
@@ -207,8 +230,31 @@ else
         {
             _showDeliverySheet = true;
         }
+
+        // Takeaway and delivery have no seats: nothing may still point at one.
+        if (type != OrderType.DineIn)
+        {
+            _seat = null;
+            Change(_cart.ClearSeats);
+        }
+
         SetTitle();
     }
+
+    // Seats of the table this order is for (its own plus those of tables merged into it); empty for takeaway/delivery.
+    private IReadOnlyList<string> _seatCodes = Array.Empty<string>();
+    private string? _seat;
+    private bool _parcel;
+
+    private bool ShowSeatPicker => _orderType == OrderType.DineIn && _seatCodes.Count > 0;
+
+    private string? ActiveSeat => ShowSeatPicker && _seat is not null && _seatCodes.Contains(_seat) ? _seat : null;
+
+    private void ToggleParcel(CartLine line) =>
+        Change(() => _cart.SetParcel(line, !line.IsParcel, _menu?.Items.FirstOrDefault(i => i.Id == line.MenuItemId)?.PackagingCharge));
+
+    private string AddedText(MenuEntryDto item) =>
+        $"{item.Name} added{(_parcel ? " (parcel)" : null)}{(ActiveSeat is { } seat ? $" for seat {seat}" : null)}.";
 
     private readonly OrderComposer _cart = new();
     private MenuDto? _menu;
@@ -334,11 +380,33 @@ else
                 {
                     _cart.Guests = guests;
                 }
+
+                _seatCodes = await LoadSeatCodesAsync(detail.Table);
             }
         }
 
         SetTitle();
         await LoadAsync();
+    }
+
+    // The table's own seats, then the seats of every table merged into it (one order may use the seats of both). The table
+    // map is only read when something is merged here; a failed read leaves the table's own seats.
+    private async Task<IReadOnlyList<string>> LoadSeatCodesAsync(TableDto table)
+    {
+        var seats = table.SeatCodes.ToList();
+        if (table.MergedTableCodes.Count > 0)
+        {
+            var map = await Api.GetTableMapAsync();
+            if (map.Success && map.Data is { } data)
+            {
+                foreach (var companion in data.Sections.SelectMany(s => s.Tables).Where(t => t.MergedIntoTableId == table.Id).OrderBy(t => t.Code, StringComparer.OrdinalIgnoreCase))
+                {
+                    seats.AddRange(companion.SeatCodes.Where(code => !seats.Contains(code)));
+                }
+            }
+        }
+
+        return seats;
     }
 
     private async Task LoadAsync()
@@ -370,8 +438,8 @@ else
         var groups = GroupsFor(item);
         if (groups.Count == 0)
         {
-            Change(() => _cart.Add(item, Array.Empty<MenuModifierOptionDto>(), 1, null));
-            Toasts.Success($"{item.Name} added.");
+            Change(() => _cart.Add(item, Array.Empty<MenuModifierOptionDto>(), 1, null, _parcel, ActiveSeat));
+            Toasts.Success(AddedText(item));
             return;
         }
 
@@ -395,8 +463,8 @@ else
         _options = null;
         if (request.Line is not { } line)
         {
-            Change(() => _cart.Add(request.Item, result.Options, result.Quantity, result.Notes));
-            Toasts.Success($"{request.Item.Name} added.");
+            Change(() => _cart.Add(request.Item, result.Options, result.Quantity, result.Notes, _parcel, ActiveSeat));
+            Toasts.Success(AddedText(request.Item));
             return;
         }
 
@@ -411,7 +479,7 @@ else
             else
             {
                 _cart.Remove(line);
-                _cart.Add(request.Item, result.Options, result.Quantity, result.Notes);
+                _cart.Add(request.Item, result.Options, result.Quantity, result.Notes, line.IsParcel, line.SeatCode);
             }
         });
     }

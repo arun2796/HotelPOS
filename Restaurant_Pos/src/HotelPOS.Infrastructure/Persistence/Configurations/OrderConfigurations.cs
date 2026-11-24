@@ -64,6 +64,7 @@ internal sealed class OrderItemConfiguration : IEntityTypeConfiguration<OrderIte
         builder.Property(i => i.Notes).HasMaxLength(OrderLimits.NotesMaxLength);
         builder.Property(i => i.CancelReason).HasMaxLength(OrderLimits.ReasonMaxLength);
         builder.Property(i => i.TaxRatePercent).HasPrecision(5, 2);
+        builder.Property(i => i.SeatCode).HasMaxLength(16);
         builder.HasIndex(i => i.OrderId);
         builder.HasOne<MenuItem>().WithMany().HasForeignKey(i => i.MenuItemId).OnDelete(DeleteBehavior.Restrict);
         builder.HasMany(i => i.Modifiers).WithOne().HasForeignKey(m => m.OrderItemId).OnDelete(DeleteBehavior.Cascade);

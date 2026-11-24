@@ -1,4 +1,5 @@
 using HotelPOS.Contracts.Common;
+using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Gst;
 using HotelPOS.Contracts.Menu;
 using HotelPOS.Domain.Common;
@@ -71,6 +72,100 @@ public sealed class MenuItem : BaseEntity, IHasRowVersion
     }
 
     public void SetAvailability(bool isAvailable) => IsAvailable = isAvailable;
+
+    // Kitchen stock quota. StockRemaining is null while the item is not tracked.
+    public StockTrackingMode StockMode { get; private set; }
+    public int? StockOpening { get; private set; }
+    public int? StockRemaining { get; private set; }
+
+    // Added to the unit price when the guest takes the item as a parcel.
+    public decimal PackagingCharge { get; private set; }
+
+    public bool IsStockTracked => StockMode != StockTrackingMode.None && StockRemaining is not null;
+
+    public void SetPackagingCharge(decimal charge) =>
+        PackagingCharge = MenuGuard.Money(charge, 0m, MenuLimits.MaxPrice, "Packaging charge");
+
+    // The supervisor loads a new batch: the opening count and what is left both restart, and the item is
+    // available again as soon as there is something to sell.
+    public void ConfigureStock(StockTrackingMode mode, int? quantity)
+    {
+        if (mode == StockTrackingMode.None)
+        {
+            StockMode = StockTrackingMode.None;
+            StockOpening = null;
+            StockRemaining = null;
+            return;
+        }
+
+        if (quantity is null or < 0 or > 100000)
+        {
+            throw new DomainException("Enter a stock count between 0 and 100000.");
+        }
+
+        StockMode = mode;
+        StockOpening = quantity;
+        StockRemaining = quantity;
+        IsAvailable = quantity > 0;
+    }
+
+    // Adds to what is left (a second vessel is loaded) without restarting the opening count.
+    public void AddStock(int quantity)
+    {
+        if (!IsStockTracked)
+        {
+            throw new DomainException($"{Name} has no stock count. Set one first.");
+        }
+
+        if (quantity < 1 || quantity > 100000)
+        {
+            throw new DomainException("Enter a quantity between 1 and 100000.");
+        }
+
+        StockRemaining += quantity;
+        StockOpening = Math.Max(StockOpening ?? 0, StockRemaining ?? 0);
+        IsAvailable = true;
+    }
+
+    // Returns false when an Exact item cannot cover the quantity. An Approximate item never refuses: its count is a
+    // guess, so it simply sells out when the guess runs to zero.
+    public bool TryConsumeStock(int quantity)
+    {
+        if (!IsStockTracked)
+        {
+            return true;
+        }
+
+        var left = StockRemaining ?? 0;
+        if (StockMode == StockTrackingMode.Exact && quantity > left)
+        {
+            return false;
+        }
+
+        StockRemaining = Math.Max(0, left - quantity);
+        if (StockRemaining == 0)
+        {
+            IsAvailable = false;
+        }
+
+        return true;
+    }
+
+    // A sent item was cancelled: the portions go back, and an item that sold out because of the count is on again.
+    public void RestoreStock(int quantity)
+    {
+        if (!IsStockTracked)
+        {
+            return;
+        }
+
+        var wasOut = (StockRemaining ?? 0) == 0;
+        StockRemaining = (StockRemaining ?? 0) + quantity;
+        if (wasOut && StockRemaining > 0)
+        {
+            IsAvailable = true;
+        }
+    }
 
     public void SetImage(string? imagePath) => ImagePath = imagePath;
 

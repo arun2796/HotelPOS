@@ -61,7 +61,12 @@ internal sealed class MenuItemConfiguration : IEntityTypeConfiguration<MenuItem>
 {
     public void Configure(EntityTypeBuilder<MenuItem> builder)
     {
-        builder.ToTable("MenuItems", t => t.HasCheckConstraint("CK_MenuItems_Price", "\"Price\" >= 0"));
+        builder.ToTable("MenuItems", t =>
+        {
+            t.HasCheckConstraint("CK_MenuItems_Price", "\"Price\" >= 0");
+            t.HasCheckConstraint("CK_MenuItems_PackagingCharge", "\"PackagingCharge\" >= 0");
+            t.HasCheckConstraint("CK_MenuItems_StockMode", "\"StockMode\" IN (0, 1, 2)");
+        });
         builder.Property(i => i.Name).HasMaxLength(MenuLimits.NameMaxLength).IsRequired();
         builder.Property(i => i.Code).HasMaxLength(MenuLimits.CodeMaxLength);
         builder.Property(i => i.Description).HasMaxLength(MenuLimits.DescriptionMaxLength);

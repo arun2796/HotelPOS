@@ -72,9 +72,11 @@ public sealed class ThemeTokenContractTests
     [InlineData("Brush.Background", "#F4F7FB")]
     [InlineData("Brush.Surface", "#FFFFFF")]
     [InlineData("Brush.TextPrimary", "#172B4D")]
-    [InlineData("Brush.TextSecondary", "#64748B")]
+    // UI audit 2026-11-24: the mock-up grey #64748B is 4.43:1 on the page background (AA needs 4.5), so muted text is #566579.
+    [InlineData("Brush.TextSecondary", "#566579")]
     [InlineData("Brush.Border", "#E2E8F0")]
-    [InlineData("Brush.Success", "#16A34A")]
+    // white text on the old #16A34A was 3.3:1; the solid success/ready/available green is #15803D (5.0:1).
+    [InlineData("Brush.Success", "#15803D")]
     [InlineData("Brush.SuccessText", "#15803D")]
     [InlineData("Brush.Warning", "#F59E0B")]
     [InlineData("Brush.WarningText", "#B45309")]

@@ -17,15 +17,15 @@
         <div class="picker-group" data-testid="picker-channels">
             <div class="picker-head">Channels (no table)</div>
             <div class="picker-grid">
-                <button type="button" class="picker-table" data-testid="picker-takeaway" style="background: var(--info);" @onclick="PickTakeaway">
-                    <span style="display: flex; align-items: center; gap: 6px;">
+                <button type="button" class="picker-table channel" data-testid="picker-takeaway" style="--tbd: var(--info);" @onclick="PickTakeaway">
+                    <span class="picker-title">
                         <Icon Name="shopping-bag" Size="18" />
                         <b>Takeaway</b>
                     </span>
                     <span class="small">Counter pick-up</span>
                 </button>
-                <button type="button" class="picker-table" data-testid="picker-delivery" style="background: var(--warning);" @onclick="PickDelivery">
-                    <span style="display: flex; align-items: center; gap: 6px;">
+                <button type="button" class="picker-table channel" data-testid="picker-delivery" style="--tbd: var(--warning);" @onclick="PickDelivery">
+                    <span class="picker-title">
                         <Icon Name="truck" Size="18" />
                         <b>Delivery</b>
                     </span>
@@ -44,7 +44,7 @@
                 {
                     var t = table;
                     <button type="button" class="picker-table st-@StatusLabels.TableClass(t.Status)" @onclick="() => Pick(t)">
-                        <b>@t.Code</b><span class="small">@t.SectionName</span>
+                        <b>@t.Code</b><span class="small">@TextFormat.Count(t.Capacity, "seat")</span><span class="small">@t.SectionName</span>
                     </button>
                 }
             </div>
@@ -58,7 +58,7 @@
                     {
                         var t = table;
                         <button type="button" class="picker-table st-@StatusLabels.TableClass(t.Status)" @onclick="() => Pick(t)">
-                            <b>@t.Code</b><span class="small">@t.SectionName</span>
+                            <b>@t.Code</b><span class="small">@TextFormat.Count(t.Capacity, "seat")</span><span class="small">@t.SectionName</span>
                         </button>
                     }
                 </div>
@@ -101,7 +101,8 @@
         }
 
         var tables = map.Data.Sections.Where(s => s.IsActive).OrderBy(s => s.SortOrder).SelectMany(s => s.Tables).Where(t => t.IsActive).ToList();
-        _available = tables.Where(t => t.Status == TableStatus.Available).ToList();
+        // A merged companion is locked (no orders of its own), so it is not offered for a new order.
+        _available = tables.Where(t => t.Status == TableStatus.Available && t.MergedIntoTableId is null).ToList();
 
         var orders = await Api.GetActiveOrdersAsync();
         var myTableIds = orders.Success && orders.Data is { } list

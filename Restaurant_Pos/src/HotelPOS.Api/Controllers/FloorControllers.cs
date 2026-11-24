@@ -89,6 +89,18 @@ public sealed class TablesController : ApiControllerBase
     public async Task<IActionResult> Release(int id, CancellationToken cancellationToken) =>
         FromResult(await Sender.Send(new ReleaseTableCommand(id), cancellationToken), message: "Table released.");
 
+    [HttpPost("{id:int}/merge")]
+    [Authorize(Policy = Permissions.TablesOperate)]
+    [ProducesResponseType<ApiResponse<TableDto>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> Merge(int id, MergeTablesRequest request, CancellationToken cancellationToken) =>
+        FromResult(await Sender.Send(new MergeTablesCommand(id, request), cancellationToken), message: "Tables merged.");
+
+    [HttpPost("{id:int}/unmerge")]
+    [Authorize(Policy = Permissions.TablesOperate)]
+    [ProducesResponseType<ApiResponse<TableDto>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> Unmerge(int id, CancellationToken cancellationToken) =>
+        FromResult(await Sender.Send(new UnmergeTableCommand(id), cancellationToken), message: "Table taken out of the merge.");
+
     [HttpPost("{id:int}/out-of-service")]
     [Authorize(Policy = Permissions.TablesManage)]
     [ProducesResponseType<ApiResponse<TableDto>>(StatusCodes.Status200OK)]

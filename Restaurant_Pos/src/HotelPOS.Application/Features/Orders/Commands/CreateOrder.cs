@@ -60,6 +60,7 @@ internal sealed class CreateOrderHandler : ICommandHandler<CreateOrderCommand, O
     private readonly TicketFactory _tickets;
     private readonly KitchenSync _kitchen;
     private readonly TableEvents _tableEvents;
+    private readonly OrderStock _stock;
 
     public CreateOrderHandler(
         IAppDbContext db,
@@ -71,8 +72,10 @@ internal sealed class CreateOrderHandler : ICommandHandler<CreateOrderCommand, O
         OrderItemFactory itemFactory,
         TicketFactory tickets,
         KitchenSync kitchen,
-        TableEvents tableEvents)
+        TableEvents tableEvents,
+        OrderStock stock)
     {
+        _stock = stock;
         _db = db;
         _audit = audit;
         _afterCommit = afterCommit;
@@ -120,7 +123,7 @@ internal sealed class CreateOrderHandler : ICommandHandler<CreateOrderCommand, O
             }
         }
 
-        var items = await _itemFactory.CreateAsync(request.Items, cancellationToken);
+        var items = await _itemFactory.CreateAsync(request.Items, table?.Id, cancellationToken);
         if (items.IsFailure)
         {
             return items.Error!;
@@ -129,6 +132,15 @@ internal sealed class CreateOrderHandler : ICommandHandler<CreateOrderCommand, O
         if (request.Submit && items.Value.Count == 0)
         {
             return AppErrors.BusinessRule("Add at least one item before sending the order.");
+        }
+
+        if (request.Submit)
+        {
+            var outOfStock = await _stock.ReserveAsync(items.Value, cancellationToken);
+            if (outOfStock is not null)
+            {
+                return outOfStock;
+            }
         }
 
         var now = _clock.UtcNow;

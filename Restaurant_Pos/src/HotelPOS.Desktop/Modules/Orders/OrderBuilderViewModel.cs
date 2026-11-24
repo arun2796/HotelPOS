@@ -68,10 +68,11 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
 
         public static readonly IReadOnlyList<string> QuickNotes = new[]
     {
-        "Less spicy", "Extra spicy", "No onion", "No garlic", "Less oil", "Jain", "Parcel",
+        "Less spicy", "Extra spicy", "No onion", "No garlic", "Less oil", "Jain",
     };
 
     private readonly IMenuCache _menuCache;
+    private readonly IFloorApi? _floorApi;
     private readonly IOrdersApi _ordersApi;
     private readonly ISystemApi _systemApi;
     private readonly ILocalDraftStore _drafts;
@@ -96,8 +97,10 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
         INavigationService navigation,
         IDialogService dialogs,
         INotificationService notifications,
-        IUserPreferences preferences)
+        IUserPreferences preferences,
+        IFloorApi? floorApi = null)
     {
+        _floorApi = floorApi;
         _menuCache = menuCache;
         _ordersApi = ordersApi;
         _systemApi = systemApi;
@@ -164,6 +167,28 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
     [ObservableProperty]
     private bool _isDeliveryDetailsOpen;
 
+    public const string WholeTable = "Whole table";
+
+    // Seats of the table (and of any table merged into it): "4A".."4D". The captain picks one before tapping dishes.
+    public ObservableCollection<string> SeatChoices { get; } = new() { WholeTable };
+
+    [ObservableProperty]
+    private string _selectedSeat = WholeTable;
+
+    // While on, every dish tapped is added as a parcel (packed to take away, with its packaging charge).
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ParcelModeText))]
+    private bool _isParcelMode;
+
+    public string ParcelModeText => IsParcelMode ? "PARCEL ✓ ON" : "PARCEL";
+
+    [RelayCommand]
+    private void ToggleParcelMode() => IsParcelMode = !IsParcelMode;
+
+    public bool HasSeats => SeatChoices.Count > 1;
+
+    private string? SeatForNewLine => SelectedSeat == WholeTable || !SeatChoices.Contains(SelectedSeat) ? null : SelectedSeat;
+
     public bool IsDineIn => OrderType == OrderType.DineIn;
     public bool IsTakeaway => OrderType == OrderType.Takeaway;
     public bool IsDelivery => OrderType == OrderType.Delivery;
@@ -228,9 +253,9 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
 
     public string SummaryText => ItemCount == 0
         ? "Cart is empty"
-        : $"{ItemCount} item{(ItemCount == 1 ? string.Empty : "s")} · approx. {_currency}{ApproxTotal.ToString("N2", CultureInfo.CurrentCulture)}";
+        : $"{ItemCount} item{(ItemCount == 1 ? string.Empty : "s")} · total {_currency}{ApproxTotal.ToString("N2", CultureInfo.CurrentCulture)}";
 
-    public string SendText => IsSending ? "Sending…" : IsAppendMode ? "SEND ADDED ITEMS" : "SEND TO KITCHEN";
+    public string SendText => IsSending ? "Sending…" : IsAppendMode ? "Send added items" : "Send to kitchen";
 
     public bool IsCartEmpty => Cart.Count == 0;
 
@@ -255,7 +280,33 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
 
         BuildMenu();
         _menuCache.Changed += OnMenuChanged;
+        await LoadSeatsAsync();
         await RestoreAsync();
+    }
+
+    // The seats come from the floor map: this table's own plus those of the tables merged into it.
+    private async Task LoadSeatsAsync()
+    {
+        SeatChoices.Clear();
+        SeatChoices.Add(WholeTable);
+        SelectedSeat = WholeTable;
+        if (_context.TableId is { } tableId && OrderType == OrderType.DineIn)
+        {
+            var map = _floorApi is null ? null : await _floorApi.GetMapAsync();
+            if (map is { Success: true, Data: not null })
+            {
+                var tables = map.Data.Sections.SelectMany(s => s.Tables).ToList();
+                foreach (var table in tables.Where(t => t.Id == tableId).Concat(tables.Where(t => t.MergedIntoTableId == tableId)))
+                {
+                    foreach (var seat in table.SeatCodes)
+                    {
+                        SeatChoices.Add(seat);
+                    }
+                }
+            }
+        }
+
+        OnPropertyChanged(nameof(HasSeats));
     }
 
     public void OnNavigatedFrom() => _menuCache.Changed -= OnMenuChanged;
@@ -287,7 +338,25 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
             return;
         }
 
-        AddLine(new DraftLine { MenuItemId = tile.Item.Id, Name = tile.Item.Name, UnitPrice = tile.Item.Price });
+        AddLine(new DraftLine
+        {
+            MenuItemId = tile.Item.Id,
+            Name = tile.Item.Name,
+            UnitPrice = tile.Item.Price,
+            PackagingCharge = tile.Item.PackagingCharge,
+            IsParcel = IsParcelMode,
+            SeatCode = SeatForNewLine,
+        });
+    }
+
+    [RelayCommand]
+    private void ToggleParcel(CartItemViewModel? line)
+    {
+        if (line is not null)
+        {
+            line.IsParcel = !line.IsParcel;
+            OnCartChanged();
+        }
     }
 
     [RelayCommand]
@@ -314,7 +383,8 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
     {
         if (Picker?.TryBuild() is { } line)
         {
-            AddLine(line);
+            var packaging = _menuCache.Menu?.Items.FirstOrDefault(i => i.Id == line.MenuItemId)?.PackagingCharge ?? 0m;
+            AddLine(line with { PackagingCharge = packaging, IsParcel = IsParcelMode, SeatCode = SeatForNewLine });
             Picker = null;
         }
     }
@@ -581,7 +651,7 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
 
     private void AddLine(DraftLine line)
     {
-        var existing = Cart.FirstOrDefault(c => c.IsSameChoice(line.MenuItemId, line.ModifierOptionIds.ToList()));
+        var existing = Cart.FirstOrDefault(c => c.IsSameChoice(line.MenuItemId, line.ModifierOptionIds.ToList(), line.IsParcel, line.SeatCode));
         if (existing is not null)
         {
             existing.Quantity = Math.Min(existing.Quantity + line.Quantity, OrderLimits.MaxQuantity);
@@ -623,8 +693,11 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
                             Cart.Add(new CartItemViewModel(new DraftLine
                             {
                                 MenuItemId = item.MenuItemId,
-                                Name = item.ItemName,
-                                UnitPrice = item.UnitPrice,
+                                Name = item.IsParcel && item.ItemName.EndsWith(" (Parcel)", StringComparison.Ordinal) ? item.ItemName[..^" (Parcel)".Length] : item.ItemName,
+                                UnitPrice = item.UnitPrice - item.PackagingCharge,
+                                IsParcel = item.IsParcel,
+                                PackagingCharge = item.PackagingCharge,
+                                SeatCode = item.SeatCode,
                                 Quantity = item.Quantity,
                                 Notes = item.Notes,
                                 ModifierOptionIds = item.Modifiers.Select(m => m.ModifierOptionId).ToList(),
@@ -665,7 +738,7 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
 
     private void OnLineChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(CartItemViewModel.Quantity) or nameof(CartItemViewModel.Notes))
+        if (e.PropertyName is nameof(CartItemViewModel.Quantity) or nameof(CartItemViewModel.Notes) or nameof(CartItemViewModel.IsParcel) or nameof(CartItemViewModel.SeatCode))
         {
             OnCartChanged();
         }

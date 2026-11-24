@@ -62,6 +62,8 @@ public static class DependencyInjection
         services.AddScoped<FloorSections>();
         services.AddScoped<FloorTables>();
         services.AddScoped<TableEvents>();
+        services.AddScoped<TableMerges>();
+        services.AddScoped<OrderStock>();
         services.AddScoped<ReservationEvents>();
         services.AddScoped<MenuChanges>();
         services.AddScoped<MenuCategories>();

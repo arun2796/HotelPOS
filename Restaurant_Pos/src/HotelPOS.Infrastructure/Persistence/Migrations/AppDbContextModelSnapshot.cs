@@ -17,7 +17,7 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.31")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -439,6 +439,9 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                     b.Property<int?>("SettledBy")
                         .HasColumnType("integer");
 
+                    b.Property<int>("SplitIndex")
+                        .HasColumnType("integer");
+
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
@@ -489,14 +492,14 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasFilter("\"InvoiceNumber\" IS NOT NULL");
 
-                    b.HasIndex("OrderId")
-                        .IsUnique()
-                        .HasDatabaseName("IX_Bills_OrderId_Live")
-                        .HasFilter("\"Status\" <> 4");
-
                     b.HasIndex("SettledAt");
 
                     b.HasIndex("WaiterId");
+
+                    b.HasIndex("OrderId", "SplitIndex")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Bills_OrderId_Live")
+                        .HasFilter("\"Status\" <> 4");
 
                     b.HasIndex("Status", "CreatedAt");
 
@@ -549,6 +552,10 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
 
                     b.Property<int>("Quantity")
                         .HasColumnType("integer");
+
+                    b.Property<string>("SeatCode")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
 
                     b.Property<decimal>("TaxAmount")
                         .HasPrecision(18, 2)
@@ -1479,6 +1486,9 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
+                    b.Property<int?>("MergedIntoTableId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Name")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
@@ -1525,6 +1535,8 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.HasIndex("CurrentOrderId");
+
+                    b.HasIndex("MergedIntoTableId");
 
                     b.HasIndex("SectionId");
 
@@ -2096,6 +2108,10 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<decimal>("PackagingCharge")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<int>("PreparationStationId")
                         .HasColumnType("integer");
 
@@ -2110,6 +2126,15 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                         .HasColumnName("xmin");
 
                     b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("StockMode")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("StockOpening")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("StockRemaining")
                         .HasColumnType("integer");
 
                     b.Property<int?>("TaxId")
@@ -2136,7 +2161,11 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
 
                     b.ToTable("MenuItems", null, t =>
                         {
+                            t.HasCheckConstraint("CK_MenuItems_PackagingCharge", "\"PackagingCharge\" >= 0");
+
                             t.HasCheckConstraint("CK_MenuItems_Price", "\"Price\" >= 0");
+
+                            t.HasCheckConstraint("CK_MenuItems_StockMode", "\"StockMode\" IN (0, 1, 2)");
                         });
                 });
 
@@ -2494,6 +2523,9 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                     b.Property<int?>("CreatedBy")
                         .HasColumnType("integer");
 
+                    b.Property<bool>("IsParcel")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("ItemName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -2509,11 +2541,19 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                     b.Property<int>("OrderId")
                         .HasColumnType("integer");
 
+                    b.Property<decimal>("PackagingCharge")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<int>("PreparationStationId")
                         .HasColumnType("integer");
 
                     b.Property<int>("Quantity")
                         .HasColumnType("integer");
+
+                    b.Property<string>("SeatCode")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");
@@ -2879,6 +2919,11 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                         .HasForeignKey("CurrentOrderId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("HotelPOS.Domain.Floor.Table", "MergedInto")
+                        .WithMany("MergedTables")
+                        .HasForeignKey("MergedIntoTableId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("HotelPOS.Domain.Floor.Section", "Section")
                         .WithMany()
                         .HasForeignKey("SectionId")
@@ -2886,6 +2931,8 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("CurrentOrder");
+
+                    b.Navigation("MergedInto");
 
                     b.Navigation("Section");
                 });
@@ -3119,6 +3166,11 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                     b.Navigation("Counts");
 
                     b.Navigation("Movements");
+                });
+
+            modelBuilder.Entity("HotelPOS.Domain.Floor.Table", b =>
+                {
+                    b.Navigation("MergedTables");
                 });
 
             modelBuilder.Entity("HotelPOS.Domain.Identity.Role", b =>

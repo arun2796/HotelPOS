@@ -58,6 +58,23 @@ else
         {
             <div class="muted detail-guests">@TextFormat.Count(guests, "guest")@(table!.OccupiedAtUtc is { } since ? $" · since {since.ToLocalTime():HH:mm}" : null)</div>
         }
+        @if (table is not null && (table.MergedIntoTableId is not null || table.MergedTableCodes.Count > 0))
+        {
+            <div class="merge-note" data-testid="merge-note">
+                @if (!string.IsNullOrEmpty(table.MergedIntoTableCode))
+                {
+                    <span class="chip info" data-testid="merged-into"><Icon Name="swap" Size="14" /> Merged into @table.MergedIntoTableCode</span>
+                }
+                @if (table.MergedTableCodes.Count > 0)
+                {
+                    <span class="chip info" data-testid="merged-with"><Icon Name="swap" Size="14" /> Merged with @string.Join(", ", table.MergedTableCodes)</span>
+                }
+            </div>
+        }
+        @if (table?.CurrentOrderTotal is { } runningTotal)
+        {
+            <div class="row between detail-guests" data-testid="table-running-total"><span class="muted">Running total</span><b class="num-tab">@runningTotal.ToString("N2")</b></div>
+        }
     </div>
 
     @if (table?.UpcomingReservation is { } res)
@@ -84,7 +101,7 @@ else
         </div>
     }
 
-    @if (table is { Status: TableStatus.Available } && CanOperateTables && OrderId is null)
+    @if (table is { Status: TableStatus.Available, MergedIntoTableId: null } && CanOperateTables && OrderId is null)
     {
         <div class="card" style="margin-top:10px">
             <h2>Seat guests</h2>
@@ -145,7 +162,7 @@ else
                     var cancelled = line.Status == OrderItemStatus.Cancelled;
                     <div class="detail-item">
                         <OrderLine Name="@line.ItemName" Quantity="line.Quantity" Modifiers="@string.Join(", ", line.Modifiers.Select(m => m.Name))" Note="@line.Notes"
-                                   Price="line.LineTotal" Cancelled="cancelled" ImageUrl="@ItemImage(line)" />
+                                   Price="line.LineTotal" Cancelled="cancelled" ImageUrl="@ItemImage(line)" SeatCode="@line.SeatCode" IsParcel="line.IsParcel" />
                         <div class="detail-item-foot">
                             <span class="chip @(line.TicketStatus is { } ticket && !cancelled ? StatusLabels.TicketChip(ticket) : null)">@(line.TicketStatus is { } ts && !cancelled ? StatusLabels.Ticket(ts) : StatusLabels.Line(line.Status))</span>
                             @if (CanCancelLine(line))
@@ -197,6 +214,57 @@ else
         <div class="actions">
             <button class="btn" @onclick="() => _confirmRelease = false">Keep</button>
             <button class="btn primary" data-testid="confirm-release" @onclick="ReleaseAsync" disabled="@_busy">Release</button>
+        </div>
+    </BottomSheet>
+}
+
+@if (_mergeOpen && _detail is { } mergeDetail)
+{
+    <BottomSheet Open="true" Title="@($"Merge a table into {mergeDetail.Table.Code}")" OnClose="CloseMerge">
+        <p class="muted small">The guests of the table you pick are billed on @(mergeDetail.Table.Code)'s order, and the order may use the seats of both tables.</p>
+        @if (_mergeLoading)
+        {
+            <Skeleton Variant="Skeleton.SkeletonVariant.Card" Count="3" Label="Loading free tables" />
+        }
+        else if (_mergeError is not null)
+        {
+            <div class="banner error" data-testid="merge-error">@_mergeError</div>
+        }
+        else if (_mergeCandidates.Count == 0)
+        {
+            <p class="muted" data-testid="merge-none">No free table to merge right now.</p>
+        }
+        else
+        {
+            <div class="picker-grid merge-picker" role="group" aria-label="Free tables" data-testid="merge-candidates">
+                @foreach (var candidate in _mergeCandidates)
+                {
+                    var c = candidate;
+                    <button type="button" class="picker-table st-@StatusLabels.TableClass(c.Status)" data-testid="merge-candidate" data-table-id="@c.Id" aria-pressed="@(_mergePick == c.Id ? "true" : "false")"
+                            aria-label="@($"{c.Code}, {TextFormat.Count(c.Capacity, "seat")}")" @onclick="() => _mergePick = c.Id">
+                        <b>@c.Code</b><span class="small">@TextFormat.Count(c.Capacity, "seat")</span><span class="small">@c.SectionName</span>
+                        @if (_mergePick == c.Id)
+                        {
+                            <span class="picker-check" aria-hidden="true"><Icon Name="check" Size="16" /></span>
+                        }
+                    </button>
+                }
+            </div>
+        }
+        <div class="actions">
+            <button class="btn" @onclick="CloseMerge">Cancel</button>
+            <button class="btn primary" data-testid="confirm-merge" @onclick="MergeAsync" disabled="@(_busy || _mergePick is null)">Merge</button>
+        </div>
+    </BottomSheet>
+}
+
+@if (_confirmUnmerge)
+{
+    <BottomSheet Open="true" Title="@($"Unmerge {_detail?.Table.Code}?")" OnClose="() => _confirmUnmerge = false">
+        <p class="muted">@_detail?.Table.Code leaves @_detail?.Table.MergedIntoTableCode and becomes a free table again.</p>
+        <div class="actions">
+            <button class="btn" @onclick="() => _confirmUnmerge = false">Keep merged</button>
+            <button class="btn primary" data-testid="confirm-unmerge" @onclick="UnmergeAsync" disabled="@_busy">Unmerge</button>
         </div>
     </BottomSheet>
 }
@@ -260,6 +328,12 @@ else
     private bool _busy;
     private bool _hasDraft;
     private bool _confirmRelease;
+    private bool _confirmUnmerge;
+    private bool _mergeOpen;
+    private bool _mergeLoading;
+    private string? _mergeError;
+    private int? _mergePick;
+    private List<TableDto> _mergeCandidates = new();
     private bool _cancelOpen;
     private bool _editOpen;
     private string _cancelReason = string.Empty;
@@ -295,14 +369,21 @@ else
     };
 
     // The same visibility rules as the desktop TableDetailsViewModel; Edit follows the PUT policy (OrdersCreate) and CanModify.
-    private bool ShowNewOrder => OrderId is null && CanTakeOrders && _detail is { Table: { CurrentOrderId: null } t } && t.Status is TableStatus.Available or TableStatus.Occupied;
-    private bool ShowAddItems => CanTakeOrders && _order is { CanModify: true, Status: not OrderStatus.Draft };
-    private bool ShowEdit => CanTakeOrders && _order is { CanModify: true, Status: not OrderStatus.Draft };
+    // A merged companion table is locked: its guests are billed on the primary table's order, so it takes no order of its own.
+    private bool ShowNewOrder => OrderId is null && CanTakeOrders && _detail is { Table: { CurrentOrderId: null, MergedIntoTableId: null } t } && t.Status is TableStatus.Available or TableStatus.Occupied;
+    private bool ShowMerge => OrderId is null && CanOperateTables && _detail is { Table: { MergedIntoTableId: null } m } && m.Status is TableStatus.Occupied or TableStatus.Ordering or TableStatus.Preparing or TableStatus.Ready
+        && _order?.Status is null or OrderStatus.Draft or OrderStatus.Submitted or OrderStatus.Accepted or OrderStatus.Preparing or OrderStatus.Ready or OrderStatus.Served;
+    private bool ShowUnmerge => OrderId is null && CanOperateTables && _detail is { Table.MergedIntoTableId: not null };
+    private bool ShowOpenPrimary => OrderId is null && _detail is { Table.MergedIntoTableId: not null };
+    private bool ShowAddItems => CanTakeOrders && _order is { CanModify: true, Status: OrderStatus.Submitted or OrderStatus.Accepted or OrderStatus.Preparing or OrderStatus.Ready or OrderStatus.Served };
+    private bool ShowEdit => CanTakeOrders && _order is { CanModify: true, Status: OrderStatus.Submitted or OrderStatus.Accepted or OrderStatus.Preparing or OrderStatus.Ready or OrderStatus.Served };
     private bool ShowServe => CanTakeOrders && _order is { } o && o.Tickets.Any(t => t.Status == KitchenOrderStatus.Ready);
     private bool ShowRequestBill => _order is { Bill: null, Status: OrderStatus.Served or OrderStatus.Ready };
     private bool ShowRelease => OrderId is null && CanOperateTables && _detail is { Table: { Status: TableStatus.Occupied, CurrentOrderId: null } };
-    private bool ShowCancelOrder => CanTakeOrders && _order is { CanModify: true };
-    private bool CanCancelLine(OrderItemDto item) => CanTakeOrders && _order is { CanModify: true } && item.Status != OrderItemStatus.Cancelled;
+    // Once the bill is requested nothing can change (the server answers 409), and a line whose ticket is Ready or Completed cannot be cancelled.
+    private bool ShowCancelOrder => CanTakeOrders && _order is { CanModify: true, Status: OrderStatus.Draft or OrderStatus.Submitted or OrderStatus.Accepted or OrderStatus.Preparing or OrderStatus.Ready };
+    private bool CanCancelLine(OrderItemDto item) => CanTakeOrders && _order is { CanModify: true, Status: OrderStatus.Submitted or OrderStatus.Accepted or OrderStatus.Preparing or OrderStatus.Ready }
+        && item.Status != OrderItemStatus.Cancelled && item.TicketStatus is null or KitchenOrderStatus.New or KitchenOrderStatus.Accepted or KitchenOrderStatus.Preparing;
 
     /// <summary>Only the actions valid now, destructive last (no Hold; Print KOT sits with the order's kitchen tickets, Phase 22 P6).</summary>
     private IReadOnlyList<ActionItem> Actions
@@ -315,6 +396,9 @@ else
             if (ShowEdit) { list.Add(new ActionItem("edit", "Edit order", "pencil")); }
             if (ShowServe) { list.Add(new ActionItem("serve", "Mark served", "utensils")); }
             if (ShowRequestBill) { list.Add(new ActionItem("request-bill", "Request bill", "receipt")); }
+            if (ShowOpenPrimary) { list.Add(new ActionItem("open-primary", $"Go to {_detail!.Table.MergedIntoTableCode}", "table", ActionStyle.Primary)); }
+            if (ShowMerge) { list.Add(new ActionItem("merge", "Merge table", "swap")); }
+            if (ShowUnmerge) { list.Add(new ActionItem("unmerge", "Unmerge", "undo")); }
             if (ShowRelease) { list.Add(new ActionItem("release", "Release table", "table")); }
             if (ShowCancelOrder) { list.Add(new ActionItem("cancel", "Cancel order", "ban", ActionStyle.Danger)); }
             return list;
@@ -500,6 +584,18 @@ else
             case "release":
                 _confirmRelease = true;
                 break;
+            case "merge":
+                return OpenMergeAsync();
+            case "unmerge":
+                _confirmUnmerge = true;
+                break;
+            case "open-primary":
+                if (_detail?.Table.MergedIntoTableId is { } primaryId)
+                {
+                    Navigation.NavigateTo($"tables/{primaryId}");
+                }
+
+                break;
             case "cancel":
                 _cancelOpen = true;
                 break;
@@ -541,6 +637,65 @@ else
         {
             var result = await Api.ReleaseAsync(Id);
             return (result.Success, result.Message, result.Success ? $"{_detail!.Table.Code} released." : null, result.IsConflict);
+        });
+    }
+
+    // Merge: the sheet lists the free tables (Available and not merged themselves) read fresh from the table map.
+    private async Task OpenMergeAsync()
+    {
+        _mergeOpen = true;
+        _mergeLoading = true;
+        _mergeError = null;
+        _mergePick = null;
+        _mergeCandidates = new List<TableDto>();
+        await InvokeAsync(StateHasChanged);
+
+        var map = await Api.GetTableMapAsync();
+        if (map.Success && map.Data is { } data)
+        {
+            _mergeCandidates = data.Sections.Where(s => s.IsActive).OrderBy(s => s.SortOrder).SelectMany(s => s.Tables)
+                .Where(t => t.IsActive && t.Id != Id && t.Status == TableStatus.Available && t.MergedIntoTableId is null && t.MergedTableCodes.Count == 0)
+                .ToList();
+        }
+        else
+        {
+            _mergeError = map.Message;
+        }
+
+        _mergeLoading = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void CloseMerge()
+    {
+        _mergeOpen = false;
+        _mergePick = null;
+    }
+
+    private async Task MergeAsync()
+    {
+        if (_mergePick is not { } companionId)
+        {
+            return;
+        }
+
+        var companion = _mergeCandidates.FirstOrDefault(t => t.Id == companionId);
+        _mergeOpen = false;
+        _mergePick = null;
+        await RunAsync(async () =>
+        {
+            var result = await Api.MergeAsync(Id, companionId);
+            return (result.Success, result.Message, result.Success ? $"{companion?.Code ?? "Table"} merged into {_detail!.Table.Code}." : null, result.IsConflict);
+        });
+    }
+
+    private async Task UnmergeAsync()
+    {
+        _confirmUnmerge = false;
+        await RunAsync(async () =>
+        {
+            var result = await Api.UnmergeAsync(Id);
+            return (result.Success, result.Message, result.Success ? $"{_detail!.Table.Code} unmerged." : null, result.IsConflict);
         });
     }
 

@@ -22,6 +22,8 @@ public interface IMenuApi
 
     Task<ApiResult<MenuItemDto>> SetAvailabilityAsync(int id, bool isAvailable, CancellationToken cancellationToken = default);
 
+    Task<ApiResult<MenuItemDto>> SetStockAsync(int id, SetStockRequest request, CancellationToken cancellationToken = default);
+
     Task<ApiResult<MenuItemDto>> UploadImageAsync(int id, Stream content, string fileName, CancellationToken cancellationToken = default);
 
     Task<ApiResult<MenuItemDto>> RemoveImageAsync(int id, CancellationToken cancellationToken = default);
@@ -94,6 +96,9 @@ public sealed class MenuApi : IMenuApi
 
     public Task<ApiResult<MenuItemDto>> SetAvailabilityAsync(int id, bool isAvailable, CancellationToken cancellationToken = default) =>
         _api.PatchAsync<MenuItemDto>($"api/menu-items/{id}/availability", new SetAvailabilityRequest { IsAvailable = isAvailable }, cancellationToken);
+
+    public Task<ApiResult<MenuItemDto>> SetStockAsync(int id, SetStockRequest request, CancellationToken cancellationToken = default) =>
+        _api.PatchAsync<MenuItemDto>($"api/menu-items/{id}/stock", request, cancellationToken);
 
     public Task<ApiResult<MenuItemDto>> UploadImageAsync(int id, Stream content, string fileName, CancellationToken cancellationToken = default) =>
         _api.UploadAsync<MenuItemDto>($"api/menu-items/{id}/image", content, fileName,

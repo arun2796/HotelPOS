@@ -62,7 +62,7 @@
         </StackPanel>
         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
           <Button Content="Back" Command="{Binding BackCommand}" Margin="0,0,8,0" />
-          <Button Content="CHECK THE ROWS" Command="{Binding ShowPreviewCommand}" Style="{StaticResource Button.Primary}" MinHeight="48" />
+          <Button Content="Check the rows" Command="{Binding ShowPreviewCommand}" Style="{StaticResource Button.Primary}" MinHeight="48" />
         </StackPanel>
         <ScrollViewer VerticalScrollBarVisibility="Auto">
           <ItemsControl ItemsSource="{Binding Mapping}" Focusable="False">
@@ -113,7 +113,7 @@
       <DockPanel Grid.Row="2" Margin="0,16,0,0" LastChildFill="False">
         <CheckBox DockPanel.Dock="Left" Content="Skip the rows with errors and import the rest" IsChecked="{Binding SkipInvalid}"
                   VerticalAlignment="Center" Visibility="{Binding HasErrors, Converter={StaticResource BoolToVisibility}}" />
-        <Button DockPanel.Dock="Right" Content="IMPORT" Command="{Binding ApplyCommand}" IsEnabled="{Binding CanApply}"
+        <Button DockPanel.Dock="Right" Content="Import" Command="{Binding ApplyCommand}" IsEnabled="{Binding CanApply}"
                 Style="{StaticResource Button.Primary}" MinHeight="48" MinWidth="140" />
         <Button DockPanel.Dock="Right" Content="Back" Command="{Binding BackCommand}" Margin="0,0,8,0" />
       </DockPanel>
@@ -128,7 +128,7 @@
         <TextBlock Style="{StaticResource Text.Caption}" TextWrapping="Wrap" Margin="0,8,0,0"
                    Text="Terminals pick up the new menu by themselves. Not what you expected? Undo removes this import completely." />
         <StackPanel Orientation="Horizontal" Margin="0,20,0,0">
-          <Button Content="UNDO THIS IMPORT" Command="{Binding UndoCommand}" Style="{StaticResource Button.Danger}" Margin="0,0,8,0"
+          <Button Content="Undo this import" Command="{Binding UndoCommand}" Style="{StaticResource Button.Danger}" Margin="0,0,8,0"
                   Visibility="{Binding CanUndo, Converter={StaticResource BoolToVisibility}}" />
           <Button Content="Import another file" Command="{Binding StartOverCommand}" />
         </StackPanel>

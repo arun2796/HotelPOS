@@ -54,8 +54,8 @@ internal sealed class BillConfiguration : IEntityTypeConfiguration<Bill>
         builder.Property(b => b.InvoiceNumber).HasMaxLength(40);
         builder.HasIndex(b => b.InvoiceNumber).IsUnique().HasFilter("\"InvoiceNumber\" IS NOT NULL");
 
-        // A reopened order gets a new bill, so only one bill per order may be outside Voided.
-        builder.HasIndex(b => b.OrderId).IsUnique().HasFilter($"\"Status\" <> {(int)BillStatus.Voided}").HasDatabaseName("IX_Bills_OrderId_Live");
+        // A reopened order gets a new bill, so only one bill per order and split part may be outside Voided.
+        builder.HasIndex(b => new { b.OrderId, b.SplitIndex }).IsUnique().HasFilter($"\"Status\" <> {(int)BillStatus.Voided}").HasDatabaseName("IX_Bills_OrderId_Live");
         builder.HasIndex(b => new { b.Status, b.CreatedAt });
         builder.HasIndex(b => b.SettledAt);
 
@@ -90,6 +90,7 @@ internal sealed class BillItemConfiguration : IEntityTypeConfiguration<BillItem>
         builder.ToTable("BillItems", t => t.HasCheckConstraint("CK_BillItems_Quantity", "\"Quantity\" > 0"));
         builder.Property(i => i.ItemName).HasMaxLength(MenuLimits.NameMaxLength).IsRequired();
         builder.Property(i => i.TaxRatePercent).HasPrecision(5, 2);
+        builder.Property(i => i.SeatCode).HasMaxLength(16);
         builder.HasIndex(i => i.BillId);
         builder.HasOne<OrderItem>().WithMany().HasForeignKey(i => i.OrderItemId).OnDelete(DeleteBehavior.Restrict);
     }

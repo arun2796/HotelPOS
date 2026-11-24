@@ -9,10 +9,10 @@
   <SolidColorBrush x:Key="Brush.Surface" Color="#FFFFFF" />
   <SolidColorBrush x:Key="Brush.SurfaceAlt" Color="#F8FAFC" />
   <SolidColorBrush x:Key="Brush.SurfaceSubtle" Color="#F1F5F9" />
-  <SolidColorBrush x:Key="Brush.LayerHover" Color="#F1F5F9" />
-  <SolidColorBrush x:Key="Brush.LayerPressed" Color="#E8EEF4" />
-  <SolidColorBrush x:Key="Brush.HoverOverlay" Color="#0D000000" />
-  <SolidColorBrush x:Key="Brush.PressedOverlay" Color="#1A000000" />
+  <SolidColorBrush x:Key="Brush.LayerHover" Color="#E8EEF4" />
+  <SolidColorBrush x:Key="Brush.LayerPressed" Color="#DCE4EC" />
+  <SolidColorBrush x:Key="Brush.HoverOverlay" Color="#14000000" />
+  <SolidColorBrush x:Key="Brush.PressedOverlay" Color="#24000000" />
   <SolidColorBrush x:Key="Brush.Overlay" Color="#8009090B" />
 
   <!-- Borders -->
@@ -22,13 +22,13 @@
 
   <!-- Text -->
   <SolidColorBrush x:Key="Brush.TextPrimary" Color="#172B4D" />
-  <SolidColorBrush x:Key="Brush.TextSecondary" Color="#64748B" />
-  <SolidColorBrush x:Key="Brush.TextTertiary" Color="#98A2B3" />
+  <SolidColorBrush x:Key="Brush.TextSecondary" Color="#566579" />
+  <SolidColorBrush x:Key="Brush.TextTertiary" Color="#6B7789" />
 
   <!-- Inputs -->
   <SolidColorBrush x:Key="Brush.InputBackground" Color="#F8FAFC" />
   <SolidColorBrush x:Key="Brush.InputBackgroundFocus" Color="#FFFFFF" />
-  <SolidColorBrush x:Key="Brush.InputBorder" Color="#D5DCE5" />
+  <SolidColorBrush x:Key="Brush.InputBorder" Color="#8793A5" />
   <SolidColorBrush x:Key="Brush.Focus" Color="#2563EB" />
 
   <!-- Accent and semantic colours. "Soft" fills sit behind text of the matching colour. -->
@@ -37,12 +37,21 @@
   <SolidColorBrush x:Key="Brush.PrimaryText" Color="#FFFFFF" />
   <SolidColorBrush x:Key="Brush.PrimarySoft" Color="#E9F8EF" />
   <SolidColorBrush x:Key="Brush.Link" Color="#078747" />
+  <!-- Green used AS TEXT on a light or soft background (4.95:1 on PrimarySoft); #078747 itself is only 4.2:1 there. -->
+  <SolidColorBrush x:Key="Brush.PrimaryOnSoft" Color="#067A41" />
+  <SolidColorBrush x:Key="Brush.DangerHover" Color="#B91C1C" />
+  <SolidColorBrush x:Key="Brush.DisabledBg" Color="#E2E8F0" />
+  <SolidColorBrush x:Key="Brush.DisabledFg" Color="#7B889A" />
+  <!-- Bill requested: the client wants a fluorescent tile so the cashier sees it from across the counter. -->
+  <SolidColorBrush x:Key="Brush.BillingFluor" Color="#D4FF1E" />
+  <SolidColorBrush x:Key="Brush.BillingFluorBorder" Color="#7FB800" />
+  <SolidColorBrush x:Key="Brush.BillingFluorText" Color="#10200A" />
   <SolidColorBrush x:Key="Brush.Info" Color="#2563EB" />
   <SolidColorBrush x:Key="Brush.InfoSoft" Color="#EFF6FF" />
   <SolidColorBrush x:Key="Brush.Danger" Color="#DC2626" />
   <SolidColorBrush x:Key="Brush.DangerText" Color="#B91C1C" />
   <SolidColorBrush x:Key="Brush.DangerSoft" Color="#FEF2F2" />
-  <SolidColorBrush x:Key="Brush.Success" Color="#16A34A" />
+  <SolidColorBrush x:Key="Brush.Success" Color="#15803D" />
   <SolidColorBrush x:Key="Brush.SuccessSoft" Color="#E9F8EF" />
   <SolidColorBrush x:Key="Brush.Warning" Color="#F59E0B" />
   <SolidColorBrush x:Key="Brush.WarningSoft" Color="#FFF7E6" />
@@ -69,7 +78,7 @@
   <SolidColorBrush x:Key="Brush.SidebarText" Color="#CBD5E1" />
   <SolidColorBrush x:Key="Brush.SidebarTextActive" Color="#FFFFFF" />
   <SolidColorBrush x:Key="Brush.SidebarTextMuted" Color="#8A9BB2" />
-  <SolidColorBrush x:Key="Brush.SidebarHover" Color="#1C2E45" />
+  <SolidColorBrush x:Key="Brush.SidebarHover" Color="#22385A" />
   <SolidColorBrush x:Key="Brush.SidebarSelected" Color="#078747" />
   <SolidColorBrush x:Key="Brush.SidebarAccent" Color="#FFFFFF" />
   <SolidColorBrush x:Key="Brush.SidebarDivider" Color="#23354D" />
@@ -77,11 +86,11 @@
 
   <!-- Table and ticket states (Phase 21 D8): colour = tone. Ready is the solid success fill, Available the soft one
        (SuccessSoft + this colour as border); Preparing stays amber 700, Billing takes the warning orange. Identical in both themes. -->
-  <SolidColorBrush x:Key="Brush.Status.Available" Color="#16A34A" />
+  <SolidColorBrush x:Key="Brush.Status.Available" Color="#15803D" />
   <SolidColorBrush x:Key="Brush.Status.Occupied" Color="#2563EB" />
   <SolidColorBrush x:Key="Brush.Status.Ordering" Color="#2563EB" />
   <SolidColorBrush x:Key="Brush.Status.Preparing" Color="#B45309" />
-  <SolidColorBrush x:Key="Brush.Status.Ready" Color="#16A34A" />
+  <SolidColorBrush x:Key="Brush.Status.Ready" Color="#15803D" />
   <SolidColorBrush x:Key="Brush.Status.Billing" Color="#F59E0B" />
   <SolidColorBrush x:Key="Brush.Status.OutOfService" Color="#94A3B8" />
 

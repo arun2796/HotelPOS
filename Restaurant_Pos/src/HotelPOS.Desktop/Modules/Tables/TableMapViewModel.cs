@@ -128,7 +128,7 @@ public sealed partial class TableMapViewModel : ViewModelBase, INavigationAware,
         var isManager = roles.Contains(Roles.Manager) || roles.Contains(Roles.Admin);
         CanTakeOrders = roles.Contains(Roles.Waiter) || isManager;
         Details = new TableDetailsViewModel(floorApi, ordersApi, drafts, navigation, dialogs, notifications, ApplyTable, RefreshAsync, CanTakeOrders, isManager,
-            roles.Contains(Roles.Cashier), reservationsApi);
+            roles.Contains(Roles.Cashier), reservationsApi, () => _tiles.Values);
     }
 
     public ObservableCollection<TableMapSectionViewModel> Sections { get; } = new();
@@ -335,6 +335,12 @@ public sealed partial class TableMapViewModel : ViewModelBase, INavigationAware,
         if (Details.Order?.Id == orderId)
         {
             _ = Details.ReloadOrderAsync();
+        }
+
+        // The tile shows the order's running total: reload the map when an order's items change.
+        if (_tiles.Values.Any(t => t.CurrentOrderId == orderId))
+        {
+            _ = RefreshAsync();
         }
     }
 

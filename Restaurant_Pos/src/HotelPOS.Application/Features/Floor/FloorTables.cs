@@ -25,7 +25,7 @@ internal sealed class FloorTables
     }
 
     public Task<Table?> LoadAsync(int id, CancellationToken cancellationToken) =>
-        _db.Tables.Include(t => t.Section).Include(t => t.CurrentOrder).FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+        _db.Tables.Include(t => t.Section).Include(t => t.CurrentOrder).Include(t => t.MergedInto).Include(t => t.MergedTables).FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
 
     public void SetActive(Table table, bool active)
     {

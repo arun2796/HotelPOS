@@ -37,6 +37,7 @@ using HotelPOS.Desktop.Modules.Printing;
 using HotelPOS.Desktop.Services.Printing;
 using HotelPOS.Desktop.Modules.Billing;
 using HotelPOS.Desktop.Modules.Customers;
+using HotelPOS.Desktop.Modules.Kitchen;
 using HotelPOS.Desktop.Modules.Orders;
 using HotelPOS.Desktop.Services.Orders;
 using HotelPOS.Desktop.Modules.MenuAdmin;
@@ -287,6 +288,13 @@ public class ScreenRenderingTests
             await kitchenShell.OnNavigatedToAsync(null);
             env.Realtime.Raise(ConnectionStatus.Connected);
             rendered.Add(await RenderScreenAsync(env, kitchenShell, "24-kitchen-display"));
+            if (kitchenShell.CurrentPage is KitchenDisplayViewModel kitchenPage)
+            {
+                await kitchenPage.OpenSoldOutCommand.ExecuteAsync(null);
+                rendered.Add(await RenderScreenAsync(env, kitchenShell, "24b-kitchen-stock-counts"));
+                kitchenPage.CloseSoldOutCommand.Execute(null);
+            }
+
             await kitchenShell.NavigateToAsync(ModuleRegistry.KitchenCompleted, null);
             rendered.Add(await RenderScreenAsync(env, kitchenShell, "25-kitchen-completed"));
             kitchenShell.OpenNotificationPreferencesCommand.Execute(null);
@@ -526,7 +534,7 @@ public class ScreenRenderingTests
         }
 
         bindingErrors.Errors.Should().BeEmpty("every binding in the views must point at an existing property");
-        rendered.Should().HaveCount(86);
+        rendered.Should().HaveCount(87);
         // Phase 21: the bundled Inter (Regular/Medium/SemiBold/Bold) is the body font on every Windows version.
         bodyFontFiles.Should().HaveCount(4).And.OnlyContain(f => f.StartsWith("inter-"));
     }

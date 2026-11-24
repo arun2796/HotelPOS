@@ -62,6 +62,7 @@ internal sealed class CreateMenuItemHandler : ICommandHandler<CreateMenuItemComm
         item.SetAvailability(request.IsAvailable);
         item.SetModifierGroups(request.ModifierGroupIds);
         item.SetHsnSac(request.HsnSac);
+        item.SetPackagingCharge(request.PackagingCharge);
 
         _db.MenuItems.Add(item);
         await _db.SaveChangesAsync(cancellationToken);

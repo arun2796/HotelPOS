@@ -50,6 +50,9 @@ public sealed record ManagerApprovalDto
 
 public sealed record BillSummaryDto
 {
+    // 0 for an unsplit bill or the first part of a split one; 1, 2 ... for the other parts (A, B, C ...).
+    public int SplitIndex { get; init; }
+
     public int Id { get; init; }
     public int BillNumber { get; init; }
     public string? InvoiceNumber { get; init; }
@@ -73,6 +76,9 @@ public sealed record BillSummaryDto
 
 public sealed record BillItemDto
 {
+    // The seat the dish was ordered for ("4A"); null = the whole table. Used to split a table's bill by seat.
+    public string? SeatCode { get; init; }
+
     public int Id { get; init; }
     public int OrderItemId { get; init; }
     public string ItemName { get; init; } = string.Empty;
@@ -114,6 +120,10 @@ public sealed record PaymentDto
 
 public sealed record BillDetailDto
 {
+    // Split bill: this part's index (0 = A) and every live part of the same order, this one included.
+    public int SplitIndex { get; init; }
+    public IReadOnlyList<int> SiblingBillIds { get; init; } = Array.Empty<int>();
+
     public int Id { get; init; }
     public int BillNumber { get; init; }
     public string? InvoiceNumber { get; init; }
@@ -224,6 +234,27 @@ public sealed record VoidBillRequest
     public string Reason { get; init; } = string.Empty;
     public ManagerApprovalDto? Approval { get; init; }
     public string RowVersion { get; init; } = string.Empty;
+}
+
+// Splits a table's bill into separate bills (one per guest or seat group). Every part lists the bill lines that move
+// to a NEW bill; whatever is not listed stays on the bill being split. Nothing is split after the bill is finalized.
+public sealed record SplitBillRequest
+{
+    public IReadOnlyList<SplitBillPart> Parts { get; init; } = Array.Empty<SplitBillPart>();
+    public string RowVersion { get; init; } = string.Empty;
+}
+
+public sealed record SplitBillPart
+{
+    public IReadOnlyList<int> BillItemIds { get; init; } = Array.Empty<int>();
+}
+
+public static class BillParts
+{
+    public const int MaxParts = 9;
+
+    // 0 -> "A", 1 -> "B" ...
+    public static string Letter(int splitIndex) => ((char)('A' + Math.Clamp(splitIndex, 0, 25))).ToString();
 }
 
 public sealed record ReopenBillRequest

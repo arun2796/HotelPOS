@@ -53,6 +53,7 @@
         <ul class="ticket-lines">
             @foreach (var line in Ticket.Items)
             {
+                var (seat, note) = KitchenRules.SplitSeat(line.Notes);
                 <li class="@(line.IsCancelled ? "cancelled" : null)">
                     <div class="ticket-line">
                         @if (ShowPictures && Host.ImageUrl(line.ImageUrl) is { } src)
@@ -60,14 +61,18 @@
                             <img class="ticket-thumb large" src="@src" alt="" loading="lazy" width="56" height="56" onerror="this.style.display='none'" />
                         }
                         <b class="ticket-qty">@line.Quantity ×</b> <span class="ticket-name">@line.Name</span>
+                    @if (seat is not null)
+                    {
+                        <span class="ticket-seat" data-testid="ticket-seat">@seat</span>
+                    }
                     </div>
                     @if (line.Modifiers.Count > 0)
                     {
                         <div class="ticket-mods muted">@string.Join(", ", line.Modifiers)</div>
                     }
-                    @if (!string.IsNullOrEmpty(line.Notes))
+                    @if (!string.IsNullOrEmpty(note))
                     {
-                        <div class="ticket-note"><Icon Name="edit" Size="16" /> @line.Notes</div>
+                        <div class="ticket-note"><Icon Name="edit" Size="16" /> @note</div>
                     }
                 </li>
             }

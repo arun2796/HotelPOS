@@ -11,6 +11,7 @@ using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Contracts.Security;
 using HotelPOS.Domain.Billing;
+using Microsoft.EntityFrameworkCore;
 
 namespace HotelPOS.Application.Features.Billing.Commands;
 
@@ -44,8 +45,10 @@ internal sealed class ReopenBillHandler : ICommandHandler<ReopenBillCommand, Bil
     private readonly ManagerApprovals _approvals;
     private readonly KitchenSync _kitchen;
     private readonly TableEvents _tableEvents;
+    private readonly IAppDbContext _db;
 
     public ReopenBillHandler(
+        IAppDbContext db,
         IAuditTrail audit,
         IAfterCommit afterCommit,
         IClock clock,
@@ -55,6 +58,7 @@ internal sealed class ReopenBillHandler : ICommandHandler<ReopenBillCommand, Bil
         KitchenSync kitchen,
         TableEvents tableEvents)
     {
+        _db = db;
         _audit = audit;
         _afterCommit = afterCommit;
         _clock = clock;
@@ -85,6 +89,24 @@ internal sealed class ReopenBillHandler : ICommandHandler<ReopenBillCommand, Bil
             {
                 var (bill, order, table) = (scope.Bill, scope.Order, scope.Table);
                 var tableBefore = table?.Status;
+
+                // A split bill is undone as a whole, and only while no part has been finalized or paid.
+                var parts = await _db.Bills.Where(b => b.OrderId == order.Id && b.Id != bill.Id && b.Status != BillStatus.Voided).ToListAsync(cancellationToken);
+                if (parts.Count > 0)
+                {
+                    if (bill.Status != BillStatus.Open || parts.Any(p => p.Status != BillStatus.Open || p.PaidAmount > 0))
+                    {
+                        return AppErrors.BusinessRule("This table's bill is split. It can be reopened only while every part is still open; void the finalized parts instead.");
+                    }
+
+                    foreach (var part in parts)
+                    {
+                        part.Reopen("Split bill undone", _clock.UtcNow);
+                        var undone = part;
+                        _afterCommit.Enqueue(() => _events.PublishBillUpdatedAsync(undone, BillChangeTypes.Reopened));
+                    }
+                }
+
                 bill.Reopen(request.Reason ?? "Reopened for changes", _clock.UtcNow);
                 order.ReopenFromBill();
                 var tickets = await _kitchen.LoadTicketsAsync(order.Id, cancellationToken);

@@ -46,7 +46,7 @@
       <Grid DockPanel.Dock="Bottom" Margin="0,12,0,0">
         <TextBlock Text="Settle each item, or override it with a reason; the overrides are kept with the close and audited."
                    Style="{StaticResource Text.Caption}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,220,0" />
-        <Button Content="CONTINUE" Command="{Binding ContinueCommand}" IsEnabled="{Binding CanContinue}" Style="{StaticResource Button.Primary}"
+        <Button Content="Continue" Command="{Binding ContinueCommand}" IsEnabled="{Binding CanContinue}" Style="{StaticResource Button.Primary}"
                 HorizontalAlignment="Right" MinWidth="180" MinHeight="52" />
       </Grid>
       <Grid>
@@ -97,7 +97,7 @@
         <Button Content="Back" Command="{Binding BackCommand}" MinWidth="120" MinHeight="52" HorizontalAlignment="Left" />
         <TextBlock Text="Day End takes a verified backup first, then locks the day and saves the report pack."
                    Style="{StaticResource Text.Caption}" VerticalAlignment="Center" HorizontalAlignment="Center" />
-        <Button Content="RUN DAY END" Command="{Binding RunCommand}" Style="{StaticResource Button.Primary}" HorizontalAlignment="Right" MinWidth="180" MinHeight="52" />
+        <Button Content="Run day end" Command="{Binding RunCommand}" Style="{StaticResource Button.Primary}" HorizontalAlignment="Right" MinWidth="180" MinHeight="52" />
       </Grid>
       <Grid>
         <Grid.ColumnDefinitions>

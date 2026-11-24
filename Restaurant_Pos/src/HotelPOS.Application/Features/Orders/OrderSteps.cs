@@ -98,6 +98,7 @@ internal sealed class OrderSteps
         var stations = await _db.PreparationStations.AsNoTracking().ToDictionaryAsync(s => s.Id, s => s.Code, cancellationToken);
         var bill = await _db.Bills.AsNoTracking()
             .Where(b => b.OrderId == id && b.Status != BillStatus.Voided)
+            .OrderBy(b => b.SplitIndex)
             .Select(b => new OrderBillDto
             {
                 Id = b.Id,
@@ -194,6 +195,9 @@ internal sealed class OrderSteps
                     TaxRatePercent = i.TaxRatePercent,
                     PreparationStationId = i.PreparationStationId,
                     Status = i.Status,
+                    IsParcel = i.IsParcel,
+                    PackagingCharge = i.PackagingCharge,
+                    SeatCode = i.SeatCode,
                     Modifiers = i.Modifiers.Select(m => new OrderItemModifierDto(m.ModifierOptionId, m.Name, m.PriceDelta)).ToList(),
                     LineTotal = i.LineTotal,
                     TicketId = ticketOf.GetValueOrDefault(i.Id)?.Id,

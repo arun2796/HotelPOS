@@ -12,5 +12,6 @@ public sealed class OrderItemInputValidator : AbstractValidator<OrderItemInput>
         RuleFor(x => x.Quantity).InclusiveBetween(1, OrderLimits.MaxQuantity);
         RuleFor(x => x.Notes).MaximumLength(OrderLimits.NotesMaxLength);
         RuleFor(x => x.ModifierOptionIds).NotNull();
+        RuleFor(x => x.SeatCode).MaximumLength(16);
     }
 }

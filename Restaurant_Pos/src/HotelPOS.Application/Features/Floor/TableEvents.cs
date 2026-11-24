@@ -30,5 +30,8 @@ public sealed class TableEvents
             OccupiedAtUtc = table.OccupiedAt,
             OrderId = table.CurrentOrderId,
             OrderNumber = table.CurrentOrderId is null ? null : orderNumber ?? table.CurrentOrder?.OrderNumber,
-        }, RealtimeAudience.All, CancellationToken.None);
+            MergedIntoTableId = table.MergedIntoTableId,
+            MergedIntoTableCode = table.MergedInto?.Code,
+            MergedTableCodes = table.MergedTables.Select(t => t.Code).OrderBy(c => c, StringComparer.OrdinalIgnoreCase).ToList(),
+        },RealtimeAudience.All, CancellationToken.None);
 }

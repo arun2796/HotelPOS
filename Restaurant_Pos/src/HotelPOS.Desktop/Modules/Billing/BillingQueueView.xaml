@@ -68,7 +68,7 @@
                     <Run Text="{Binding ClaimBadge, Mode=OneWay}" />
                   </TextBlock>
                 </Border>
-                <Button Content="OPEN" Style="{StaticResource Button.Primary}" MinHeight="52" Margin="0,14,0,0"
+                <Button Content="Open" Style="{StaticResource Button.Primary}" MinHeight="52" Margin="0,14,0,0"
                         Command="{Binding DataContext.OpenCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                         CommandParameter="{Binding}" />
               </StackPanel>

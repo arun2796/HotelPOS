@@ -9,6 +9,10 @@
              d:DataContext="{d:DesignInstance m:MenuItemsPageViewModel}"
              d:DesignWidth="1100" d:DesignHeight="640">
 
+  <UserControl.Resources>
+    <m:MenuItemStockTextConverter x:Key="StockText" />
+  </UserControl.Resources>
+
   <Grid>
     <Grid.ColumnDefinitions>
       <ColumnDefinition Width="*" />
@@ -80,7 +84,8 @@
           <DataGridTextColumn Header="PRICE" Binding="{Binding Price, StringFormat=N2}" Width="0.7*" MinWidth="92"
                               ElementStyle="{StaticResource Text.GridNumber}" HeaderStyle="{StaticResource DataGrid.NumberHeader}" />
           <DataGridTextColumn Header="TAX" Binding="{Binding TaxRatePercent, StringFormat={}{0:0.##}%}" Width="0.45*" MinWidth="52" />
-          <DataGridTextColumn Header="STATION" Binding="{Binding StationName}" Width="1.1*" MinWidth="100" />
+          <DataGridTextColumn Header="SOURCE" Binding="{Binding StationName}" Width="1.1*" MinWidth="100" />
+          <DataGridTextColumn Header="STOCK" Binding="{Binding ., Converter={StaticResource StockText}, Mode=OneWay}" Width="0.8*" MinWidth="96" />
           <!-- A template column so the themed CheckBox is used (DataGridCheckBoxColumn draws the plain WPF one). -->
           <DataGridTemplateColumn Header="IN STOCK" Width="0.6*" MinWidth="88">
             <DataGridTemplateColumn.CellTemplate>
@@ -169,10 +174,14 @@
                 <ComboBox ItemsSource="{Binding Taxes}" SelectedItem="{Binding Tax}" DisplayMemberPath="Name" />
               </StackPanel>
               <StackPanel Grid.Column="2">
-                <TextBlock Text="Prepared at" Style="{StaticResource Text.Label}" />
+                <TextBlock Text="Source (kitchen)" Style="{StaticResource Text.Label}" />
                 <ComboBox ItemsSource="{Binding Stations}" SelectedItem="{Binding Station}" DisplayMemberPath="Name" />
               </StackPanel>
             </Grid>
+
+            <TextBlock Text="Packaging charge (parcel)" Style="{StaticResource Text.Label}" />
+            <TextBox Text="{Binding PackagingCharge, UpdateSourceTrigger=PropertyChanged}" MaxLength="10" Margin="0,0,0,12"
+                     ToolTip="Added per unit on take-away and delivery orders. 0 for none." />
 
             <TextBlock Text="Description (optional)" Style="{StaticResource Text.Label}" />
             <TextBox Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" MaxLength="500" TextWrapping="Wrap"

@@ -31,6 +31,7 @@ else
     }
     else
     {
+        <div class="kds-bar">
         <div class="kds-kpis" id="kds-kpis">
             <KpiTile Compact="true" Label="New" Value="@CountIn(TicketColumn.New).ToString()" Icon="bell" Tone="StatusTone.Info" />
             <KpiTile Compact="true" Label="Preparing" Value="@CountIn(TicketColumn.Preparing).ToString()" Icon="flame" Tone="StatusTone.Warning" />
@@ -41,13 +42,14 @@ else
         <div class="kds-toolbar" id="kds-summary">
             <span id="kds-delayed-filter"><FilterChip Label="Delayed" Count="DelayedCount" Selected="_delayedOnly" OnClick="() => _delayedOnly = !_delayedOnly" /></span>
             <span id="kds-sort"><FilterChip Label="Oldest first" Selected="_oldestFirst" OnClick="() => _oldestFirst = !_oldestFirst" /></span>
-            <span class="muted small grow kds-updated">Updated @_updatedAt.ToLocalTime().ToString("HH:mm:ss")</span>
+            <span class="muted small kds-updated">Updated @_updatedAt.ToLocalTime().ToString("HH:mm:ss")</span>
+        </div>
         </div>
         <div class="kds">
             @foreach (var column in new[] { TicketColumn.New, TicketColumn.Preparing, TicketColumn.Ready })
             {
                 var tickets = Visible(column);
-                <section class="kds-col" data-column="@column">
+                <section class="kds-col @column.ToString().ToLowerInvariant()" data-column="@column">
                     <header class="kds-colhead">
                         <h2 class="kds-head">@column.ToString().ToUpperInvariant() · @tickets.Count</h2>
                         <div class="kds-sub muted small">

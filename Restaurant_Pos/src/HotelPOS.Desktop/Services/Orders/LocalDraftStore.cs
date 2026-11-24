@@ -23,6 +23,11 @@ public sealed record DraftLine
     public IReadOnlyList<int> ModifierOptionIds { get; init; } = Array.Empty<int>();
     public IReadOnlyList<string> ModifierNames { get; init; } = Array.Empty<string>();
     public decimal ModifierTotal { get; init; }
+
+    // Parcel (packed to take away; the item's packaging charge is added) and the seat the dish is for ("4A").
+    public bool IsParcel { get; init; }
+    public decimal PackagingCharge { get; init; }
+    public string? SeatCode { get; init; }
 }
 
 public sealed record LocalDraft

@@ -81,7 +81,7 @@ public sealed class ReportQueries : IReportQueries
         await _db.Database.SqlQuery<DailySalesRowDto>($"""
             SELECT ((b."SettledAt" + make_interval(mins => {window.ShiftMinutes})) AT TIME ZONE 'UTC')::date AS "Day",
                    COUNT(*)::int AS "Bills",
-                   COALESCE(SUM(o."GuestCount"), 0)::int AS "Covers",
+                   COALESCE(SUM(CASE WHEN b."SplitIndex" = 0 THEN o."GuestCount" ELSE 0 END), 0)::int AS "Covers",
                    COALESCE(SUM(b."Subtotal"), 0) AS "Subtotal",
                    COALESCE(SUM(b."DiscountAmount"), 0) AS "Discounts",
                    COALESCE(SUM(b."TaxAmount"), 0) AS "Tax",
@@ -100,7 +100,7 @@ public sealed class ReportQueries : IReportQueries
         var rows = await _db.Database.SqlQuery<HourlySalesRowDto>($"""
             SELECT to_char((b."SettledAt" + make_interval(mins => {window.ShiftMinutes})) AT TIME ZONE 'UTC', 'HH24:00') AS "Hour",
                    COUNT(*)::int AS "Bills",
-                   COALESCE(SUM(o."GuestCount"), 0)::int AS "Covers",
+                   COALESCE(SUM(CASE WHEN b."SplitIndex" = 0 THEN o."GuestCount" ELSE 0 END), 0)::int AS "Covers",
                    COALESCE(SUM(b."Subtotal"), 0) AS "Subtotal",
                    COALESCE(SUM(b."DiscountAmount"), 0) AS "Discounts",
                    COALESCE(SUM(b."TaxAmount"), 0) AS "Tax",
@@ -147,7 +147,7 @@ public sealed class ReportQueries : IReportQueries
         await _db.Database.SqlQuery<MonthlySalesRowDto>($"""
             SELECT to_char((b."SettledAt" + make_interval(mins => {window.ShiftMinutes})) AT TIME ZONE 'UTC', 'YYYY-MM') AS "Month",
                    COUNT(*)::int AS "Bills",
-                   COALESCE(SUM(o."GuestCount"), 0)::int AS "Covers",
+                   COALESCE(SUM(CASE WHEN b."SplitIndex" = 0 THEN o."GuestCount" ELSE 0 END), 0)::int AS "Covers",
                    COALESCE(SUM(b."DiscountAmount"), 0) AS "Discounts",
                    COALESCE(SUM(b."TaxAmount"), 0) AS "Tax",
                    COALESCE(SUM(b."GrandTotal"), 0) AS "GrossSales",
@@ -258,7 +258,7 @@ public sealed class ReportQueries : IReportQueries
         await _db.Database.SqlQuery<WaiterPerformanceRowDto>($"""
             SELECT u."DisplayName" AS "WaiterName",
                    COUNT(b."Id")::int AS "Orders",
-                   COALESCE(SUM(o."GuestCount"), 0)::int AS "Covers",
+                   COALESCE(SUM(CASE WHEN b."SplitIndex" = 0 THEN o."GuestCount" ELSE 0 END), 0)::int AS "Covers",
                    COALESCE(SUM(b."GrandTotal" - b."RefundedAmount"), 0) AS "NetSales",
                    CASE WHEN COUNT(b."Id") = 0 THEN 0 ELSE ROUND(SUM(b."GrandTotal") / COUNT(b."Id"), 2) END AS "AverageOrderValue",
                    (SELECT COUNT(*) FROM "Orders" c

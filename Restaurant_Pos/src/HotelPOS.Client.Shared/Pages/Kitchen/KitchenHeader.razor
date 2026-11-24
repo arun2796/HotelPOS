@@ -27,6 +27,7 @@
             <div class="kds-menu-backdrop" @onclick="() => _menu = false"></div>
             <div class="kds-menu" role="menu" data-testid="kds-menu">
                 <NavLink class="kds-menu-item" href="kitchen/completed" role="menuitem" @onclick="() => _menu = false"><Icon Name="check" /> Completed</NavLink>
+                <NavLink class="kds-menu-item" href="kitchen/stock" role="menuitem" data-testid="kds-menu-stock" @onclick="() => _menu = false"><Icon Name="shopping-bag" /> Stock</NavLink>
                 <NavLink class="kds-menu-item" href="kitchen/station" role="menuitem" @onclick="() => _menu = false"><Icon Name="table" /> Station</NavLink>
                 <NavLink class="kds-menu-item" href="settings" role="menuitem" @onclick="() => _menu = false"><Icon Name="settings" /> Settings</NavLink>
                 <DeviceStatusCard Type="DeviceType.Kitchen" />

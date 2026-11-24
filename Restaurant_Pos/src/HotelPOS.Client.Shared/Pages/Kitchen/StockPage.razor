@@ -1,0 +1,258 @@
+@page "/kitchen/stock"
+@attribute [Authorize]
+@implements IDisposable
+@using HotelPOS.Contracts.Enums
+@using HotelPOS.Contracts.Menu
+@using HotelPOS.Contracts.Realtime
+@inject WebAuthState Auth
+@inject KitchenApi Api
+@inject WebRealtimeClient Realtime
+@inject ShellState Shell
+@inject ToastService Toasts
+
+<PageTitle>Stock · HotelPOS</PageTitle>
+
+@* Phase 27: the kitchen's stock counts. Per dish: "42 left", "Approx. 80 left" or "Not counted", and a number with four buttons
+   (Set count, Approx., Add, Clear), enabled once the number is valid. A dish that reaches 0 turns sold out on the server by itself. *@
+@if (!Auth.Has(Permissions.KitchenOperate))
+{
+    <div class="banner error">You do not have access to the kitchen display.</div>
+}
+else
+{
+    <KitchenHeader />
+
+    @if (_error is not null)
+    {
+        <ErrorState Message="@_error" OnRetry="LoadAsync" />
+    }
+    else if (_menu is null)
+    {
+        <Skeleton Variant="Skeleton.SkeletonVariant.Card" Count="4" Label="Loading the stock" />
+    }
+    else
+    {
+        @if (!CanEdit)
+        {
+            <div class="banner info">You can see the counts but not change them.</div>
+        }
+
+        <SearchBox Id="stock-search" @bind-Value="_search" Placeholder="Search dishes (name or code)" AriaLabel="Search dishes" />
+        <div class="chip-row stock-filters" role="group" aria-label="Show">
+            <FilterChip Label="All" Count="_menu.Items.Count" Selected="_filter == AllFilter" OnClick="() => _filter = AllFilter" />
+            <FilterChip Label="Counted" Count="_menu.Items.Count(i => i.StockMode != StockTrackingMode.None)" Selected="_filter == CountedFilter" OnClick="() => _filter = CountedFilter" />
+            <FilterChip Label="Sold out" Count="_menu.Items.Count(i => !i.IsAvailable)" Selected="_filter == SoldOutFilter" OnClick="() => _filter = SoldOutFilter" />
+        </div>
+
+        @foreach (var group in Groups())
+        {
+            <h2 class="section-head">@group.Category</h2>
+            <ul class="stock-list" data-testid="stock-list">
+                @foreach (var item in group.Items)
+                {
+                    var i = item;
+                    var busy = _busyId == i.Id;
+                    var valid = TryParseCount(InputOf(i.Id), out _);
+                    <li class="card stock-row" data-testid="stock-row" data-item-id="@i.Id">
+                        <div class="stock-head">
+                            <b class="stock-name">@i.Name</b>
+                            <span class="chip lg @StockChip(i)" data-testid="stock-status">@StockText(i)</span>
+                            @if (!i.IsAvailable)
+                            {
+                                <span class="chip danger">Sold out</span>
+                            }
+                        </div>
+                        @if (CanEdit)
+                        {
+                            <div class="stock-controls">
+                                <label class="stock-qty">
+                                    <span class="sr-only">@($"Count for {i.Name}")</span>
+                                    <input class="input num-tab" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="Count" data-testid="stock-input"
+                                           aria-invalid="@(_invalidId == i.Id ? "true" : null)" value="@InputOf(i.Id)" @oninput="e => SetInput(i.Id, e.Value?.ToString())"
+                                           @onkeydown="e => OnKeyAsync(e, i)" disabled="@busy" />
+                                </label>
+                                <button type="button" class="btn primary" data-testid="stock-set" @onclick="() => ApplyAsync(i, StockTrackingMode.Exact, false)" disabled="@(busy || !valid)">Set count</button>
+                                <button type="button" class="btn" data-testid="stock-approx" @onclick="() => ApplyAsync(i, StockTrackingMode.Approximate, false)" disabled="@(busy || !valid)">Approx.</button>
+                                <button type="button" class="btn" data-testid="stock-add" @onclick="() => ApplyAsync(i, i.StockMode == StockTrackingMode.None ? StockTrackingMode.Exact : i.StockMode, true)" disabled="@(busy || !valid)">Add</button>
+                                <button type="button" class="btn" data-testid="stock-clear" @onclick="() => ClearCountAsync(i)" disabled="@(busy || i.StockMode == StockTrackingMode.None)">Clear</button>
+                            </div>
+                        }
+                    </li>
+                }
+            </ul>
+        }
+
+        @if (!Groups().Any())
+        {
+            <EmptyState Small="true" Icon="search" Text="@(string.IsNullOrWhiteSpace(_search) && _filter == AllFilter ? "No dishes on the menu." : "No dish matches that.")" />
+        }
+    }
+}
+
+@code {
+    private const string AllFilter = "all";
+    private const string CountedFilter = "counted";
+    private const string SoldOutFilter = "soldout";
+
+    // The largest count the field accepts (matches the server's stock limit).
+    private const int MaxCount = 100000;
+
+    private MenuDto? _menu;
+    private string? _error;
+    private string? _search;
+    private string _filter = AllFilter;
+    private int? _busyId;
+    private int? _invalidId;
+    private readonly Dictionary<int, string> _inputs = new();
+    private readonly List<IDisposable> _subscriptions = new();
+    private CancellationTokenSource? _debounce;
+
+    private bool CanEdit => Auth.Has(Permissions.MenuAvailability);
+
+    private string InputOf(int id) => _inputs.TryGetValue(id, out var text) ? text : string.Empty;
+
+    private void SetInput(int id, string? text)
+    {
+        _inputs[id] = text ?? string.Empty;
+        if (_invalidId == id)
+        {
+            _invalidId = null;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Shell.Set("Stock", "Counts of dishes left");
+        await Realtime.StartAsync();
+        _subscriptions.Add(Realtime.Subscribe<MenuChangedEvent>(HubEvents.MenuChanged, _ => ScheduleRefresh()));
+        Realtime.Reconnected += LoadAsync;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var result = await Api.GetMenuAsync();
+        if (result.Success && result.Data is { } menu)
+        {
+            _menu = menu;
+            _error = null;
+        }
+        else if (_menu is null)
+        {
+            _error = result.Message;
+        }
+        else
+        {
+            Toasts.Error(result.Message);
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    // Several MenuChanged events arrive for one change (and our own save raises one); one reload a quarter second later is enough.
+    private void ScheduleRefresh()
+    {
+        _debounce?.Cancel();
+        var cts = _debounce = new CancellationTokenSource();
+        _ = Task.Delay(250, cts.Token).ContinueWith(t => { if (!t.IsCanceled) { _ = InvokeAsync(LoadAsync); } }, TaskScheduler.Default);
+    }
+
+    private sealed record Group(string Category, IReadOnlyList<MenuEntryDto> Items);
+
+    private IEnumerable<Group> Groups()
+    {
+        var term = _search?.Trim();
+        var items = _menu!.Items.Where(i =>
+            (_filter == AllFilter || (_filter == CountedFilter && i.StockMode != StockTrackingMode.None) || (_filter == SoldOutFilter && !i.IsAvailable))
+            && (string.IsNullOrEmpty(term)
+                || i.Name.Contains(term, StringComparison.OrdinalIgnoreCase)
+                || (i.Code?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false)));
+
+        return _menu.Categories.OrderBy(c => c.SortOrder)
+            .Select(c => new Group(c.Name, items.Where(i => i.CategoryId == c.Id).OrderBy(i => i.SortOrder).ThenBy(i => i.Name, StringComparer.OrdinalIgnoreCase).ToList()))
+            .Where(g => g.Items.Count > 0);
+    }
+
+    private static string StockText(MenuEntryDto item) => item.StockMode switch
+    {
+        StockTrackingMode.Exact when item.StockRemaining is { } n => $"{n:N0} left",
+        StockTrackingMode.Approximate when item.StockRemaining is { } n => $"Approx. {n:N0} left",
+        _ => "Not counted",
+    };
+
+    private static string? StockChip(MenuEntryDto item) =>
+        item.StockMode == StockTrackingMode.None || item.StockRemaining is null ? null : item.StockRemaining == 0 ? "danger" : item.StockRemaining <= 5 ? "warning" : "success";
+
+    private Task OnKeyAsync(KeyboardEventArgs e, MenuEntryDto item) =>
+        e.Key == "Enter" ? ApplyAsync(item, StockTrackingMode.Exact, false) : Task.CompletedTask;
+
+    // A whole number from 0 to 100000, digits only (no sign, decimals or separators).
+    internal static bool TryParseCount(string? text, out int count)
+    {
+        count = 0;
+        var trimmed = text?.Trim();
+        if (string.IsNullOrEmpty(trimmed) || trimmed.Length > 6 || !trimmed.All(char.IsAsciiDigit))
+        {
+            return false;
+        }
+
+        return int.TryParse(trimmed, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out count) && count <= MaxCount;
+    }
+
+    private async Task ApplyAsync(MenuEntryDto item, StockTrackingMode mode, bool add)
+    {
+        if (_busyId is not null)
+        {
+            return;
+        }
+
+        if (!TryParseCount(InputOf(item.Id), out var count))
+        {
+            _invalidId = item.Id;
+            Toasts.Error($"Enter a whole number from 0 to {MaxCount:N0} for {item.Name}.");
+            return;
+        }
+
+        await SendAsync(item, new SetStockRequest { Mode = mode, Quantity = count, Add = add },
+            add ? $"Added {count:N0} to {item.Name}." : mode == StockTrackingMode.Exact ? $"{item.Name}: {count:N0} left." : $"{item.Name}: approx. {count:N0} left.");
+    }
+
+    private Task ClearCountAsync(MenuEntryDto item) =>
+        _busyId is not null
+            ? Task.CompletedTask
+            : SendAsync(item, new SetStockRequest { Mode = StockTrackingMode.None }, $"{item.Name}: no longer counted.");
+
+    private async Task SendAsync(MenuEntryDto item, SetStockRequest request, string success)
+    {
+        _busyId = item.Id;
+        try
+        {
+            var result = await Api.SetStockAsync(item.Id, request);
+            if (result.Success)
+            {
+                _inputs.Remove(item.Id);
+                _invalidId = null;
+                Toasts.Success(success);
+                await LoadAsync();
+            }
+            else
+            {
+                Toasts.Error(result.Message);
+            }
+        }
+        finally
+        {
+            _busyId = null;
+        }
+    }
+
+    public void Dispose()
+    {
+        Realtime.Reconnected -= LoadAsync;
+        _debounce?.Cancel();
+        foreach (var subscription in _subscriptions)
+        {
+            subscription.Dispose();
+        }
+    }
+}

@@ -28,6 +28,7 @@ internal sealed class SubmitOrderHandler : ICommandHandler<SubmitOrderCommand, O
     private readonly TicketFactory _tickets;
     private readonly KitchenSync _kitchen;
     private readonly TableEvents _tableEvents;
+    private readonly OrderStock _stock;
 
     public SubmitOrderHandler(
         IAppDbContext db,
@@ -38,8 +39,10 @@ internal sealed class SubmitOrderHandler : ICommandHandler<SubmitOrderCommand, O
         OrderEvents events,
         TicketFactory tickets,
         KitchenSync kitchen,
-        TableEvents tableEvents)
+        TableEvents tableEvents,
+        OrderStock stock)
     {
+        _stock = stock;
         _db = db;
         _audit = audit;
         _afterCommit = afterCommit;
@@ -68,6 +71,13 @@ internal sealed class SubmitOrderHandler : ICommandHandler<SubmitOrderCommand, O
         if (order.Items.Count == 0)
         {
             return AppErrors.BusinessRule("Add at least one item before sending the order.");
+        }
+
+        // The draft cart is checked again here: the supervisor may have run an item out since it was added.
+        var outOfStock = await _stock.ReserveAsync(order.Items, cancellationToken);
+        if (outOfStock is not null)
+        {
+            return outOfStock;
         }
 
         order.Submit(_clock.UtcNow);

@@ -68,7 +68,7 @@
                         </Style>
                       </Ellipse.Style>
                     </Ellipse>
-                    <TextBlock FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center">
+                    <TextBlock FontSize="12" Margin="6,0,0,0" VerticalAlignment="Center">
                       <TextBlock.Style>
                         <Style TargetType="TextBlock">
                           <Setter Property="Text" Value="Offline" />

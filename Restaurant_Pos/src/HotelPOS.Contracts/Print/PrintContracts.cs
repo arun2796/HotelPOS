@@ -55,6 +55,10 @@ public sealed record KotLine
     public IReadOnlyList<string> Modifiers { get; init; } = Array.Empty<string>();
     public bool IsCancelled { get; init; }
     public decimal? UnitPrice { get; init; }
+
+    // Parcel (takeaway packing) and the seat the dish is for; the seat is also at the front of Notes.
+    public bool IsParcel { get; init; }
+    public string? SeatCode { get; init; }
 }
 
 public sealed record KitchenTicketDocument

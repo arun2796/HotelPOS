@@ -37,6 +37,11 @@ public sealed record KitchenTicketItemDto
     public IReadOnlyList<string> Modifiers { get; init; } = Array.Empty<string>();
     public bool IsCancelled { get; init; }
 
+    public bool IsParcel { get; init; }
+
+    // The seat the dish is for ("4A"); also written at the front of Notes so every ticket view shows it.
+    public string? SeatCode { get; init; }
+
     // The menu item's picture URL (same scheme as MenuItemDto.ImageUrl); null when the item has none.
     public string? ImageUrl { get; init; }
 }

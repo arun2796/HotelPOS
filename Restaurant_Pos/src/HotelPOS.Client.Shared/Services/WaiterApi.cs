@@ -35,6 +35,14 @@ public sealed class WaiterApi
     public Task<ApiResult<TableDto>> ReleaseAsync(int tableId, CancellationToken ct = default) =>
         _api.PostAsync<TableDto>($"api/tables/{tableId}/release", null, null, ct);
 
+    /// <summary>Merges a free companion table into the table the party sits at; the companion is locked and its guests are billed on the primary table's order.</summary>
+    public Task<ApiResult<TableDto>> MergeAsync(int primaryTableId, int companionTableId, CancellationToken ct = default) =>
+        _api.PostAsync<TableDto>($"api/tables/{primaryTableId}/merge", new MergeTablesRequest { CompanionTableId = companionTableId }, null, ct);
+
+    /// <summary>Frees a merged companion table (the id is the companion's, not the primary's).</summary>
+    public Task<ApiResult<TableDto>> UnmergeAsync(int companionTableId, CancellationToken ct = default) =>
+        _api.PostAsync<TableDto>($"api/tables/{companionTableId}/unmerge", null, null, ct);
+
     /// <summary>The compact menu, cached until <see cref="InvalidateMenu"/> (MenuChanged event) or a newer version arrives.</summary>
     public async Task<ApiResult<MenuDto>> GetMenuAsync(CancellationToken ct = default)
     {

@@ -87,8 +87,14 @@ public sealed class KitchenOrder : BaseEntity, IHasRowVersion
         ReadyAt = nowUtc;
     }
 
+    // Only a ticket that was marked Ready can be called back to the stove (a New or Accepted ticket has nothing to recall).
     public void Recall()
     {
+        if (Status != KitchenOrderStatus.Ready)
+        {
+            throw new DomainException($"Ticket {TicketNumber} is {Status}; only a Ready ticket can be recalled.", ErrorCodes.InvalidStateTransition);
+        }
+
         MoveTo(KitchenOrderStatus.Preparing);
         ReadyAt = null;
     }

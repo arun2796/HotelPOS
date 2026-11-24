@@ -466,7 +466,8 @@ public sealed partial class ReservationsViewModel : ViewModelBase, INavigationAw
                 }
             }
 
-            _notifications.Success($"Reservation for {target.CustomerName} marked as seated.");
+            // The server occupies the table in the same step as it seats the party.
+            _notifications.Success($"Reservation for {target.CustomerName} seated; table {target.TableCode} occupied.");
             await LoadAsync();
         });
     }

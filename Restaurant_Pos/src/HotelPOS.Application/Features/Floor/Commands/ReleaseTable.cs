@@ -15,9 +15,12 @@ internal sealed class ReleaseTableHandler : ICommandHandler<ReleaseTableCommand,
 {
     private readonly FloorTables _tables;
 
-    public ReleaseTableHandler(FloorTables tables)
+    private readonly TableMerges _merges;
+
+    public ReleaseTableHandler(FloorTables tables, TableMerges merges)
     {
         _tables = tables;
+        _merges = merges;
     }
 
     public async Task<Result<TableDto>> Handle(ReleaseTableCommand command, CancellationToken cancellationToken)
@@ -40,6 +43,7 @@ internal sealed class ReleaseTableHandler : ICommandHandler<ReleaseTableCommand,
         }
 
         table.Release();
+        await _merges.ReleaseCompanionsAsync(table, cancellationToken);
         return await _tables.SaveAsync(table, table.Section!.Name, publish: true, cancellationToken);
     }
 }

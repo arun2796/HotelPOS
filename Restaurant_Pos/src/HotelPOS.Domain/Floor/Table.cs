@@ -47,8 +47,63 @@ public sealed class Table : BaseEntity, IHasRowVersion
 
     public bool CanBeDeactivated => Status is TableStatus.Available or TableStatus.OutOfService;
 
-    public bool CanTakeNewOrder => IsActive && CurrentOrderId is null && CurrentOrder is null
+    public bool CanTakeNewOrder => IsActive && CurrentOrderId is null && CurrentOrder is null && MergedIntoTableId is null
         && Status is TableStatus.Available or TableStatus.Occupied;
+
+    // Set on the companion table of a merge: it is locked and its guests are billed on the primary table's order.
+    public int? MergedIntoTableId { get; private set; }
+    public Table? MergedInto { get; private set; }
+    public List<Table> MergedTables { get; private set; } = new();
+
+    public bool IsMerged => MergedIntoTableId is not null;
+
+    // This table (the primary) takes the companion into its party. The companion shows Occupied but cannot be
+    // opened, released or ordered on until the primary is done with.
+    public void Merge(Table companion, DateTime nowUtc)
+    {
+        if (companion.Id == Id)
+        {
+            throw new DomainException("A table cannot be merged with itself.");
+        }
+
+        if (!IsActive || IsMerged || Status is TableStatus.Available or TableStatus.OutOfService or TableStatus.Billing)
+        {
+            throw new DomainException($"Table {Code} must have seated guests (and no bill requested) before another table is merged into it.", ErrorCodes.InvalidStateTransition);
+        }
+
+        if (!companion.IsActive || companion.IsMerged || companion.MergedTables.Count > 0
+            || companion.Status != TableStatus.Available || companion.CurrentOrderId is not null)
+        {
+            throw new DomainException($"Table {companion.Code} is not free, so it cannot be merged.", ErrorCodes.TableNotAvailable);
+        }
+
+        companion.MergedIntoTableId = Id;
+        companion.MergedInto = this;
+        if (!MergedTables.Contains(companion))
+        {
+            MergedTables.Add(companion);
+        }
+
+        companion.Status = TableStatus.Occupied;
+        companion.GuestCount = GuestCount;
+        companion.OccupiedAt = nowUtc;
+    }
+
+    // Back to a free table. Used when the party leaves, or when the merge was a mistake.
+    public void Unmerge()
+    {
+        if (!IsMerged)
+        {
+            throw new DomainException($"Table {Code} is not merged.", ErrorCodes.InvalidStateTransition);
+        }
+
+        MergedInto?.MergedTables.Remove(this);
+        MergedIntoTableId = null;
+        MergedInto = null;
+        Status = TableStatus.Available;
+        GuestCount = null;
+        OccupiedAt = null;
+    }
 
     public void Update(string code, string? name, int sectionId, int capacity)
     {
@@ -135,6 +190,11 @@ public sealed class Table : BaseEntity, IHasRowVersion
 
     public void Release()
     {
+        if (IsMerged)
+        {
+            throw new DomainException($"Table {Code} is merged into another table. Unmerge it, or finish the party's bill.", ErrorCodes.InvalidStateTransition);
+        }
+
         if (Status != TableStatus.Occupied)
         {
             throw new DomainException($"Only an occupied table can be released (table {Code} is {Status}).", ErrorCodes.InvalidStateTransition);

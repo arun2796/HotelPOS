@@ -143,7 +143,7 @@ public sealed class OrderBuilderViewModelTests : IDisposable
         line.Quantity.Should().Be(2);
         line.ModifierOptionIds.Should().Equal(102);
         line.LineTotal.Should().Be(540m);
-        vm.SummaryText.Should().Be("2 items · approx. ₹540.00");
+        vm.SummaryText.Should().Be("2 items · total ₹540.00");
     }
 
     [Fact]

@@ -32,6 +32,7 @@ internal sealed class BillWorkflow
     private readonly TableEvents _tableEvents;
     private readonly BillSteps _bills;
     private readonly BillEvents _events;
+    private readonly TableMerges _merges;
 
     public BillWorkflow(
         IAppDbContext db,
@@ -43,8 +44,10 @@ internal sealed class BillWorkflow
         KitchenSync kitchen,
         TableEvents tableEvents,
         BillSteps bills,
-        BillEvents events)
+        BillEvents events,
+        TableMerges merges)
     {
+        _merges = merges;
         _db = db;
         _audit = audit;
         _afterCommit = afterCommit;
@@ -129,7 +132,12 @@ internal sealed class BillWorkflow
         var now = _clock.UtcNow;
         bill.Finalize(await _invoices.NextAsync(now, cancellationToken), _bills.UserId, now);
         await GstSettings.StampAsync(_db, bill, cancellationToken);
-        order.MarkBilled();
+        // The first part to be finalized bills the order; the other parts of a split bill find it already billed.
+        if (order.Status == OrderStatus.BillRequested)
+        {
+            order.MarkBilled();
+        }
+
         _audit.Add(AuditActions.BillFinalized, nameof(Bill), bill.Id.ToString(CultureInfo.InvariantCulture),
             newValues: new { bill.BillNumber, bill.InvoiceNumber, bill.GrandTotal, order.OrderNumber });
         _afterCommit.Enqueue(() => _events.PublishOrderUpdatedAsync(order, OrderChangeTypes.Billed));
@@ -147,6 +155,27 @@ internal sealed class BillWorkflow
     {
         var (bill, order, table) = (scope.Bill, scope.Order, scope.Table);
         var now = _clock.UtcNow;
+
+        // A split bill: this part is paid, but the table stays seated and the order stays billed until every other
+        // part is settled too.
+        var otherPartsPending = await _db.Bills.AnyAsync(b => b.OrderId == order.Id && b.Id != bill.Id
+            && b.Status != BillStatus.Voided && b.Status != BillStatus.Settled, cancellationToken);
+        if (otherPartsPending)
+        {
+            _audit.Add(AuditActions.BillSettled, nameof(Bill), bill.Id.ToString(CultureInfo.InvariantCulture), newValues: new
+            {
+                bill.InvoiceNumber,
+                bill.GrandTotal,
+                bill.PaidAmount,
+                Payments = bill.Payments.Count,
+                order.OrderNumber,
+                Part = BillParts.Letter(bill.SplitIndex),
+            });
+            _afterCommit.Enqueue(() => _events.PublishPaymentCompletedAsync(bill, order, table));
+            _afterCommit.Enqueue(() => _events.PublishBillUpdatedAsync(bill, BillChangeTypes.PaymentReceived));
+            return;
+        }
+
         order.MarkPaid();
         if (await _db.BoolSettingAsync(SettingKeys.AutoCloseOnFullPayment, true, cancellationToken))
         {
@@ -162,6 +191,7 @@ internal sealed class BillWorkflow
         if (table != null && table.CurrentOrderId == order.Id)
         {
             table.DetachOrder(keepGuestsSeated: false);
+            await _merges.ReleaseCompanionsAsync(table, cancellationToken);
         }
 
         _audit.Add(AuditActions.BillSettled, nameof(Bill), bill.Id.ToString(CultureInfo.InvariantCulture), newValues: new

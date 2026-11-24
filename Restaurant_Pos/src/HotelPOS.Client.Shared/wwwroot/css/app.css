@@ -1,28 +1,30 @@
 /* Base styles and reusable pieces for the waiter (phone, portrait) and kitchen (tablet, landscape) screens.
-   Mobile-first; touch targets are at least var(--touch) = 48 px. */
+   Mobile-first; touch targets are at least var(--touch) = 48 px. Type, spacing, radii and states come from tokens.css. */
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
 body {
   font-family: var(--font);
-  font-size: 15px;
+  font-size: var(--fs-16);
+  line-height: var(--lh-body);
   color: var(--text);
   background: var(--bg);
   -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
 }
 button, input, select, textarea { font: inherit; color: inherit; }
-a { color: var(--primary); text-decoration: none; }
+::placeholder { color: var(--text-2); opacity: 1; }
+a { color: var(--primary-fg); text-decoration: none; }
 h1, h2, h3 { margin: 0; font-weight: 600; }
-h1 { font-size: 22px; }
-h2 { font-size: 17px; }
-h3 { font-size: 15px; }
+h1 { font-size: var(--fs-24); }
+h2 { font-size: var(--fs-18); }
+h3 { font-size: var(--fs-16); }
 .muted { color: var(--text-2); }
-.small { font-size: 12px; }
+.small { font-size: var(--fs-12); }
 .num { font-variant-numeric: tabular-nums; text-align: right; }
 
 /* Splash shown by index.html until Blazor starts. */
 .splash { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
-.splash-logo { font-size: 26px; font-weight: 700; color: var(--primary); }
+.splash-logo { font-size: var(--fs-24); font-weight: 700; color: var(--primary-fg); }
 .splash-text { color: var(--text-2); }
 .error-ui { display: none; position: fixed; bottom: 0; left: 0; right: 0; padding: 12px 16px; background: var(--danger-soft);
   color: var(--danger-text); border-top: 1px solid var(--border); z-index: 1000; }
@@ -33,22 +35,22 @@ h3 { font-size: 15px; }
 /* The title keeps one line; the subtitle may take two short lines instead of being cut mid-word when the pill grows. */
 .topbar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 6px; min-height: 52px; padding: 4px 8px 4px 12px;
   background: var(--surface); border-bottom: 1px solid var(--border); }
-.topbar .title { flex: 1; min-width: 0; font-weight: 600; font-size: 16px; line-height: 1.2; }
+.topbar .title { flex: 1; min-width: 0; font-weight: 600; font-size: var(--fs-16); line-height: 1.2; }
 .topbar .title-main { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.topbar .sub { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-size: 12px; font-weight: 400;
+.topbar .sub { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-size: var(--fs-12); font-weight: 400;
   line-height: 1.25; color: var(--text-2); }
-.topbar .avatar { font-weight: 700; color: var(--success-text); }
+.topbar .avatar { font-weight: 700; color: var(--primary-fg); }
 @media (min-width: 480px) { .topbar { gap: 12px; } }
 .page { flex: 1; padding: 12px 16px calc(16px + var(--safe-bottom)); }
 .bottomnav { position: sticky; bottom: 0; z-index: 20; display: flex; background: var(--surface); border-top: 1px solid var(--border);
   padding-bottom: var(--safe-bottom); }
 .bottomnav a { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 56px;
-  font-size: 11px; color: var(--text-2); }
-.bottomnav a.active { color: var(--success-text); font-weight: 600; }
-.bottomnav a .ico { font-size: 20px; line-height: 1; }
+  font-size: var(--fs-12); color: var(--text-2); }
+.bottomnav a.active { color: var(--primary-fg); font-weight: 600; }
+.bottomnav a .ico { font-size: var(--fs-20); line-height: 1; }
 
 /* Connection pill (always visible): the same quiet badge as the desktop shell, dot + hairline in the state's colour. */
-.conn { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; color: var(--text-2); padding: 3px 8px;
+.conn { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-12); font-weight: 500; color: var(--text-2); padding: 3px 8px;
   border-radius: 6px; background: var(--surface); border: 1px solid var(--border); white-space: nowrap; }
 .conn::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--text-3); }
 .conn.ok { color: var(--success-text); border-color: var(--success); }
@@ -61,32 +63,34 @@ h3 { font-size: 15px; }
 /* Cards, chips, buttons, inputs */
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card); padding: 12px; }
 .card + .card { margin-top: 10px; }
-.chip { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600;
+.chip { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: var(--fs-12); font-weight: 600;
   background: var(--surface-subtle); color: var(--text-2); white-space: nowrap; }
 .chip.success { background: var(--success-soft); color: var(--success-text); }
 .chip.warning { background: var(--warning-soft); color: var(--warning-text); }
 .chip.danger { background: var(--danger-soft); color: var(--danger-text); }
-.chip.info { background: var(--info-soft); color: var(--info); }
-.chip.primary { background: var(--primary-soft); color: var(--success-text); }
-.chip.lg { font-size: 15px; padding: 4px 12px; }
+.chip.info { background: var(--info-soft); color: var(--info-text); }
+.chip.primary { background: var(--primary-soft); color: var(--primary-fg); }
+.chip.lg { font-size: var(--fs-14); padding: 4px 12px; }
 
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: var(--touch); padding: 0 16px;
   border: 1px solid var(--border); border-radius: var(--radius-button); background: var(--surface); color: var(--text);
   font-weight: 600; cursor: pointer; user-select: none; }
-.btn:disabled { opacity: 0.5; cursor: default; }
 .btn.primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
-.btn.primary:not(:disabled):active { background: var(--primary-hover); }
-.btn.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+.btn.danger { background: var(--danger); border-color: var(--danger); color: var(--on-primary); }
 .btn.danger-outline { background: transparent; border-color: var(--danger-text); color: var(--danger-text); }
-/* Second choice next to a primary button: outlined, so two actions never look identical (kitchen ACCEPT / START). */
+/* Second choice next to a primary button: outlined, so two actions never look identical (kitchen Accept / Start). */
 .btn.secondary { background: var(--surface); border: 2px solid var(--success-text); color: var(--success-text); }
 .btn.ghost { background: transparent; border-color: transparent; }
 .btn.block { width: 100%; }
-.btn.lg { min-height: 56px; font-size: 17px; }
+.btn.lg { min-height: 56px; font-size: var(--fs-16); }
 .btn.icon { min-width: var(--touch); padding: 0; }
+/* Disabled: a flat neutral button (never a faded primary, which still looks tappable). */
+.btn:disabled, .btn.primary:disabled, .btn.danger:disabled, .btn.secondary:disabled, .btn.danger-outline:disabled {
+  background: var(--state-disabled-bg); border-color: var(--border); color: var(--state-disabled-fg); cursor: not-allowed; }
+.btn.ghost:disabled { background: transparent; border-color: transparent; }
 
 .field { display: block; margin-bottom: 12px; }
-.field > span { display: block; font-size: 12px; font-weight: 600; color: var(--text-2); margin-bottom: 4px; }
+.field > span { display: block; font-size: var(--fs-13); font-weight: 600; color: var(--text-2); margin-bottom: 4px; }
 .input { width: 100%; min-height: var(--touch); padding: 0 12px; border: 1px solid var(--input-border); border-radius: var(--radius-input);
   background: var(--input-bg); }
 .input:focus { border-color: var(--primary); background: var(--surface); }
@@ -94,7 +98,7 @@ textarea.input { padding: 10px 12px; min-height: 72px; resize: vertical; }
 input[type="checkbox"] { width: 22px; height: 22px; margin: 0; accent-color: var(--primary); }
 label.toggle { min-height: var(--touch); cursor: pointer; }
 
-.banner { padding: 10px 12px; border-radius: var(--radius-button); font-size: 14px; margin-bottom: 12px; }
+.banner { padding: 10px 12px; border-radius: var(--radius-button); font-size: var(--fs-14); margin-bottom: 12px; }
 .banner.error { background: var(--danger-soft); color: var(--danger-text); }
 .banner.info { background: var(--info-soft); color: var(--text); }
 .banner.warning { background: var(--warning-soft); color: var(--text); }
@@ -113,7 +117,7 @@ label.toggle { min-height: var(--touch); cursor: pointer; }
 
 /* Dialog / sheet: bottom sheet on phones, centred dialog from 720 px up */
 .overlay { position: fixed; inset: 0; background: rgba(9, 9, 11, 0.5); z-index: 50; display: flex; align-items: flex-end; justify-content: center; }
-.sheet { width: 100%; max-height: 92vh; overflow: auto; background: var(--surface); border-radius: var(--radius-dialog) var(--radius-dialog) 0 0;
+.sheet { width: 100%; max-height: 92vh; max-height: calc(100dvh - 24px); overflow: auto; background: var(--surface); border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
   padding: 16px 16px calc(16px + var(--safe-bottom)); box-shadow: var(--shadow-popup); }
 .sheet h2 { margin-bottom: 8px; }
 .sheet .actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
@@ -123,14 +127,16 @@ label.toggle { min-height: var(--touch); cursor: pointer; }
   .page { padding: 16px 24px; }
 }
 
-/* Toasts */
-.toasts { position: fixed; left: 12px; right: 12px; bottom: calc(var(--toast-offset, 72px) + var(--safe-bottom)); z-index: 60; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
-.toast { pointer-events: auto; padding: 10px 12px; border-radius: var(--radius-button); background: var(--surface); border: 1px solid var(--border);
-  box-shadow: var(--shadow-popup); font-size: 14px; }
-.toast.success { border-left: 4px solid var(--success); }
-.toast.error { border-left: 4px solid var(--danger); }
-.toast.info { border-left: 4px solid var(--info); }
-.toast.warning { border-left: 4px solid var(--warning); }
+/* Toasts: a centred column (never wider than 420 px) under the top bar; the kitchen board puts them bottom-right. The 4 px
+   tone accent is a clipped bar, so the rounded corners never show a curved sliver. */
+.toasts { position: fixed; top: 64px; bottom: auto; left: 12px; right: 12px; max-width: 420px; margin-inline: auto; z-index: 60; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+.toast { --tone: var(--neutral); position: relative; overflow: hidden; pointer-events: auto; padding: 10px 12px 10px 16px; border-radius: var(--radius-button);
+  background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-popup); font-size: var(--fs-14); }
+.toast::before { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 4px; background: var(--tone); }
+.toast.success { --tone: var(--success); }
+.toast.error { --tone: var(--danger); }
+.toast.info { --tone: var(--info); }
+.toast.warning { --tone: var(--warning); }
 
 /* Sign-in */
 .signin { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px; }
@@ -138,20 +144,21 @@ label.toggle { min-height: var(--touch); cursor: pointer; }
 
 /* ---- Phase 18.3: waiter screens ---- */
 .chip-btn { min-height: var(--touch); padding: 0 16px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface);
-  color: var(--text); font-weight: 600; white-space: nowrap; flex: none; }
-.chip-btn.on { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
-/* A scrolling chip row fades out at the right edge, so a cut-off chip reads as "more this way" rather than a typo. */
-.chip-row { display: flex; align-items: center; gap: 8px; overflow-x: auto; padding: 2px 24px 6px 0; scrollbar-width: none;
+  color: var(--text); font-weight: 600; white-space: nowrap; flex: none; cursor: pointer; }
+.chip-btn.on, .chip-btn[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+/* A scrolling chip row fades out at the right edge, so a cut-off chip reads as "more this way" rather than a typo. The 4 px
+   padding keeps the focus ring of the first and last chip from being clipped by the scroll box. */
+.chip-row { display: flex; align-items: center; gap: 8px; overflow-x: auto; padding: 4px 24px 4px 4px; scrollbar-width: none;
   -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
   mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); }
 .chip-row::-webkit-scrollbar { display: none; }
 
 /* Table map: coloured tiles, same meanings as the desktop legend. */
 .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
-.tile { display: block; text-align: left; min-height: 104px; padding: 10px 12px; border: 0; border-radius: var(--radius-card); color: #fff; cursor: pointer; }
-.tile-code { font-size: 22px; font-weight: 700; }
-.tile-time, .tile-sub { font-size: 12px; opacity: 0.9; }
-.tile-status { margin-top: 10px; font-weight: 600; font-size: 13px; }
+.tile { display: block; text-align: left; min-height: 104px; padding: 10px 12px; border: 0; border-radius: var(--radius-card); color: var(--on-primary); cursor: pointer; }
+.tile-code { font-size: var(--fs-20); font-weight: 700; }
+.tile-time, .tile-sub { font-size: var(--fs-12); opacity: 0.9; }
+.tile-status { margin-top: 10px; font-weight: 600; font-size: var(--fs-13); }
 .st-available { background: var(--st-available); }
 .st-occupied { background: var(--st-occupied); }
 .st-ordering { background: var(--st-ordering); }
@@ -161,7 +168,7 @@ label.toggle { min-height: var(--touch); cursor: pointer; }
 .st-outofservice { background: var(--st-out); }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin-top: 16px; }
 .legend .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; }
-.chip[class*="st-chip-"] { color: #fff; }
+.chip[class*="st-chip-"] { color: var(--on-primary); }
 .st-chip-available { background: var(--st-available); } .st-chip-occupied { background: var(--st-occupied); }
 .st-chip-ordering { background: var(--st-ordering); } .st-chip-preparing { background: var(--st-preparing); }
 .st-chip-ready { background: var(--st-ready); } .st-chip-billing { background: var(--st-billing); } .st-chip-outofservice { background: var(--st-out); }
@@ -171,17 +178,17 @@ label.toggle { min-height: var(--touch); cursor: pointer; }
 .items { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 8px 0 12px; }
 .item-card { display: block; text-align: left; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface);
   color: var(--text); overflow: hidden; cursor: pointer; }
-.item-card:disabled { opacity: 0.55; }
+.item-card:disabled { opacity: 0.55; cursor: not-allowed; }
 .item-wrap { position: relative; }
 .item-wrap .item-card { width: 100%; }
-.item-star { position: absolute; top: 2px; right: 2px; width: var(--touch); height: var(--touch); border: 0; background: transparent; color: var(--primary); font-size: 22px; cursor: pointer; }
+.item-star { position: absolute; top: 2px; right: 2px; width: var(--touch); height: var(--touch); border: 0; background: transparent; color: var(--primary-fg); font-size: var(--fs-20); cursor: pointer; }
 .item-img { position: relative; aspect-ratio: 4 / 3; background: var(--surface-subtle); display: flex; align-items: center; justify-content: center; }
 .item-img img { width: 100%; height: 100%; object-fit: cover; }
-.item-img .ph { font-size: 30px; opacity: 0.5; }
+.item-img .ph { font-size: var(--fs-28); opacity: 0.5; }
 .item-img .sold { position: absolute; top: 8px; left: 8px; }
 .item-body { padding: 8px 10px 10px; }
-.item-name { font-weight: 600; font-size: 14px; line-height: 1.25; max-height: 2.5em; overflow: hidden; }
-.price { color: var(--success-text); font-weight: 600; }
+.item-name { font-weight: 600; font-size: var(--fs-14); line-height: 1.25; max-height: 2.5em; overflow: hidden; }
+.price { color: var(--success-text); font-weight: 600; font-variant-numeric: tabular-nums; }
 .cart { position: sticky; bottom: calc(56px + var(--safe-bottom)); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card);
   padding: 12px; box-shadow: var(--shadow-popup); }
 .cart-toggle { display: flex; align-items: baseline; gap: 8px; min-height: var(--touch); padding: 0; border: 0; background: none; color: inherit;
@@ -194,7 +201,7 @@ label.toggle { min-height: var(--touch); cursor: pointer; }
 .cart-line { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border-subtle); }
 .cart-line .row { gap: 4px; }
 .stepper { display: inline-flex; align-items: center; gap: 4px; }
-.stepper-value { min-width: 56px; text-align: center; font-weight: 600; }
+.stepper-value { min-width: 56px; text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
 .options { display: flex; flex-wrap: wrap; gap: 8px; }
 .order-card { width: 100%; text-align: left; cursor: pointer; }
 .order-card.ready { border-color: var(--success); background: var(--success-soft); }
@@ -205,27 +212,27 @@ label.toggle { min-height: var(--touch); cursor: pointer; }
 /* ---- Phase 18.4: kitchen display (tablet landscape first, stacks in portrait) ---- */
 .kds { display: grid; grid-template-columns: 1fr; gap: 12px; }
 @media (min-width: 720px) { .kds { grid-template-columns: repeat(3, 1fr); align-items: start; } }
-.kds-head { font-size: 13px; letter-spacing: 0.04em; color: var(--text-2); margin: 4px 0 8px; }
+.kds-head { font-size: var(--fs-13); letter-spacing: 0.04em; color: var(--text-2); margin: 4px 0 8px; }
 .ticket { background: var(--surface); border: 2px solid var(--border); border-radius: var(--radius-card); padding: 12px; margin-bottom: 10px; }
 .ticket.warn { border-color: var(--warning); }
 .ticket.late { border-color: var(--danger); }
-.ticket-table { font-size: 24px; font-weight: 700; margin-right: 8px; }
-.ticket-lines { margin-top: 8px; font-size: 17px; }
+.ticket-table { font-size: var(--fs-24); font-weight: 700; margin-right: 8px; }
+.ticket-lines { margin-top: 8px; font-size: var(--fs-18); }
 .ticket-line { padding: 2px 0; display: flex; align-items: center; gap: 8px; }
 .ticket-thumb { width: 40px; height: 40px; flex: none; border-radius: 8px; object-fit: cover; background: var(--surface-subtle); }
 .ticket-thumb.large { width: 56px; height: 56px; border-radius: 10px; }
 /* The one line the cook must not miss: amber 700 on white (5.0:1), bright amber in dark mode, bold, not italic. */
-.ticket-note { margin-left: 24px; color: var(--warning-text); font-weight: 600; font-size: 15px; }
+.ticket-note { margin-left: 24px; color: var(--warning-text); font-weight: 600; font-size: var(--fs-16); }
 .ticket-note::before { content: "✎ "; }
-.ticket-station { font-size: 13px; }
-.ticket .btn.lg { flex: 1; min-height: 52px; font-size: 16px; }
+.ticket-station { font-size: var(--fs-13); }
+.ticket .btn.lg { flex: 1; min-height: 52px; font-size: var(--fs-16); }
 .empty.small { padding: 12px; }
 
 /* ---- Phase 20.1: notification bell and panel ---- */
 .bell-wrap { position: relative; }
 .bell { position: relative; }
-.bell-badge { position: absolute; top: 2px; right: 0; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--danger);
-  color: #fff; font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; }
+.bell-badge { position: absolute; top: 0; right: 0; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; background: var(--danger);
+  color: var(--on-primary); font-size: var(--fs-12); font-weight: 700; line-height: 18px; text-align: center; font-variant-numeric: tabular-nums; }
 .notice-panel { position: fixed; top: 56px; right: 8px; left: 8px; max-width: 420px; margin-left: auto; z-index: 40; max-height: 70vh;
   overflow-y: auto; box-shadow: var(--shadow-popup); }
 .notice-head { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; }
@@ -239,12 +246,12 @@ label.toggle { min-height: var(--touch); cursor: pointer; }
 .notice-main { display: flex; gap: 10px; align-items: flex-start; width: 100%; min-height: var(--touch); padding: 6px 0; border: 0; background: none;
   color: inherit; text-align: left; font: inherit; cursor: pointer; }
 .notice-text { display: flex; flex-direction: column; gap: 2px; }
-.notice-ico { font-size: 18px; }
+.notice-ico { font-size: var(--fs-18); }
 /* Accessibility: visible keyboard focus, screen-reader-only text, loading skeletons. */
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .input:focus-visible { outline-offset: 0; }
 .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
-.empty-icon { font-size: 28px; margin-bottom: 4px; }
+.empty-icon { font-size: var(--fs-28); margin-bottom: 4px; }
 .error-state { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .skeleton-group { display: grid; gap: 10px; }
 .skeleton { border-radius: var(--radius-card); background: linear-gradient(90deg, var(--surface-subtle) 25%, var(--layer-hover) 50%, var(--surface-subtle) 75%);
@@ -259,7 +266,9 @@ label.toggle { min-height: var(--touch); cursor: pointer; }
    BottomSheet, DetailPane, OrderLine, OrderSummary, Toasts. Colours only through tokens. No :has() (Android WebView).
    ====================================================================================================== */
 svg.ic { flex: none; vertical-align: middle; }
-.num-tab { font-variant-numeric: tabular-nums; }
+/* Money amounts, timers and counts keep their digits the same width so a changing number never jiggles. */
+.num-tab, .ticket-elapsed, .event-time, .order-line-price, .os-row dd, .os-row.total, .cart-total, .table-total, .table-elapsed, .order-card-total,
+.order-card-elapsed, .kpi-value, .detail-list dd, .clock, .kds-timer, .options-price { font-variant-numeric: tabular-nums; }
 
 /* One tone map for every primitive: --tc text, --tb soft fill, --ts solid. */
 .status-badge, .kpi, .timeline-step { --tc: var(--neutral-text); --tb: var(--neutral-soft); --ts: var(--neutral); }
@@ -294,9 +303,9 @@ svg.ic { flex: none; vertical-align: middle; }
 .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; }
 .tab { min-height: var(--touch); padding: 0 14px; border: 0; border-bottom: 3px solid transparent; background: transparent; color: var(--text-2);
   font-weight: 600; white-space: nowrap; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
-.tab.on { color: var(--primary); border-bottom-color: var(--primary); }
+.tab.on { color: var(--primary-fg); border-bottom-color: var(--primary); }
 .tab-count { min-width: 20px; padding: 0 6px; border-radius: 999px; background: var(--surface-subtle); color: var(--text-2); font-size: var(--fs-caption); line-height: 20px; text-align: center; }
-.tab.on .tab-count, .segment.on .tab-count { background: var(--primary-soft); color: var(--primary); }
+.tab.on .tab-count, .segment.on .tab-count { background: var(--primary-soft); color: var(--primary-fg); }
 
 .segmented { display: inline-flex; background: var(--surface-subtle); border-radius: 999px; padding: 3px; gap: 3px; }
 .segment { min-height: var(--touch); padding: 0 16px; border: 0; border-radius: 999px; background: transparent; color: var(--text-2); font-weight: 600;
@@ -311,12 +320,14 @@ svg.ic { flex: none; vertical-align: middle; }
 
 .filter-chip { min-height: var(--touch); padding: 0 16px; display: inline-flex; align-items: center; gap: 8px; border-radius: 999px; border: 1px solid var(--border);
   background: var(--surface); color: var(--text); font-weight: 600; white-space: nowrap; flex: none; cursor: pointer; }
-.filter-chip.on { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
-.filter-count { min-width: 22px; padding: 0 6px; border-radius: 999px; background: var(--surface-subtle); color: var(--text-2); font-size: var(--fs-caption); line-height: 22px; text-align: center; }
-.filter-chip.on .filter-count { background: var(--on-primary); color: var(--primary); }
+.filter-chip.on, .filter-chip[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+.filter-count { min-width: 22px; padding: 0 6px; border-radius: 999px; background: var(--surface-subtle); color: var(--text-2); font-size: var(--fs-caption); line-height: 22px; text-align: center; font-variant-numeric: tabular-nums; }
+.filter-chip.on .filter-count, .filter-chip[aria-pressed="true"] .filter-count { background: var(--on-primary); color: var(--primary-fg); }
+/* Chips that cannot be used right now are flat and neutral, like a disabled button. */
+.chip-btn:disabled, .filter-chip:disabled { background: var(--state-disabled-bg); border-color: var(--border); color: var(--state-disabled-fg); cursor: not-allowed; }
 
 .timeline { list-style: none; margin: 0; padding: 0; display: flex; align-items: flex-start; }
-.timeline-step { flex: 1; position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; color: var(--text-3); font-size: var(--fs-caption); }
+.timeline-step { flex: 1; position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; color: var(--text-2); font-size: var(--fs-caption); }
 .timeline-step::before { content: ""; position: absolute; top: 15px; right: 50%; width: 100%; height: 2px; background: var(--border); }
 .timeline-step:first-child::before { display: none; }
 .timeline-dot { position: relative; z-index: 1; width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
@@ -325,7 +336,7 @@ svg.ic { flex: none; vertical-align: middle; }
 .timeline-step.done::before, .timeline-step.current::before, .timeline-step.delayed::before { background: var(--primary); }
 .timeline-step.done .timeline-dot { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
 .timeline-step.current { color: var(--text); font-weight: 600; }
-.timeline-step.current .timeline-dot { background: var(--primary-soft); border-color: var(--primary); color: var(--primary); }
+.timeline-step.current .timeline-dot { background: var(--primary-soft); border-color: var(--primary); color: var(--primary-fg); }
 .timeline-step.delayed { color: var(--danger-text); font-weight: 600; }
 .timeline-step.delayed .timeline-dot { background: var(--danger-soft); border-color: var(--danger); color: var(--danger-text); }
 .timeline-time { color: var(--text-2); font-weight: 400; }
@@ -363,25 +374,27 @@ svg.ic { flex: none; vertical-align: middle; }
 .toast.warning .toast-icon { color: var(--warning-text); }
 .toast.info .toast-icon { color: var(--info-text); }
 /* ---- Phase 21 0.7: web shells. Waiter = header + five bottom tabs; kitchen = compact header, no bottom nav. ---- */
-.brand { display: inline-flex; align-items: center; gap: 6px; color: var(--primary); flex: none; }
+.brand { display: inline-flex; align-items: center; gap: 6px; color: var(--primary-fg); flex: none; }
 .brand-name { display: none; font-size: var(--fs-body); }
 @media (min-width: 480px) { .brand-name { display: inline; } }
-.topbar .avatar, .avatar.lg { display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--primary-soft); color: var(--primary); font-weight: 700; }
+.topbar .avatar, .avatar.lg { display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--primary-soft); color: var(--primary-fg); font-weight: 700; }
 .topbar .avatar { width: 36px; height: 36px; font-size: var(--fs-label); }
 .avatar.lg { width: 48px; height: 48px; flex: none; }
 
-.bottomnav a, .bottomnav .tabbtn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 56px; min-width: var(--touch);
-  padding: 4px 0; border: 0; background: transparent; font-size: 11px; color: var(--text-2); cursor: pointer; }
-.bottomnav a.active { color: var(--primary); font-weight: 600; }
-.bottomnav .tab-new svg { color: var(--on-primary); background: var(--primary); border-radius: 50%; padding: 5px; width: 32px; height: 32px; }
-.bottomnav .tab-new { color: var(--primary); font-weight: 600; }
+/* Bottom tabs: every label sits on one baseline. The raised "New order" circle is 32 px but takes the layout room of a
+   24 px icon (negative margin), so its label lines up with Home, Tables, Orders and More. */
+.bottomnav a, .bottomnav .tabbtn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; min-height: 56px; min-width: var(--touch);
+  padding: 8px 0 4px; border: 0; background: transparent; font-size: var(--fs-12); color: var(--text-2); cursor: pointer; }
+.bottomnav a.active { color: var(--primary-fg); font-weight: 600; }
+.bottomnav .tab-new svg { color: var(--on-primary); background: var(--primary); border-radius: 50%; padding: 5px; width: 32px; height: 32px; margin: -4px 0; }
+.bottomnav .tab-new { color: var(--primary-fg); font-weight: 600; }
 
-.shell.kitchen .toasts { bottom: calc(16px + var(--safe-bottom)); }
+.shell.kitchen .toasts { top: auto; bottom: calc(16px + var(--safe-bottom)); left: auto; right: 16px; margin-inline: 0; width: 420px; max-width: calc(100vw - 32px); }
 .shell.kitchen .page { padding-bottom: 16px; }
 .headnav { display: flex; align-items: center; gap: 2px; }
 .headnav a { display: inline-flex; align-items: center; gap: 6px; min-height: var(--touch); min-width: var(--touch); justify-content: center; padding: 0 10px; border-radius: var(--radius-button);
   color: var(--text-2); font-weight: 600; }
-.headnav a.active { color: var(--primary); background: var(--primary-soft); }
+.headnav a.active { color: var(--primary-fg); background: var(--primary-soft); }
 .hn-label { display: none; }
 @media (min-width: 1100px) { .hn-label { display: inline; } }
 .clock { display: inline-flex; align-items: center; gap: 4px; color: var(--text-2); font-weight: 600; white-space: nowrap; }
@@ -400,22 +413,68 @@ svg.ic { flex: none; vertical-align: middle; }
 .device-state { font-weight: 600; }
 .picker-group + .picker-group { margin-top: 12px; }
 .picker-head { font-size: var(--fs-label); font-weight: 600; color: var(--text-2); margin-bottom: 6px; }
-.picker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
-.picker-table { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; min-height: 64px; padding: 8px 12px; border: 0; border-radius: var(--radius-card); color: #fff; cursor: pointer; }
+.picker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+/* A neutral card with the status colour as a 3 px top stripe (white text on a solid status fill is only 2.2-3.3:1). The
+   tone is never colour alone: the section / seat lines say what the tile is. Selected = primary border, soft fill, check. */
+.picker-table { --tbd: var(--neutral); position: relative; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px;
+  min-height: 72px; padding: 12px 12px 8px; text-align: left; border: 1px solid var(--border); border-radius: var(--radius-card);
+  background: var(--surface); color: var(--text); box-shadow: inset 0 3px 0 0 var(--tbd); cursor: pointer; }
+.picker-table b { font-size: var(--fs-16); }
+.picker-table .small { color: var(--text-2); }
+.picker-title { display: flex; align-items: center; gap: 6px; }
+.picker-table.st-available, .picker-table.st-ready { --tbd: var(--success); }
+.picker-table.st-occupied, .picker-table.st-ordering { --tbd: var(--info); }
+.picker-table.st-preparing, .picker-table.st-billing { --tbd: var(--warning); }
+.picker-table.st-outofservice { --tbd: var(--neutral); }
+.picker-table[aria-pressed="true"] { border-color: var(--state-selected-border); background: var(--state-selected-bg);
+  box-shadow: inset 0 3px 0 0 var(--tbd), 0 0 0 1px var(--state-selected-border); }
+.picker-check { position: absolute; top: 10px; right: 8px; color: var(--primary-fg); display: inline-flex; }
 
 .toast-text { flex: 1; min-width: 0; }
-.toast-action { min-height: 40px; padding: 0 12px; border: 0; border-radius: var(--radius-button); background: transparent; color: var(--primary); font-weight: 700; cursor: pointer; }
+.toast-action { min-height: 44px; min-width: 44px; padding: 0 12px; border: 0; border-radius: var(--radius-button); background: transparent; color: var(--primary-fg); font-weight: 700; cursor: pointer; }
 
 /* Phase 21.5: on every waiter page the toast sits at the top, under the bar, so it never covers the cart bar, an action row or the bottom nav. Kitchen keeps the bottom position. No :has() (Android WebView). */
-.shell.waiter .toasts { top: calc(60px + env(safe-area-inset-top, 0px)); bottom: auto; }
+.shell.waiter .toasts { top: calc(64px + env(safe-area-inset-top, 0px)); bottom: auto; }
 /* Top bar: the subtitle is one ellipsis line and the title block keeps room for a few characters beside the back button. */
 .topbar .title { min-width: 48px; }
 @media (max-width: 420px) {
-  .topbar .conn { gap: 4px; padding: 3px 6px; font-size: 11px; }
-  /* Connected = one plain green dot, no box around it (the title attribute keeps the words); wait/off keep their text. */
-  .topbar .conn.ok { font-size: 0; gap: 0; padding: 8px 4px; border-color: transparent; background: transparent; }
+  .topbar .conn { gap: 4px; padding: 3px 6px; font-size: var(--fs-12); }
+  /* Connected = one plain green dot, no box around it. The word stays for screen readers (visually hidden, not display:none);
+     wait/off keep their text. */
+  .topbar .conn.ok { gap: 0; padding: 8px 4px; border-color: transparent; background: transparent; }
+  .topbar .conn.ok .conn-text { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
   .topbar .conn.ok::before { width: 9px; height: 9px; box-shadow: 0 0 0 3px var(--success-soft); }
 }
 /* Waiter phones: the theme switch lives in the More sheet, so the bar keeps room for "Good evening, <name>". */
 @media (max-width: 479px) { .shell.waiter .topbar .theme-toggle { display: none; } }
 .topbar .sub { display: block; -webkit-line-clamp: unset; white-space: nowrap; text-overflow: ellipsis; }
+
+/* ======================================================================================================
+   Interaction states for every tappable surface: hover (pointer devices only), pressed, keyboard focus. Selected chips keep
+   their solid fill (hover only darkens it). Table cards add their own focus rule in waiter.css (they carry a stripe).
+   ====================================================================================================== */
+@media (hover: hover) {
+  .btn:hover:not(:disabled) { background: var(--state-hover); }
+  .btn.primary:hover:not(:disabled) { background: var(--primary-hover); border-color: var(--primary-hover); }
+  .btn.danger:hover:not(:disabled) { background: var(--danger); filter: brightness(0.92); }
+  .chip-btn:not(.on):not([aria-pressed="true"]):not(:disabled):hover,
+  .filter-chip:not(.on):not([aria-pressed="true"]):not(:disabled):hover,
+  .item-card:not(:disabled):hover, .table-card:hover, .picker-table:not([aria-pressed="true"]):hover,
+  .tab:hover, .segment:not(.on):hover, .action-row:not(:disabled):hover, .quick-action:not(.primary):hover,
+  .bottomnav a:hover, .bottomnav .tabbtn:hover { background: var(--state-hover); }
+  .chip-btn.on:not(:disabled):hover, .chip-btn[aria-pressed="true"]:not(:disabled):hover,
+  .filter-chip.on:not(:disabled):hover, .filter-chip[aria-pressed="true"]:not(:disabled):hover,
+  .quick-action.primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+}
+.btn:active:not(:disabled), .chip-btn:active:not(:disabled), .filter-chip:active:not(:disabled), .item-card:active:not(:disabled),
+.table-card:active, .picker-table:active, .tab:active, .segment:active, .action-row:active:not(:disabled), .quick-action:active,
+.bottomnav a:active, .bottomnav .tabbtn:active { transform: scale(0.98); }
+.btn.primary:active:not(:disabled) { background: var(--primary-hover); }
+
+.btn:focus-visible, .chip-btn:focus-visible, .filter-chip:focus-visible, .item-card:focus-visible, .action-row:focus-visible, .quick-action:focus-visible,
+.parcel-toggle:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.picker-table:focus-visible { outline: none; box-shadow: inset 0 3px 0 0 var(--tbd), var(--focus-ring); }
+.tab:focus-visible, .segment:focus-visible, .bottomnav a:focus-visible, .bottomnav .tabbtn:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--focus); }
+
+/* One clear icon in search fields: the app draws its own, so hide the browser's. */
+input[type=search]::-webkit-search-cancel-button, input[type=search]::-webkit-search-decoration { -webkit-appearance: none; appearance: none; display: none; }

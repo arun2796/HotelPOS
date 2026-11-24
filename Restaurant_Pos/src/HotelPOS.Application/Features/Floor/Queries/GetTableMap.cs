@@ -42,9 +42,19 @@ internal sealed class GetTableMapHandler : IQueryHandler<GetTableMapQuery, Table
             .ThenBy(s => s.Name)
             .ToListAsync(cancellationToken);
         var tables = await _db.Tables.AsNoTracking()
-            .Include(t => t.CurrentOrder)
+            .Include(t => t.CurrentOrder).Include(t => t.MergedInto).Include(t => t.MergedTables)
             .Where(t => includeInactive || t.IsActive)
             .ToListAsync(cancellationToken);
+
+        // Running total of each table's open order, for the tile.
+        var orderIds = tables.Where(t => t.CurrentOrderId != null).Select(t => t.CurrentOrderId!.Value).ToList();
+        var totals = orderIds.Count == 0
+            ? new Dictionary<int, decimal>()
+            : await _db.OrderItems.AsNoTracking()
+                .Where(i => orderIds.Contains(i.OrderId) && i.Status != HotelPOS.Contracts.Enums.OrderItemStatus.Cancelled)
+                .GroupBy(i => i.OrderId)
+                .Select(g => new { OrderId = g.Key, Total = g.Sum(i => (i.UnitPrice + i.Modifiers.Sum(m => m.PriceDelta)) * i.Quantity) })
+                .ToDictionaryAsync(x => x.OrderId, x => x.Total, cancellationToken);
 
         var windowEnd = serverTime.AddMinutes(HotelPOS.Contracts.Reservations.ReservationLimits.ReservedSoonWindowMinutes);
         var upcomingReservations = await _db.Reservations.AsNoTracking()
@@ -72,7 +82,8 @@ internal sealed class GetTableMapHandler : IQueryHandler<GetTableMapQuery, Table
                 IsActive = s.IsActive,
                 Tables = bySection[s.Id]
                     .OrderBy(t => t.Code, StringComparer.Ordinal)
-                    .Select(t => TableMapping.ToDto(t, s.Name, upcomingByTable.GetValueOrDefault(t.Id)))
+                    .Select(t => TableMapping.ToDto(t, s.Name, upcomingByTable.GetValueOrDefault(t.Id),
+                        t.CurrentOrderId is { } orderId && totals.TryGetValue(orderId, out var total) ? total : null))
                     .ToList(),
             }).ToList(),
         };

@@ -26,7 +26,8 @@ public sealed class CreateReservationRequestValidator : AbstractValidator<Create
             .MaximumLength(ReservationLimits.CustomerNameMaxLength);
         RuleFor(x => x.CustomerPhone)
             .NotEmpty().WithMessage("Customer phone is required.")
-            .MaximumLength(ReservationLimits.CustomerPhoneMaxLength);
+            .MaximumLength(ReservationLimits.CustomerPhoneMaxLength)
+            .Matches(@"^[+]?[0-9][0-9 ()-]{5,}$").WithMessage("Enter a valid phone number (digits, spaces, + - and brackets).");
         RuleFor(x => x.PartySize)
             .InclusiveBetween(ReservationLimits.MinPartySize, ReservationLimits.MaxPartySize);
         RuleFor(x => x.Notes)
@@ -71,6 +72,12 @@ internal sealed class CreateReservationHandler : ICommandHandler<CreateReservati
         if (!table.IsActive)
         {
             return AppErrors.BusinessRule($"Table {table.Code} is inactive and cannot accept reservations.");
+        }
+
+        // An hour's grace (a late booking for a guest already at the door); a start time hours ago is a mistake.
+        if (input.StartTimeUtc < _clock.UtcNow.AddHours(-1))
+        {
+            return AppErrors.Validation("startTimeUtc", "The reservation cannot start in the past.");
         }
 
         if (await ReservationOverlap.HasOverlapAsync(_db, table.Id, input.StartTimeUtc, input.EndTimeUtc, ct: cancellationToken))

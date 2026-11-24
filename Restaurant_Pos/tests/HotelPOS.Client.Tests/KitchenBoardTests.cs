@@ -230,7 +230,7 @@ public class KitchenBoardTests : TestContext
         Actions("T05").Should().Equal("start");
         Actions("T02").Should().Equal("ready");
         Actions("T03").Should().Equal("complete", "recall");
-        page.Find("button[data-action=ready]").TextContent.Should().Be("MARK READY");
+        page.Find("button[data-action=ready]").TextContent.Should().Be("Mark ready");
         page.Find("button[data-action=ready]").ClassList.Should().Contain("warning");
         page.Find("article[data-ticket='3'] .ticket-elapsed").TextContent.Should().Contain("Ready · waiting 2 min", "a ready ticket is timed from when it became ready");
         page.Find("article[data-ticket='2']").ClassList.Should().Contain("late");
