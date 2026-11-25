@@ -179,6 +179,38 @@ public class MenuItemPortionEditorTests
     }
 
     [Fact]
+    public async Task ClickingAPortionChip_OpensTheEditorOnThatItem_AndMarksThatPortionRow()
+    {
+        var api = Substitute.For<IMenuApi>();
+        api.GetCategoriesAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(ApiResult<List<CategoryDto>>.Ok(new List<CategoryDto> { Mains }));
+        api.GetTaxesAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(ApiResult<List<TaxDto>>.Ok(new List<TaxDto>()));
+        api.GetStationsAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(ApiResult<List<StationDto>>.Ok(new List<StationDto> { Grill }));
+        api.GetModifierGroupsAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(ApiResult<List<ModifierGroupDto>>.Ok(new List<ModifierGroupDto>()));
+        var biryani = new MenuItemDto
+        {
+            Id = 9, CategoryId = 1, Name = "Chicken Biryani", PreparationStationId = 3, Price = 180m, RowVersion = "v1",
+            Portions = new[]
+            {
+                new MenuItemPortionDto { Id = 20, Name = "Quarter", Price = 100m, IsActive = true, SortOrder = 1 },
+                new MenuItemPortionDto { Id = 21, Name = "Half", Price = 180m, IsDefault = true, IsActive = true, SortOrder = 2 },
+            },
+        };
+        var naan = new MenuItemDto { Id = 10, CategoryId = 1, Name = "Butter Naan", PreparationStationId = 3, Price = 50m, RowVersion = "v1" };
+        api.GetItemsAsync(Arg.Any<MenuItemQuery>(), Arg.Any<CancellationToken>()).Returns(ApiResult<List<MenuItemDto>>.Ok(new List<MenuItemDto> { naan, biryani }));
+        var vm = new MenuItemsPageViewModel(api, Substitute.For<IMenuCache>(), Substitute.For<IDialogService>(), Substitute.For<INotificationService>(), Substitute.For<IFilePicker>());
+        await vm.LoadAsync();
+        var half = vm.Rows.Single(r => r.Item.Id == 9).PortionChips.Single(c => c.Text.StartsWith("Half", StringComparison.Ordinal));
+
+        await vm.EditPortionCommand.ExecuteAsync(half);
+
+        vm.Editor.IsOpen.Should().BeTrue();
+        vm.Editor.ItemId.Should().Be(9, "the chip belongs to Chicken Biryani, not to the row that was selected before");
+        vm.Editor.Portions.Where(p => p.IsFocused).Select(p => p.Name).Should().Equal("Half");
+        half.ItemId.Should().Be(9);
+        half.PortionId.Should().Be(21);
+    }
+
+    [Fact]
     public async Task PhotoChosenBeforeSave_IsUploadedAfterTheItemIsCreated()
     {
         var api = Substitute.For<IMenuApi>();

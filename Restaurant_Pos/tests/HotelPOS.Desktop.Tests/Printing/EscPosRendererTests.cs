@@ -31,6 +31,29 @@ public sealed class EscPosRendererTests
 
     // What the kitchen printer actually prints for a seat-group ticket on merged tables (the same line layout the thermal
     // printer receives); the text is written to the test output so it can be read like a print preview.
+    // A long portion name ("Chicken Biryani (Family pack 1 KG)") must wrap inside the paper width, never run off the roll.
+    [Fact]
+    public void Kot_WrapsALongPortionName_InsideThePaperWidth_AndKeepsTheQuantity()
+    {
+        var kot = Kot() with
+        {
+            Items = new[]
+            {
+                new KotLine { Name = "Chicken Dum Biryani (Family pack 1 KG) (Parcel)", Quantity = 12, PortionName = "Family pack 1 KG" },
+                new KotLine { Name = "Idli (Half)", Quantity = 3, PortionName = "Half" },
+            },
+        };
+
+        foreach (var width in new[] { 32, 42, 48 })
+        {
+            var text = EscPosRenderer.Layout(kot, width, "Rs.").Select(l => l.Text).ToList();
+
+            text.Should().OnlyContain(l => l.Length <= width, $"every line fits a {width}-column roll");
+            System.Text.RegularExpressions.Regex.Replace(string.Join(" ", text), @"\s+", " ").Should().Contain("Family pack 1 KG").And.Contain("12");
+            text.Should().Contain(l => l.Contains("Idli (Half)", StringComparison.Ordinal));
+        }
+    }
+
     [Fact]
     public void Kot_ShowsTheSeatGroupAndMergedTables_AndEachDishesSeat()
     {

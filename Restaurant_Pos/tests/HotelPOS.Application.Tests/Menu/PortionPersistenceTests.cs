@@ -1,3 +1,4 @@
+using HotelPOS.Application.Features.Orders;
 using HotelPOS.Application.Tests.Support;
 using HotelPOS.Domain.Floor;
 using HotelPOS.Domain.Menu;
@@ -112,6 +113,50 @@ public class PortionPersistenceTests : DatabaseTestBase
         kept.PortionName.Should().Be("Half");
         kept.PortionUnit.Should().Be("GM");
         kept.UnitPrice.Should().Be(180m);
+    }
+
+    // An order is saved with a portion that an admin deleted a moment earlier: the database refuses the line. That has to read as
+    // "choose another portion", while any other database error must not be mistaken for it.
+    private Task<DbUpdateException> SaveFailureAsync(int menuItemId, int? portionId) => QueryAsync(async db =>
+    {
+        var tag = Guid.NewGuid().ToString("N")[..6];
+        var section = new Section("S" + tag, 1);
+        db.Sections.Add(section);
+        await db.SaveChangesAsync();
+        var table = new Table("T" + tag[..4], null, section.Id, 4);
+        db.Tables.Add(table);
+        await db.SaveChangesAsync();
+        var line = new OrderItem(menuItemId, "Chicken Biryani", 180m, 1, null, null, 5m, 1, Array.Empty<OrderItemModifier>());
+        if (portionId is { } id)
+        {
+            line.SetPortion(id, "Half", null, null);
+        }
+
+        var order = new Order(table, await AdminIdAsync(), 2, null);
+        order.ReplaceDraftItems(new[] { line });
+        db.Orders.Add(order);
+        try
+        {
+            await db.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex)
+        {
+            return ex;
+        }
+
+        throw new InvalidOperationException("The save was expected to fail.");
+    });
+
+    [Fact]
+    public async Task APortionDeletedBeforeTheOrderIsSaved_IsRecognised_ButOtherForeignKeyErrorsAreNot()
+    {
+        var itemId = await CreateItemAsync(BiryaniPortions());
+
+        var portionGone = await SaveFailureAsync(itemId, portionId: 999_999);
+        var itemGone = await SaveFailureAsync(menuItemId: 999_999, portionId: null);
+
+        PortionErrors.IsPortionGone(portionGone).Should().BeTrue();
+        PortionErrors.IsPortionGone(itemGone).Should().BeFalse();
     }
 
     [Fact]

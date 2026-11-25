@@ -402,6 +402,16 @@ else
             _cart.LoadDraft(draft);
             _pendingKey = draft.PendingKey;
             _restoredDraft = !_cart.IsEmpty;
+            if (IsEdit && OrderId is { } restoredEditId)
+            {
+                // A held order is saved to the server before it is sent, so the server re-checks every portion and price. That
+                // needs the order's current row version even when the lines come from the draft kept on this phone.
+                var current = await Api.GetOrderAsync(restoredEditId);
+                if (current.Success && current.Data is { } serverOrder)
+                {
+                    _orderRowVersion = serverOrder.RowVersion;
+                }
+            }
         }
         else if (IsEdit && OrderId is { } editId)
         {
@@ -539,10 +549,15 @@ else
         var samePortion = result.Portion is null || (result.Portion.Id == line.PortionId && !line.NeedsPortionChoice);
         Change(() =>
         {
-            if (sameOptions && samePortion)
+            if (sameOptions)
             {
                 _cart.SetQuantity(line, result.Quantity);
                 _cart.SetNotes(line, result.Notes);
+                if (!samePortion && result.Portion is { } chosen)
+                {
+                    // Only the portion changed: the line keeps its place, notes and flags and takes the new portion and price.
+                    _cart.ChoosePortion(line, request.Item, chosen);
+                }
             }
             else
             {
@@ -562,8 +577,21 @@ else
         ? Drafts.RemoveAsync(DraftKey)
         : Drafts.SaveAsync(_cart.ToDraft(DraftKey, OrderId, _pendingKey));
 
+    // A line whose portion is no longer on the menu is never saved or sent with a guessed portion: say which dish and portion.
+    private string? UnresolvedPortionMessage() =>
+        _cart.HasUnresolvedPortions
+            ? $"Choose the portion again for {string.Join(", ", _cart.Lines.Where(l => l.NeedsPortionChoice).Select(l => l.DisplayName).Distinct())} before sending."
+            : null;
+
     private async Task SaveDraftAndBackAsync()
     {
+        if (UnresolvedPortionMessage() is { } portionMessage)
+        {
+            Toasts.Error(portionMessage.Replace("before sending", "before saving"));
+            _review = false;
+            return;
+        }
+
         if (IsEdit && OrderId is { } editId && !string.IsNullOrEmpty(_orderRowVersion))
         {
             _sending = true;
@@ -641,9 +669,9 @@ else
 
     private async Task SendAsync()
     {
-        if (_cart.HasUnresolvedPortions)
+        if (UnresolvedPortionMessage() is { } portionMessage)
         {
-            Toasts.Error($"Choose the portion again for {string.Join(", ", _cart.Lines.Where(l => l.NeedsPortionChoice).Select(l => l.Name).Distinct())} before sending."); 
+            Toasts.Error(portionMessage);
             _review = false;
             return;
         }

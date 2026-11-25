@@ -168,6 +168,37 @@ public class MenuItemPortionTests
     }
 
     [Fact]
+    public void SetPortions_RejectsTheSamePortionIdTwice()
+    {
+        var item = NewItem();
+        item.Portions.Single().Id = 77;
+
+        var act = () => item.SetPortions(new List<PortionSpec> { Spec("Half", 180m, isDefault: true, id: 77), Spec("Full", 320m, sort: 2, id: 77) });
+
+        act.Should().Throw<DomainException>().WithMessage("*more than once*");
+    }
+
+    [Theory]
+    [InlineData(0.0004)]
+    [InlineData(1.2345)]
+    public void SetPortions_RejectsAQuantityWithMoreThanThreeDecimals(double quantity)
+    {
+        var act = () => NewItem().SetPortions(new List<PortionSpec> { Spec("Half", 180m, isDefault: true, quantity: (decimal)quantity, unit: "KG") });
+
+        act.Should().Throw<DomainException>().WithMessage("*3 decimals*");
+    }
+
+    [Fact]
+    public void SetPortions_AcceptsAQuantityWithThreeDecimals()
+    {
+        var item = NewItem();
+
+        item.SetPortions(new List<PortionSpec> { Spec("Half", 180m, isDefault: true, quantity: 0.125m, unit: "KG") });
+
+        item.Portions.Single().Quantity.Should().Be(0.125m);
+    }
+
+    [Fact]
     public void SetDefaultPrice_ChangesBothPrices()
     {
         var item = NewItem();

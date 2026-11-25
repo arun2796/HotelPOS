@@ -124,6 +124,8 @@ public class PortionPrintTests : PrintScenario
             ("Chicken Biryani (Half)", 2), ("Chicken Biryani (Full)", 1), ("Butter Naan", 3), ("Chicken Biryani (Half) (Parcel)", 1));
         ticket.Items.Select(i => i.Name).Should().Equal(kot.Items.Select(i => i.Name));
         ticket.Items.First().PortionName.Should().Be("Half");
+        (kot.Items.First().PortionName, kot.Items.First().PortionQuantity, kot.Items.First().PortionUnit).Should().Be(("Half", 500m, "GM"));
+        kot.Items.Single(i => i.Name == "Butter Naan").PortionName.Should().BeNull();
     }
 
     [Fact]
@@ -135,6 +137,8 @@ public class PortionPrintTests : PrintScenario
 
         var half = invoice.Lines.First();
         (half.Name, half.Quantity, half.UnitPrice, half.LineSubtotal).Should().Be(("Chicken Biryani (Half)", 2, 180m, 360m));
+        (half.PortionName, half.PortionQuantity, half.PortionUnit).Should().Be(("Half", 500m, "GM"));
+        invoice.Lines.Single(l => l.Name == "Butter Naan").PortionName.Should().BeNull();
         invoice.Lines.Select(l => l.Name).Should().Equal(
             "Chicken Biryani (Half)", "Chicken Biryani (Full)", "Butter Naan", "Chicken Biryani (Half) (Parcel)");
     }

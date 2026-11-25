@@ -183,7 +183,7 @@ internal sealed class OrderItemFactory
             var named = item.Portions.FirstOrDefault(p => p.Id == id);
             if (named is null)
             {
-                error = $"That portion is not offered with {item.Name}. Refresh the menu and choose again.";
+                error = $"{item.Name}: the portion chosen is no longer offered. Choose another portion.";
                 return null;
             }
 

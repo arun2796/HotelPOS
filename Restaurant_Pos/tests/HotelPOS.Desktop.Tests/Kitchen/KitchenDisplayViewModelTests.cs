@@ -55,6 +55,24 @@ public sealed class KitchenDisplayViewModelTests : IDisposable
     }
 
     [Fact]
+    public void ATicketLine_ReadsThePortionWithTheDish_AndAParcelKeepsBoth()
+    {
+        var ticket = Ticket(9, KitchenOrderStatus.New) with
+        {
+            Items = new[]
+            {
+                new KitchenTicketItemDto { OrderItemId = 1, Name = "Chicken Biryani (Half)", PortionName = "Half", PortionQuantity = 500, PortionUnit = "GM", Quantity = 2 },
+                new KitchenTicketItemDto { OrderItemId = 2, Name = "Chicken Biryani (Half) (Parcel)", PortionName = "Half", Quantity = 1, IsParcel = true },
+                new KitchenTicketItemDto { OrderItemId = 3, Name = "Butter Naan", Quantity = 3 },
+            },
+        };
+
+        var card = new TicketCardViewModel(ticket);
+
+        card.Lines.Select(l => l.Text).Should().Equal("2 × Chicken Biryani (Half)", "1 × Chicken Biryani (Half) (Parcel)", "3 × Butter Naan");
+    }
+
+    [Fact]
     public void TimerColour_FollowsTheWarnAndLateThresholds()
     {
         var card = new TicketCardViewModel(Ticket(9, KitchenOrderStatus.Preparing) with { CreatedAtUtc = Now });

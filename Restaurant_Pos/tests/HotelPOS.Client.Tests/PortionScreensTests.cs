@@ -1,7 +1,12 @@
+using System.Text.Json;
 using AngleSharp.Dom;
 using Bunit;
 using FluentAssertions;
 using HotelPOS.Client.Pages.Waiter;
+using HotelPOS.Client.Services;
+using HotelPOS.Contracts.Common;
+using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Floor;
 using HotelPOS.Contracts.Menu;
@@ -132,6 +137,79 @@ public sealed partial class WaiterScreensTests
         await page.InvokeAsync(() => page.Find("[data-testid=options-confirm]").Click());
 
         page.Find("[data-testid=cart-bar] .cart-total").TextContent.Should().Be("180.00");
+        await StopRealtimeAsync();
+    }
+
+    // ---- review follow-ups: restored drafts, hold, editing a line's portion ----
+
+    private void SeedDraft(int tableId, int? orderId, params WebDraftLine[] lines) =>
+        _storage.Items["hotelpos.draft." + tableId] = JsonSerializer.Serialize(new WebDraft { TableId = tableId, OrderId = orderId, Guests = 2, Lines = lines, SavedAtUtc = DateTime.UtcNow }, PosJson.Options);
+
+    private static WebDraftLine MuttonLine(int portionId, string portionName, decimal price) =>
+        new() { MenuItemId = 30, Name = "Mutton Biryani", UnitPrice = price, Quantity = 1, PortionId = portionId, PortionName = portionName };
+
+    [Fact]
+    public async Task EditDraft_WithARestoredLocalDraft_StillSavesTheItemsBeforeSending()
+    {
+        SeedDraft(5, orderId: 12, MuttonLine(2, "Half", 180m));
+        var handler = new RouteHandler
+        {
+            Respond = r => (r.Method.Method, r.RequestUri!.AbsolutePath) switch
+            {
+                ("GET", "/api/menu") => PortionMenu(),
+                ("GET", "/api/tables/5") => new TableDetailDto { Table = new TableDto { Id = 5, Code = "T05", Status = TableStatus.Occupied, GuestCount = 4 } },
+                ("GET", "/api/orders/12") => new OrderDetailDto { Id = 12, OrderNumber = 1012, TableId = 5, TableCode = "T05", Status = OrderStatus.Draft, RowVersion = "RV7", GuestCount = 2 },
+                ("PUT", "/api/orders/12/items") => new OrderDetailDto { Id = 12, OrderNumber = 1012, TableId = 5, Status = OrderStatus.Draft, RowVersion = "RV8" },
+                ("POST", "/api/orders/12/submit") => new OrderDetailDto { Id = 12, OrderNumber = 1012, TableId = 5, Status = OrderStatus.Submitted },
+                _ => null,
+            },
+        };
+        AddPageServices(await WaiterAsync(), handler);
+        Services.GetRequiredService<NavigationManager>().NavigateTo("tables/5/order/12/edit");
+        var page = RenderComponent<OrderBuilderPage>(p => { p.Add(x => x.TableId, 5); p.Add(x => x.OrderId, 12); });
+        page.WaitForAssertion(() => page.FindAll("button.item-card, [data-testid=menu-item]").Should().NotBeEmpty());
+        await Task.Delay(500);
+
+        await page.InvokeAsync(() => page.Find("[data-testid=cart-review]").Click());
+        await page.InvokeAsync(() => page.Find("[data-testid=send]").Click());
+
+        page.WaitForAssertion(() => handler.Calls.Should().Contain("POST /api/orders/12/submit"));
+        var replace = handler.Calls.IndexOf("PUT /api/orders/12/items");
+        replace.Should().BeGreaterThanOrEqualTo(0, "the draft is saved to the server before it is sent, so the server re-checks every portion");
+        replace.Should().BeLessThan(handler.Calls.IndexOf("POST /api/orders/12/submit"));
+        await StopRealtimeAsync();
+    }
+
+    [Fact]
+    public async Task HoldingADraftWhosePortionIsGone_IsRefusedBeforeAnyServerCall_NamingTheDishAndPortion()
+    {
+        SeedDraft(5, orderId: null, MuttonLine(77, "Jumbo", 999m));
+        var handler = PortionHandler(PortionMenu());
+        var page = await RenderBuilderAsync(handler);
+
+        await page.InvokeAsync(() => page.Find("[data-testid=cart-review]").Click());
+        await page.InvokeAsync(() => page.Find("[data-testid=save-draft]").Click());
+
+        handler.Calls.Should().NotContain("POST /api/orders");
+        Services.GetRequiredService<ToastService>().Items.Should().Contain(t => t.Text.Contains("Mutton Biryani (Jumbo)", StringComparison.Ordinal));
+        await StopRealtimeAsync();
+    }
+
+    [Fact]
+    public async Task EditingACartLine_ToAnotherPortion_ChangesItsPortionAndPrice_AndKeepsItsPlace()
+    {
+        var page = await RenderBuilderAsync(PortionHandler(PortionMenu()));
+        await page.InvokeAsync(() => PortionCard(page, "Mutton Biryani").QuerySelectorAll("[data-testid=portion-chip]")[0].Click());
+        await page.InvokeAsync(() => PortionCard(page, "Mutton Biryani").QuerySelector("[data-testid=portion-add]")!.Click());
+        await page.InvokeAsync(() => PortionCard(page, "Butter Naan").QuerySelector("button.item-card")!.Click());
+        await page.InvokeAsync(() => page.Find("[data-testid=cart-review]").Click());
+
+        await page.InvokeAsync(() => page.FindAll("[data-testid=cart-line-edit]")[0].Click());
+        await page.InvokeAsync(() => page.FindAll("[data-testid=sheet-portion]").Single(b => b.QuerySelector("b")!.TextContent == "Full").Click());
+        await page.InvokeAsync(() => page.Find("[data-testid=options-confirm]").Click());
+
+        page.FindAll("[data-testid=cart-line] .order-line-name").Select(n => n.TextContent.Trim()).Should().Equal("1 × Mutton Biryani (Full)", "1 × Butter Naan");
+        page.Find("[data-testid=cart-bar] .cart-total").TextContent.Should().Be("370.00");
         await StopRealtimeAsync();
     }
 }

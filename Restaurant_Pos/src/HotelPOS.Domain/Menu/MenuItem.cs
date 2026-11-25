@@ -93,6 +93,15 @@ public sealed class MenuItem : BaseEntity, IHasRowVersion
             throw new DomainException($"An item can have at most {MenuLimits.MaxPortions} portions.");
         }
 
+        var seenIds = new HashSet<int>();
+        foreach (var spec in specs)
+        {
+            if (spec.Id is { } id && !seenIds.Add(id))
+            {
+                throw new DomainException("A portion appears more than once in the list. Reload the item and try again.");
+            }
+        }
+
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var spec in specs)
         {

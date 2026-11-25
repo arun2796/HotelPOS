@@ -173,6 +173,11 @@ internal sealed class CreateOrderHandler : ICommandHandler<CreateOrderCommand, O
         {
             await _db.SaveChangesAsync(cancellationToken);
         }
+        catch (DbUpdateException ex) when (PortionErrors.IsPortionGone(ex))
+        {
+            _db.ChangeTracker.Clear();
+            return PortionErrors.NoLongerOffered();
+        }
         catch (DbUpdateConcurrencyException)
         {
             if (table != null)

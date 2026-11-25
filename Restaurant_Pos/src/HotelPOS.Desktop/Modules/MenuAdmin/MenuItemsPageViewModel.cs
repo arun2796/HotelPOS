@@ -272,6 +272,15 @@ public sealed partial class MenuItemEditorViewModel : ObservableObject
         IsOpen = true;
     }
 
+    // The portion whose chip was clicked in the list: its row is highlighted in the form.
+    public void FocusPortion(int portionId)
+    {
+        foreach (var row in Portions)
+        {
+            row.IsFocused = row.Id == portionId;
+        }
+    }
+
     public void Close()
     {
         IsOpen = false;
@@ -563,6 +572,20 @@ public sealed partial class MenuItemsPageViewModel : ViewModelBase, IMenuAdminPa
             Editor.BeginEdit(SelectedItem);
             await LoadPictureAsync();
         }
+    }
+
+    // A portion chip in the list opens the item's editor with that portion's row highlighted.
+    [RelayCommand]
+    private async Task EditPortionAsync(PortionChip? chip)
+    {
+        if (chip is null || chip.ItemId == 0 || Rows.FirstOrDefault(r => r.Item.Id == chip.ItemId) is not { } row)
+        {
+            return;
+        }
+
+        SelectedRow = row;
+        await EditAsync();
+        Editor.FocusPortion(chip.PortionId);
     }
 
     [RelayCommand]

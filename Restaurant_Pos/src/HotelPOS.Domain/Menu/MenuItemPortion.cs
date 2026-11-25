@@ -43,6 +43,11 @@ public sealed class MenuItemPortion : BaseEntity
             throw new DomainException($"Portion quantity for {name} must be above 0 and at most {MenuLimits.PortionQuantityMax:0}.");
         }
 
+        if (spec.Quantity is { } precise && decimal.Round(precise, 3) != precise)
+        {
+            throw new DomainException($"Portion quantity for {name} can have at most 3 decimals.");
+        }
+
         string? unit = null;
         if (!string.IsNullOrWhiteSpace(spec.Unit))
         {

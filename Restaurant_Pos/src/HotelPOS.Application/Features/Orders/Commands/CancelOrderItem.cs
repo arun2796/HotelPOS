@@ -106,7 +106,7 @@ internal sealed class CancelOrderItemHandler : ICommandHandler<CancelOrderItemCo
         var table = order.Table!;
         var change = _kitchen.Recompute(order, tickets, table);
         _audit.Add(AuditActions.OrderItemCancelled, nameof(Order), order.Id.ToString(),
-            newValues: new { order.OrderNumber, item.DisplayName, item.Quantity, Ticket = ticket.TicketNumber, request.Reason });
+            newValues: new { order.OrderNumber, ItemName = item.DisplayName, item.Quantity, Ticket = ticket.TicketNumber, request.Reason });
 
         var result = await _orders.SaveAsync(order, cancellationToken);
         if (result.IsSuccess)

@@ -118,6 +118,9 @@ internal sealed class PrintDocuments
                 IsParcel = i.OrderItem?.IsParcel ?? false,
                 SeatCode = i.OrderItem?.SeatCode,
                 UnitPrice = showPrices ? i.OrderItem?.UnitPrice : null,
+                PortionName = i.OrderItem?.PortionName,
+                PortionQuantity = i.OrderItem?.PortionQuantity,
+                PortionUnit = i.OrderItem?.PortionUnit,
             }).ToList(),
         };
     }
@@ -177,6 +180,9 @@ internal sealed class PrintDocuments
                 Name = i.DisplayName,
                 Quantity = i.Quantity,
                 UnitPrice = i.UnitPrice + i.ModifiersAmount,
+                PortionName = i.PortionName,
+                PortionQuantity = i.PortionQuantity,
+                PortionUnit = i.PortionUnit,
                 LineSubtotal = i.LineSubtotal,
                 TaxRatePercent = i.TaxRatePercent,
                 DiscountAmount = i.DiscountShare,

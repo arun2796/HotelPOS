@@ -205,6 +205,8 @@ public class MenuPortionTests : DatabaseTestBase
             ("13 portions", Enumerable.Range(1, 13).Select(i => new SaveMenuItemPortionRequest { Name = "P" + i, Price = i, IsDefault = i == 1 }).ToList(), "at most 12"),
             ("empty list", new(), "at least one portion"),
             ("blank name", new() { new() { Name = "  ", Price = 1m, IsDefault = true } }, "name"),
+            ("quantity with 4 decimals", new() { new() { Name = "A", Price = 1m, IsDefault = true, Quantity = 0.0004m, Unit = "KG" } }, "3 decimals"),
+            ("same portion id twice", new() { new() { Id = item.Portions[0].Id, Name = "A", Price = 1m, IsDefault = true }, new() { Id = item.Portions[0].Id, Name = "B", Price = 2m } }, "more than once"),
         };
 
         foreach (var (why, rows, message) in cases)
@@ -220,6 +222,22 @@ public class MenuPortionTests : DatabaseTestBase
 
         var unchanged = (await SendAsync(new GetMenuItemQuery(item.Id))).Value;
         unchanged.Portions.Select(p => p.Name).Should().Equal("Quarter", "Half", "Full", "1 KG");
+    }
+
+    [Fact]
+    public async Task APortionListWithANullRow_IsAValidationError_NotACrash()
+    {
+        var s = await SetupAsync();
+        var item = await CreateItemAsync(s, Four());
+        var rows = new List<SaveMenuItemPortionRequest> { null! };
+
+        var update = await SendAsync(new UpdateMenuItemCommand(item.Id, Update(item) with { Portions = rows }));
+        var create = await SendAsync(new CreateMenuItemCommand(Create(s, "Null row dish", rows)));
+
+        update.IsSuccess.Should().BeFalse();
+        update.Error!.Code.Should().Be(ErrorCodes.ValidationError);
+        create.IsSuccess.Should().BeFalse();
+        create.Error!.Code.Should().Be(ErrorCodes.ValidationError);
     }
 
     [Fact]

@@ -31,6 +31,7 @@ public sealed class UpdateMenuItemRequestValidator : AbstractValidator<UpdateMen
         RuleFor(x => x.SortOrder).ValidSortOrder();
         RuleFor(x => x.HsnSac).Matches(@"^[0-9]{4,8}$").When(x => !string.IsNullOrWhiteSpace(x.HsnSac)).WithMessage("An HSN/SAC code is 4 to 8 digits.");
         RuleFor(x => x.ModifierGroupIds).NotNull();
+        RuleFor(x => x.Portions).Must(rows => rows is null || rows.All(r => r is not null)).WithMessage("A portion row is empty. Reload the item and try again.");
         RuleFor(x => x.RowVersion).NotEmpty();
     }
 }

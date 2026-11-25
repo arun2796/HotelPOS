@@ -758,7 +758,7 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
     // A line whose portion is no longer on the menu is never sent with a guessed portion: it has to be removed and added again.
     private string? UnresolvedPortionMessage()
     {
-        var names = Cart.Where(c => c.NeedsPortionChoice).Select(c => c.Name).Distinct().ToList();
+        var names = Cart.Where(c => c.NeedsPortionChoice).Select(c => c.DisplayName).Distinct().ToList();
         return names.Count == 0
             ? null
             : $"The portion of {string.Join(", ", names)} is no longer on the menu. Remove the line and add it again to choose a portion.";

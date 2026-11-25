@@ -59,6 +59,11 @@ public sealed record KotLine
     // Parcel (takeaway packing) and the seat the dish is for; the seat is also at the front of Notes.
     public bool IsParcel { get; init; }
     public string? SeatCode { get; init; }
+
+    // Name already reads "Chicken Biryani (Half)"; the portion on its own, for a renderer that styles it separately. Null for one price.
+    public string? PortionName { get; init; }
+    public decimal? PortionQuantity { get; init; }
+    public string? PortionUnit { get; init; }
 }
 
 public sealed record KitchenTicketDocument
@@ -106,6 +111,11 @@ public sealed record InvoiceLine
     public decimal DiscountAmount { get; init; }
     public string? HsnSac { get; init; }
     public decimal TaxAmount { get; init; }
+
+    // Name already reads "Chicken Biryani (Half)"; the portion on its own, null for an item with one price.
+    public string? PortionName { get; init; }
+    public decimal? PortionQuantity { get; init; }
+    public string? PortionUnit { get; init; }
 }
 
 // One row per tax rate with its central and state halves, for the rate-wise GST table.

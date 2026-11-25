@@ -1,3 +1,4 @@
+using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Results;
 using HotelPOS.Application.Features.Floor.Commands;
 using HotelPOS.Application.Features.Menu.Commands;
@@ -8,6 +9,7 @@ using HotelPOS.Application.Tests.Support;
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Floor;
+using HotelPOS.Contracts.Kitchen;
 using HotelPOS.Contracts.Menu;
 using HotelPOS.Contracts.Orders;
 using HotelPOS.Contracts.Security;
@@ -184,7 +186,7 @@ public class PortionOrderTests : DatabaseTestBase
         var result = await TryCreateAsync(s, submit: false, Line(s.Biryani, 1, s.Naan.Portions.Single().Id));
 
         result.Error!.Code.Should().Be(ErrorCodes.ValidationError);
-        result.Error.Message.Should().Contain("not offered with Chicken Biryani");
+        result.Error.Message.Should().Be("Chicken Biryani: the portion chosen is no longer offered. Choose another portion.");
     }
 
     [Fact]
@@ -204,7 +206,7 @@ public class PortionOrderTests : DatabaseTestBase
         var result = await TryCreateAsync(s, submit: false, Line(s.Biryani, 1, quarter));
 
         result.Error!.Code.Should().Be(ErrorCodes.ValidationError);
-        result.Error.Message.Should().Contain("Chicken Biryani");
+        result.Error.Message.Should().Be("Chicken Biryani: the portion chosen is no longer offered. Choose another portion.");
     }
 
     [Fact]
@@ -293,6 +295,19 @@ public class PortionOrderTests : DatabaseTestBase
 
         submitted.IsSuccess.Should().BeTrue(submitted.Error?.Message);
         submitted.Value.Status.Should().Be(OrderStatus.Submitted);
+    }
+
+    [Fact]
+    public async Task CancellingAPortionLine_KeepsTheAuditKeyItemName_NowHoldingTheDisplayName()
+    {
+        var s = await SetupAsync();
+        var order = await CreateAsync(s, submit: true, Line(s.Biryani, 2, s.Portion("Half")));
+
+        var cancelled = await SendAsync(new CancelOrderItemCommand(order.Id, order.Items.Single().Id, new CancelOrderItemRequest { Reason = "Guest left" }));
+
+        cancelled.IsSuccess.Should().BeTrue(cancelled.Error?.Message);
+        var audit = await QueryAsync(db => db.AuditLogs.SingleAsync(a => a.Action == AuditActions.OrderItemCancelled));
+        audit.NewValues.Should().Contain("\"itemName\":\"Chicken Biryani (Half)\"", "the audit key stays itemName, as in older rows");
     }
 
     [Fact]

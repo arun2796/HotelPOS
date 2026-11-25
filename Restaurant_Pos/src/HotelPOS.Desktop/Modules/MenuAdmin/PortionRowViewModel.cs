@@ -34,10 +34,14 @@ public sealed partial class PortionRowViewModel : ObservableObject
     // What is wrong with this row after a failed save, shown under it.
     [ObservableProperty]
     private string? _error;
+
+    // The row of the portion whose chip was clicked in the item list: the form highlights it.
+    [ObservableProperty]
+    private bool _isFocused;
 }
 
 // One chip of the item list: "Half 180", with the default marked and a switched-off portion shown struck through.
-public sealed record PortionChip(string Text, bool IsDefault, bool IsOff);
+public sealed record PortionChip(string Text, bool IsDefault, bool IsOff, int ItemId = 0, int PortionId = 0);
 
 // A row of the item list: the item, its portion chips, and its picture (loaded in the background).
 public sealed partial class MenuItemRowViewModel : ObservableObject
@@ -47,10 +51,10 @@ public sealed partial class MenuItemRowViewModel : ObservableObject
         Item = item;
         PortionChips = item.Portions.Count == 0
             // A server that does not send portions: the item is its one price.
-            ? new[] { new PortionChip($"Regular {FormNumbers.Money(item.Price)}", true, false) }
+            ? new[] { new PortionChip($"Regular {FormNumbers.Money(item.Price)}", true, false, item.Id, 0) }
             : item.Portions
                 .OrderBy(p => p.SortOrder).ThenBy(p => p.Id)
-                .Select(p => new PortionChip($"{p.Name} {FormNumbers.Money(p.Price)}", p.IsDefault, !p.IsActive))
+                .Select(p => new PortionChip($"{p.Name} {FormNumbers.Money(p.Price)}", p.IsDefault, !p.IsActive, item.Id, p.Id))
                 .ToList();
         Initials = Dashboard.Initials.Of(item.Name);
     }

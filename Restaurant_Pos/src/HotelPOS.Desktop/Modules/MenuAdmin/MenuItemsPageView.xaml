@@ -115,7 +115,11 @@
                   </ItemsControl.ItemsPanel>
                   <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="{x:Type m:PortionChip}">
-                      <Border CornerRadius="10" BorderThickness="1" Padding="8,1" Margin="0,2,4,2" BorderBrush="{DynamicResource Brush.Border}">
+                      <!-- Clicking a chip opens the item's editor on that portion. -->
+                      <Border CornerRadius="10" BorderThickness="1" Margin="0,2,4,2" BorderBrush="{DynamicResource Brush.Border}">
+                        <Button Style="{StaticResource Button.Link}" Padding="8,1" MinHeight="0" ToolTip="Edit this portion"
+                                AutomationProperties.Name="{Binding Text}" CommandParameter="{Binding}"
+                                Command="{Binding DataContext.EditPortionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
                         <TextBlock Text="{Binding Text}" FontSize="12">
                           <TextBlock.Style>
                             <Style TargetType="TextBlock">
@@ -132,6 +136,7 @@
                             </Style>
                           </TextBlock.Style>
                         </TextBlock>
+                        </Button>
                       </Border>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
@@ -214,6 +219,17 @@
               <ItemsControl.ItemTemplate>
                 <DataTemplate DataType="{x:Type m:PortionRowViewModel}">
                   <Border BorderThickness="1" CornerRadius="8" Padding="8" Margin="0,0,0,8" BorderBrush="{DynamicResource Brush.Border}">
+                    <Border.Style>
+                      <Style TargetType="Border">
+                        <Style.Triggers>
+                          <!-- The portion whose chip was clicked in the list. -->
+                          <DataTrigger Binding="{Binding IsFocused}" Value="True">
+                            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Primary}" />
+                            <Setter Property="BorderThickness" Value="2" />
+                          </DataTrigger>
+                        </Style.Triggers>
+                      </Style>
+                    </Border.Style>
                     <StackPanel>
                       <Grid>
                         <Grid.ColumnDefinitions>
