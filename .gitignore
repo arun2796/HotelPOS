@@ -9,3 +9,6 @@ license-private*
 
 # Claude Code agent worktrees (temporary checkouts, never committed)
 .claude/worktrees/
+
+# superpowers workflow scratch (ledgers, review packages, mockup sessions)
+.superpowers/

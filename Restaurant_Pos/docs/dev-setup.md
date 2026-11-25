@@ -135,7 +135,9 @@ API logs: `src/HotelPOS.Api/logs/api-YYYYMMDD.log` (and the console).
 | `kitchen1` | `Pass@123` | Kitchen | |
 | `cashier1` | `Pass@123` | Cashier | |
 
-Demo users are created only when `Seed:DemoData` is true (`appsettings.Development.json`). In production
+Demo users, the demo floor and the demo menu are created only when `Seed:DemoData` is true. It is **false** in
+`appsettings.Development.json` since the 2026-11-25 reset, so a clean database stays clean: only `admin` exists until you
+add staff. Set it to true (or `Seed__DemoData=true`) for a demo database; the seeders only fill an empty floor/menu. In production
 the admin password comes from `Seed:AdminPassword` (the installer asks for it); with it empty on a new database
 the server refuses to start rather than create the account with a known default. Until the admin changes that
 password, every call outside `/api/auth/*` answers 403 `PASSWORD_CHANGE_REQUIRED`.
