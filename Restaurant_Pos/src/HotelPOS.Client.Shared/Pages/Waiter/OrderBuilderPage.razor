@@ -98,12 +98,12 @@ else
                         var owner = SeatOwners.GetValueOrDefault(seat);
                         <button type="button" class="chip-btn @(_seatsOn.Contains(seat) ? "on" : null) @(owner is not null ? "taken" : null)" data-testid="seat-chip" data-seat="@seat"
                                 data-taken="@(owner is not null ? "true" : "false")"
-                                aria-label="@(owner is null ? $"Seat {seat}, free" : $"Seat {seat}, already has dishes with the group {owner}")"
-                                title="@(owner is null ? $"Seat {seat} · free" : $"Seat {seat} · taken by the group {owner}. Tap to add to that group.")"
+                                aria-label="@(owner is null ? $"Seat {seat}, free" : owner == seat ? $"Seat {seat}, already has dishes" : $"Seat {seat}, already has dishes with the group {owner}")"
+                                title="@(owner is null ? $"Seat {seat} · free" : owner == seat ? $"Seat {seat} · already has dishes. Tap to add more." : $"Seat {seat} · taken by the group {owner}. Tap to add to that group.")"
                                 aria-pressed="@(_seatsOn.Contains(seat) ? "true" : "false")" @onclick="() => ToggleSeat(seat)">@seat@(owner is not null ? " ●" : null)</button>
                     }
                 </div>
-                <div class="muted small seat-hint">Tap one seat, or several that share the order. ● Taken: already has dishes, tap to add to that group.</div>
+                <div class="muted small seat-hint">Tap a seat to order for it. Tap it again for the whole table. ● Has dishes: tap to add more.</div>
             </div>
         }
         <button type="button" class="parcel-toggle @(_parcel ? "on" : null)" data-testid="parcel-toggle" aria-pressed="@(_parcel ? "true" : "false")" @onclick="() => _parcel = !_parcel">
@@ -276,40 +276,30 @@ else
         }
     }
 
-    // A seat belongs to one seat group: a taken seat selects its whole group (and nothing else), free seats select only
-    // free seats, so no seat can end up in two groups.
+    // One chair at a time: tapping a chair selects only it, tapping the selected chair again goes back to the whole table.
+    // A chair that belongs to an older multi-seat group ("T01C+D", made before this rule) selects that whole group, so no
+    // chair can end up in two groups.
     private void ToggleSeat(string seat)
     {
+        var wasOn = _seatsOn.Contains(seat);
+        _seatsOn.Clear();
+        if (wasOn)
+        {
+            return;
+        }
+
         var owners = SeatOwners;
         var group = owners.GetValueOrDefault(seat);
-        var groupSeats = group is null ? new List<string>() : _seatCodes.Where(s => owners.GetValueOrDefault(s) == group).ToList();
-        if (_seatsOn.Contains(seat))
+        if (group is null)
         {
-            if (group is null)
-            {
-                _seatsOn.Remove(seat);
-            }
-            else
-            {
-                _seatsOn.RemoveWhere(groupSeats.Contains);
-            }
-
+            _seatsOn.Add(seat);
             return;
         }
 
-        if (group is not null)
+        foreach (var s in _seatCodes.Where(s => owners.GetValueOrDefault(s) == group))
         {
-            _seatsOn.Clear();
-            foreach (var s in groupSeats)
-            {
-                _seatsOn.Add(s);
-            }
-
-            return;
+            _seatsOn.Add(s);
         }
-
-        _seatsOn.RemoveWhere(s => owners.ContainsKey(s));
-        _seatsOn.Add(seat);
     }
 
     private void ToggleParcel(CartLine line) =>

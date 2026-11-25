@@ -243,7 +243,6 @@ public sealed class OrderBuilderViewModelTests : IDisposable
         vm.SeatPicks.Single(p => p.Code == "T05D").IsTaken.Should().BeFalse("the screen opened before the other terminal ordered");
 
         onServer = new[] { "T05A", "T05C+D" };
-        vm.SeatPicks.Single(p => p.Code == "T05B").IsOn = true;
         vm.SeatPicks.Single(p => p.Code == "T05C").IsOn = true;
         vm.SelectedCategory = vm.Categories[1];
         vm.AddItemCommand.Execute(vm.Items[0]);
@@ -251,6 +250,47 @@ public sealed class OrderBuilderViewModelTests : IDisposable
 
         vm.ErrorMessage.Should().Contain("already belongs");
         vm.SeatPicks.Single(p => p.Code == "T05D").OwnerGroup.Should().Be("T05C+D");
+    }
+
+    // One chair at a time: tapping a chair selects only it; tapping the selected chair again is the whole table; a chair of an
+    // older multi-seat group ("T05C+D") selects that whole group.
+    [Fact]
+    public async Task SeatChips_SelectOneChairAtATime_AndAChairOfAnOlderGroupSelectsItsGroup()
+    {
+        var table = new TableDto { Id = 5, Code = "T05", Capacity = 4, SeatCodes = new[] { "T05A", "T05B", "T05C", "T05D" } };
+        var floor = Substitute.For<IFloorApi>();
+        floor.GetMapAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(ApiResult<TableMapDto>.Ok(new TableMapDto
+        {
+            Sections = new[] { new TableMapSectionDto { Id = 1, Name = "Ground", Tables = new[] { table } } },
+        }));
+        _orders.GetAsync(7, Arg.Any<CancellationToken>()).Returns(_ => ApiResult<OrderDetailDto>.Ok(new OrderDetailDto
+        {
+            Id = 7,
+            SeatGroups = new[] { "T05C+D" }.Select(s => new SeatGroupStatusDto { SeatCode = s }).ToList(),
+        }));
+        var cache = Substitute.For<IMenuCache>();
+        cache.Menu.Returns(Menu);
+        var system = Substitute.For<ISystemApi>();
+        system.GetPublicSettingsAsync(Arg.Any<CancellationToken>()).Returns(ApiResult<List<SettingDto>>.Ok(new List<SettingDto>()));
+        var vm = new OrderBuilderViewModel(cache, _orders, system, _drafts,
+            new OrderSubmitter(NullLogger<OrderSubmitter>.Instance), _navigation, _dialogs, Substitute.For<INotificationService>(), _preferences, floor);
+        await vm.OnNavigatedToAsync(new OrderBuilderContext(5, "T05", OrderBuilderMode.AppendItems, 4, OrderId: 7, OrderNumber: 1007));
+        SeatPickViewModel Seat(string code) => vm.SeatPicks.Single(p => p.Code == code);
+
+        Seat("T05A").IsOn = true;
+        Seat("T05B").IsOn = true;
+        vm.SeatPicks.Where(p => p.IsOn).Select(p => p.Code).Should().Equal("T05B");
+        vm.SelectedSeat.Should().Be("T05B");
+
+        Seat("T05B").IsOn = false;
+        vm.SelectedSeat.Should().Be(OrderBuilderViewModel.WholeTable);
+        vm.IsWholeTable.Should().BeTrue();
+
+        Seat("T05C").IsOn = true;
+        vm.SeatPicks.Where(p => p.IsOn).Select(p => p.Code).Should().Equal("T05C", "T05D");
+        vm.SelectedSeat.Should().Be("T05C+D");
+        Seat("T05A").IsOn = true;
+        vm.SeatPicks.Where(p => p.IsOn).Select(p => p.Code).Should().Equal("T05A");
     }
 
     [Fact]

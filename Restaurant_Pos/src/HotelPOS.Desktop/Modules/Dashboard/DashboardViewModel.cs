@@ -275,6 +275,12 @@ public sealed partial class DashboardViewModel : ViewModelBase, INavigationAware
     [ObservableProperty]
     private string _devicesSummary = string.Empty;
 
+    // The card lists at most MaxDevicesShown terminals (online ones first); the rest is one line, not a long scroll.
+    public const int MaxDevicesShown = 6;
+
+    [ObservableProperty]
+    private string _moreDevicesText = string.Empty;
+
     public bool HasKitchen => KitchenStations.Count > 0;
 
     public bool HasStaff => Staff.Count > 0;
@@ -738,7 +744,9 @@ public sealed partial class DashboardViewModel : ViewModelBase, INavigationAware
         var active = result is { Success: true, Data: not null } ? result.Data.Where(x => x.IsActive).ToList() : new List<DeviceDto>();
         var online = active.Count(x => x.IsOnline);
         DevicesSummary = active.Count == 0 ? "No terminals registered" : $"{online} online · {active.Count - online} offline";
-        Replace(Devices, active.OrderBy(x => x.IsOnline).ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase).Select(x => new DeviceRow(
+        var more = active.Count - MaxDevicesShown;
+        MoreDevicesText = more > 0 ? $"+ {more} more terminal{(more == 1 ? string.Empty : "s")} on the Devices page" : string.Empty;
+        Replace(Devices, active.OrderByDescending(x => x.IsOnline).ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase).Take(MaxDevicesShown).Select(x => new DeviceRow(
             x.Name, x.Type.ToString(), x.IsOnline ? "Online" : x.LastSeenAtUtc is { } seen ? "Seen " + seen.ToLocalTime().ToString("dd MMM HH:mm", CultureInfo.CurrentCulture) : "Never seen", x.IsOnline)));
         OnPropertyChanged(nameof(HasDevices));
     }

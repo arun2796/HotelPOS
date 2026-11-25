@@ -84,8 +84,28 @@ public class DashboardPanelTests
         vm.Staff.Select(s => s.Name).Should().Equal("Ravi", "Asha");
         vm.ShowDevices.Should().BeTrue();
         vm.DevicesSummary.Should().Be("1 online · 1 offline", "deactivated terminals are not counted");
-        vm.Devices.Select(d => d.Name).Should().Equal("WAITER-02", "BILLING-01");
-        vm.Devices[0].IsOnline.Should().BeFalse();
+        vm.Devices.Select(d => d.Name).Should().Equal("BILLING-01", "WAITER-02");
+        vm.Devices[0].IsOnline.Should().BeTrue("online terminals are listed first: the card shows at most six, so offline ones must not push them out");
+        vm.MoreDevicesText.Should().BeEmpty("two terminals fit");
+        vm.Dispose();
+    }
+
+    [Fact]
+    public async Task ManyTerminals_ListOnlineFirst_CapAtSix_AndSayHowManyAreHidden()
+    {
+        var devices = Substitute.For<IDevicesApi>();
+        var rows = Enumerable.Range(1, 9)
+            .Select(i => new DeviceDto { Id = Guid.NewGuid(), Name = $"PC-{i:00}", Type = DeviceType.Waiter, IsActive = true, IsOnline = i == 9 })
+            .ToList();
+        devices.ListAsync(Arg.Any<CancellationToken>()).Returns(ApiResult<List<DeviceDto>>.Ok(rows));
+        var vm = Build(Reports(), new FakeRealtimeClient(), Session("Admin"), Substitute.For<INavigationService>(), devices);
+
+        await vm.OnNavigatedToAsync(null);
+
+        vm.Devices.Should().HaveCount(DashboardViewModel.MaxDevicesShown);
+        vm.Devices[0].Name.Should().Be("PC-09", "the one online terminal is shown even though eight others are offline");
+        vm.MoreDevicesText.Should().Be("+ 3 more terminals on the Devices page");
+        vm.DevicesSummary.Should().Be("1 online · 8 offline", "the summary still counts every terminal");
         vm.Dispose();
     }
 

@@ -3,7 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace HotelPOS.Desktop.Modules.Orders;
 
 // One seat chip of the order builder. Free: nobody has ordered for it. Taken: it belongs to a seat group that already has
-// dishes (tap it to add to that whole group). Selected: the next dishes are for it.
+// dishes (tap it to add more; a chair of an older multi-seat group adds to that whole group). Selected: the next dishes are for it.
 public sealed partial class SeatPickViewModel : ObservableObject
 {
     public SeatPickViewModel(string code)
@@ -17,7 +17,9 @@ public sealed partial class SeatPickViewModel : ObservableObject
     public string Label => Code.Length > 0 ? Code[^1].ToString() + (IsTaken ? " ●" : string.Empty) : Code;
 
     public string ToolTipText => OwnerGroup is { } group
-        ? $"Seat {Code} · already has dishes with the group {group}. Tap to add to that group."
+        ? group == Code
+            ? $"Seat {Code} · already has dishes. Tap to add more."
+            : $"Seat {Code} · already has dishes with the group {group}. Tap to add to that group."
         : IsOn ? $"Seat {Code} · selected" : $"Seat {Code} · free";
 
     // The seat group that already has dishes for this seat ("T01A+B"); null while the seat is free.

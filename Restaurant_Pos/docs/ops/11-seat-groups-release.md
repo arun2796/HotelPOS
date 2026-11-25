@@ -8,7 +8,7 @@ kitchen cooks, and a few cashier changes. It needs **three database migrations**
 
 | Area | Change |
 |---|---|
-| Ordering (Windows, Web, Android) | Seats are chips. Tap one seat, or several that share the order (`T01A+B`). A seat belongs to one seat group of an order; a taken seat is marked ● and selects its whole group. The server refuses an overlapping group. |
+| Ordering (Windows, Web, Android) | Seats are chips. Tap one seat and the next dishes are for that seat only; tap it again (or **Whole table**) for no seat. A seat with dishes is marked ●. (Since 2026-11-25 the screens no longer join several seats into one group such as `T01A+B`; orders that already have such a group still open, bill, and select the whole group when one of its seats is tapped.) The server still refuses an overlapping group. |
 | Kitchen | Each seat group gets its own ticket per station (`1001-1-A`, `1001-1-CD`), so one group's status is never another's. The ticket shows the table, the merged table and the seat group. Tickets already open keep their old shared format. |
 | Billing | **Request bill** can create one bill per seat group straight away. A bill with payments cannot be split. A void or whole-bill refund asks what happens to the food (return to kitchen stock, or waste). |
 | Takeaway | Sidebar shortcut. **Bill & send to kitchen** makes the bill at once; cashier, manager and admin go straight to payment. Cashiers can now create orders. |
@@ -59,11 +59,11 @@ The development database (5 653 orders, 7 251 tickets, 5 635 bills, 5 636 paymen
 
 **Windows waiter** (a 4-seat table, 4 guests)
 1. Open the table → New order. Four seat chips (A–D), none marked. Tooltip of each says "free".
-2. Tap A, add a dish → A shows ●. Tap C then D (A is released), add a dish → C and D show ●.
-3. Tap A → only A selected. Tap D → C and D selected together, A released. Tap B → only B. Tap Whole table → none.
-4. Send. Kitchen Display shows two tickets, "Seat T01A" and "Seat T01C+D". Table details list each group's status.
-5. Table → Add items: A, C, D are ●, B free. Tap D → C+D selected.
-6. Request bill → "Separate bills?" → Separate bills. The counter has one bill per group.
+2. Tap A, add a dish → A shows ●. Tap C (A is released), add a dish → C shows ●.
+3. Tap A → only A selected. Tap D → only D selected, A released. Tap D again → none (whole table). Tap B → only B. Tap Whole table → none.
+4. Send. Kitchen Display shows two tickets, "Seat T01A" and "Seat T01C". Table details list each seat's status.
+5. Table → Add items: A and C are ●, B and D free. Tap C → only C selected.
+6. Request bill → "Separate bills?" → Separate bills. The counter has one bill per seat.
 
 **Android and web** — same steps 1–5 (the Android app is the same web client inside the app).
 

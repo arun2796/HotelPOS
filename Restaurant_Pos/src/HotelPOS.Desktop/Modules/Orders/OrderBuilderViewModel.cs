@@ -248,8 +248,7 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
 
     private string? SeatForNewLine => SelectedSeat == WholeTable ? null : SelectedSeat;
 
-    // The seat chips: tap one seat, or several that share the order (1 and 2 eat together): the next dishes are for all of
-    // them, "T01A+B". None tapped means the whole table.
+    // The seat chips: tap one seat and the next dishes are for it. None tapped means the whole table.
     public ObservableCollection<SeatPickViewModel> SeatPicks { get; } = new();
 
     public bool IsWholeTable => SeatPicks.All(p => !p.IsOn);
@@ -268,8 +267,8 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
     // The seat groups of dishes already sent for this order (loaded when dishes are added to it).
     private IReadOnlyList<string> _serverSeatGroups = Array.Empty<string>();
 
-    // A seat belongs to one seat group: tapping a taken seat selects its whole group (and nothing else); tapping free seats
-    // selects only free seats; nothing can mix the two, so no seat ends up in two groups.
+    // One chair at a time: tapping a chair selects only it. A chair of an older multi-seat group ("T01C+D") selects that whole
+    // group and nothing else, so no seat ends up in two groups.
     private void OnSeatPickChanged(SeatPickViewModel? changed = null)
     {
         if (_adjustingSeats)
@@ -286,7 +285,7 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
                 {
                     foreach (var pick in SeatPicks.Where(p => !ReferenceEquals(p, changed)))
                     {
-                        pick.IsOn = changed.OwnerGroup is { } group ? pick.OwnerGroup == group : pick.OwnerGroup is null && pick.IsOn;
+                        pick.IsOn = changed.OwnerGroup is { } group && pick.OwnerGroup == group;
                     }
 
                     if (changed.OwnerGroup is { } owner)

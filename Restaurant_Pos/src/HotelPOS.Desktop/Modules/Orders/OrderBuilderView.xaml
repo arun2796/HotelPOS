@@ -131,8 +131,8 @@
       </Grid.RowDefinitions>
       <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" MinHeight="48" VerticalContentAlignment="Center"
                md:HintAssist.Hint="Search name or code" AutomationProperties.Name="Search items" />
-      <!-- Seats the next dishes are for: tap one, or several that share the order (seats 1 and 2 together); none = the whole table.
-           Each seat (or group of seats) gets its own bill when the cashier splits by seat. -->
+      <!-- Seats the next dishes are for: tap one seat; none = the whole table.
+           Each seat gets its own bill when the cashier splits by seat. -->
       <StackPanel Grid.Row="1" Grid.ColumnSpan="3" Margin="0,10,0,0"
                   Visibility="{Binding HasSeats, Converter={StaticResource BoolToVisibility}}">
       <StackPanel Orientation="Horizontal">

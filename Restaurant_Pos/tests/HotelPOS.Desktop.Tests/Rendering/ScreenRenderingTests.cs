@@ -541,8 +541,8 @@ public class ScreenRenderingTests
     }
 
     // The real Windows ordering screen (the shipped XAML with its bindings, driven through the chips' own automation peers):
-    // free and taken seats, the ownership tooltip, group selection, free-seat multi-select, no mixing, the seat group saved on
-    // the dish, and an order reopened with its seats already owned. It runs inside AllScreens_RenderWithoutXamlOrBindingErrors
+    // free and taken seats, the ownership tooltip, one-seat-at-a-time selection, the seat saved on the dish, and an order
+    // reopened with a group made before that rule ("A+B": a seat of it selects the whole group). It runs inside AllScreens_RenderWithoutXamlOrBindingErrors
     // (WPF allows one Application per process), so its bindings are checked for errors too.
     private static async Task SeatChipsOnTheRealScreenAsync(Environment env, ShellViewModel shell)
     {
@@ -574,25 +574,27 @@ public class ScreenRenderingTests
             screen.Select(c => c.Content).Should().Equal("A", "B", "C", "D");
             screen.Select(c => c.Tooltip).Should().OnlyContain(t => t.EndsWith("free"), "nobody has ordered yet: every seat is free");
 
-            // seats A and B together
+            // one chair at a time: tapping B after A moves the selection to B only
             await InspectAsync(env, shell, null, root => { Toggle(root, "T05A"); Toggle(root, "T05B"); return SeatChips(root); });
-            builder.SelectedSeat.Should().Be("T05A+B", "two free seats can be selected together");
+            builder.SelectedSeat.Should().Be("T05B", "seats are picked one at a time: B replaces A");
             builder.AddItemCommand.Execute(builder.Items.Single(i => i.Name == "Veg Spring Roll"));
-            builder.Cart.Single().SeatCode.Should().Be("T05A+B", "the dish is saved with the group of both seats");
+            builder.Cart.Single().SeatCode.Should().Be("T05B", "the dish is saved with the one seat");
 
             var afterAdd = await InspectAsync(env, shell, "61-order-builder-seats-2", root => SeatChips(root));
-            afterAdd.Select(c => c.Content).Should().Equal("A ●", "B ●", "C", "D");
-            afterAdd[0].Tooltip.Should().Contain("T05A+B").And.Contain("already has dishes");
-            afterAdd.Select(c => c.IsChecked).Should().Equal(true, true, false, false);
+            afterAdd.Select(c => c.Content).Should().Equal("A", "B ●", "C", "D");
+            afterAdd[1].Tooltip.Should().Contain("already has dishes");
+            afterAdd.Select(c => c.IsChecked).Should().Equal(false, true, false, false);
 
-            // a free seat can be picked alone, and replaces the group selection: free and taken seats are never mixed
+            // another free seat replaces the selection; a taken seat selects only itself; tapping it again is the whole table
             await InspectAsync(env, shell, null, root => { Toggle(root, "T05C"); return SeatChips(root); });
             builder.SelectedSeat.Should().Be("T05C");
             await InspectAsync(env, shell, null, root => { Toggle(root, "T05D"); return SeatChips(root); });
-            builder.SelectedSeat.Should().Be("T05C+D", "free seats can be selected together");
-            var mixed = await InspectAsync(env, shell, null, root => { Toggle(root, "T05A"); return SeatChips(root); });
-            builder.SelectedSeat.Should().Be("T05A+B", "tapping a taken seat selects its complete group and nothing else");
-            mixed.Select(c => c.IsChecked).Should().Equal(true, true, false, false);
+            builder.SelectedSeat.Should().Be("T05D", "a second free seat replaces the first, never joins it");
+            var again1 = await InspectAsync(env, shell, null, root => { Toggle(root, "T05B"); return SeatChips(root); });
+            builder.SelectedSeat.Should().Be("T05B", "tapping a taken seat selects that seat only");
+            again1.Select(c => c.IsChecked).Should().Equal(false, true, false, false);
+            await InspectAsync(env, shell, null, root => { Toggle(root, "T05B"); return SeatChips(root); });
+            builder.SelectedSeat.Should().Be(OrderBuilderViewModel.WholeTable, "tapping the selected seat again goes back to the whole table");
             builder.OnNavigatedFrom();
 
             // ---- the order is opened again later to add dishes: the group is still owned
