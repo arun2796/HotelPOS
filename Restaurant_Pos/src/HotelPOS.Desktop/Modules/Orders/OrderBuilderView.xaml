@@ -251,6 +251,10 @@
                               Visibility="{Binding HasModifiers, Converter={StaticResource BoolToVisibility}}">
                         <TextBlock Text="Options" />
                       </Border>
+                      <Border Style="{StaticResource Chip.Neutral}" Margin="8,0,0,0" VerticalAlignment="Center"
+                              Visibility="{Binding HasPortions, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock Text="{Binding PortionsText}" />
+                      </Border>
                     </StackPanel>
                   </StackPanel>
                   <!-- the card is the button; this is only the "add" affordance -->
@@ -292,6 +296,8 @@
                       </Grid>
                       <TextBlock Text="{Binding DetailText}" Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
                                  Visibility="{Binding HasDetail, Converter={StaticResource BoolToVisibility}}" />
+                      <TextBlock Text="This portion is no longer on the menu. Remove the line and add it again." Style="{StaticResource Text.Error}" TextWrapping="Wrap"
+                                 Visibility="{Binding NeedsPortionChoice, Converter={StaticResource BoolToVisibility}}" AutomationProperties.Name="Portion needs choosing" />
                       <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
                         <Button Style="{StaticResource SquareKey}" Content="−" FontSize="20" ToolTip="One less"
                                 Command="{Binding DataContext.DecreaseCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" />
@@ -358,8 +364,43 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
           </Grid.RowDefinitions>
-          <TextBlock Text="{Binding Item.Name}" Style="{StaticResource Text.Title}" Margin="0,0,0,12" />
+          <StackPanel Margin="0,0,0,12">
+            <TextBlock Text="{Binding Item.Name}" Style="{StaticResource Text.Title}" />
+            <!-- The price follows the portion chosen below. -->
+            <TextBlock Text="{Binding CurrentPriceText}" Foreground="{DynamicResource Brush.Primary}" FontSize="20" FontWeight="Bold"
+                       Typography.NumeralAlignment="Tabular" Margin="0,4,0,0" AutomationProperties.Name="Price"
+                       Visibility="{Binding HasPortions, Converter={StaticResource BoolToVisibility}}" />
+          </StackPanel>
           <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+            <!-- Portion first (Quarter, Half, Full...): the default is selected, tapping another changes the price. -->
+            <StackPanel Margin="0,0,0,12" Visibility="{Binding HasPortions, Converter={StaticResource BoolToVisibility}}">
+              <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                <TextBlock Text="Portion" FontWeight="SemiBold" FontSize="15" Foreground="{DynamicResource Brush.TextPrimary}" />
+                <TextBlock Text="Choose 1" Style="{StaticResource Text.Caption}" Margin="10,0,0,0" VerticalAlignment="Center" />
+              </StackPanel>
+              <ItemsControl ItemsSource="{Binding Portions}" Focusable="False" AutomationProperties.Name="Portions">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <WrapPanel />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate DataType="{x:Type orders:PickerPortionViewModel}">
+                    <Button Style="{StaticResource OptionButton}" CommandParameter="{Binding}"
+                            Command="{Binding DataContext.SelectPortionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            AutomationProperties.Name="{Binding Name}">
+                      <StackPanel>
+                        <TextBlock Text="{Binding Name}" HorizontalAlignment="Center" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding PriceText}" FontSize="12" HorizontalAlignment="Center" Typography.NumeralAlignment="Tabular" />
+                        <TextBlock Text="{Binding QuantityText}" FontSize="11" HorizontalAlignment="Center"
+                                   Visibility="{Binding HasQuantity, Converter={StaticResource BoolToVisibility}}" />
+                      </StackPanel>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
             <ItemsControl ItemsSource="{Binding Groups}" Focusable="False">
               <ItemsControl.ItemTemplate>
                 <DataTemplate DataType="{x:Type orders:PickerGroupViewModel}">
@@ -391,6 +432,7 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
+            </StackPanel>
           </ScrollViewer>
           <StackPanel Grid.Row="2" Margin="0,8,0,0">
             <Border Style="{StaticResource Banner.Error}" Margin="0,0,0,10"

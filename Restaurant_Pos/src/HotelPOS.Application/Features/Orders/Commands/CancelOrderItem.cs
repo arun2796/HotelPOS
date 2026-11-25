@@ -78,7 +78,7 @@ internal sealed class CancelOrderItemHandler : ICommandHandler<CancelOrderItemCo
 
         if (item.Status != OrderItemStatus.Sent)
         {
-            return AppErrors.InvalidState($"{item.ItemName} is not with the kitchen; change the draft instead.", await _orders.GetDetailAsync(id, cancellationToken));
+            return AppErrors.InvalidState($"{item.DisplayName} is not with the kitchen; change the draft instead.", await _orders.GetDetailAsync(id, cancellationToken));
         }
 
         var tickets = await _kitchen.LoadTicketsAsync(order.Id, cancellationToken);
@@ -90,12 +90,12 @@ internal sealed class CancelOrderItemHandler : ICommandHandler<CancelOrderItemCo
             case KitchenOrderStatus.New or KitchenOrderStatus.Accepted when !mayCancelAny && !isOwner:
                 return AppErrors.Forbidden("Only the waiter who took this order or a manager can cancel its items.");
             case KitchenOrderStatus.Preparing when !mayCancelAny:
-                return AppErrors.Forbidden($"{item.ItemName} is already being prepared. Only a manager can cancel it.");
+                return AppErrors.Forbidden($"{item.DisplayName} is already being prepared. Only a manager can cancel it.");
             // Same rule as cancelling a whole order: once the kitchen has started, the reason is required.
             case KitchenOrderStatus.Preparing when string.IsNullOrWhiteSpace(request.Reason):
                 return AppErrors.Validation("reason", "Enter the reason for cancelling a dish that is being prepared.");
             case KitchenOrderStatus.Ready or KitchenOrderStatus.Completed or KitchenOrderStatus.Cancelled:
-                return AppErrors.InvalidState($"{item.ItemName} is already {ticket.Status} and cannot be cancelled.", await _orders.GetDetailAsync(id, cancellationToken));
+                return AppErrors.InvalidState($"{item.DisplayName} is already {ticket.Status} and cannot be cancelled.", await _orders.GetDetailAsync(id, cancellationToken));
         }
 
         var now = _clock.UtcNow;
@@ -106,7 +106,7 @@ internal sealed class CancelOrderItemHandler : ICommandHandler<CancelOrderItemCo
         var table = order.Table!;
         var change = _kitchen.Recompute(order, tickets, table);
         _audit.Add(AuditActions.OrderItemCancelled, nameof(Order), order.Id.ToString(),
-            newValues: new { order.OrderNumber, item.ItemName, item.Quantity, Ticket = ticket.TicketNumber, request.Reason });
+            newValues: new { order.OrderNumber, item.DisplayName, item.Quantity, Ticket = ticket.TicketNumber, request.Reason });
 
         var result = await _orders.SaveAsync(order, cancellationToken);
         if (result.IsSuccess)

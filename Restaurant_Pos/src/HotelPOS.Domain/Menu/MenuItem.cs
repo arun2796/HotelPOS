@@ -9,6 +9,7 @@ namespace HotelPOS.Domain.Menu;
 public sealed class MenuItem : BaseEntity, IHasRowVersion
 {
     private readonly List<MenuItemModifierGroup> _modifierGroups = new();
+    private readonly List<MenuItemPortion> _portions = new();
 
     private MenuItem()
     {
@@ -19,6 +20,9 @@ public sealed class MenuItem : BaseEntity, IHasRowVersion
         Update(categoryId, name, code, description, price, taxId, preparationStationId, sortOrder);
         IsAvailable = true;
         IsActive = true;
+
+        // Every item is sold in at least one portion; an item with one price has the single "Regular" portion.
+        _portions.Add(new MenuItemPortion(new PortionSpec(null, "Regular", null, null, Price, true, true, 1)));
     }
 
     public int CategoryId { get; private set; }
@@ -46,6 +50,9 @@ public sealed class MenuItem : BaseEntity, IHasRowVersion
 
     public IReadOnlyCollection<MenuItemModifierGroup> ModifierGroups => _modifierGroups;
 
+    // Load with Include(Portions) on every path that writes Price: Price mirrors the default portion.
+    public IReadOnlyCollection<MenuItemPortion> Portions => _portions;
+
     public static string? NormalizeCode(string? code) => string.IsNullOrWhiteSpace(code) ? null : code.Trim().ToUpperInvariant();
 
     public void Update(int categoryId, string name, string? code, string? description, decimal price, int? taxId, int preparationStationId, int sortOrder)
@@ -66,9 +73,77 @@ public sealed class MenuItem : BaseEntity, IHasRowVersion
         Code = MenuGuard.Code(code, "Item code");
         Description = trimmedDescription;
         Price = MenuGuard.Money(price, 0m, MenuLimits.MaxPrice, "Price");
+        _portions.FirstOrDefault(p => p.IsDefault)?.SetPrice(Price);
         TaxId = taxId;
         PreparationStationId = preparationStationId;
         SortOrder = sortOrder;
+    }
+
+    // Replaces the item's portions with exactly these (existing rows are kept by Id so order lines keep their link), and
+    // sets Price to the default portion's price.
+    public void SetPortions(IReadOnlyList<PortionSpec> specs)
+    {
+        if (specs.Count == 0)
+        {
+            throw new DomainException("An item needs at least one portion.");
+        }
+
+        if (specs.Count > MenuLimits.MaxPortions)
+        {
+            throw new DomainException($"An item can have at most {MenuLimits.MaxPortions} portions.");
+        }
+
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var spec in specs)
+        {
+            var name = (spec.Name ?? string.Empty).Trim();
+            if (name.Length > 0 && !seen.Add(name))
+            {
+                throw new DomainException($"The portion name {name} is used more than once. Use each portion name once.");
+            }
+        }
+
+        if (specs.Count(s => s.IsDefault) != 1)
+        {
+            throw new DomainException("Choose exactly one default portion.");
+        }
+
+        if (!specs.Any(s => s.IsActive))
+        {
+            throw new DomainException("At least one portion must be on.");
+        }
+
+        if (specs.Single(s => s.IsDefault) is { IsActive: false })
+        {
+            throw new DomainException("The default portion must be on.");
+        }
+
+        var next = new List<MenuItemPortion>();
+        foreach (var spec in specs)
+        {
+            var existing = spec.Id is { } id ? _portions.FirstOrDefault(p => p.Id == id) : null;
+            if (existing is null)
+            {
+                next.Add(new MenuItemPortion(spec));
+            }
+            else
+            {
+                existing.Apply(spec);
+                next.Add(existing);
+            }
+        }
+
+        _portions.Clear();
+        _portions.AddRange(next);
+        Price = next.Single(p => p.IsDefault).Price;
+    }
+
+    // An older client (or the import) changes only the price: the default portion takes it.
+    public void SetDefaultPrice(decimal price)
+    {
+        var money = MenuGuard.Money(price, 0m, MenuLimits.MaxPrice, "Price");
+        _portions.FirstOrDefault(p => p.IsDefault)?.SetPrice(money);
+        Price = money;
     }
 
     public void SetAvailability(bool isAvailable) => IsAvailable = isAvailable;

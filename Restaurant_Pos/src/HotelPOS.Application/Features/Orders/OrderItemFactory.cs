@@ -6,6 +6,7 @@ using HotelPOS.Contracts.Floor;
 using HotelPOS.Contracts.Menu;
 using HotelPOS.Contracts.Orders;
 using HotelPOS.Domain.Floor;
+using HotelPOS.Domain.Menu;
 using HotelPOS.Domain.Orders;
 using Microsoft.EntityFrameworkCore;
 
@@ -52,6 +53,7 @@ internal sealed class OrderItemFactory
             .Include(m => m.Category)
             .Include(m => m.Tax)
             .Include(m => m.ModifierGroups)
+            .Include(m => m.Portions)
             .Where(m => menuItemIds.Contains(m.Id))
             .ToDictionaryAsync(m => m.Id, cancellationToken);
 
@@ -121,14 +123,21 @@ internal sealed class OrderItemFactory
                 }
             }
 
+            // The portion the guest chose, else the only one on sale. The price comes from it, never from the client.
+            var portion = ResolvePortion(menuItem, input.PortionId, out var portionError);
+            if (portionError is not null)
+            {
+                return AppErrors.Validation(field, portionError);
+            }
+
             // A parcel pays the item's packaging charge. It is folded into the unit price, so the bill, GST and every
             // total follow without a separate line; the name says Parcel on the KOT and the invoice.
             var packaging = !input.IsParcel ? 0m : menuItem.PackagingCharge > 0m ? menuItem.PackagingCharge : defaultPackaging;
             var lineName = input.IsParcel ? ParcelName(menuItem.Name) : menuItem.Name;
-            result.Add(new OrderItem(
+            var line = new OrderItem(
                 menuItem.Id,
                 lineName,
-                menuItem.Price + packaging,
+                (portion?.Price ?? menuItem.Price) + packaging,
                 input.Quantity,
                 input.Notes,
                 menuItem.TaxId,
@@ -137,7 +146,15 @@ internal sealed class OrderItemFactory
                 chosen.Select(id => new OrderItemModifier(id, options[id].Name, options[id].PriceDelta)),
                 input.IsParcel,
                 packaging,
-                seatCode));
+                seatCode);
+            // Only an item that has more than one portion defined keeps the portion on the line: an item with one price
+            // reads exactly as it did before portions existed.
+            if (portion is not null && menuItem.Portions.Count > 1)
+            {
+                line.SetPortion(portion.Id, portion.Name, portion.Quantity, portion.Unit);
+            }
+
+            result.Add(line);
         }
 
         var inputConflict = SeatSelection.FindConflict(result.Select(i => i.SeatCode));
@@ -147,6 +164,48 @@ internal sealed class OrderItemFactory
         }
 
         return result;
+    }
+
+    // The portion a line is for. A portion that was named must still be offered by this item and switched on: it is refused
+    // (never swapped for the default) when it is gone or off. With no portion named, the only portion on sale is used; two
+    // or more on sale is refused, so an app that does not know portions cannot charge the default by accident.
+    // An item without portion rows (not possible after the Phase32 migration) is priced from the item, as before.
+    private static MenuItemPortion? ResolvePortion(MenuItem item, int? portionId, out string? error)
+    {
+        error = null;
+        if (item.Portions.Count == 0)
+        {
+            return null;
+        }
+
+        if (portionId is { } id)
+        {
+            var named = item.Portions.FirstOrDefault(p => p.Id == id);
+            if (named is null)
+            {
+                error = $"That portion is not offered with {item.Name}. Refresh the menu and choose again.";
+                return null;
+            }
+
+            if (!named.IsActive)
+            {
+                error = $"{item.Name} ({named.Name}) is no longer available. Choose another portion.";
+                return null;
+            }
+
+            return named;
+        }
+
+        var onSale = item.Portions.Where(p => p.IsActive).ToList();
+        if (onSale.Count == 1)
+        {
+            return onSale[0];
+        }
+
+        error = onSale.Count == 0
+            ? $"{item.Name} has no portion on sale."
+            : $"{item.Name} has several portions. Update the app to choose one.";
+        return null;
     }
 
     private static string ParcelName(string name)

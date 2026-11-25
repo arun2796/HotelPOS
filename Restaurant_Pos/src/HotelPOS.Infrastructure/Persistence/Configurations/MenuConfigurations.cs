@@ -88,6 +88,27 @@ internal sealed class MenuItemConfiguration : IEntityTypeConfiguration<MenuItem>
             .HasForeignKey(l => l.MenuItemId)
             .OnDelete(DeleteBehavior.Cascade);
         builder.Navigation(i => i.ModifierGroups).UsePropertyAccessMode(PropertyAccessMode.Field);
+        builder.HasMany(i => i.Portions)
+            .WithOne(p => p.MenuItem)
+            .HasForeignKey(p => p.MenuItemId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(i => i.Portions).UsePropertyAccessMode(PropertyAccessMode.Field);
+    }
+}
+
+internal sealed class MenuItemPortionConfiguration : IEntityTypeConfiguration<MenuItemPortion>
+{
+    public void Configure(EntityTypeBuilder<MenuItemPortion> builder)
+    {
+        builder.ToTable("MenuItemPortions", t =>
+        {
+            t.HasCheckConstraint("CK_MenuItemPortions_Price", "\"Price\" >= 0");
+            t.HasCheckConstraint("CK_MenuItemPortions_Quantity", "\"Quantity\" IS NULL OR \"Quantity\" > 0");
+        });
+        builder.Property(p => p.Name).HasMaxLength(MenuLimits.PortionNameMaxLength).IsRequired();
+        builder.Property(p => p.Unit).HasMaxLength(10);
+        builder.Property(p => p.Quantity).HasPrecision(18, 3);
+        builder.HasIndex(p => p.MenuItemId);
     }
 }
 

@@ -116,7 +116,7 @@ else
         @foreach (var item in VisibleItems())
         {
             var i = item;
-            <MenuItemCard Item="i" ImageUrl="@Host.ImageUrl(i.ImageUrl)" Pinned="@Favourites.IsPinned(i.Id)" OnPick="() => Pick(i)" OnTogglePin="() => TogglePinAsync(i)" />
+            <MenuItemCard Item="i" ImageUrl="@Host.ImageUrl(i.ImageUrl)" Pinned="@Favourites.IsPinned(i.Id)" OnPick="() => Pick(i)" OnPickPortion="p => Pick(i, p)" OnTogglePin="() => TogglePinAsync(i)" />
         }
     </div>
     @if (!VisibleItems().Any())
@@ -179,7 +179,7 @@ else
 
 @if (_options is { } options)
 {
-    <ItemOptionsSheet Item="options.Item" Groups="options.Groups" InitialOptionIds="options.Line?.ModifierOptionIds" InitialQuantity="options.Line?.Quantity ?? 1"
+    <ItemOptionsSheet Item="options.Item" Groups="options.Groups" InitialOptionIds="options.Line?.ModifierOptionIds" InitialPortionId="options.Line?.PortionId ?? options.Portion?.Id" InitialQuantity="options.Line?.Quantity ?? 1"
                       InitialNotes="@options.Line?.Notes" ConfirmLabel="@(options.Line is null ? "Add to order" : "Save changes")"
                       OnConfirm="r => ConfirmOptions(options, r)" OnClose="() => _options = null" />
 }
@@ -305,8 +305,8 @@ else
     private void ToggleParcel(CartLine line) =>
         Change(() => _cart.SetParcel(line, !line.IsParcel, _menu?.Items.FirstOrDefault(i => i.Id == line.MenuItemId)?.PackagingCharge));
 
-    private string AddedText(MenuEntryDto item) =>
-        $"{item.Name} added{(_parcel ? " (parcel)" : null)}{(ActiveSeat is { } seat ? $" for seat {seat}" : null)}.";
+    private string AddedText(MenuEntryDto item, MenuItemPortionDto? portion = null) =>
+        $"{(portion is not null && item.Portions.Count > 1 ? ItemDisplayName.Compose(item.Name, portion.Name) : item.Name)} added{(_parcel ? " (parcel)" : null)}{(ActiveSeat is { } seat ? $" for seat {seat}" : null)}.";
 
     private readonly OrderComposer _cart = new();
     private MenuDto? _menu;
@@ -477,6 +477,8 @@ else
         if (result.Success && result.Data is { } menu)
         {
             _menu = menu;
+            // A loaded draft or order is tied to today's portions (by id, then by name); one that is gone must be chosen again.
+            _cart.ResolvePortions(menu);
             _error = null;
             var hasFavourites = Favourites.Items(menu).Count > 0;
             var known = menu.Categories.Any(c => c.Id == _categoryId) || (_categoryId == FavouritesStore.CategoryId && hasFavourites);
@@ -495,17 +497,18 @@ else
         await InvokeAsync(StateHasChanged);
     }
 
-    private void Pick(MenuEntryDto item)
+    // portion: the one selected on the card of an item with several portions; null adds the item's default portion.
+    private void Pick(MenuEntryDto item, MenuItemPortionDto? portion = null)
     {
         var groups = GroupsFor(item);
         if (groups.Count == 0)
         {
-            Change(() => _cart.Add(item, Array.Empty<MenuModifierOptionDto>(), 1, null, _parcel, ActiveSeat));
-            Toasts.Success(AddedText(item));
+            Change(() => _cart.Add(item, Array.Empty<MenuModifierOptionDto>(), 1, null, _parcel, ActiveSeat, portion));
+            Toasts.Success(AddedText(item, portion));
             return;
         }
 
-        _options = new OptionsRequest(item, groups, null);
+        _options = new OptionsRequest(item, groups, null, portion);
     }
 
     private List<MenuModifierGroupDto> GroupsFor(MenuEntryDto item) =>
@@ -525,15 +528,18 @@ else
         _options = null;
         if (request.Line is not { } line)
         {
-            Change(() => _cart.Add(request.Item, result.Options, result.Quantity, result.Notes, _parcel, ActiveSeat));
-            Toasts.Success(AddedText(request.Item));
+            var portion = result.Portion ?? request.Portion;
+            Change(() => _cart.Add(request.Item, result.Options, result.Quantity, result.Notes, _parcel, ActiveSeat, portion));
+            Toasts.Success(AddedText(request.Item, portion));
             return;
         }
 
         var sameOptions = request.Groups.Count == 0 || result.Options.Select(o => o.Id).OrderBy(i => i).SequenceEqual(line.ModifierOptionIds.OrderBy(i => i));
+        // A different portion is a different dish and price: it replaces the line, like different options do.
+        var samePortion = result.Portion is null || (result.Portion.Id == line.PortionId && !line.NeedsPortionChoice);
         Change(() =>
         {
-            if (sameOptions)
+            if (sameOptions && samePortion)
             {
                 _cart.SetQuantity(line, result.Quantity);
                 _cart.SetNotes(line, result.Notes);
@@ -541,7 +547,7 @@ else
             else
             {
                 _cart.Remove(line);
-                _cart.Add(request.Item, result.Options, result.Quantity, result.Notes, line.IsParcel, line.SeatCode);
+                _cart.Add(request.Item, result.Options, result.Quantity, result.Notes, line.IsParcel, line.SeatCode, result.Portion);
             }
         });
     }
@@ -635,6 +641,13 @@ else
 
     private async Task SendAsync()
     {
+        if (_cart.HasUnresolvedPortions)
+        {
+            Toasts.Error($"Choose the portion again for {string.Join(", ", _cart.Lines.Where(l => l.NeedsPortionChoice).Select(l => l.Name).Distinct())} before sending."); 
+            _review = false;
+            return;
+        }
+
         if (_orderType == OrderType.Delivery && !IsDeliveryDetailsComplete)
         {
             Toasts.Error("Customer name, phone, and delivery address are required.");
@@ -752,5 +765,5 @@ else
     public void Dispose() => _menuSubscription?.Dispose();
 
     /// <summary>What the options sheet is open for: a new pick (Line null) or an existing cart line being edited.</summary>
-    private sealed record OptionsRequest(MenuEntryDto Item, IReadOnlyList<MenuModifierGroupDto> Groups, CartLine? Line);
+    private sealed record OptionsRequest(MenuEntryDto Item, IReadOnlyList<MenuModifierGroupDto> Groups, CartLine? Line, MenuItemPortionDto? Portion = null);
 }

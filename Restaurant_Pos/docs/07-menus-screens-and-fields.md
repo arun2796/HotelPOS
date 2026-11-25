@@ -657,16 +657,16 @@ Purpose: categories, items, prices, modifiers, taxes and preparation stations. O
 
 #### 6.6.1 Items tab
 Controls: search (name or code), category filter, Inactive (also show inactive items, in grey), refresh, **New item**.
-Columns: CODE, NAME, CATEGORY, PRICE, TAX, STATION, IN STOCK.
+Columns: ITEM (picture, or the initials, with the name and code), CATEGORY, PORTIONS (a chip per portion with its price: the default in green, a switched-off portion struck through), PACKING, TAX, SOURCE, STOCK, IN STOCK.
 Buttons: **Edit**, **Sold out / Available** toggle.
 
 ##### Menu item editor
 
 | Field | Type | Required | Rules / notes |
 |---|---|---|---|
-| Picture | image (Choose picture... / Remove picture) | No | JPEG or PNG up to 2 MB; shrunk to 512 pixels. Can be added after the item is first saved. |
+| Picture | image (Choose picture... / Remove picture) | No | JPEG or PNG up to 2 MB; shrunk to 512 pixels. Can be chosen while the item is new: it is uploaded right after the item is created. |
 | Name | text | Yes | Up to 100 characters. |
-| Price | ₹ amount | Yes | 0 to ₹10,00,000, at most 2 decimals (for example 180 or 180.50). |
+| Portions & prices | table, 1 to 12 rows | Yes | Each row: a default radio, **Name** (Quarter, Half, Full, 1 KG...; up to 40 characters, each name once), optional **Quantity** and **Unit** (GM, KG, ML, L, PCS, PLATE; labels only, they never change a price), **Price** (0 to ₹10,00,000, at most 2 decimals), an **On** switch and a remove button. Exactly one row is the default and it must be on; at least one row must be on. A new item starts with one "Regular" row; an item with one price keeps just that row. Switching a portion off keeps it for history. The item price shown elsewhere is the default portion's price. |
 | Code (optional) | text | No | Up to 20; letters, digits, `-`, `_`. |
 | Category | dropdown | Yes | |
 | Tax | dropdown | No | Taxes defined in the Taxes tab (for example GST 5%). |

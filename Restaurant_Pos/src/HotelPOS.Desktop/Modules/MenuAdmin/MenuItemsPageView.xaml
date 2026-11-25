@@ -62,11 +62,11 @@
     </Border>
 
     <Grid Grid.Row="2">
-      <DataGrid ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedItem}" controls:SelectorBehaviors.ScrollSelectedIntoView="True" HorizontalScrollBarVisibility="Disabled">
+      <DataGrid ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedRow}" controls:SelectorBehaviors.ScrollSelectedIntoView="True" HorizontalScrollBarVisibility="Disabled">
         <DataGrid.RowStyle>
           <Style TargetType="DataGridRow">
             <Style.Triggers>
-              <DataTrigger Binding="{Binding IsActive}" Value="False">
+              <DataTrigger Binding="{Binding Item.IsActive}" Value="False">
                 <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
                 <Setter Property="FontStyle" Value="Italic" />
                 <Setter Property="ToolTip" Value="Inactive: not on the menu" />
@@ -78,21 +78,77 @@
           <MouseBinding Gesture="LeftDoubleClick" Command="{Binding EditCommand}" />
         </DataGrid.InputBindings>
         <DataGrid.Columns>
-          <DataGridTextColumn Header="CODE" Binding="{Binding Code}" Width="0.55*" MinWidth="58" />
-          <DataGridTextColumn Header="NAME" Binding="{Binding Name}" Width="1.8*" MinWidth="120" />
-          <DataGridTextColumn Header="CATEGORY" Binding="{Binding CategoryName}" Width="0.9*" MinWidth="90" />
-          <DataGridTextColumn Header="PRICE" Binding="{Binding Price, StringFormat=N2}" Width="0.7*" MinWidth="92"
+          <!-- The picture (or the initials tile while there is none), the name and the code. -->
+          <DataGridTemplateColumn Header="ITEM" Width="2.2*" MinWidth="190">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate DataType="{x:Type m:MenuItemRowViewModel}">
+                <Grid Margin="0,4">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="44" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <Border Width="40" Height="40" CornerRadius="8" Background="{DynamicResource Brush.PrimarySoft}" ClipToBounds="True">
+                    <Grid>
+                      <TextBlock Text="{Binding Initials}" FontWeight="SemiBold" Foreground="{DynamicResource Brush.Primary}"
+                                 HorizontalAlignment="Center" VerticalAlignment="Center" />
+                      <Image Source="{Binding ImageFile, Converter={StaticResource ImageFile}}" Stretch="UniformToFill" />
+                    </Grid>
+                  </Border>
+                  <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Item.Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Item.Code}" Style="{StaticResource Text.Caption}" />
+                  </StackPanel>
+                </Grid>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTextColumn Header="CATEGORY" Binding="{Binding Item.CategoryName}" Width="0.9*" MinWidth="90" />
+          <!-- Each portion with its price: the default is green, a switched-off portion is struck through. -->
+          <DataGridTemplateColumn Header="PORTIONS" Width="2*" MinWidth="170">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate DataType="{x:Type m:MenuItemRowViewModel}">
+                <ItemsControl ItemsSource="{Binding PortionChips}" Focusable="False" Margin="0,4">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <WrapPanel />
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type m:PortionChip}">
+                      <Border CornerRadius="10" BorderThickness="1" Padding="8,1" Margin="0,2,4,2" BorderBrush="{DynamicResource Brush.Border}">
+                        <TextBlock Text="{Binding Text}" FontSize="12">
+                          <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                              <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsOff}" Value="True">
+                                  <Setter Property="TextDecorations" Value="Strikethrough" />
+                                  <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsDefault}" Value="True">
+                                  <Setter Property="Foreground" Value="{DynamicResource Brush.Primary}" />
+                                  <Setter Property="FontWeight" Value="SemiBold" />
+                                </DataTrigger>
+                              </Style.Triggers>
+                            </Style>
+                          </TextBlock.Style>
+                        </TextBlock>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTextColumn Header="PACKING" Binding="{Binding Item.PackagingCharge, StringFormat=N2}" Width="0.6*" MinWidth="84"
                               ElementStyle="{StaticResource Text.GridNumber}" HeaderStyle="{StaticResource DataGrid.NumberHeader}" />
-          <DataGridTextColumn Header="PACKING" Binding="{Binding PackagingCharge, StringFormat=N2}" Width="0.6*" MinWidth="84"
-                              ElementStyle="{StaticResource Text.GridNumber}" HeaderStyle="{StaticResource DataGrid.NumberHeader}" />
-          <DataGridTextColumn Header="TAX" Binding="{Binding TaxRatePercent, StringFormat={}{0:0.##}%}" Width="0.45*" MinWidth="52" />
-          <DataGridTextColumn Header="SOURCE" Binding="{Binding StationName}" Width="1.1*" MinWidth="100" />
-          <DataGridTextColumn Header="STOCK" Binding="{Binding ., Converter={StaticResource StockText}, Mode=OneWay}" Width="0.8*" MinWidth="96" />
+          <DataGridTextColumn Header="TAX" Binding="{Binding Item.TaxRatePercent, StringFormat={}{0:0.##}%}" Width="0.45*" MinWidth="52" />
+          <DataGridTextColumn Header="SOURCE" Binding="{Binding Item.StationName}" Width="1.1*" MinWidth="100" />
+          <DataGridTextColumn Header="STOCK" Binding="{Binding Item, Converter={StaticResource StockText}, Mode=OneWay}" Width="0.8*" MinWidth="96" />
           <!-- A template column so the themed CheckBox is used (DataGridCheckBoxColumn draws the plain WPF one). -->
           <DataGridTemplateColumn Header="IN STOCK" Width="0.6*" MinWidth="88">
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate>
-                <CheckBox IsChecked="{Binding IsAvailable, Mode=OneWay}" IsHitTestVisible="False" Focusable="False"
+                <CheckBox IsChecked="{Binding Item.IsAvailable, Mode=OneWay}" IsHitTestVisible="False" Focusable="False"
                           VerticalAlignment="Center" Margin="4,0,0,0" />
               </DataTemplate>
             </DataGridTemplateColumn.CellTemplate>
@@ -139,28 +195,68 @@
                 <Button Content="Remove picture" Style="{StaticResource Button.Link}" HorizontalAlignment="Left" Margin="0,6,0,0"
                         Visibility="{Binding HasPicture, Converter={StaticResource BoolToVisibility}}"
                         Command="{Binding DataContext.RemovePictureCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                <TextBlock Text="JPEG or PNG, up to 2 MB" Style="{StaticResource Text.Caption}" Margin="0,6,0,0" />
+                <TextBlock Text="JPEG or PNG, up to 2 MB. Without a picture the menu shows the item's initials." Style="{StaticResource Text.Caption}" TextWrapping="Wrap" Margin="0,6,0,0" />
               </StackPanel>
             </Grid>
 
             <TextBlock Text="Name" Style="{StaticResource Text.Label}" />
             <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" MaxLength="100" Margin="0,0,0,12" />
 
-            <Grid Margin="0,0,0,12">
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="12" />
-                <ColumnDefinition Width="*" />
-              </Grid.ColumnDefinitions>
-              <StackPanel>
-                <TextBlock Text="Price" Style="{StaticResource Text.Label}" />
-                <TextBox Text="{Binding Price, UpdateSourceTrigger=PropertyChanged}" MaxLength="10" />
-              </StackPanel>
-              <StackPanel Grid.Column="2">
-                <TextBlock Text="Code (optional)" Style="{StaticResource Text.Label}" />
-                <TextBox Text="{Binding Code, UpdateSourceTrigger=PropertyChanged}" CharacterCasing="Upper" MaxLength="20" />
-              </StackPanel>
-            </Grid>
+            <TextBlock Text="Code (optional)" Style="{StaticResource Text.Label}" />
+            <TextBox Text="{Binding Code, UpdateSourceTrigger=PropertyChanged}" CharacterCasing="Upper" MaxLength="20" Margin="0,0,0,12" />
+
+            <!-- Portions & prices: Quarter, Half, Full, 1 KG... Each has its own price; exactly one is the default (the one a
+                 waiter sees selected); a portion can be switched off without deleting it. -->
+            <TextBlock Text="Portions &amp; prices" Style="{StaticResource Text.Label}" />
+            <TextBlock Text="An item with one price keeps the single &quot;Regular&quot; row. Quantity and unit are only a label."
+                       Style="{StaticResource Text.Caption}" TextWrapping="Wrap" Margin="0,0,0,6" />
+            <ItemsControl ItemsSource="{Binding Portions}" Focusable="False" AutomationProperties.Name="Portions and prices">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="{x:Type m:PortionRowViewModel}">
+                  <Border BorderThickness="1" CornerRadius="8" Padding="8" Margin="0,0,0,8" BorderBrush="{DynamicResource Brush.Border}">
+                    <StackPanel>
+                      <Grid>
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="Auto" />
+                          <ColumnDefinition Width="*" />
+                          <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <RadioButton GroupName="PortionDefault" IsChecked="{Binding IsDefault, Mode=OneWay}" VerticalAlignment="Center" Margin="0,0,8,0"
+                                     ToolTip="Default portion: the one selected first when an item is ordered"
+                                     AutomationProperties.Name="Default portion"
+                                     Command="{Binding DataContext.SetDefaultCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                     CommandParameter="{Binding}" />
+                        <TextBox Grid.Column="1" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" MaxLength="40"
+                                 ToolTip="Portion name, for example Quarter, Half, Full or 1 KG" AutomationProperties.Name="Portion name" />
+                        <Button Grid.Column="2" Content="&#x2715;" Margin="8,0,0,0" MinWidth="36" ToolTip="Remove this portion"
+                                AutomationProperties.Name="Remove portion"
+                                Command="{Binding DataContext.RemovePortionCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                CommandParameter="{Binding}" />
+                      </Grid>
+                      <Grid Margin="0,8,0,0">
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="*" />
+                          <ColumnDefinition Width="84" />
+                          <ColumnDefinition Width="*" />
+                          <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Text="{Binding QuantityText, UpdateSourceTrigger=PropertyChanged}" MaxLength="10" ToolTip="Quantity (optional), for example 500"
+                                 AutomationProperties.Name="Portion quantity" />
+                        <ComboBox Grid.Column="1" Margin="6,0,0,0" ItemsSource="{x:Static m:PortionRowViewModel.UnitChoices}" SelectedItem="{Binding Unit}"
+                                  ToolTip="Unit (optional)" AutomationProperties.Name="Portion unit" />
+                        <TextBox Grid.Column="2" Margin="6,0,0,0" Text="{Binding PriceText, UpdateSourceTrigger=PropertyChanged}" MaxLength="10"
+                                 ToolTip="Price of this portion" AutomationProperties.Name="Portion price" />
+                        <CheckBox Grid.Column="3" Content="On" Margin="10,0,0,0" VerticalAlignment="Center" IsChecked="{Binding IsActive}"
+                                  ToolTip="Switched off: not offered on the menu, kept for history" />
+                      </Grid>
+                      <TextBlock Text="{Binding Error}" Style="{StaticResource Text.Error}" TextWrapping="Wrap" Margin="0,6,0,0"
+                                 Visibility="{Binding Error, Converter={StaticResource StringToVisibility}}" />
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Button Content="+ Add portion" HorizontalAlignment="Left" Margin="0,0,0,14" Command="{Binding AddPortionCommand}" IsEnabled="{Binding CanAddPortion}" />
 
             <TextBlock Text="Category" Style="{StaticResource Text.Label}" />
             <ComboBox ItemsSource="{Binding Categories}" SelectedItem="{Binding Category}" DisplayMemberPath="Name" Margin="0,0,0,12" />

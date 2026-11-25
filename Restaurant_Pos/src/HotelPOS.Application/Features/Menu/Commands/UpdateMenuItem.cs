@@ -5,6 +5,7 @@ using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
 using HotelPOS.Contracts.Menu;
 using HotelPOS.Contracts.Security;
+using HotelPOS.Domain.Common;
 using HotelPOS.Domain.Menu;
 using Microsoft.EntityFrameworkCore;
 
@@ -50,7 +51,7 @@ internal sealed class UpdateMenuItemHandler : ICommandHandler<UpdateMenuItemComm
     public async Task<Result<MenuItemDto>> Handle(UpdateMenuItemCommand command, CancellationToken cancellationToken)
     {
         var (id, request) = (command.Id, command.Input);
-        var item = await _db.MenuItems.Include(i => i.ModifierGroups).FirstOrDefaultAsync(i => i.Id == id, cancellationToken);
+        var item = await _db.MenuItems.Include(i => i.ModifierGroups).Include(i => i.Portions).FirstOrDefaultAsync(i => i.Id == id, cancellationToken);
         if (item is null)
         {
             return AppErrors.NotFound("Menu item", id);
@@ -69,9 +70,23 @@ internal sealed class UpdateMenuItemHandler : ICommandHandler<UpdateMenuItemComm
         }
 
         var oldPrice = item.Price;
-        var oldValues = new { item.Name, item.Code, item.CategoryId, item.Price, item.TaxId, item.PreparationStationId, item.IsAvailable, item.IsActive };
+        var oldValues = new { item.Name, item.Code, item.CategoryId, item.Price, item.TaxId, item.PreparationStationId, item.IsAvailable, item.IsActive, Portions = MenuMapping.AuditPortions(item) };
         item.Update(request.CategoryId, request.Name, request.Code, request.Description, request.Price,
             request.TaxId, request.PreparationStationId, request.SortOrder);
+        // An older client that sends only Price changes the default portion's price (Update does that); a client that sends
+        // the Portions table replaces them, and Price follows the default portion.
+        if (MenuMapping.ToSpecs(request.Portions) is { } portions)
+        {
+            try
+            {
+                item.SetPortions(portions);
+            }
+            catch (DomainException ex)
+            {
+                return AppErrors.Validation("portions", ex.Message);
+            }
+        }
+
         // A counted item that has run to zero stays sold out until the kitchen loads more.
         item.SetAvailability(request.IsAvailable && !(item.IsStockTracked && (item.StockRemaining ?? 0) <= 0));
         item.SetModifierGroups(request.ModifierGroupIds);
@@ -89,7 +104,7 @@ internal sealed class UpdateMenuItemHandler : ICommandHandler<UpdateMenuItemComm
         // Always write the item row (even when only modifier links changed) so its row version is checked and bumped.
         _db.Entry(item).State = EntityState.Modified;
         _audit.Add(AuditActions.MenuItemUpdated, nameof(MenuItem), item.Id.ToString(), oldValues,
-            new { item.Name, item.Code, item.CategoryId, item.Price, item.TaxId, item.PreparationStationId, item.IsAvailable, item.IsActive });
+            new { item.Name, item.Code, item.CategoryId, item.Price, item.TaxId, item.PreparationStationId, item.IsAvailable, item.IsActive, Portions = MenuMapping.AuditPortions(item) });
         if (oldPrice != item.Price)
         {
             _audit.Add(AuditActions.MenuItemPriceChanged, nameof(MenuItem), item.Id.ToString(),

@@ -161,13 +161,13 @@ else
                     var line = item;
                     var cancelled = line.Status == OrderItemStatus.Cancelled;
                     <div class="detail-item">
-                        <OrderLine Name="@line.ItemName" Quantity="line.Quantity" Modifiers="@string.Join(", ", line.Modifiers.Select(m => m.Name))" Note="@line.Notes"
+                        <OrderLine Name="@line.DisplayName" Quantity="line.Quantity" Modifiers="@string.Join(", ", line.Modifiers.Select(m => m.Name))" Note="@line.Notes"
                                    Price="line.LineTotal" Cancelled="cancelled" ImageUrl="@ItemImage(line)" SeatCode="@line.SeatCode" IsParcel="line.IsParcel" />
                         <div class="detail-item-foot">
                             <span class="chip @(line.TicketStatus is { } ticket && !cancelled ? StatusLabels.TicketChip(ticket) : null)">@(line.TicketStatus is { } ts && !cancelled ? StatusLabels.Ticket(ts) : StatusLabels.Line(line.Status))</span>
                             @if (CanCancelLine(line))
                             {
-                                <button type="button" class="btn ghost danger-text" data-testid="cancel-line" aria-label="@($"Cancel {line.ItemName}")" @onclick="() => { _cancelLine = line; _cancelLineReason = string.Empty; }" disabled="@_busy"><Icon Name="x" Size="18" /> Cancel line</button>
+                                <button type="button" class="btn ghost danger-text" data-testid="cancel-line" aria-label="@($"Cancel {line.DisplayName}")" @onclick="() => { _cancelLine = line; _cancelLineReason = string.Empty; }" disabled="@_busy"><Icon Name="x" Size="18" /> Cancel line</button>
                             }
                         </div>
                     </div>
@@ -283,7 +283,7 @@ else
 
 @if (_cancelLine is { } cancelLine)
 {
-    <BottomSheet Open="true" Title="@($"Cancel {cancelLine.Quantity} × {cancelLine.ItemName}?")" OnClose="() => _cancelLine = null">
+    <BottomSheet Open="true" Title="@($"Cancel {cancelLine.Quantity} × {cancelLine.DisplayName}?")" OnClose="() => _cancelLine = null">
         <label class="field"><span>Reason (required once the kitchen has started)</span>
             <textarea class="input" data-testid="cancel-line-reason" @bind="_cancelLineReason" maxlength="@OrderLimits.ReasonMaxLength"></textarea></label>
         <div class="actions">
@@ -735,7 +735,7 @@ else
         await RunAsync(async () =>
         {
             var result = await Api.CancelItemAsync(_order!.Id, line.Id, OrderComposer.TrimNotes(_cancelLineReason));
-            return (result.Success, result.Message, result.Success ? $"{line.ItemName} cancelled." : null, result.IsConflict);
+            return (result.Success, result.Message, result.Success ? $"{line.DisplayName} cancelled." : null, result.IsConflict);
         });
     }
 

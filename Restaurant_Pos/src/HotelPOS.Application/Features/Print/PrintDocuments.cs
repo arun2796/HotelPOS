@@ -110,7 +110,7 @@ internal sealed class PrintDocuments
             CurrencySymbol = settings.GetValueOrDefault(SettingKeys.CurrencySymbol) ?? string.Empty,
             Items = ticket.Items.OrderBy(i => i.Id).Select(i => new KotLine
             {
-                Name = i.OrderItem?.ItemName ?? string.Empty,
+                Name = i.OrderItem?.DisplayName ?? string.Empty,
                 Quantity = i.Quantity,
                 Notes = KitchenTickets.SeatNotes(i.OrderItem?.SeatCode, i.OrderItem?.Notes),
                 Modifiers = i.OrderItem?.Modifiers.Select(m => m.Name).ToList() ?? new List<string>(),
@@ -174,7 +174,7 @@ internal sealed class PrintDocuments
                 : new InvoiceCustomer { Name = bill.CustomerName, Phone = bill.CustomerPhone, Gstin = bill.CustomerGstin },
             Lines = items.Select(i => new InvoiceLine
             {
-                Name = i.ItemName,
+                Name = i.DisplayName,
                 Quantity = i.Quantity,
                 UnitPrice = i.UnitPrice + i.ModifiersAmount,
                 LineSubtotal = i.LineSubtotal,
@@ -284,7 +284,7 @@ internal sealed class PrintDocuments
                     CurrencySymbol = symbol,
                     Items = new[]
                     {
-                        new KotLine { Name = "Chicken Biryani", Quantity = 2, Notes = "less oil", Modifiers = new[] { "Spicy" }, UnitPrice = showPrices ? 260m : null },
+                        new KotLine { Name = "Chicken Biryani (Half)", Quantity = 2, Notes = "less oil", Modifiers = new[] { "Spicy" }, UnitPrice = showPrices ? 260m : null },
                         new KotLine { Name = "Butter Naan", Quantity = 4, UnitPrice = showPrices ? 50m : null },
                         new KotLine { Name = "Paneer Tikka", Quantity = 1, UnitPrice = showPrices ? 240m : null },
                     },
@@ -313,7 +313,7 @@ internal sealed class PrintDocuments
             default:
                 var lines = new[]
                 {
-                    new InvoiceLine { Name = "Chicken Biryani", Quantity = 2, UnitPrice = 260m, LineSubtotal = 520m, TaxRatePercent = 5m, DiscountAmount = 78m, TaxAmount = 22.1m },
+                    new InvoiceLine { Name = "Chicken Biryani (Half)", Quantity = 2, UnitPrice = 260m, LineSubtotal = 520m, TaxRatePercent = 5m, DiscountAmount = 78m, TaxAmount = 22.1m },
                     new InvoiceLine { Name = "Butter Naan", Quantity = 4, UnitPrice = 50m, LineSubtotal = 200m, TaxRatePercent = 5m, DiscountAmount = 30m, TaxAmount = 8.5m },
                     new InvoiceLine { Name = "Fresh Lime Soda", Quantity = 3, UnitPrice = 60m, LineSubtotal = 180m, TaxRatePercent = 5m, DiscountAmount = 27m, TaxAmount = 7.65m },
                     new InvoiceLine { Name = "Gulab Jamun", Quantity = 2, UnitPrice = 90m, LineSubtotal = 180m, TaxRatePercent = 5m, DiscountAmount = 27m, TaxAmount = 7.65m },

@@ -64,8 +64,14 @@ internal sealed class OrderItemConfiguration : IEntityTypeConfiguration<OrderIte
         builder.Property(i => i.Notes).HasMaxLength(OrderLimits.NotesMaxLength);
         builder.Property(i => i.CancelReason).HasMaxLength(OrderLimits.ReasonMaxLength);
         builder.Property(i => i.TaxRatePercent).HasPrecision(5, 2);
+        builder.Property(i => i.PortionName).HasMaxLength(MenuLimits.PortionNameMaxLength);
+        builder.Property(i => i.PortionUnit).HasMaxLength(10);
+        builder.Property(i => i.PortionQuantity).HasPrecision(18, 3);
         builder.Property(i => i.SeatCode).HasMaxLength(16);
         builder.HasIndex(i => i.OrderId);
+        // Deleting a portion keeps the order line: the name, quantity, unit and price are frozen on it.
+        builder.HasOne<MenuItemPortion>().WithMany().HasForeignKey(i => i.PortionId).OnDelete(DeleteBehavior.SetNull);
+        builder.Ignore(i => i.DisplayName);
         builder.HasOne<MenuItem>().WithMany().HasForeignKey(i => i.MenuItemId).OnDelete(DeleteBehavior.Restrict);
         builder.HasMany(i => i.Modifiers).WithOne().HasForeignKey(m => m.OrderItemId).OnDelete(DeleteBehavior.Cascade);
         builder.Navigation(i => i.Modifiers).UsePropertyAccessMode(PropertyAccessMode.Field);

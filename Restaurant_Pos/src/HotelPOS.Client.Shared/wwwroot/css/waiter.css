@@ -255,3 +255,22 @@
 
 /* Table card focus ring keeps the stripe (the card's own box-shadow). */
 .table-card:focus-visible, .table-card.st-ready:focus-visible { outline: none; box-shadow: inset 0 3px 0 0 var(--tbd), var(--focus-ring); }
+
+/* ---- Portions: an item sold as Quarter / Half / Full... shows chips on its card (the default selected) and an Add button that
+   names the chosen portion and its price. Chips are 44 px touch targets and wrap on a 360 px phone. ---- */
+.item-card-portions { display: flex; flex-direction: column; text-align: left; cursor: default; }
+.item-card-portions .item-body { display: flex; flex-direction: column; gap: 6px; }
+.portion-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.portion-chip { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; min-height: var(--touch, 44px); min-width: 64px;
+  padding: 4px 10px; border: 1px solid var(--border, #cbd5e1); border-radius: 12px; background: var(--surface, #fff); color: var(--text, inherit);
+  line-height: 1.2; cursor: pointer; }
+.portion-chip b { font-size: var(--fs-caption, 12px); font-weight: 600; }
+.portion-chip .portion-price { font-size: var(--fs-caption, 12px); }
+.portion-chip .portion-qty { font-size: 11px; }
+.portion-chip.on { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+.portion-chip.on .portion-qty { color: inherit; opacity: 0.85; }
+.portion-chip:disabled { opacity: 0.5; cursor: not-allowed; }
+.portion-chip:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.portion-add { width: 100%; min-height: var(--touch, 44px); justify-content: center; padding: 0 6px; font-size: 14px; white-space: nowrap; }
+.portion-options .option-btn { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; padding: 6px 14px; }
+.portion-missing { margin: 4px 0 6px; padding: 6px 10px; border-radius: 8px; background: var(--warning-bg, #fff4e5); color: var(--warning-text, #92400e); font-size: var(--fs-caption, 12px); }

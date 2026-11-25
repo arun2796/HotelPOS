@@ -28,7 +28,7 @@ using Xunit;
 namespace HotelPOS.Client.Tests;
 
 /// <summary>Phase 21.1 (W2-W7): the redesigned waiter screens keep every API call, status rule and permission.</summary>
-public sealed class WaiterScreensTests : TestContext
+public sealed partial class WaiterScreensTests : TestContext
 {
     private const int Me = 7;
 

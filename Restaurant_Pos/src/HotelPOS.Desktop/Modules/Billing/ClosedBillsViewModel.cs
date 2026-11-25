@@ -85,7 +85,7 @@ public sealed partial class ClosedBillsViewModel : ViewModelBase, INavigationAwa
     public string DetailTitle => Detail is null ? string.Empty
         : $"{Detail.InvoiceNumber ?? "Bill " + Detail.BillNumber} · Table {Detail.TableCode} · Order #{Detail.OrderNumber}";
 
-    public IReadOnlyList<string> DetailLines => Detail?.Items.Select(i => $"{i.Quantity} × {i.ItemName}   {Money.Format(i.LineSubtotal)}").ToList()
+    public IReadOnlyList<string> DetailLines => Detail?.Items.Select(i => $"{i.Quantity} × {i.DisplayName}   {Money.Format(i.LineSubtotal)}").ToList()
         ?? new List<string>();
 
     public string DetailTotals => Detail is null ? string.Empty

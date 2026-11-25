@@ -123,6 +123,9 @@ public class ImportTests : DatabaseTestBase
         (await SendAsync(new UndoImportCommand())).Error!.Code.Should().Be(ErrorCodes.BusinessRule, "an import can be undone once");
     }
 
+    private Task<decimal> DefaultPortionPriceAsync(string code) => QueryAsync(db =>
+        db.MenuItemPortions.Where(p => p.IsDefault && p.MenuItem!.Code == code).Select(p => p.Price).SingleAsync());
+
     [Fact]
     public async Task ReImport_UpdatesExistingItems_AndUndoRestoresTheirOldValues()
     {
@@ -139,11 +142,13 @@ public class ImportTests : DatabaseTestBase
         applied.Value.Created.Should().Be(0);
         (await QueryAsync(db => db.MenuItems.CountAsync())).Should().Be(20, "no duplicates");
         (await QueryAsync(db => db.MenuItems.SingleAsync(i => i.Code == "C005"))).Price.Should().Be(505m);
+        (await DefaultPortionPriceAsync("C005")).Should().Be(505m, "an import changes the price of the default portion, so the two never drift apart");
 
         (await SendAsync(new UndoImportCommand())).IsSuccess.Should().BeTrue();
 
         var restored = await QueryAsync(db => db.MenuItems.SingleAsync(i => i.Code == "C005"));
         restored.Price.Should().Be(before.Price);
+        (await DefaultPortionPriceAsync("C005")).Should().Be(before.Price, "undo restores the default portion price too");
         restored.Description.Should().Be(before.Description);
         (await QueryAsync(db => db.MenuItems.CountAsync())).Should().Be(20, "the first import is still there");
     }

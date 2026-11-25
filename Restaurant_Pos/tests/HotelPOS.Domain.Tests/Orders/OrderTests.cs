@@ -1,5 +1,6 @@
 using HotelPOS.Contracts.Common;
 using HotelPOS.Contracts.Enums;
+using HotelPOS.Contracts.Menu;
 using HotelPOS.Domain.Common;
 using HotelPOS.Domain.Floor;
 using HotelPOS.Domain.Orders;
@@ -91,6 +92,37 @@ public class OrderTests
 
     private static OrderItem Item(string name = "Naan", decimal price = 50m, int quantity = 1) =>
         new(1, name, price, quantity, null, null, 5m, 1, new[] { new OrderItemModifier(9, "Butter", 10m) });
+
+    [Fact]
+    public void DisplayName_InsertsThePortionBeforeParcel()
+    {
+        var item = new OrderItem(1, "Chicken Biryani (Parcel)", 190m, 1, null, null, 5m, 1, Array.Empty<OrderItemModifier>(), isParcel: true, packagingCharge: 10m);
+        item.SetPortion(42, "Half", 500m, "GM");
+
+        item.DisplayName.Should().Be("Chicken Biryani (Half) (Parcel)");
+        item.PortionId.Should().Be(42);
+        item.PortionName.Should().Be("Half");
+        item.PortionQuantity.Should().Be(500m);
+        item.PortionUnit.Should().Be("GM");
+    }
+
+    [Fact]
+    public void DisplayName_IsTheOldNameWithoutAPortion()
+    {
+        var item = Item("Naan");
+
+        item.DisplayName.Should().Be("Naan");
+        item.PortionName.Should().BeNull();
+    }
+
+    [Fact]
+    public void ItemDisplayName_Compose_HandlesNoPortionNoParcelAndBoth()
+    {
+        ItemDisplayName.Compose("Idli", null).Should().Be("Idli");
+        ItemDisplayName.Compose("Idli", " ").Should().Be("Idli");
+        ItemDisplayName.Compose("Idli", "Half").Should().Be("Idli (Half)");
+        ItemDisplayName.Compose("Idli (Parcel)", "Half").Should().Be("Idli (Half) (Parcel)");
+    }
 
     [Fact]
     public void NewOrder_IsADraft_AndRemembersWhetherGuestsWereAlreadySeated()

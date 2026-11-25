@@ -31,6 +31,27 @@ public class BillTests
     }
 
     [Fact]
+    public void BillItem_CopiesThePortionFromTheLine_AndKeepsItWhenRecalculated()
+    {
+        var bill = new Bill(Order(), "T05", new[]
+        {
+            new BillLineInput(1, "Chicken Biryani", 2, 180m, 0m, 5m, PortionName: "Half", PortionQuantity: 500m, PortionUnit: "GM"),
+            new BillLineInput(2, "Veg Roll", 1, 120m, 0m, 5m),
+        }, roundOff: true);
+
+        var half = bill.Items.Single(i => i.OrderItemId == 1);
+        half.PortionName.Should().Be("Half");
+        half.PortionQuantity.Should().Be(500m);
+        half.PortionUnit.Should().Be("GM");
+        half.DisplayName.Should().Be("Chicken Biryani (Half)");
+        half.LineSubtotal.Should().Be(360m);
+        bill.Items.Single(i => i.OrderItemId == 2).DisplayName.Should().Be("Veg Roll");
+
+        bill.ApplyDiscount(null, DiscountType.Percentage, 10m, "10% off", null, roundOff: true);
+        bill.Items.Single(i => i.OrderItemId == 1).PortionName.Should().Be("Half", "a discount recalculates the lines and must not drop the portion");
+    }
+
+    [Fact]
     public void ABillWithoutActiveItems_IsRejected()
     {
         var act = () => new Bill(Order(), "T05", new[] { new BillLineInput(1, "Soup", 1, 90m, 0m, 5m, IsCancelled: true) }, roundOff: true);

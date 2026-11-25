@@ -56,6 +56,25 @@ public sealed class OrderItem : BaseEntity
     // "4A": the table code plus the seat letter the dish is for. Null means the whole table.
     public string? SeatCode { get; private set; }
 
+    // The portion the guest ordered ("Half"), frozen with the line. Null for an item that has a single price (the line is
+    // then exactly what it was before portions existed). PortionId is cleared if the admin deletes the portion; the
+    // name, quantity and unit stay.
+    public int? PortionId { get; private set; }
+    public string? PortionName { get; private set; }
+    public decimal? PortionQuantity { get; private set; }
+    public string? PortionUnit { get; private set; }
+
+    public void SetPortion(int portionId, string name, decimal? quantity, string? unit)
+    {
+        PortionId = portionId;
+        PortionName = name;
+        PortionQuantity = quantity;
+        PortionUnit = unit;
+    }
+
+    // "Chicken Biryani (Half)", "Chicken Biryani (Half) (Parcel)": what the kitchen, the bill and the reports read.
+    public string DisplayName => HotelPOS.Contracts.Menu.ItemDisplayName.Compose(ItemName, PortionName);
+
     public int OrderId { get; private set; }
     public int BatchNumber { get; private set; }
     public int MenuItemId { get; private set; }

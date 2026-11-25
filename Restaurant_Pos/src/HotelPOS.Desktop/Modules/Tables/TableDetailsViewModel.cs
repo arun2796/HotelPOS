@@ -657,7 +657,7 @@ public sealed partial class TableDetailsViewModel : ViewModelBase
 
     private static OrderLineViewModel ToLine(OrderItemDto item, bool canCancel) => new(
         item.Id,
-        $"{item.Quantity} × {item.ItemName}",
+        $"{item.Quantity} × {item.DisplayName}",
         string.Join(" · ", (string.IsNullOrWhiteSpace(item.SeatCode) ? Array.Empty<string>() : new[] { $"Seat {item.SeatCode}" })
             .Concat(item.Modifiers.Select(m => m.Name))
             .Concat(item.Notes is null ? Array.Empty<string>() : new[] { $"“{item.Notes}”" })),

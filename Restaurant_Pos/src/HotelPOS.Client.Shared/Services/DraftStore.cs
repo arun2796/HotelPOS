@@ -27,6 +27,15 @@ public sealed record WebDraftLine
     public string? SeatCode { get; init; }
 
     public decimal PackagingCharge { get; init; }
+
+    /// <summary>Optional, so drafts saved before portions existed still load (they then need a portion chosen on a multi-portion item).</summary>
+    public int? PortionId { get; init; }
+
+    public string? PortionName { get; init; }
+
+    public decimal? PortionQuantity { get; init; }
+
+    public string? PortionUnit { get; init; }
 }
 
 /// <summary>An unsent order kept on this device, per table — the browser twin of the desktop LocalDraft.</summary>

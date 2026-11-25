@@ -82,6 +82,12 @@ public sealed record BillItemDto
     public int Id { get; init; }
     public int OrderItemId { get; init; }
     public string ItemName { get; init; } = string.Empty;
+
+    // The portion sold, frozen on the bill; null for an item with a single price. DisplayName: "Chicken Biryani (Half)".
+    public string? PortionName { get; init; }
+    public decimal? PortionQuantity { get; init; }
+    public string? PortionUnit { get; init; }
+    public string DisplayName { get; init; } = string.Empty;
     public int Quantity { get; init; }
     public decimal UnitPrice { get; init; }
     public decimal ModifiersAmount { get; init; }

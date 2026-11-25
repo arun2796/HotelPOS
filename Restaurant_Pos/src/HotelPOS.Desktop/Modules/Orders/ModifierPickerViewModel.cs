@@ -68,12 +68,76 @@ public sealed partial class PickerGroupViewModel : ObservableObject
     }
 }
 
+// One portion in the picker: "Half 180", with the quantity label and whether it is the one selected.
+public sealed partial class PickerPortionViewModel : ObservableObject
+{
+    public PickerPortionViewModel(MenuItemPortionDto portion)
+    {
+        Portion = portion;
+        PriceText = portion.Price.ToString("N2", CultureInfo.CurrentCulture);
+        QuantityText = portion.Quantity is { } quantity
+            ? quantity.ToString("0.###", CultureInfo.CurrentCulture) + (string.IsNullOrEmpty(portion.Unit) ? string.Empty : " " + portion.Unit)
+            : string.Empty;
+    }
+
+    public MenuItemPortionDto Portion { get; }
+
+    public string Name => Portion.Name;
+
+    public string PriceText { get; }
+
+    public string QuantityText { get; }
+
+    public bool HasQuantity => QuantityText.Length > 0;
+
+    [ObservableProperty]
+    private bool _isSelected;
+}
+
 public sealed partial class ModifierPickerViewModel : ObservableObject
 {
     public ModifierPickerViewModel(MenuEntryDto item, IEnumerable<MenuModifierGroupDto> groups)
     {
         Item = item;
         Groups = groups.Select(g => new PickerGroupViewModel(g)).ToList();
+        Portions = item.Portions.OrderBy(p => p.SortOrder).ThenBy(p => p.Id).Select(p => new PickerPortionViewModel(p)).ToList();
+
+        // The default portion is selected first; an item with one price has nothing to choose.
+        var first = item.Portions.FirstOrDefault(p => p.IsDefault) ?? item.Portions.FirstOrDefault();
+        foreach (var portion in Portions)
+        {
+            portion.IsSelected = HasPortions && portion.Portion.Id == first?.Id;
+        }
+    }
+
+    // The portions of an item sold in several (the picker shows the Portion group only then).
+    public IReadOnlyList<PickerPortionViewModel> Portions { get; }
+
+    public bool HasPortions => Portions.Count > 1;
+
+    public MenuItemPortionDto? SelectedPortion => Portions.FirstOrDefault(p => p.IsSelected)?.Portion;
+
+    // The price the picker shows: the chosen portion's, else the item's (one price, or a server without portions).
+    public decimal CurrentPrice => SelectedPortion?.Price ?? Item.Price;
+
+    public string CurrentPriceText => CurrentPrice.ToString("N2", CultureInfo.CurrentCulture);
+
+    public void Select(PickerPortionViewModel? portion)
+    {
+        if (portion is null || !Portions.Contains(portion))
+        {
+            return;
+        }
+
+        foreach (var other in Portions)
+        {
+            other.IsSelected = ReferenceEquals(other, portion);
+        }
+
+        ErrorMessage = null;
+        OnPropertyChanged(nameof(SelectedPortion));
+        OnPropertyChanged(nameof(CurrentPrice));
+        OnPropertyChanged(nameof(CurrentPriceText));
     }
 
     public MenuEntryDto Item { get; }
@@ -98,11 +162,18 @@ public sealed partial class ModifierPickerViewModel : ObservableObject
         }
 
         var chosen = Groups.SelectMany(g => g.Options).Where(o => o.IsSelected).Select(o => o.Option).ToList();
+        // The portion: the one selected; an item with one portion uses it (its name is not shown); none at all (an older server)
+        // is priced from the item.
+        var portion = HasPortions ? SelectedPortion : Item.Portions.FirstOrDefault();
         return new DraftLine
         {
             MenuItemId = Item.Id,
             Name = Item.Name,
-            UnitPrice = Item.Price,
+            UnitPrice = portion?.Price ?? Item.Price,
+            PortionId = portion?.Id,
+            PortionName = HasPortions ? portion?.Name : null,
+            PortionQuantity = HasPortions ? portion?.Quantity : null,
+            PortionUnit = HasPortions ? portion?.Unit : null,
             Quantity = Quantity,
             ModifierOptionIds = chosen.Select(o => o.Id).ToList(),
             ModifierNames = chosen.Select(o => o.Name).ToList(),

@@ -187,6 +187,53 @@ public class ReportTests : DatabaseTestBase
         categories.Value.Select(c => (c.Category, c.Items, c.Amount)).Should().BeEquivalentTo(new[] { ("Mains", 1, 250m), ("Breads", 1, 50m) });
     }
 
+    private async Task<(int Half, int Full)> PortionBiryaniAsync(Setup s)
+    {
+        var item = (await SendAsAdminAsync(new GetMenuItemQuery(s.Biryani))).Value;
+        var updated = await SendAsAdminAsync(new UpdateMenuItemCommand(item.Id, new UpdateMenuItemRequest
+        {
+            CategoryId = item.CategoryId, Name = item.Name, Price = 1m, TaxId = item.TaxId, PreparationStationId = item.PreparationStationId,
+            ModifierGroupIds = item.ModifierGroupIds, RowVersion = item.RowVersion,
+            Portions = new List<SaveMenuItemPortionRequest>
+            {
+                new() { Name = "Half", Price = 180m, IsDefault = true, SortOrder = 1 },
+                new() { Name = "Full", Price = 320m, SortOrder = 2 },
+            },
+        }));
+        updated.IsSuccess.Should().BeTrue(updated.Error?.Message);
+        return (updated.Value.Portions.Single(p => p.Name == "Half").Id, updated.Value.Portions.Single(p => p.Name == "Full").Id);
+    }
+
+    [Fact]
+    public async Task ItemSales_SeparatesHalfAndFull_AndGivesLinesWithoutAPortionABlankPortion()
+    {
+        var s = await SetupAsync();
+        var (half, full) = await PortionBiryaniAsync(s);
+        await SettledBillAsync(s, s.Tables[0], new OrderItemInput { MenuItemId = s.Biryani, Quantity = 2, PortionId = half }, Line(s.Naan, 1));
+        await SettledBillAsync(s, s.Tables[1], new OrderItemInput { MenuItemId = s.Biryani, Quantity = 1, PortionId = full });
+
+        var items = await SendAsAdminAsync(new GetItemSalesReportQuery(new ReportQuery()));
+
+        items.Value.Select(i => (i.ItemName, i.Portion, i.Quantity, i.Amount)).Should().BeEquivalentTo(new[]
+        {
+            ("Chicken Biryani", "Half", 2, 360m), ("Chicken Biryani", "Full", 1, 320m), ("Butter Naan", string.Empty, 1, 25m),
+        });
+        items.Value.Sum(i => i.SharePercent).Should().BeApproximately(100m, 0.2m);
+    }
+
+    [Fact]
+    public async Task DashboardTopItems_AddAllPortionsOfAnItemTogether()
+    {
+        var s = await SetupAsync();
+        var (half, full) = await PortionBiryaniAsync(s);
+        await SettledBillAsync(s, s.Tables[0], new OrderItemInput { MenuItemId = s.Biryani, Quantity = 2, PortionId = half });
+        await SettledBillAsync(s, s.Tables[1], new OrderItemInput { MenuItemId = s.Biryani, Quantity = 1, PortionId = full });
+
+        var dashboard = (await SendAsAdminAsync(new GetDashboardQuery())).Value;
+
+        dashboard.TopItems.Should().ContainSingle(i => i.ItemName == "Chicken Biryani").Which.Should().Match<DashboardTopItem>(i => i.Quantity == 3 && i.Amount == 680m);
+    }
+
     [Fact]
     public async Task PaymentsDiscountsTaxesAndWaiters_ComeFromSettledBills()
     {
@@ -319,9 +366,9 @@ public class ReportTests : DatabaseTestBase
 
         csv.Take(3).Should().Equal(Encoding.UTF8.GetPreamble());
         var text = Encoding.UTF8.GetString(csv, 3, csv.Length - 3);
-        text.Should().StartWith("Item name,Category,Quantity,Amount,Share percent\r\n");
-        text.Should().Contain("\"Chicken, Biryani\",Mains,2,500.00,60.00\r\n");
-        text.Should().EndWith("Total,,6,600.00,\r\n", "percentages are never summed");
+        text.Should().StartWith("Item name,Portion,Category,Quantity,Amount,Share percent\r\n");
+        text.Should().Contain("\"Chicken, Biryani\",,Mains,2,500.00,60.00\r\n");
+        text.Should().EndWith("Total,,,6,600.00,\r\n", "percentages are never summed");
     }
 
     private sealed record Setup(IReadOnlyList<int> Tables, int Biryani, int Naan, int Kulfi, int Waiter, int WaiterTwo, int Cashier, int Manager, int Cook);

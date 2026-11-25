@@ -66,6 +66,6 @@ public class ReportsApiTests : IClassFixture<ApiFactory>
         response.Content.Headers.ContentDisposition!.FileName.Should().Contain("item-sales-2026-10-01-to-2026-10-07.csv");
         var bytes = await response.Content.ReadAsByteArrayAsync();
         bytes.Take(3).Should().Equal(Encoding.UTF8.GetPreamble());
-        Encoding.UTF8.GetString(bytes, 3, bytes.Length - 3).Should().StartWith("Item name,Category,Quantity,Amount,Share percent");
+        Encoding.UTF8.GetString(bytes, 3, bytes.Length - 3).Should().StartWith("Item name,Portion,Category,Quantity,Amount,Share percent");
     }
 }

@@ -486,10 +486,20 @@ public sealed class BillItem
         ModifiersAmount = line.ModifiersAmount;
         TaxRatePercent = line.TaxRatePercent;
         SeatCode = line.SeatCode;
+        PortionName = line.PortionName;
+        PortionQuantity = line.PortionQuantity;
+        PortionUnit = line.PortionUnit;
     }
 
     public int Id { get; private set; }
     public int BillId { get; private set; }
+
+    // Copied from the order line: the portion sold ("Half"); null for an item with a single price.
+    public string? PortionName { get; private set; }
+    public decimal? PortionQuantity { get; private set; }
+    public string? PortionUnit { get; private set; }
+
+    public string DisplayName => HotelPOS.Contracts.Menu.ItemDisplayName.Compose(ItemName, PortionName);
 
     // Copied from the order line: the seat the dish was ordered for ("4A"), null for the whole table.
     public string? SeatCode { get; private set; }
@@ -507,7 +517,7 @@ public sealed class BillItem
     public decimal TaxAmount { get; private set; }
     public decimal LineTotal { get; private set; }
 
-    internal BillLineInput ToInput() => new(OrderItemId, ItemName, Quantity, UnitPrice, ModifiersAmount, TaxRatePercent, false, SeatCode);
+    internal BillLineInput ToInput() => new(OrderItemId, ItemName, Quantity, UnitPrice, ModifiersAmount, TaxRatePercent, false, SeatCode, PortionName, PortionQuantity, PortionUnit);
 
     internal void Apply(BillLineResult result)
     {

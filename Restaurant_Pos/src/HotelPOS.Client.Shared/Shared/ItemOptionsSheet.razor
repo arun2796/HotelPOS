@@ -5,7 +5,25 @@
 @using HotelPOS.Contracts.Orders
 
 <BottomSheet Open="true" Title="@Item.Name" OnClose="OnClose">
-    <div class="options-price num-tab" data-testid="options-price">@Item.Price.ToString("N2")</div>
+    <div class="options-price num-tab" data-testid="options-price">@CurrentPrice.ToString("N2")</div>
+
+    @if (HasPortions)
+    {
+        <section class="options-group" aria-label="Portion">
+            <div class="options-head"><b>Portion</b> <span class="muted small">Choose 1</span></div>
+            <div class="options portion-options" role="radiogroup">
+                @foreach (var p in Portions)
+                {
+                    var portion = p;
+                    var on = portion.Id == _portionId;
+                    <button type="button" role="radio" class="btn option-btn @(on ? "primary" : null)" data-testid="sheet-portion" aria-checked="@(on ? "true" : "false")"
+                            @onclick="() => _portionId = portion.Id">
+                        <b>@portion.Name</b> <span class="num-tab">@portion.Price.ToString("N2")</span>
+                    </button>
+                }
+            </div>
+        </section>
+    }
 
     @foreach (var group in Groups)
     {
@@ -41,7 +59,7 @@
 
     <div class="options-foot">
         <Stepper @bind-Value="_quantity" Min="1" Max="OrderLimits.MaxQuantity" />
-        <button type="button" class="btn primary lg grow" data-testid="options-confirm" disabled="@(!AllSatisfied)" @onclick="ConfirmAsync">@ConfirmLabel</button>
+        <button type="button" class="btn primary lg grow" data-testid="options-confirm" disabled="@(!AllSatisfied || NeedsPortion)" @onclick="ConfirmAsync">@ConfirmLabel</button>
     </div>
 </BottomSheet>
 
@@ -57,6 +75,9 @@
     /// <summary>Pre-selected option ids when editing a cart line.</summary>
     [Parameter] public IReadOnlyList<int>? InitialOptionIds { get; set; }
 
+    /// <summary>The portion pre-selected: the one chosen on the card, or the one of the cart line being edited.</summary>
+    [Parameter] public int? InitialPortionId { get; set; }
+
     [Parameter] public int InitialQuantity { get; set; } = 1;
 
     [Parameter] public string? InitialNotes { get; set; }
@@ -67,6 +88,20 @@
 
     [Parameter] public EventCallback OnClose { get; set; }
 
+    private int? _portionId;
+
+    private bool HasPortions => Item.Portions.Count > 1;
+
+    private IEnumerable<MenuItemPortionDto> Portions => Item.Portions.OrderBy(p => p.SortOrder).ThenBy(p => p.Id);
+
+    private MenuItemPortionDto? SelectedPortion => Item.Portions.FirstOrDefault(p => p.Id == _portionId);
+
+    // The price shown follows the chosen portion; an item with one price (or from a server without portions) shows its price.
+    private decimal CurrentPrice => SelectedPortion?.Price ?? OrderComposer.DefaultPortion(Item)?.Price ?? Item.Price;
+
+    // Editing a line whose portion is gone (or adding to an item with several): a portion has to be picked first.
+    private bool NeedsPortion => HasPortions && SelectedPortion is null;
+
     private bool AllSatisfied => OrderComposer.AllGroupsSatisfied(Groups, g => _selected[g.Id].Count);
 
     protected override void OnInitialized()
@@ -75,6 +110,7 @@
         _selected = Groups.ToDictionary(g => g.Id, g => g.Options.Where(o => initial.Contains(o.Id)).Select(o => o.Id).ToHashSet());
         _quantity = Math.Clamp(InitialQuantity, 1, OrderLimits.MaxQuantity);
         _notes = InitialNotes ?? string.Empty;
+        _portionId = Item.Portions.Any(p => p.Id == InitialPortionId) ? InitialPortionId : HasPortions ? null : OrderComposer.DefaultPortion(Item)?.Id;
     }
 
     private void Toggle(MenuModifierGroupDto group, MenuModifierOptionDto option)
@@ -103,6 +139,6 @@
     private Task ConfirmAsync()
     {
         var options = Groups.SelectMany(g => g.Options.Where(o => _selected[g.Id].Contains(o.Id))).ToList();
-        return OnConfirm.InvokeAsync(new ItemOptionsResult(options, _quantity, OrderComposer.TrimNotes(_notes)));
+        return OnConfirm.InvokeAsync(new ItemOptionsResult(options, _quantity, OrderComposer.TrimNotes(_notes), SelectedPortion));
     }
 }

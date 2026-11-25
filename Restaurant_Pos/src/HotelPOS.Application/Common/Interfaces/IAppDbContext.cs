@@ -38,6 +38,7 @@ public interface IAppDbContext
     DbSet<ModifierGroup> ModifierGroups { get; }
     DbSet<ModifierOption> ModifierOptions { get; }
     DbSet<MenuItem> MenuItems { get; }
+    DbSet<MenuItemPortion> MenuItemPortions { get; }
     DbSet<StockMovement> StockMovements { get; }
     DbSet<MenuItemModifierGroup> MenuItemModifierGroups { get; }
     DbSet<Order> Orders { get; }

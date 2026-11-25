@@ -59,6 +59,32 @@
                     <TextBlock Text="+ options" Style="{StaticResource Text.Caption}" HorizontalAlignment="Right" VerticalAlignment="Center"
                                Visibility="{Binding HasModifiers, Converter={StaticResource BoolToVisibility}}" />
                   </Grid>
+                  <ItemsControl ItemsSource="{Binding PortionChips}" Focusable="False" Margin="0,6,0,0"
+                                Visibility="{Binding HasPortions, Converter={StaticResource BoolToVisibility}}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate>
+                        <WrapPanel />
+                      </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate DataType="{x:Type m:PortionChip}">
+                        <Border CornerRadius="10" BorderThickness="1" Padding="7,1" Margin="0,2,4,2" BorderBrush="{DynamicResource Brush.Border}">
+                          <TextBlock Text="{Binding Text}" FontSize="11">
+                            <TextBlock.Style>
+                              <Style TargetType="TextBlock">
+                                <Style.Triggers>
+                                  <DataTrigger Binding="{Binding IsDefault}" Value="True">
+                                    <Setter Property="Foreground" Value="{DynamicResource Brush.Primary}" />
+                                    <Setter Property="FontWeight" Value="SemiBold" />
+                                  </DataTrigger>
+                                </Style.Triggers>
+                              </Style>
+                            </TextBlock.Style>
+                          </TextBlock>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
                 </StackPanel>
               </StackPanel>
             </Border>

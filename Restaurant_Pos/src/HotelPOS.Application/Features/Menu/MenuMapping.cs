@@ -49,8 +49,29 @@ internal static class MenuMapping
         ReorderLevel = item.ReorderLevel,
         SortOrder = item.SortOrder,
         ModifierGroupIds = item.ModifierGroups.OrderBy(l => l.SortOrder).Select(l => l.ModifierGroupId).ToList(),
+        Portions = item.Portions.OrderBy(p => p.SortOrder).ThenBy(p => p.Id).Select(p => ToDto(p)).ToList(),
         RowVersion = RowVersions.Encode(item.RowVersion),
     };
+
+    public static MenuItemPortionDto ToDto(MenuItemPortion p) => new()
+    {
+        Id = p.Id,
+        Name = p.Name,
+        Quantity = p.Quantity,
+        Unit = p.Unit,
+        Price = p.Price,
+        IsDefault = p.IsDefault,
+        IsActive = p.IsActive,
+        SortOrder = p.SortOrder,
+    };
+
+    // What the audit trail keeps of an item's portions: enough to read each portion's old and new price.
+    public static object AuditPortions(MenuItem item) =>
+        item.Portions.OrderBy(p => p.SortOrder).ThenBy(p => p.Id).Select(p => new { p.Name, p.Price, p.Quantity, p.Unit, p.IsDefault, p.IsActive }).ToList();
+
+    // The rows of the item form as the domain wants them; null when the request leaves the portions alone.
+    public static List<PortionSpec>? ToSpecs(IReadOnlyList<SaveMenuItemPortionRequest>? rows) =>
+        rows?.Select(r => new PortionSpec(r.Id, r.Name, r.Quantity, r.Unit, r.Price, r.IsDefault, r.IsActive, r.SortOrder)).ToList();
 
     public static ModifierGroupDto ToDto(ModifierGroup g, bool includeInactiveOptions) => new()
     {

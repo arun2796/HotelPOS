@@ -44,7 +44,7 @@ public sealed partial class SplitGroupViewModel : ObservableObject
     {
         Label = label;
         Items = items;
-        ItemsText = string.Join(", ", items.Select(i => $"{i.Quantity} × {i.ItemName}"));
+        ItemsText = string.Join(", ", items.Select(i => $"{i.Quantity} × {i.DisplayName}"));
         TotalText = Money.Format(items.Sum(i => i.LineSubtotal));
     }
 
@@ -495,7 +495,7 @@ public sealed partial class BillDetailViewModel : ViewModelBase, INavigationAwar
     public string InvoiceTitle => Bill?.InvoiceNumber is { } invoice ? $"Invoice {invoice}" : "Not invoiced yet";
 
     public IReadOnlyList<BillLineRow> Lines => Bill?.Items.Select(i => new BillLineRow(
-        i.ItemName,
+        i.DisplayName,
         i.Quantity.ToString(CultureInfo.CurrentCulture),
         Money.Format(i.UnitPrice + i.ModifiersAmount),
         Money.Format(i.LineSubtotal),

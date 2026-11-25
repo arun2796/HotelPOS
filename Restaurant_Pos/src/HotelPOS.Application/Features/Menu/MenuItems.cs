@@ -23,7 +23,8 @@ internal sealed class MenuItems
             .Include(i => i.Category)
             .Include(i => i.Tax)
             .Include(i => i.PreparationStation)
-            .Include(i => i.ModifierGroups);
+            .Include(i => i.ModifierGroups)
+            .Include(i => i.Portions);
 
     public async Task<Result<MenuItemDto>> GetAsync(int id, CancellationToken cancellationToken)
     {

@@ -143,7 +143,10 @@ internal sealed class KitchenTickets
         Items = ticket.Items.OrderBy(i => i.Id).Select(i => new KitchenTicketItemDto
         {
             OrderItemId = i.OrderItemId,
-            Name = i.OrderItem?.ItemName ?? string.Empty,
+            Name = i.OrderItem?.DisplayName ?? string.Empty,
+            PortionName = i.OrderItem?.PortionName,
+            PortionQuantity = i.OrderItem?.PortionQuantity,
+            PortionUnit = i.OrderItem?.PortionUnit,
             Quantity = i.Quantity,
             Notes = SeatNotes(i.OrderItem?.SeatCode, i.OrderItem?.Notes),
             Modifiers = i.OrderItem?.Modifiers.Select(m => m.Name).ToList() ?? new List<string>(),

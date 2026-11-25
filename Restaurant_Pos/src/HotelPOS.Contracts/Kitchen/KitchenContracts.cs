@@ -34,7 +34,13 @@ public sealed record KitchenTicketDto
 public sealed record KitchenTicketItemDto
 {
     public int OrderItemId { get; init; }
+    // The dish as staff read it: "Chicken Biryani (Half)" (the portion is part of the name, so every kitchen view shows it).
     public string Name { get; init; } = string.Empty;
+
+    // The portion on its own, for views that style it separately; null for an item with a single price.
+    public string? PortionName { get; init; }
+    public decimal? PortionQuantity { get; init; }
+    public string? PortionUnit { get; init; }
     public int Quantity { get; init; }
     public string? Notes { get; init; }
     public IReadOnlyList<string> Modifiers { get; init; } = Array.Empty<string>();

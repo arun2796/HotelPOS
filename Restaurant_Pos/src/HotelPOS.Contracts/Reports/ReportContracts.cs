@@ -168,6 +168,9 @@ public sealed record MonthlySalesRowDto
 public sealed record ItemSalesRowDto
 {
     public string ItemName { get; init; } = string.Empty;
+
+    // The portion sold ("Half"); blank for items with a single price and for sales before portions existed.
+    public string Portion { get; init; } = string.Empty;
     public string Category { get; init; } = string.Empty;
     public int Quantity { get; init; }
     public decimal Amount { get; init; }

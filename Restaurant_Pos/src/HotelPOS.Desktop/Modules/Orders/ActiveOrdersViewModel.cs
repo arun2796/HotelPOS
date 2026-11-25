@@ -33,7 +33,7 @@ public sealed record OrderDetailLine(OrderItemDto Item)
 {
     public int Quantity => Item.Quantity;
 
-    public string Name => Item.ItemName;
+    public string Name => Item.DisplayName;
 
     public string Modifiers => string.Join(", ", Item.Modifiers.Select(m => m.Name));
 

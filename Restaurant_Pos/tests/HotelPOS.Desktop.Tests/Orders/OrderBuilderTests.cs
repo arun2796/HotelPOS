@@ -62,7 +62,7 @@ public class OrderSubmitterTests
     }
 }
 
-public sealed class OrderBuilderViewModelTests : IDisposable
+public sealed partial class OrderBuilderViewModelTests : IDisposable
 {
     private static readonly MenuDto Menu = new()
     {
@@ -379,10 +379,10 @@ public sealed class OrderBuilderViewModelTests : IDisposable
         vm.Items.Select(i => i.Item.Id).Should().Equal(10);
     }
 
-    private async Task<OrderBuilderViewModel> OpenAsync(IOrderSubmitter? submitter = null)
+    private async Task<OrderBuilderViewModel> OpenAsync(IOrderSubmitter? submitter = null, MenuDto? menu = null, OrderBuilderContext? context = null)
     {
         var cache = Substitute.For<IMenuCache>();
-        cache.Menu.Returns(Menu);
+        cache.Menu.Returns(menu ?? Menu);
         var system = Substitute.For<ISystemApi>();
         system.GetPublicSettingsAsync(Arg.Any<CancellationToken>()).Returns(ApiResult<List<SettingDto>>.Ok(new List<SettingDto>
         {
@@ -390,7 +390,7 @@ public sealed class OrderBuilderViewModelTests : IDisposable
         }));
         var vm = new OrderBuilderViewModel(cache, _orders, system, _drafts,
             submitter ?? new OrderSubmitter(NullLogger<OrderSubmitter>.Instance), _navigation, _dialogs, Substitute.For<INotificationService>(), _preferences);
-        await vm.OnNavigatedToAsync(_context);
+        await vm.OnNavigatedToAsync(context ?? _context);
         return vm;
     }
 }

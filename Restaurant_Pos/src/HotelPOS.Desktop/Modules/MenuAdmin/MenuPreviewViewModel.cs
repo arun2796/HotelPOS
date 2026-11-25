@@ -14,6 +14,7 @@ public sealed partial class PreviewItemViewModel : ObservableObject
     {
         Item = item;
         PriceText = priceText;
+        PortionChips = item.Portions.Select(p => new PortionChip($"{p.Name} {FormNumbers.Money(p.Price)}", p.IsDefault, false)).ToList();
     }
 
     public MenuEntryDto Item { get; }
@@ -25,6 +26,11 @@ public sealed partial class PreviewItemViewModel : ObservableObject
     public bool IsSoldOut => !Item.IsAvailable;
 
     public bool HasModifiers => Item.ModifierGroupIds.Count > 0;
+
+    // The portions as the waiter sees them: the default is marked.
+    public IReadOnlyList<PortionChip> PortionChips { get; } = Array.Empty<PortionChip>();
+
+    public bool HasPortions => PortionChips.Count > 1;
 
     [ObservableProperty]
     private string? _imageFile;

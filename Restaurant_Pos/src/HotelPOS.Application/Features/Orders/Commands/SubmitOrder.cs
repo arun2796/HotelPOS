@@ -5,10 +5,12 @@ using HotelPOS.Application.Common.Results;
 using HotelPOS.Application.Features.Floor;
 using HotelPOS.Application.Features.Kitchen;
 using HotelPOS.Contracts.Enums;
+using HotelPOS.Contracts.Menu;
 using HotelPOS.Contracts.Orders;
 using HotelPOS.Contracts.Security;
 using HotelPOS.Domain.Kitchen;
 using HotelPOS.Domain.Orders;
+using Microsoft.EntityFrameworkCore;
 
 namespace HotelPOS.Application.Features.Orders.Commands;
 
@@ -54,6 +56,29 @@ internal sealed class SubmitOrderHandler : ICommandHandler<SubmitOrderCommand, O
         _tableEvents = tableEvents;
     }
 
+    private async Task<AppError?> CheckPortionsStillOnSaleAsync(Order order, CancellationToken cancellationToken)
+    {
+        var named = order.Items.Where(i => i.PortionName is not null).ToList();
+        if (named.Count == 0)
+        {
+            return null;
+        }
+
+        var ids = named.Where(i => i.PortionId is not null).Select(i => i.PortionId!.Value).Distinct().ToList();
+        var onSale = await _db.MenuItemPortions.AsNoTracking().Where(p => ids.Contains(p.Id) && p.IsActive).Select(p => p.Id).ToListAsync(cancellationToken);
+        foreach (var line in named)
+        {
+            // PortionId is cleared when the admin deletes the portion; the frozen name stays.
+            if (line.PortionId is not { } portionId || !onSale.Contains(portionId))
+            {
+                var dish = line.ItemName.EndsWith(ItemDisplayName.ParcelSuffix, StringComparison.Ordinal) ? line.ItemName[..^ItemDisplayName.ParcelSuffix.Length] : line.ItemName;
+                return AppErrors.Validation("items", $"{dish} ({line.PortionName}) is no longer available. Choose another portion.");
+            }
+        }
+
+        return null;
+    }
+
     public async Task<Result<OrderDetailDto>> Handle(SubmitOrderCommand command, CancellationToken cancellationToken)
     {
         var id = command.Id;
@@ -71,6 +96,13 @@ internal sealed class SubmitOrderHandler : ICommandHandler<SubmitOrderCommand, O
         if (order.Items.Count == 0)
         {
             return AppErrors.BusinessRule("Add at least one item before sending the order.");
+        }
+
+        // A held draft may be sent without being saved again first, so a line whose portion was switched off or deleted since it was
+        // added is refused here too: it is never sent to the kitchen, and never switched to another portion.
+        if (await CheckPortionsStillOnSaleAsync(order, cancellationToken) is { } portionError)
+        {
+            return portionError;
         }
 
         // The draft cart is checked again here: the supervisor may have run an item out since it was added.

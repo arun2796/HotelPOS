@@ -11,7 +11,23 @@ public sealed class CartLine
 
     public string Name { get; init; } = string.Empty;
 
-    public decimal UnitPrice { get; init; }
+    public decimal UnitPrice { get; set; }
+
+    /// <summary>The portion ordered ("Half"). PortionId is sent to the server; PortionName is set only for an item that has more than one
+    /// portion on sale (an item with one price shows no portion). Quantity and unit are labels.</summary>
+    public int? PortionId { get; set; }
+
+    public string? PortionName { get; set; }
+
+    public decimal? PortionQuantity { get; set; }
+
+    public string? PortionUnit { get; set; }
+
+    /// <summary>A loaded draft line whose portion is no longer on the menu: it must be chosen again before the order is sent.</summary>
+    public bool NeedsPortionChoice { get; set; }
+
+    /// <summary>"Chicken Biryani (Half)": the dish as staff read it.</summary>
+    public string DisplayName => ItemDisplayName.Compose(Name, PortionName);
 
     public int Quantity { get; set; } = 1;
 
@@ -36,8 +52,8 @@ public sealed class CartLine
 
     public string DetailText => string.Join(", ", ModifierNames.Concat(string.IsNullOrWhiteSpace(Notes) ? Array.Empty<string>() : new[] { $"“{Notes}”" }));
 
-    /// <summary>Two lines merge when item, options, note, parcel flag and seat are the same — the desktop Order Builder does the same.</summary>
-    public string MergeKey => $"{MenuItemId}|{string.Join(",", ModifierOptionIds.OrderBy(i => i))}|{Notes}|{(IsParcel ? "P" : "-")}|{SeatCode}";
+    /// <summary>Two lines merge when item, portion, options, note, parcel flag and seat are the same — the desktop Order Builder does the same.</summary>
+    public string MergeKey => $"{MenuItemId}|{string.Join(",", ModifierOptionIds.OrderBy(i => i))}|{Notes}|{(IsParcel ? "P" : "-")}|{SeatCode}|{PortionId}";
 }
 
 /// <summary>
@@ -77,13 +93,21 @@ public sealed class OrderComposer
 
     public bool IsEmpty => _lines.Count == 0;
 
-    public void Add(MenuEntryDto item, IReadOnlyList<MenuModifierOptionDto> options, int quantity, string? notes, bool isParcel = false, string? seatCode = null)
+    // portion: the one chosen on the item card; none means the item's default portion (an item from a server that sends no portions
+    // is priced from the item, as before).
+    public void Add(MenuEntryDto item, IReadOnlyList<MenuModifierOptionDto> options, int quantity, string? notes, bool isParcel = false, string? seatCode = null, MenuItemPortionDto? portion = null)
     {
+        var chosen = portion ?? DefaultPortion(item);
+        var named = item.Portions.Count > 1 ? chosen : null;
         var line = new CartLine
         {
             MenuItemId = item.Id,
             Name = item.Name,
-            UnitPrice = item.Price,
+            UnitPrice = chosen?.Price ?? item.Price,
+            PortionId = chosen?.Id,
+            PortionName = named?.Name,
+            PortionQuantity = named?.Quantity,
+            PortionUnit = named?.Unit,
             Quantity = Math.Clamp(quantity, 1, OrderLimits.MaxQuantity),
             Notes = TrimNotes(notes),
             ModifierOptionIds = options.Select(o => o.Id).ToList(),
@@ -115,6 +139,63 @@ public sealed class OrderComposer
         }
 
         line.Quantity--;
+    }
+
+    /// <summary>The portion an item is sold in by default: the one marked default, else the first one on sale; null when the server sends none.</summary>
+    public static MenuItemPortionDto? DefaultPortion(MenuEntryDto item) =>
+        item.Portions.FirstOrDefault(p => p.IsDefault) ?? item.Portions.FirstOrDefault();
+
+    /// <summary>True while a loaded draft line still has to be given a portion (its portion is no longer on the menu).</summary>
+    public bool HasUnresolvedPortions => _lines.Any(l => l.NeedsPortionChoice);
+
+    /// <summary>
+    /// After a draft or a saved order was loaded: ties each line to a portion of today's menu, by id and then by name. An item with a
+    /// single portion needs no choice. A line whose portion is gone, or that never had one on an item with several, is flagged and
+    /// is never silently given the default: it has to be chosen again.
+    /// </summary>
+    public void ResolvePortions(MenuDto menu)
+    {
+        foreach (var line in _lines)
+        {
+            var item = menu.Items.FirstOrDefault(i => i.Id == line.MenuItemId);
+            if (item is null || item.Portions.Count == 0)
+            {
+                continue;
+            }
+
+            var byId = line.PortionId is { } id ? item.Portions.FirstOrDefault(p => p.Id == id) : null;
+            var byName = byId is null && !string.IsNullOrWhiteSpace(line.PortionName)
+                ? item.Portions.FirstOrDefault(p => string.Equals(p.Name, line.PortionName, StringComparison.OrdinalIgnoreCase))
+                : null;
+            var found = byId ?? byName;
+            if (found is not null)
+            {
+                line.PortionId = found.Id;
+                line.NeedsPortionChoice = false;
+            }
+            else if (line.PortionId is null && string.IsNullOrWhiteSpace(line.PortionName) && item.Portions.Count == 1)
+            {
+                line.PortionId = item.Portions[0].Id;
+                line.NeedsPortionChoice = false;
+            }
+            else
+            {
+                line.NeedsPortionChoice = true;
+            }
+        }
+    }
+
+    /// <summary>Gives a line (usually one flagged by <see cref="ResolvePortions"/>) the portion just picked; its price follows the portion.</summary>
+    public void ChoosePortion(CartLine line, MenuEntryDto item, MenuItemPortionDto portion)
+    {
+        var named = item.Portions.Count > 1;
+        line.UnitPrice = portion.Price;
+        line.PortionId = portion.Id;
+        line.PortionName = named ? portion.Name : null;
+        line.PortionQuantity = named ? portion.Quantity : null;
+        line.PortionUnit = named ? portion.Unit : null;
+        line.NeedsPortionChoice = false;
+        MergeInto(line);
     }
 
     public void Remove(CartLine line) => _lines.Remove(line);
@@ -179,6 +260,7 @@ public sealed class OrderComposer
             ModifierOptionIds = l.ModifierOptionIds,
             IsParcel = l.IsParcel,
             SeatCode = l.SeatCode,
+            PortionId = l.PortionId,
         }).ToList();
 
     public WebDraft ToDraft(int tableId, int? orderId, Guid? pendingKey) => new()
@@ -201,6 +283,10 @@ public sealed class OrderComposer
             IsParcel = l.IsParcel,
             SeatCode = l.SeatCode,
             PackagingCharge = l.PackagingCharge,
+            PortionId = l.PortionId,
+            PortionName = l.PortionName,
+            PortionQuantity = l.PortionQuantity,
+            PortionUnit = l.PortionUnit,
         }).ToList(),
     };
 
@@ -222,6 +308,10 @@ public sealed class OrderComposer
             IsParcel = l.IsParcel,
             SeatCode = l.SeatCode,
             PackagingCharge = l.PackagingCharge,
+            PortionId = l.PortionId,
+            PortionName = l.PortionName,
+            PortionQuantity = l.PortionQuantity,
+            PortionUnit = l.PortionUnit,
         }));
     }
 
@@ -245,6 +335,10 @@ public sealed class OrderComposer
             IsParcel = i.IsParcel,
             SeatCode = string.IsNullOrWhiteSpace(i.SeatCode) ? null : i.SeatCode,
             PackagingCharge = i.PackagingCharge,
+            PortionId = i.PortionId,
+            PortionName = i.PortionName,
+            PortionQuantity = i.PortionQuantity,
+            PortionUnit = i.PortionUnit,
         }));
     }
 

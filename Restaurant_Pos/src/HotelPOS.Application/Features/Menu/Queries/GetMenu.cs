@@ -85,6 +85,13 @@ internal sealed class GetMenuHandler : IQueryHandler<GetMenuQuery, MenuDto>
                 i.ImagePath,
                 i.SortOrder,
                 Groups = i.ModifierGroups.OrderBy(l => l.SortOrder).Select(l => l.ModifierGroupId).ToList(),
+                Portions = i.Portions
+                    .Where(p => p.IsActive)
+                    .OrderByDescending(p => p.IsDefault)
+                    .ThenBy(p => p.SortOrder)
+                    .ThenBy(p => p.Id)
+                    .Select(p => new MenuItemPortionDto { Id = p.Id, Name = p.Name, Quantity = p.Quantity, Unit = p.Unit, Price = p.Price, IsDefault = p.IsDefault, IsActive = p.IsActive, SortOrder = p.SortOrder })
+                    .ToList(),
             })
             .ToListAsync(cancellationToken);
 
@@ -111,6 +118,7 @@ internal sealed class GetMenuHandler : IQueryHandler<GetMenuQuery, MenuDto>
                 ImageUrl = i.ImagePath is null ? null : MenuImageRoutes.UrlFor(i.ImagePath),
                 SortOrder = i.SortOrder,
                 ModifierGroupIds = i.Groups.Where(activeGroups.Contains).ToList(),
+                Portions = i.Portions,
             }).ToList(),
         };
     }

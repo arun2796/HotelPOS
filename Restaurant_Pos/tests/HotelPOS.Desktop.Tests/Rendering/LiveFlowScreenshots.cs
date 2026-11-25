@@ -933,7 +933,7 @@ public partial class LiveFlowScreenshots
         editor.Name = Demo("Kothu Parotta");
         editor.Code = "C0" + (Run.Length == 0 ? "1" : Run);
         editor.Category = editor.Categories.FirstOrDefault(c => c.Name == Demo("Chef specials")) ?? editor.Categories.First();
-        editor.Price = "180";
+        editor.Portions[0].PriceText = "180";
         editor.Tax = editor.Taxes.FirstOrDefault(t => t.Id is not null) ?? editor.Taxes.First();
         editor.Station = editor.Stations.FirstOrDefault();
         editor.Description = "Shredded parotta tossed with egg, onion and masala.";

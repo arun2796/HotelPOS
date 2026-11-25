@@ -45,6 +45,7 @@ public sealed class AppDbContext : DbContext, IAppDbContext
     public DbSet<ModifierGroup> ModifierGroups => Set<ModifierGroup>();
     public DbSet<ModifierOption> ModifierOptions => Set<ModifierOption>();
     public DbSet<MenuItem> MenuItems => Set<MenuItem>();
+    public DbSet<MenuItemPortion> MenuItemPortions => Set<MenuItemPortion>();
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
     public DbSet<MenuItemModifierGroup> MenuItemModifierGroups => Set<MenuItemModifierGroup>();
     public DbSet<Order> Orders => Set<Order>();

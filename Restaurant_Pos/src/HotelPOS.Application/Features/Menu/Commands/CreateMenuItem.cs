@@ -5,6 +5,7 @@ using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
 using HotelPOS.Contracts.Menu;
 using HotelPOS.Contracts.Security;
+using HotelPOS.Domain.Common;
 using HotelPOS.Domain.Menu;
 
 namespace HotelPOS.Application.Features.Menu.Commands;
@@ -63,11 +64,22 @@ internal sealed class CreateMenuItemHandler : ICommandHandler<CreateMenuItemComm
         item.SetModifierGroups(request.ModifierGroupIds);
         item.SetHsnSac(request.HsnSac);
         item.SetPackagingCharge(request.PackagingCharge);
+        if (MenuMapping.ToSpecs(request.Portions) is { } portions)
+        {
+            try
+            {
+                item.SetPortions(portions);
+            }
+            catch (DomainException ex)
+            {
+                return AppErrors.Validation("portions", ex.Message);
+            }
+        }
 
         _db.MenuItems.Add(item);
         await _db.SaveChangesAsync(cancellationToken);
         _audit.Add(AuditActions.MenuItemCreated, nameof(MenuItem), item.Id.ToString(),
-            newValues: new { item.Name, item.Code, item.CategoryId, item.Price, item.TaxId, item.PreparationStationId });
+            newValues: new { item.Name, item.Code, item.CategoryId, item.Price, item.TaxId, item.PreparationStationId, Portions = MenuMapping.AuditPortions(item) });
         await _changes.SaveAsync(cancellationToken);
         return await _items.GetAsync(item.Id, cancellationToken);
     }

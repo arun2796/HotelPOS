@@ -171,7 +171,7 @@ internal sealed class ImportExecutor
 
         // Items.
         var categoryIds = categories.Values.Select(c => c.Id).ToList();
-        var items = await _db.MenuItems.Include(i => i.ModifierGroups).Where(i => categoryIds.Contains(i.CategoryId)).ToListAsync(cancellationToken);
+        var items = await _db.MenuItems.Include(i => i.ModifierGroups).Include(i => i.Portions).Where(i => categoryIds.Contains(i.CategoryId)).ToListAsync(cancellationToken);
         var itemsByKey = items.GroupBy(i => (i.CategoryId, i.Name.ToUpperInvariant())).ToDictionary(g => g.Key, g => g.First());
         var createdItems = new List<MenuItem>();
         var sort = 0;
@@ -343,7 +343,7 @@ internal sealed class ImportExecutor
                 option.Update(option.Name, before.PriceDelta, option.SortOrder);
                 if (before.IsActive) { option.Activate(); } else { option.Deactivate(); }
                 break;
-            case TItem when await _db.MenuItems.Include(i => i.ModifierGroups).FirstOrDefaultAsync(i => i.Id == id, cancellationToken) is { } item:
+            case TItem when await _db.MenuItems.Include(i => i.ModifierGroups).Include(i => i.Portions).FirstOrDefaultAsync(i => i.Id == id, cancellationToken) is { } item:
                 var b = Deserialize<ItemBefore>(entry);
                 item.Update(b.CategoryId, b.Name, b.Code, b.Description, b.Price, b.TaxId, b.StationId, b.SortOrder);
                 item.SetHsnSac(b.HsnSac);

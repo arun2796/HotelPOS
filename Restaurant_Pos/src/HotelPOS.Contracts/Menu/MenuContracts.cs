@@ -13,6 +13,11 @@ public static class MenuLimits
     public const int MaxModifierSelections = 20;
     public const int MaxImageBytes = 2 * 1024 * 1024;
     public const int ImageMaxPixels = 512;
+
+    // Portions (Quarter, Half, Full...) of one item.
+    public const int MaxPortions = 12;
+    public const int PortionNameMaxLength = 40;
+    public const decimal PortionQuantityMax = 100_000m;
 }
 
 public static class MenuImageRoutes
@@ -147,7 +152,36 @@ public sealed record MenuItemDto
     public int SortOrder { get; init; }
     public IReadOnlyList<int> ModifierGroupIds { get; init; } = Array.Empty<int>();
 
+    // Every portion, switched-off ones included (the admin edits them). Price is the default portion's price.
+    public IReadOnlyList<MenuItemPortionDto> Portions { get; init; } = Array.Empty<MenuItemPortionDto>();
+
     public string RowVersion { get; init; } = string.Empty;
+}
+
+// One way an item is sold ("Half", 500 GM, 180). Quantity and unit are labels; they never change a price.
+public sealed record MenuItemPortionDto
+{
+    public int Id { get; init; }
+    public string Name { get; init; } = string.Empty;
+    public decimal? Quantity { get; init; }
+    public string? Unit { get; init; }
+    public decimal Price { get; init; }
+    public bool IsDefault { get; init; }
+    public bool IsActive { get; init; } = true;
+    public int SortOrder { get; init; }
+}
+
+// One row of the Portions table of the item form. Id is the portion being kept (null for a new one).
+public sealed record SaveMenuItemPortionRequest
+{
+    public int? Id { get; init; }
+    public string Name { get; init; } = string.Empty;
+    public decimal? Quantity { get; init; }
+    public string? Unit { get; init; }
+    public decimal Price { get; init; }
+    public bool IsDefault { get; init; }
+    public bool IsActive { get; init; } = true;
+    public int SortOrder { get; init; }
 }
 
 // The kitchen supervisor's stock count. Mode None stops counting; Exact / Approximate restart the count at Quantity
@@ -180,6 +214,9 @@ public sealed record CreateMenuItemRequest
     public IReadOnlyList<int> ModifierGroupIds { get; init; } = Array.Empty<int>();
     public string? HsnSac { get; init; }
     public decimal PackagingCharge { get; init; }
+
+    // Null makes one "Regular" portion at Price (an older client). Otherwise exactly these portions; Price is then ignored.
+    public IReadOnlyList<SaveMenuItemPortionRequest>? Portions { get; init; }
 }
 
 public sealed record UpdateMenuItemRequest
@@ -197,6 +234,10 @@ public sealed record UpdateMenuItemRequest
     public IReadOnlyList<int> ModifierGroupIds { get; init; } = Array.Empty<int>();
     public string? HsnSac { get; init; }
     public decimal PackagingCharge { get; init; }
+
+    // Null leaves the portions as they are; an older client that only changes Price changes the default portion's price.
+    // Otherwise the item gets exactly these portions, and Price is ignored.
+    public IReadOnlyList<SaveMenuItemPortionRequest>? Portions { get; init; }
     public string RowVersion { get; init; } = string.Empty;
 }
 
@@ -234,6 +275,10 @@ public sealed record MenuEntryDto
     public string? ImageUrl { get; init; }
     public int SortOrder { get; init; }
     public IReadOnlyList<int> ModifierGroupIds { get; init; } = Array.Empty<int>();
+
+    // The portions on sale (switched-off ones left out), default first and then by sort order. Price is the default
+    // portion's price. Never empty for an item of this server version.
+    public IReadOnlyList<MenuItemPortionDto> Portions { get; init; } = Array.Empty<MenuItemPortionDto>();
 }
 
 public sealed record MenuModifierGroupDto

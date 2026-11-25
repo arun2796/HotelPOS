@@ -28,6 +28,12 @@ public sealed record DraftLine
     public bool IsParcel { get; init; }
     public decimal PackagingCharge { get; init; }
     public string? SeatCode { get; init; }
+
+    // The portion ordered (Quarter, Half...). Optional, so drafts saved before portions existed still load.
+    public int? PortionId { get; init; }
+    public string? PortionName { get; init; }
+    public decimal? PortionQuantity { get; init; }
+    public string? PortionUnit { get; init; }
 }
 
 public sealed record LocalDraft

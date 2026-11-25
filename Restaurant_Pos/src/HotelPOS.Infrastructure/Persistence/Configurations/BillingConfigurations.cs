@@ -90,6 +90,10 @@ internal sealed class BillItemConfiguration : IEntityTypeConfiguration<BillItem>
         builder.ToTable("BillItems", t => t.HasCheckConstraint("CK_BillItems_Quantity", "\"Quantity\" > 0"));
         builder.Property(i => i.ItemName).HasMaxLength(MenuLimits.NameMaxLength).IsRequired();
         builder.Property(i => i.TaxRatePercent).HasPrecision(5, 2);
+        builder.Property(i => i.PortionName).HasMaxLength(MenuLimits.PortionNameMaxLength);
+        builder.Property(i => i.PortionUnit).HasMaxLength(10);
+        builder.Property(i => i.PortionQuantity).HasPrecision(18, 3);
+        builder.Ignore(i => i.DisplayName);
         builder.Property(i => i.SeatCode).HasMaxLength(16);
         builder.HasIndex(i => i.BillId);
         builder.HasOne<OrderItem>().WithMany().HasForeignKey(i => i.OrderItemId).OnDelete(DeleteBehavior.Restrict);

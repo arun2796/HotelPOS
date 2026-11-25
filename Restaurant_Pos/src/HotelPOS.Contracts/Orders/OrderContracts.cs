@@ -27,6 +27,10 @@ public sealed record OrderItemInput
 
     // "4A": the seat the dish is for (table code + letter, limited by the table's capacity). Null = whole table.
     public string? SeatCode { get; init; }
+
+    // The portion ordered (Quarter, Half...). Null on an item with a single portion on sale means that portion; on an item with
+    // two or more portions on sale it is refused, so an older app can never charge the wrong one by default.
+    public int? PortionId { get; init; }
 }
 
 public sealed record CreateOrderRequest
@@ -137,6 +141,14 @@ public sealed record OrderItemDto
     public int BatchNumber { get; init; }
     public int MenuItemId { get; init; }
     public string ItemName { get; init; } = string.Empty;
+
+    // The portion sold, frozen with the line; null for an item with a single price. DisplayName is what staff read:
+    // "Chicken Biryani (Half)", "Chicken Biryani (Half) (Parcel)".
+    public int? PortionId { get; init; }
+    public string? PortionName { get; init; }
+    public decimal? PortionQuantity { get; init; }
+    public string? PortionUnit { get; init; }
+    public string DisplayName { get; init; } = string.Empty;
     public decimal UnitPrice { get; init; }
     public int Quantity { get; init; }
     public string? Notes { get; init; }

@@ -550,6 +550,18 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                     b.Property<int>("OrderItemId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("PortionName")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<decimal?>("PortionQuantity")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)");
+
+                    b.Property<string>("PortionUnit")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
                     b.Property<int>("Quantity")
                         .HasColumnType("integer");
 
@@ -2194,6 +2206,67 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                     b.ToTable("MenuItemModifierGroups", (string)null);
                 });
 
+            modelBuilder.Entity("HotelPOS.Domain.Menu.MenuItemPortion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("MenuItemId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<decimal>("Price")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal?>("Quantity")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Unit")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp(3) with time zone");
+
+                    b.Property<int?>("UpdatedBy")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MenuItemId");
+
+                    b.ToTable("MenuItemPortions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_MenuItemPortions_Price", "\"Price\" >= 0");
+
+                            t.HasCheckConstraint("CK_MenuItemPortions_Quantity", "\"Quantity\" IS NULL OR \"Quantity\" > 0");
+                        });
+                });
+
             modelBuilder.Entity("HotelPOS.Domain.Menu.ModifierGroup", b =>
                 {
                     b.Property<int>("Id")
@@ -2606,6 +2679,21 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<int?>("PortionId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PortionName")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<decimal?>("PortionQuantity")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)");
+
+                    b.Property<string>("PortionUnit")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
                     b.Property<int>("PreparationStationId")
                         .HasColumnType("integer");
 
@@ -2641,6 +2729,8 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                     b.HasIndex("MenuItemId");
 
                     b.HasIndex("OrderId");
+
+                    b.HasIndex("PortionId");
 
                     b.ToTable("OrderItems", null, t =>
                         {
@@ -3155,6 +3245,17 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                     b.Navigation("ModifierGroup");
                 });
 
+            modelBuilder.Entity("HotelPOS.Domain.Menu.MenuItemPortion", b =>
+                {
+                    b.HasOne("HotelPOS.Domain.Menu.MenuItem", "MenuItem")
+                        .WithMany("Portions")
+                        .HasForeignKey("MenuItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("MenuItem");
+                });
+
             modelBuilder.Entity("HotelPOS.Domain.Menu.ModifierOption", b =>
                 {
                     b.HasOne("HotelPOS.Domain.Menu.ModifierGroup", null)
@@ -3209,6 +3310,11 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
                         .HasForeignKey("OrderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("HotelPOS.Domain.Menu.MenuItemPortion", null)
+                        .WithMany()
+                        .HasForeignKey("PortionId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("HotelPOS.Domain.Orders.OrderItemModifier", b =>
@@ -3268,6 +3374,8 @@ namespace HotelPOS.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("HotelPOS.Domain.Menu.MenuItem", b =>
                 {
                     b.Navigation("ModifierGroups");
+
+                    b.Navigation("Portions");
                 });
 
             modelBuilder.Entity("HotelPOS.Domain.Menu.ModifierGroup", b =>

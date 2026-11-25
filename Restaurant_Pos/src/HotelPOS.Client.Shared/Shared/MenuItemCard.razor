@@ -1,48 +1,108 @@
 @* Phase 21 W4: picture card of the order builder. The picture is the item's own ImageUrl (resolved by the host); without one
-   the initials stand in (D11: no stock photos). The whole card adds the item; the star pins it to Favourites. *@
+   the initials stand in (D11: no stock photos). The whole card adds the item; the star pins it to Favourites.
+   Portions: an item sold in two or more portions (Quarter, Half, Full...) shows them as chips, the default selected. Tapping a
+   chip only highlights it and changes the price on the Add button; the Add button puts that portion in the order. An item with
+   one price keeps the single tap on the whole card. *@
 @using HotelPOS.Contracts.Menu
 
 <div class="item-wrap">
-    <button type="button" class="item-card" data-testid="menu-item" disabled="@(!Item.IsAvailable)" @onclick="OnPick">
-        <div class="item-img">
-            @if (!string.IsNullOrEmpty(ImageUrl))
-            {
-                <img src="@ImageUrl" alt="" loading="lazy" />
-            }
-            else
-            {
-                <span class="item-initials" aria-hidden="true">@TextFormat.Initials(Item.Name)</span>
-            }
-            @if (!Item.IsAvailable)
-            {
-                <span class="chip danger sold">Sold out</span>
-            }
-        </div>
-        <div class="item-body">
-            <div class="item-name">@Item.Name</div>
-            <div class="item-meta">
-                <span class="price num-tab">@Item.Price.ToString("N2")</span>
-                @if (StockHint is { } hint)
+    @if (HasPortions)
+    {
+        <div class="item-card item-card-portions" data-testid="menu-item">
+            <div class="item-img">
+                @if (!string.IsNullOrEmpty(ImageUrl))
                 {
-                    <span class="muted small item-stock-hint" data-testid="item-stock">@hint</span>
+                    <img src="@ImageUrl" alt="" loading="lazy" />
                 }
-                @if (Item.ModifierGroupIds.Count > 0)
+                else
                 {
-                    <span class="muted small item-options-hint">Customise</span>
+                    <span class="item-initials" aria-hidden="true">@TextFormat.Initials(Item.Name)</span>
+                }
+                @if (!Item.IsAvailable)
+                {
+                    <span class="chip danger sold">Sold out</span>
                 }
             </div>
+            <div class="item-body">
+                <div class="item-name">@Item.Name</div>
+                <div class="portion-chips" role="radiogroup" aria-label="@($"Portion of {Item.Name}")">
+                    @foreach (var p in Sorted)
+                    {
+                        var portion = p;
+                        var on = portion.Id == _selectedId;
+                        <button type="button" role="radio" class="portion-chip @(on ? "on" : null)" data-testid="portion-chip" data-portion="@portion.Id"
+                                aria-checked="@(on ? "true" : "false")" disabled="@(!Item.IsAvailable)" @onclick="() => _selectedId = portion.Id">
+                            <b>@portion.Name</b>
+                            <span class="portion-price num-tab">@portion.Price.ToString("N2")</span>
+                            @if (QuantityText(portion) is { } quantity)
+                            {
+                                <span class="portion-qty muted small">@quantity</span>
+                            }
+                        </button>
+                    }
+                </div>
+                @if (StockHint is not null || Item.ModifierGroupIds.Count > 0)
+                {
+                    <div class="item-meta">
+                        @if (StockHint is { } stock)
+                        {
+                            <span class="muted small item-stock-hint" data-testid="item-stock">@stock</span>
+                        }
+                        @if (Item.ModifierGroupIds.Count > 0)
+                        {
+                            <span class="muted small item-options-hint">Customise</span>
+                        }
+                    </div>
+                }
+                <button type="button" class="btn primary portion-add" data-testid="portion-add" disabled="@(!Item.IsAvailable)" @onclick="PickSelected">Add @Selected.Name · @Selected.Price.ToString("N2")</button>
+            </div>
         </div>
-        @if (Item.IsAvailable)
-        {
-            <span class="item-add" aria-hidden="true"><Icon Name="plus" Size="18" /></span>
-        }
-    </button>
+    }
+    else
+    {
+        <button type="button" class="item-card" data-testid="menu-item" disabled="@(!Item.IsAvailable)" @onclick="OnPick">
+            <div class="item-img">
+                @if (!string.IsNullOrEmpty(ImageUrl))
+                {
+                    <img src="@ImageUrl" alt="" loading="lazy" />
+                }
+                else
+                {
+                    <span class="item-initials" aria-hidden="true">@TextFormat.Initials(Item.Name)</span>
+                }
+                @if (!Item.IsAvailable)
+                {
+                    <span class="chip danger sold">Sold out</span>
+                }
+            </div>
+            <div class="item-body">
+                <div class="item-name">@Item.Name</div>
+                <div class="item-meta">
+                    <span class="price num-tab">@Item.Price.ToString("N2")</span>
+                    @if (StockHint is { } hint)
+                    {
+                        <span class="muted small item-stock-hint" data-testid="item-stock">@hint</span>
+                    }
+                    @if (Item.ModifierGroupIds.Count > 0)
+                    {
+                        <span class="muted small item-options-hint">Customise</span>
+                    }
+                </div>
+            </div>
+            @if (Item.IsAvailable)
+            {
+                <span class="item-add" aria-hidden="true"><Icon Name="plus" Size="18" /></span>
+            }
+        </button>
+    }
     <button type="button" class="item-star @(Pinned ? "on" : null)" aria-label="@((Pinned ? "Unpin " : "Pin ") + Item.Name)" aria-pressed="@(Pinned ? "true" : "false")" @onclick="OnTogglePin">
         <Icon Name="star" Size="20" />
     </button>
 </div>
 
 @code {
+    private int? _selectedId;
+
     [Parameter, EditorRequired] public MenuEntryDto Item { get; set; } = new();
 
     /// <summary>Absolute picture URL (IClientHost.ImageUrl); null draws the initials placeholder.</summary>
@@ -50,9 +110,36 @@
 
     [Parameter] public bool Pinned { get; set; }
 
+    /// <summary>The whole card was tapped (an item with one price).</summary>
     [Parameter] public EventCallback OnPick { get; set; }
 
+    /// <summary>The Add button of a portioned card, with the portion that is selected.</summary>
+    [Parameter] public EventCallback<MenuItemPortionDto> OnPickPortion { get; set; }
+
     [Parameter] public EventCallback OnTogglePin { get; set; }
+
+    // Two or more portions on sale: chips. One (or none, from a server that sends none): the plain card.
+    private bool HasPortions => Item.Portions.Count > 1;
+
+    private IEnumerable<MenuItemPortionDto> Sorted => Item.Portions.OrderBy(p => p.SortOrder).ThenBy(p => p.Id);
+
+    private MenuItemPortionDto Selected =>
+        Item.Portions.FirstOrDefault(p => p.Id == _selectedId) ?? OrderComposer.DefaultPortion(Item) ?? Item.Portions[0];
+
+    protected override void OnParametersSet()
+    {
+        // The default portion is selected first; a menu change that removed the selected portion falls back to it again.
+        if (_selectedId is null || Item.Portions.All(p => p.Id != _selectedId))
+        {
+            _selectedId = OrderComposer.DefaultPortion(Item)?.Id;
+        }
+    }
+
+    private Task PickSelected() => OnPickPortion.InvokeAsync(Selected);
+
+    // "500 GM": the label of a portion that has a quantity.
+    private static string? QuantityText(MenuItemPortionDto portion) =>
+        portion.Quantity is { } quantity ? $"{quantity:0.###}{(string.IsNullOrEmpty(portion.Unit) ? string.Empty : " " + portion.Unit)}" : null;
 
     // "12 left" / "Approx. 40 left" for a counted dish that can still be ordered; nothing otherwise.
     private string? StockHint => Item.IsAvailable && Item.StockRemaining is { } left

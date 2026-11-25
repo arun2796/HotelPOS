@@ -83,7 +83,7 @@ internal sealed class RequestBillHandler : ICommandHandler<RequestBillCommand, B
             order.RequestBill(now, await _db.BoolSettingAsync(SettingKeys.AllowBillBeforeReady, false, cancellationToken));
             var lines = order.ActiveItems
                 .OrderBy(i => i.BatchNumber).ThenBy(i => i.Id)
-                .Select(i => new BillLineInput(i.Id, i.ItemName, i.Quantity, i.UnitPrice, i.Modifiers.Sum(m => m.PriceDelta), i.TaxRatePercent, false, i.SeatCode))
+                .Select(i => new BillLineInput(i.Id, i.ItemName, i.Quantity, i.UnitPrice, i.Modifiers.Sum(m => m.PriceDelta), i.TaxRatePercent, false, i.SeatCode, i.PortionName, i.PortionQuantity, i.PortionUnit))
                 .ToList();
             bill = new Bill(order, tableCode, lines, await _bills.RoundOffAsync(cancellationToken));
         }

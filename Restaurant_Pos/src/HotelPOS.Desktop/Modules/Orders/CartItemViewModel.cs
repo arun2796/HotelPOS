@@ -20,6 +20,10 @@ public sealed partial class CartItemViewModel : ObservableObject
         _notes = line.Notes;
         _isParcel = line.IsParcel;
         _seatCode = line.SeatCode;
+        PortionId = line.PortionId;
+        PortionName = line.PortionName;
+        PortionQuantity = line.PortionQuantity;
+        PortionUnit = line.PortionUnit;
     }
 
     public int MenuItemId { get; }
@@ -28,6 +32,22 @@ public sealed partial class CartItemViewModel : ObservableObject
     public IReadOnlyList<int> ModifierOptionIds { get; }
     public IReadOnlyList<string> ModifierNames { get; }
     public decimal ModifierTotal { get; }
+
+    // The portion ordered; PortionName is set only for an item sold in several portions (an item with one price shows none).
+    public int? PortionId { get; private set; }
+    public string? PortionName { get; }
+    public decimal? PortionQuantity { get; }
+    public string? PortionUnit { get; }
+
+    // A loaded draft line whose portion is no longer on the menu: it has to be removed and added again before sending.
+    [ObservableProperty]
+    private bool _needsPortionChoice;
+
+    public void ResolvePortion(int portionId)
+    {
+        PortionId = portionId;
+        NeedsPortionChoice = false;
+    }
 
     // What the menu charges to pack one of this item; added to the price while the line is a parcel.
     public decimal PackagingCharge { get; }
@@ -51,7 +71,7 @@ public sealed partial class CartItemViewModel : ObservableObject
 
     public decimal LineTotal => (UnitPrice + (IsParcel ? PackagingCharge : 0m) + ModifierTotal) * Quantity;
 
-    public string DisplayName => IsParcel ? $"{Name} (Parcel)" : Name;
+    public string DisplayName => HotelPOS.Contracts.Menu.ItemDisplayName.Compose(IsParcel ? $"{Name} (Parcel)" : Name, PortionName);
 
     public string ParcelText => IsParcel ? "Parcel ✓" : "Parcel";
 
@@ -67,8 +87,8 @@ public sealed partial class CartItemViewModel : ObservableObject
 
     public bool CanIncrease => Quantity < OrderLimits.MaxQuantity;
 
-    public bool IsSameChoice(int menuItemId, IReadOnlyCollection<int> optionIds, bool isParcel = false, string? seatCode = null) =>
-        MenuItemId == menuItemId && string.IsNullOrWhiteSpace(Notes) && IsParcel == isParcel
+    public bool IsSameChoice(int menuItemId, IReadOnlyCollection<int> optionIds, bool isParcel = false, string? seatCode = null, int? portionId = null) =>
+        MenuItemId == menuItemId && PortionId == portionId && string.IsNullOrWhiteSpace(Notes) && IsParcel == isParcel
         && string.Equals(SeatCode ?? string.Empty, seatCode ?? string.Empty, StringComparison.OrdinalIgnoreCase)
         && ModifierOptionIds.Count == optionIds.Count
         && ModifierOptionIds.All(optionIds.Contains);
@@ -86,6 +106,10 @@ public sealed partial class CartItemViewModel : ObservableObject
         IsParcel = IsParcel,
         PackagingCharge = PackagingCharge,
         SeatCode = SeatCode,
+        PortionId = PortionId,
+        PortionName = PortionName,
+        PortionQuantity = PortionQuantity,
+        PortionUnit = PortionUnit,
     };
 
     public OrderItemInput ToInput() => new()
@@ -96,5 +120,6 @@ public sealed partial class CartItemViewModel : ObservableObject
         ModifierOptionIds = ModifierOptionIds,
         IsParcel = IsParcel,
         SeatCode = string.IsNullOrWhiteSpace(SeatCode) ? null : SeatCode,
+        PortionId = PortionId,
     };
 }

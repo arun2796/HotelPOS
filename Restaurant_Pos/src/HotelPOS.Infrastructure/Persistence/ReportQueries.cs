@@ -162,7 +162,7 @@ public sealed class ReportQueries : IReportQueries
 
     public async Task<IReadOnlyList<ItemSalesRowDto>> ItemSalesAsync(ReportWindow window, CancellationToken cancellationToken) =>
         await _db.Database.SqlQuery<ItemSalesRowDto>($"""
-            SELECT bi."ItemName" AS "ItemName", c."Name" AS "Category",
+            SELECT bi."ItemName" AS "ItemName", COALESCE(bi."PortionName", '') AS "Portion", c."Name" AS "Category",
                    SUM(bi."Quantity")::int AS "Quantity", SUM(bi."LineSubtotal") AS "Amount", 0::numeric AS "SharePercent"
             FROM "BillItems" bi
             JOIN "Bills" b ON b."Id" = bi."BillId"
@@ -170,8 +170,8 @@ public sealed class ReportQueries : IReportQueries
             JOIN "MenuItems" mi ON mi."Id" = oi."MenuItemId"
             JOIN "Categories" c ON c."Id" = mi."CategoryId"
             WHERE b."Status" = {BillSettled} AND b."SettledAt" >= {window.FromUtc} AND b."SettledAt" < {window.ToUtc}
-            GROUP BY bi."ItemName", c."Name"
-            ORDER BY "Amount" DESC, "ItemName"
+            GROUP BY bi."ItemName", COALESCE(bi."PortionName", ''), c."Name"
+            ORDER BY "Amount" DESC, "ItemName", "Portion"
             """).ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyList<CategorySalesRowDto>> CategorySalesAsync(ReportWindow window, CancellationToken cancellationToken) =>

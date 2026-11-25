@@ -60,6 +60,11 @@ public sealed partial class MenuTileViewModel : ObservableObject
 
     public bool HasModifiers => Item.ModifierGroupIds.Count > 0;
 
+    // An item sold in several portions: its tile opens the picker with the Portion group first.
+    public bool HasPortions => Item.Portions.Count > 1;
+
+    public string PortionsText => HasPortions ? $"{Item.Portions.Count} portions" : string.Empty;
+
     // Presentation only (Phase 17): the cached picture file for the tile, loaded after the tile is shown.
     [ObservableProperty]
     private string? _imageFile;
@@ -566,7 +571,7 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
         }
 
         ErrorMessage = null;
-        if (tile.HasModifiers && _menuCache.Menu is { } menu)
+        if ((tile.HasModifiers || tile.HasPortions) && _menuCache.Menu is { } menu)
         {
             var groups = tile.Item.ModifierGroupIds
                 .Select(id => menu.ModifierGroups.FirstOrDefault(g => g.Id == id))
@@ -576,11 +581,14 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
             return;
         }
 
+        // One price: the item's only portion (an older server sends none, then the item's price is used).
+        var portion = tile.Item.Portions.FirstOrDefault(p => p.IsDefault) ?? tile.Item.Portions.FirstOrDefault();
         AddLine(new DraftLine
         {
             MenuItemId = tile.Item.Id,
             Name = tile.Item.Name,
-            UnitPrice = tile.Item.Price,
+            UnitPrice = portion?.Price ?? tile.Item.Price,
+            PortionId = portion?.Id,
             PackagingCharge = tile.Item.PackagingCharge,
             IsParcel = IsParcelMode || IsPackedOrder,
             SeatCode = SeatForNewLine,
@@ -606,6 +614,9 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
             Picker.ErrorMessage = null;
         }
     }
+
+    [RelayCommand]
+    private void SelectPortion(PickerPortionViewModel? portion) => Picker?.Select(portion);
 
     [RelayCommand]
     private void PickerQuantity(string? delta)
@@ -744,8 +755,59 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
         await RunAsync(submit: true);
     }
 
+    // A line whose portion is no longer on the menu is never sent with a guessed portion: it has to be removed and added again.
+    private string? UnresolvedPortionMessage()
+    {
+        var names = Cart.Where(c => c.NeedsPortionChoice).Select(c => c.Name).Distinct().ToList();
+        return names.Count == 0
+            ? null
+            : $"The portion of {string.Join(", ", names)} is no longer on the menu. Remove the line and add it again to choose a portion.";
+    }
+
+    // After a draft or a saved order was loaded: ties each line to a portion of today's menu (by id, then by name). An item with a
+    // single portion needs no choice; a line whose portion is gone, or that never had one on an item with several, is flagged.
+    private void ResolvePortions()
+    {
+        if (_menuCache.Menu is not { } menu)
+        {
+            return;
+        }
+
+        foreach (var line in Cart)
+        {
+            var item = menu.Items.FirstOrDefault(i => i.Id == line.MenuItemId);
+            if (item is null || item.Portions.Count == 0)
+            {
+                continue;
+            }
+
+            var found = (line.PortionId is { } id ? item.Portions.FirstOrDefault(p => p.Id == id) : null)
+                ?? (string.IsNullOrWhiteSpace(line.PortionName)
+                    ? null
+                    : item.Portions.FirstOrDefault(p => string.Equals(p.Name, line.PortionName, StringComparison.OrdinalIgnoreCase)));
+            if (found is not null)
+            {
+                line.ResolvePortion(found.Id);
+            }
+            else if (line.PortionId is null && string.IsNullOrWhiteSpace(line.PortionName) && item.Portions.Count == 1)
+            {
+                line.ResolvePortion(item.Portions[0].Id);
+            }
+            else
+            {
+                line.NeedsPortionChoice = true;
+            }
+        }
+    }
+
     private async Task RunAsync(bool submit)
     {
+        if (UnresolvedPortionMessage() is { } portionMessage)
+        {
+            ErrorMessage = portionMessage;
+            return;
+        }
+
         IsSending = true;
         ErrorMessage = null;
         ConnectionBanner = null;
@@ -935,7 +997,7 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
 
     private void AddLine(DraftLine line)
     {
-        var existing = Cart.FirstOrDefault(c => c.IsSameChoice(line.MenuItemId, line.ModifierOptionIds.ToList(), line.IsParcel, line.SeatCode));
+        var existing = Cart.FirstOrDefault(c => c.IsSameChoice(line.MenuItemId, line.ModifierOptionIds.ToList(), line.IsParcel, line.SeatCode, line.PortionId));
         if (existing is not null)
         {
             existing.Quantity = Math.Min(existing.Quantity + line.Quantity, OrderLimits.MaxQuantity);
@@ -987,6 +1049,10 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
                                 ModifierOptionIds = item.Modifiers.Select(m => m.ModifierOptionId).ToList(),
                                 ModifierNames = item.Modifiers.Select(m => m.Name).ToList(),
                                 ModifierTotal = item.Modifiers.Sum(m => m.PriceDelta),
+                                PortionId = item.PortionId,
+                                PortionName = item.PortionName,
+                                PortionQuantity = item.PortionQuantity,
+                                PortionUnit = item.PortionUnit,
                             }));
                         }
                     }
@@ -996,6 +1062,8 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
                     ErrorMessage = order.Message;
                 }
             }
+
+            ResolvePortions();
         }
         finally
         {

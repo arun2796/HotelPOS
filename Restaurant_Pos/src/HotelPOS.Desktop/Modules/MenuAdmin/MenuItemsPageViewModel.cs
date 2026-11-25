@@ -78,9 +78,6 @@ public sealed partial class MenuItemEditorViewModel : ObservableObject
     [ObservableProperty]
     private CategoryDto? _category;
 
-    [ObservableProperty]
-    private string _price = string.Empty;
-
     // Parcel/packaging charge added per unit on take-away and delivery orders; 0 means none.
     [ObservableProperty]
     private string _packagingCharge = "0";
@@ -113,6 +110,11 @@ public sealed partial class MenuItemEditorViewModel : ObservableObject
     [ObservableProperty]
     private string? _imageFile;
 
+    // A picture chosen while the item is still new: shown at once, uploaded right after the item is created.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasPicture))]
+    private string? _pendingImagePath;
+
     [ObservableProperty]
     private string _rowVersion = string.Empty;
 
@@ -127,13 +129,64 @@ public sealed partial class MenuItemEditorViewModel : ObservableObject
 
     public ObservableCollection<ModifierChoiceViewModel> ModifierGroups { get; } = new();
 
+    // The Portions & prices table: Quarter, Half, Full... Exactly one default; at least one on.
+    public ObservableCollection<PortionRowViewModel> Portions { get; } = new();
+
     public string Title => IsNew ? "New item" : "Edit item";
 
     public string SaveText => IsNew ? "Create item" : "Save changes";
 
-    public bool HasPicture => ImageUrl is not null;
+    public bool HasPicture => ImageUrl is not null || PendingImagePath is not null;
 
-    public bool CanEditPicture => !IsNew;
+    public bool CanEditPicture => true;
+
+    public bool CanAddPortion => Portions.Count < MenuLimits.MaxPortions;
+
+    [RelayCommand]
+    private void AddPortion()
+    {
+        if (Portions.Count >= MenuLimits.MaxPortions)
+        {
+            return;
+        }
+
+        Portions.Add(new PortionRowViewModel());
+        OnPropertyChanged(nameof(CanAddPortion));
+    }
+
+    // The last portion cannot be removed; removing the default hands the default to the first row left.
+    [RelayCommand]
+    private void RemovePortion(PortionRowViewModel? row)
+    {
+        if (row is null || Portions.Count <= 1 || !Portions.Remove(row))
+        {
+            return;
+        }
+
+        if (row.IsDefault)
+        {
+            SetDefault(Portions[0]);
+        }
+
+        OnPropertyChanged(nameof(CanAddPortion));
+    }
+
+    // One default at a time; the default is always on.
+    [RelayCommand]
+    private void SetDefault(PortionRowViewModel? row)
+    {
+        if (row is null)
+        {
+            return;
+        }
+
+        foreach (var portion in Portions)
+        {
+            portion.IsDefault = ReferenceEquals(portion, row);
+        }
+
+        row.IsActive = true;
+    }
 
     public void SetLookups(IEnumerable<CategoryDto> categories, IEnumerable<TaxDto> taxes, IEnumerable<StationDto> stations, IEnumerable<ModifierGroupDto> groups)
     {
@@ -151,11 +204,13 @@ public sealed partial class MenuItemEditorViewModel : ObservableObject
         IsNew = true;
         ItemId = 0;
         Name = Code = Description = RowVersion = HsnSac = string.Empty;
-        Price = string.Empty;
         PackagingCharge = "0";
         SortOrder = "0";
         IsAvailable = IsActive = true;
-        ImageUrl = ImageFile = null;
+        ImageUrl = ImageFile = PendingImagePath = null;
+        Portions.Clear();
+        Portions.Add(new PortionRowViewModel { Name = "Regular", IsDefault = true });
+        OnPropertyChanged(nameof(CanAddPortion));
         Category = Categories.FirstOrDefault(c => c.Id == categoryId) ?? Categories.FirstOrDefault();
         Tax = Taxes.Skip(1).FirstOrDefault() ?? Taxes.FirstOrDefault();
         Station = Stations.FirstOrDefault();
@@ -176,13 +231,34 @@ public sealed partial class MenuItemEditorViewModel : ObservableObject
         Code = item.Code ?? string.Empty;
         Description = item.Description ?? string.Empty;
         HsnSac = item.HsnSac ?? string.Empty;
-        Price = FormNumbers.Money(item.Price);
         PackagingCharge = FormNumbers.Money(item.PackagingCharge);
         SortOrder = FormNumbers.Integer(item.SortOrder);
         IsAvailable = item.IsAvailable;
         IsActive = item.IsActive;
         ImageUrl = item.ImageUrl;
-        ImageFile = null;
+        ImageFile = PendingImagePath = null;
+        Portions.Clear();
+        foreach (var portion in item.Portions.OrderBy(p => p.SortOrder).ThenBy(p => p.Id))
+        {
+            Portions.Add(new PortionRowViewModel
+            {
+                Id = portion.Id,
+                Name = portion.Name,
+                QuantityText = portion.Quantity?.ToString("0.###", CultureInfo.CurrentCulture) ?? string.Empty,
+                Unit = portion.Unit ?? string.Empty,
+                PriceText = FormNumbers.Money(portion.Price),
+                IsDefault = portion.IsDefault,
+                IsActive = portion.IsActive,
+            });
+        }
+
+        if (Portions.Count == 0)
+        {
+            // A server that does not know portions: the item is its one price.
+            Portions.Add(new PortionRowViewModel { Name = "Regular", PriceText = FormNumbers.Money(item.Price), IsDefault = true });
+        }
+
+        OnPropertyChanged(nameof(CanAddPortion));
         RowVersion = item.RowVersion;
         Category = Categories.FirstOrDefault(c => c.Id == item.CategoryId);
         Tax = Taxes.FirstOrDefault(t => t.Id == item.TaxId) ?? Taxes.FirstOrDefault();
@@ -214,9 +290,9 @@ public sealed partial class MenuItemEditorViewModel : ObservableObject
             return "Select a category and a source (kitchen).";
         }
 
-        if (!FormNumbers.TryParseMoney(Price, out var price) || price < 0 || decimal.Round(price, 2) != price)
+        if (ValidatePortions() is { } portionError)
         {
-            return "Enter a price such as 180 or 180.50.";
+            return portionError;
         }
 
         if (!FormNumbers.TryParseMoney(PackagingCharge, out var packaging) || packaging < 0 || decimal.Round(packaging, 2) != packaging)
@@ -229,9 +305,98 @@ public sealed partial class MenuItemEditorViewModel : ObservableObject
             : $"Sort order must be a number from 0 to {MenuLimits.MaxSortOrder}.";
     }
 
+    // Checks the Portions table; the message names the row and the row shows it too. Null when the table is fine.
+    private string? ValidatePortions()
+    {
+        foreach (var row in Portions)
+        {
+            row.Error = null;
+        }
+
+        string? Fail(PortionRowViewModel row, string message)
+        {
+            row.Error = message;
+            return message;
+        }
+
+        if (Portions.Count == 0)
+        {
+            return "Add at least one portion.";
+        }
+
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        for (var i = 0; i < Portions.Count; i++)
+        {
+            var row = Portions[i];
+            var name = row.Name.Trim();
+            if (name.Length == 0)
+            {
+                return Fail(row, $"Enter a name for portion {i + 1}.");
+            }
+
+            if (name.Length > MenuLimits.PortionNameMaxLength)
+            {
+                return Fail(row, $"A portion name can have at most {MenuLimits.PortionNameMaxLength} characters.");
+            }
+
+            if (!seen.Add(name))
+            {
+                return Fail(row, $"The portion name {name} is used more than once.");
+            }
+
+            if (!FormNumbers.TryParseMoney(row.PriceText, out var price) || price < 0 || price > MenuLimits.MaxPrice || decimal.Round(price, 2) != price)
+            {
+                return Fail(row, $"Enter a price for {name} such as 180 or 180.50.");
+            }
+
+            var hasQuantity = !string.IsNullOrWhiteSpace(row.QuantityText);
+            if (hasQuantity && (!FormNumbers.TryParseMoney(row.QuantityText, out var quantity) || quantity <= 0 || quantity > MenuLimits.PortionQuantityMax))
+            {
+                return Fail(row, $"Enter a quantity above 0 for {name}, or leave it empty.");
+            }
+
+            if (!hasQuantity && !string.IsNullOrWhiteSpace(row.Unit))
+            {
+                return Fail(row, $"Enter a quantity for {name}, or clear its unit.");
+            }
+        }
+
+        if (Portions.Count(p => p.IsDefault) != 1)
+        {
+            return Fail(Portions.FirstOrDefault(p => p.IsDefault) ?? Portions[0], "Choose exactly one default portion.");
+        }
+
+        if (!Portions.Any(p => p.IsActive))
+        {
+            return Fail(Portions[0], "At least one portion must be on.");
+        }
+
+        var defaultRow = Portions.Single(p => p.IsDefault);
+        return defaultRow.IsActive ? null : Fail(defaultRow, "The default portion must be on. Choose another default first.");
+    }
+
+    private List<SaveMenuItemPortionRequest> PortionRequests() =>
+        Portions.Select((row, index) =>
+        {
+            FormNumbers.TryParseMoney(row.PriceText, out var price);
+            decimal? quantity = !string.IsNullOrWhiteSpace(row.QuantityText) && FormNumbers.TryParseMoney(row.QuantityText, out var q) ? q : null;
+            return new SaveMenuItemPortionRequest
+            {
+                Id = row.Id,
+                Name = row.Name.Trim(),
+                Quantity = quantity,
+                Unit = quantity is null || string.IsNullOrWhiteSpace(row.Unit) ? null : row.Unit,
+                Price = price,
+                IsDefault = row.IsDefault,
+                IsActive = row.IsActive,
+                SortOrder = index + 1,
+            };
+        }).ToList();
+
     public CreateMenuItemRequest ToCreateRequest()
     {
-        FormNumbers.TryParseMoney(Price, out var price);
+        var portions = PortionRequests();
+        var price = portions.FirstOrDefault(p => p.IsDefault)?.Price ?? 0m;
         FormNumbers.TryParseMoney(PackagingCharge, out var packaging);
         return new CreateMenuItemRequest
         {
@@ -247,6 +412,7 @@ public sealed partial class MenuItemEditorViewModel : ObservableObject
             SortOrder = int.Parse(SortOrder),
             IsAvailable = IsAvailable,
             ModifierGroupIds = SelectedGroups(),
+            Portions = portions,
         };
     }
 
@@ -267,6 +433,7 @@ public sealed partial class MenuItemEditorViewModel : ObservableObject
             SortOrder = create.SortOrder,
             IsAvailable = create.IsAvailable,
             ModifierGroupIds = create.ModifierGroupIds,
+            Portions = create.Portions,
             IsActive = IsActive,
             RowVersion = RowVersion,
         };
@@ -304,6 +471,14 @@ public sealed partial class MenuItemsPageViewModel : ViewModelBase, IMenuAdminPa
     public string Title => "Items";
 
     public ObservableCollection<MenuItemDto> Items { get; } = new();
+
+    // What the list shows: the items with their portion chips and picture.
+    public ObservableCollection<MenuItemRowViewModel> Rows { get; } = new();
+
+    [ObservableProperty]
+    private MenuItemRowViewModel? _selectedRow;
+
+    partial void OnSelectedRowChanged(MenuItemRowViewModel? value) => SelectedItem = value?.Item;
 
     public ObservableCollection<CategoryDto> CategoryFilters { get; } = new();
 
@@ -410,9 +585,20 @@ public sealed partial class MenuItemsPageViewModel : ViewModelBase, IMenuAdminPa
 
             if (result.Success && result.Data is not null)
             {
-                _notifications.Success(Editor.IsNew ? $"{result.Data.Name} created. You can now add a picture." : $"{result.Data.Name} updated.");
-                await LoadItemsAsync(result.Data.Id);
-                Editor.BeginEdit(result.Data);
+                var saved = result.Data;
+                if (Editor.IsNew && Editor.PendingImagePath is { } pending)
+                {
+                    // The picture chosen before the item existed goes up now that it has an id.
+                    _notifications.Success($"{saved.Name} created.");
+                    saved = await UploadPendingPictureAsync(saved, pending) ?? saved;
+                }
+                else
+                {
+                    _notifications.Success(Editor.IsNew ? $"{saved.Name} created. You can add a picture now." : $"{saved.Name} updated.");
+                }
+
+                await LoadItemsAsync(saved.Id);
+                Editor.BeginEdit(saved);
                 await LoadPictureAsync();
                 return;
             }
@@ -429,10 +615,32 @@ public sealed partial class MenuItemsPageViewModel : ViewModelBase, IMenuAdminPa
         });
     }
 
+    // Uploads the picture chosen on the New item form. A failure keeps the item (it is already saved) and says so.
+    private async Task<MenuItemDto?> UploadPendingPictureAsync(MenuItemDto item, string path)
+    {
+        try
+        {
+            await using var stream = File.OpenRead(path);
+            var upload = await _menuApi.UploadImageAsync(item.Id, stream, Path.GetFileName(path));
+            if (upload.Success && upload.Data is not null)
+            {
+                return upload.Data;
+            }
+
+            _notifications.Warning($"{item.Name} was saved, but its picture was not uploaded: {ApiFailures.Describe(upload)} Choose it again.");
+        }
+        catch (IOException ex)
+        {
+            _notifications.Warning($"{item.Name} was saved, but its picture could not be read: {ex.Message}");
+        }
+
+        return null;
+    }
+
     [RelayCommand]
     private async Task ChoosePictureAsync()
     {
-        if (Editor.IsNew || _filePicker.PickImage() is not { } path)
+        if (_filePicker.PickImage() is not { } path)
         {
             return;
         }
@@ -441,6 +649,15 @@ public sealed partial class MenuItemsPageViewModel : ViewModelBase, IMenuAdminPa
         if (info.Length > MenuLimits.MaxImageBytes)
         {
             Editor.ErrorMessage = $"The picture is larger than {MenuLimits.MaxImageBytes / (1024 * 1024)} MB. Choose a smaller one.";
+            return;
+        }
+
+        if (Editor.IsNew)
+        {
+            // Nothing to upload to yet: keep the file, show it, and upload it when the item is created.
+            Editor.PendingImagePath = path;
+            Editor.ImageFile = path;
+            Editor.ErrorMessage = null;
             return;
         }
 
@@ -462,7 +679,14 @@ public sealed partial class MenuItemsPageViewModel : ViewModelBase, IMenuAdminPa
     [RelayCommand]
     private async Task RemovePictureAsync()
     {
-        if (Editor.IsNew || !Editor.HasPicture
+        if (Editor.IsNew)
+        {
+            Editor.PendingImagePath = null;
+            Editor.ImageFile = null;
+            return;
+        }
+
+        if (!Editor.HasPicture
             || !await _dialogs.ConfirmAsync("Remove picture", $"Remove the picture of {Editor.Name}?", "Remove", destructive: true))
         {
             return;
@@ -528,11 +752,31 @@ public sealed partial class MenuItemsPageViewModel : ViewModelBase, IMenuAdminPa
         }
 
         Items.Clear();
+        Rows.Clear();
         foreach (var item in items)
         {
             Items.Add(item);
+            Rows.Add(new MenuItemRowViewModel(item));
         }
 
         SelectedItem = Items.FirstOrDefault(i => i.Id == keep);
+        SelectedRow = Rows.FirstOrDefault(r => r.Item.Id == keep);
+        _ = LoadRowPicturesAsync(Rows.ToList());
+    }
+
+    // The thumbnails arrive one by one; a missing picture simply keeps the initials tile.
+    private async Task LoadRowPicturesAsync(IReadOnlyList<MenuItemRowViewModel> rows)
+    {
+        foreach (var row in rows.Where(r => r.Item.ImageUrl is not null))
+        {
+            try
+            {
+                row.ImageFile = await _menuCache.GetImageFileAsync(row.Item.ImageUrl);
+            }
+            catch (Exception)
+            {
+                // No picture is not an error here.
+            }
+        }
     }
 }
