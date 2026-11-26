@@ -103,7 +103,7 @@ else
                                 aria-pressed="@(_seatsOn.Contains(seat) ? "true" : "false")" @onclick="() => ToggleSeat(seat)">@seat@(owner is not null ? " ●" : null)</button>
                     }
                 </div>
-                <div class="muted small seat-hint">Tap a seat to order for it. Tap it again for the whole table. ● Has dishes: tap to add more.</div>
+                <div class="muted small seat-hint">Tap seats to select one or more. Tap a selected seat again to unselect it. ● Has dishes: tap to add more.</div>
             </div>
         }
         <button type="button" class="parcel-toggle @(_parcel ? "on" : null)" data-testid="parcel-toggle" aria-pressed="@(_parcel ? "true" : "false")" @onclick="() => _parcel = !_parcel">
@@ -276,29 +276,30 @@ else
         }
     }
 
-    // One chair at a time: tapping a chair selects only it, tapping the selected chair again goes back to the whole table.
-    // A chair that belongs to an older multi-seat group ("T01C+D", made before this rule) selects that whole group, so no
-    // chair can end up in two groups.
+    // Tapping a seat adds it to the selection (supports multiple seats); tapping an already selected seat toggles it off.
+    // If a seat belongs to an existing group, toggling it toggles that whole group.
     private void ToggleSeat(string seat)
     {
-        var wasOn = _seatsOn.Contains(seat);
-        _seatsOn.Clear();
-        if (wasOn)
-        {
-            return;
-        }
-
         var owners = SeatOwners;
         var group = owners.GetValueOrDefault(seat);
-        if (group is null)
-        {
-            _seatsOn.Add(seat);
-            return;
-        }
+        var seatsToToggle = group is not null
+            ? _seatCodes.Where(s => owners.GetValueOrDefault(s) == group).ToList()
+            : new List<string> { seat };
 
-        foreach (var s in _seatCodes.Where(s => owners.GetValueOrDefault(s) == group))
+        var allOn = seatsToToggle.All(_seatsOn.Contains);
+        if (allOn)
         {
-            _seatsOn.Add(s);
+            foreach (var s in seatsToToggle)
+            {
+                _seatsOn.Remove(s);
+            }
+        }
+        else
+        {
+            foreach (var s in seatsToToggle)
+            {
+                _seatsOn.Add(s);
+            }
         }
     }
 

@@ -272,8 +272,8 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
     // The seat groups of dishes already sent for this order (loaded when dishes are added to it).
     private IReadOnlyList<string> _serverSeatGroups = Array.Empty<string>();
 
-    // One chair at a time: tapping a chair selects only it. A chair of an older multi-seat group ("T01C+D") selects that whole
-    // group and nothing else, so no seat ends up in two groups.
+    // Tapping a seat chip toggles it on or off (supports multi-seat selection).
+    // Tapping a chair of an existing multi-seat group ("T01C+D") toggles that whole group.
     private void OnSeatPickChanged(SeatPickViewModel? changed = null)
     {
         if (_adjustingSeats)
@@ -288,11 +288,6 @@ public sealed partial class OrderBuilderViewModel : ViewModelBase, INavigationAw
             {
                 if (changed.IsOn)
                 {
-                    foreach (var pick in SeatPicks.Where(p => !ReferenceEquals(p, changed)))
-                    {
-                        pick.IsOn = changed.OwnerGroup is { } group && pick.OwnerGroup == group;
-                    }
-
                     if (changed.OwnerGroup is { } owner)
                     {
                         foreach (var pick in SeatPicks.Where(p => p.OwnerGroup == owner))

@@ -273,7 +273,7 @@ public sealed partial class WaiterScreensTests : TestContext
     };
 
     [Fact]
-    public async Task Builder_SeatChips_SelectOneSeatAtATime_AndATakenSeatSelectsItsGroup()
+    public async Task Builder_SeatChips_MultiSeatToggle_AndATakenSeatSelectsItsGroup()
     {
         var handler = new RouteHandler
         {
@@ -290,13 +290,17 @@ public sealed partial class WaiterScreensTests : TestContext
         var page = await RenderBuilderAsync(handler);
         IReadOnlyList<AngleSharp.Dom.IElement> Chips() => page.FindAll("[data-testid=seat-chip]");
 
-        // one chair at a time: A, then B moves the selection to B only
+        // tapping A, then B selects both chairs (multi-seat selection)
         await page.InvokeAsync(() => Chips()[0].Click());
         await page.InvokeAsync(() => Chips()[1].Click());
-        Chips().Select(c => c.GetAttribute("aria-pressed")).Should().Equal("false", "true", "false", "false");
+        Chips().Select(c => c.GetAttribute("aria-pressed")).Should().Equal("true", "true", "false", "false");
 
-        // tapping the selected chair again goes back to the whole table
+        // tapping B again unselects B
         await page.InvokeAsync(() => Chips()[1].Click());
+        Chips().Select(c => c.GetAttribute("aria-pressed")).Should().Equal("true", "false", "false", "false");
+
+        // tapping A again unselects A, going back to the whole table
+        await page.InvokeAsync(() => Chips()[0].Click());
         Chips().Select(c => c.GetAttribute("aria-pressed")).Should().Equal("false", "false", "false", "false");
 
         // a dish for chair A: only A is taken
@@ -305,11 +309,12 @@ public sealed partial class WaiterScreensTests : TestContext
         await page.InvokeAsync(() => page.FindAll("button.item-card")[0].Click());
         Chips().Select(c => c.GetAttribute("data-taken")).Should().Equal("true", "false", "false", "false");
 
-        // a free chair replaces the selection; a taken chair selects only its own group
+        // a free chair can be toggled; clicking taken chair A toggles A
         await page.InvokeAsync(() => Chips()[2].Click());
-        Chips().Select(c => c.GetAttribute("aria-pressed")).Should().Equal("false", "false", "true", "false");
+        Chips().Select(c => c.GetAttribute("aria-pressed")).Should().Equal("true", "false", "true", "false");
+        await page.InvokeAsync(() => Chips()[2].Click());
         await page.InvokeAsync(() => Chips()[0].Click());
-        Chips().Select(c => c.GetAttribute("aria-pressed")).Should().Equal(new[] { "true", "false", "false", "false" }, "a chair is never mixed with another chair");
+        Chips().Select(c => c.GetAttribute("aria-pressed")).Should().Equal("false", "false", "false", "false");
         await StopRealtimeAsync();
     }
 

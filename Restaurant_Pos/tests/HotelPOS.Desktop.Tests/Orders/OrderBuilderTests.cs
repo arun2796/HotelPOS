@@ -252,10 +252,10 @@ public sealed partial class OrderBuilderViewModelTests : IDisposable
         vm.SeatPicks.Single(p => p.Code == "T05D").OwnerGroup.Should().Be("T05C+D");
     }
 
-    // One chair at a time: tapping a chair selects only it; tapping the selected chair again is the whole table; a chair of an
-    // older multi-seat group ("T05C+D") selects that whole group.
+    // Multi-seat toggle: tapping chairs toggles them into the selection; tapping a selected chair toggles it off;
+    // a chair of an older multi-seat group ("T05C+D") toggles that whole group.
     [Fact]
-    public async Task SeatChips_SelectOneChairAtATime_AndAChairOfAnOlderGroupSelectsItsGroup()
+    public async Task SeatChips_MultiSeatToggle_AndAChairOfAnOlderGroupSelectsItsGroup()
     {
         var table = new TableDto { Id = 5, Code = "T05", Capacity = 4, SeatCodes = new[] { "T05A", "T05B", "T05C", "T05D" } };
         var floor = Substitute.For<IFloorApi>();
@@ -277,20 +277,35 @@ public sealed partial class OrderBuilderViewModelTests : IDisposable
         await vm.OnNavigatedToAsync(new OrderBuilderContext(5, "T05", OrderBuilderMode.AppendItems, 4, OrderId: 7, OrderNumber: 1007));
         SeatPickViewModel Seat(string code) => vm.SeatPicks.Single(p => p.Code == code);
 
+        // Selecting T05A turns on T05A
         Seat("T05A").IsOn = true;
+        vm.SeatPicks.Where(p => p.IsOn).Select(p => p.Code).Should().Equal("T05A");
+        vm.SelectedSeat.Should().Be("T05A");
+
+        // Selecting T05B now preserves T05A and forms multi-seat group T05A+B
         Seat("T05B").IsOn = true;
+        vm.SeatPicks.Where(p => p.IsOn).Select(p => p.Code).Should().Equal("T05A", "T05B");
+        vm.SelectedSeat.Should().Be("T05A+B");
+
+        // Toggling T05A off leaves T05B
+        Seat("T05A").IsOn = false;
         vm.SeatPicks.Where(p => p.IsOn).Select(p => p.Code).Should().Equal("T05B");
         vm.SelectedSeat.Should().Be("T05B");
 
+        // Toggling T05B off returns to Whole table
         Seat("T05B").IsOn = false;
         vm.SelectedSeat.Should().Be(OrderBuilderViewModel.WholeTable);
         vm.IsWholeTable.Should().BeTrue();
 
+        // Selecting taken seat T05C selects its group (T05C + T05D)
         Seat("T05C").IsOn = true;
         vm.SeatPicks.Where(p => p.IsOn).Select(p => p.Code).Should().Equal("T05C", "T05D");
         vm.SelectedSeat.Should().Be("T05C+D");
+
+        // Also selecting T05A combines them
         Seat("T05A").IsOn = true;
-        vm.SeatPicks.Where(p => p.IsOn).Select(p => p.Code).Should().Equal("T05A");
+        vm.SeatPicks.Where(p => p.IsOn).Select(p => p.Code).Should().Equal("T05A", "T05C", "T05D");
+        vm.SelectedSeat.Should().Be("T05A+C+D");
     }
 
     [Fact]
