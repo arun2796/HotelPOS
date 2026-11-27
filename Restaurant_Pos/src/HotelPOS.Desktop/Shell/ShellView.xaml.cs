@@ -140,4 +140,9 @@ public partial class ShellView : UserControl
 
     // Clicks inside the palette must not reach the scrim behind it.
     private void OnPaletteClicked(object sender, MouseButtonEventArgs e) => e.Handled = true;
+
+    private void OnNoticesScrimClicked(object sender, MouseButtonEventArgs e) => ViewModel?.CloseNoticesCommand.Execute(null);
+
+    // Clicks inside the notices card must not reach the scrim behind it.
+    private void OnNoticesCardClicked(object sender, MouseButtonEventArgs e) => e.Handled = true;
 }

@@ -39,10 +39,12 @@ public sealed class CookieSessionTransport : ISessionTransport
     {
         try
         {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(TimeSpan.FromSeconds(3));
             using var message = new HttpRequestMessage(HttpMethod.Post, _host.Resolve("api/auth/web/logout"));
-            using var response = await _http.SendAsync(message, cancellationToken);
+            using var response = await _http.SendAsync(message, timeout.Token);
         }
-        catch (HttpRequestException)
+        catch (Exception ex) when (ex is HttpRequestException || (ex is OperationCanceledException && !cancellationToken.IsCancellationRequested))
         {
             // Offline: the cookie is cleared by the next successful call; the local session ends regardless.
         }
@@ -115,13 +117,15 @@ public sealed class TokenSessionTransport : ISessionTransport
 
         try
         {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(TimeSpan.FromSeconds(3));
             using var message = new HttpRequestMessage(HttpMethod.Post, _host.Resolve("api/auth/logout"))
             {
                 Content = JsonContent.Create(new LogoutRequest { RefreshToken = refreshToken }, options: PosJson.Options),
             };
-            using var response = await _http.SendAsync(message, cancellationToken);
+            using var response = await _http.SendAsync(message, timeout.Token);
         }
-        catch (HttpRequestException)
+        catch (Exception ex) when (ex is HttpRequestException || (ex is OperationCanceledException && !cancellationToken.IsCancellationRequested))
         {
             // Offline: the server-side token expires on its own; the device no longer has it.
         }

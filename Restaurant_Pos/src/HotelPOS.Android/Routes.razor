@@ -49,9 +49,11 @@ else
     protected override async Task OnInitializedAsync()
     {
         // Same as the browser host's Program.cs: restore the session (SecureStorage) before the first route renders.
+        // Cap the startup check so switching from office Wi-Fi to home Wi-Fi reaches Sign-in / Change server quickly.
         if (Host.IsConfigured)
         {
-            await Auth.TryRestoreAsync();
+            using var startupTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            await Auth.TryRestoreAsync(startupTimeout.Token);
         }
 
         _ready = true;

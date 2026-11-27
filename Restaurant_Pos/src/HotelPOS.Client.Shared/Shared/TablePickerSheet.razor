@@ -115,7 +115,9 @@
     private async Task Pick(TableDto table)
     {
         await OnClose.InvokeAsync();
-        Navigation.NavigateTo($"tables/{table.Id}/order");
+        Navigation.NavigateTo(table.CurrentOrderId is { } orderId
+            ? $"tables/{table.Id}/order/{orderId}/add"
+            : $"tables/{table.Id}/order");
     }
 
     private async Task PickTakeaway()

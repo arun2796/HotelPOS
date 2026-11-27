@@ -66,19 +66,21 @@
           <RowDefinition Height="*" />
           <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <StackPanel>
-          <TextBlock Text="{Binding Title}" Style="{StaticResource Text.Title}" Margin="0,0,0,20" />
-          <TextBlock Text="Name" Style="{StaticResource Text.Label}" />
-          <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" MaxLength="100" Margin="0,0,0,14" />
-          <TextBlock Text="Sort order (position of the tab when ordering)" Style="{StaticResource Text.Label}" />
-          <TextBox Text="{Binding SortOrder, UpdateSourceTrigger=PropertyChanged}" MaxLength="4" Margin="0,0,0,14" />
-          <CheckBox Content="Active" IsChecked="{Binding IsActive}"
-                    Visibility="{Binding IsNew, Converter={StaticResource InverseBoolToVisibility}}" />
-          <Border Style="{StaticResource Banner.Error}" Margin="0,16,0,0"
-                  Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibility}}">
-            <TextBlock Text="{Binding ErrorMessage}" Style="{StaticResource Text.Error}" />
-          </Border>
-        </StackPanel>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" PanningMode="VerticalOnly">
+          <StackPanel Margin="0,0,4,0">
+            <TextBlock Text="{Binding Title}" Style="{StaticResource Text.Title}" Margin="0,0,0,20" />
+            <TextBlock Text="Name" Style="{StaticResource Text.Label}" />
+            <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" MaxLength="100" Margin="0,0,0,14" />
+            <TextBlock Text="Sort order (position of the tab when ordering)" Style="{StaticResource Text.Label}" />
+            <TextBox Text="{Binding SortOrder, UpdateSourceTrigger=PropertyChanged}" MaxLength="4" Margin="0,0,0,14" />
+            <CheckBox Content="Active" IsChecked="{Binding IsActive}"
+                      Visibility="{Binding IsNew, Converter={StaticResource InverseBoolToVisibility}}" />
+            <Border Style="{StaticResource Banner.Error}" Margin="0,16,0,0"
+                    Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibility}}">
+              <TextBlock Text="{Binding ErrorMessage}" Style="{StaticResource Text.Error}" />
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
         <Grid Grid.Row="1" Margin="0,20,0,0">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />

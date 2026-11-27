@@ -110,36 +110,38 @@
           <RowDefinition Height="*" />
           <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <StackPanel>
-          <TextBlock Text="{Binding EditorTitle}" Style="{StaticResource Text.Title}" Margin="0,0,0,20" />
-          <TextBlock Text="Name" Style="{StaticResource Text.Label}" />
-          <TextBox Text="{Binding EditName, UpdateSourceTrigger=PropertyChanged}" MaxLength="100" Margin="0,0,0,14" />
+        <ScrollViewer VerticalScrollBarVisibility="Auto" PanningMode="VerticalOnly">
+          <StackPanel Margin="0,0,4,0">
+            <TextBlock Text="{Binding EditorTitle}" Style="{StaticResource Text.Title}" Margin="0,0,0,20" />
+            <TextBlock Text="Name" Style="{StaticResource Text.Label}" />
+            <TextBox Text="{Binding EditName, UpdateSourceTrigger=PropertyChanged}" MaxLength="100" Margin="0,0,0,14" />
 
-          <StackPanel Visibility="{Binding IsDiscountEditor, Converter={StaticResource BoolToVisibility}}">
-            <TextBlock Text="Type" Style="{StaticResource Text.Label}" />
-            <ComboBox SelectedIndex="{Binding EditKind}" Margin="0,0,0,14">
-              <ComboBoxItem Content="Percent of the bill" />
-              <ComboBoxItem Content="Fixed amount" />
-            </ComboBox>
-            <TextBlock Text="Value" Style="{StaticResource Text.Label}" />
-            <TextBox Text="{Binding EditValue, UpdateSourceTrigger=PropertyChanged}" MaxLength="10" Margin="0,0,0,14" />
-            <CheckBox Content="Needs manager approval" IsChecked="{Binding EditRequiresApproval}" Margin="0,0,0,10" />
+            <StackPanel Visibility="{Binding IsDiscountEditor, Converter={StaticResource BoolToVisibility}}">
+              <TextBlock Text="Type" Style="{StaticResource Text.Label}" />
+              <ComboBox SelectedIndex="{Binding EditKind}" Margin="0,0,0,14">
+                <ComboBoxItem Content="Percent of the bill" />
+                <ComboBoxItem Content="Fixed amount" />
+              </ComboBox>
+              <TextBlock Text="Value" Style="{StaticResource Text.Label}" />
+              <TextBox Text="{Binding EditValue, UpdateSourceTrigger=PropertyChanged}" MaxLength="10" Margin="0,0,0,14" />
+              <CheckBox Content="Needs manager approval" IsChecked="{Binding EditRequiresApproval}" Margin="0,0,0,10" />
+            </StackPanel>
+
+            <StackPanel Visibility="{Binding IsMethodEditor, Converter={StaticResource BoolToVisibility}}">
+              <TextBlock Text="Code" Style="{StaticResource Text.Label}" />
+              <TextBox Text="{Binding EditCode, UpdateSourceTrigger=PropertyChanged}" CharacterCasing="Upper" MaxLength="20" Margin="0,0,0,14" />
+              <TextBlock Text="Order on the payment screen" Style="{StaticResource Text.Label}" />
+              <TextBox Text="{Binding EditSortOrder, UpdateSourceTrigger=PropertyChanged}" MaxLength="4" Margin="0,0,0,14" />
+              <CheckBox Content="Ask for a reference number" IsChecked="{Binding EditRequiresReference}" Margin="0,0,0,10" />
+            </StackPanel>
+
+            <CheckBox Content="Active" IsChecked="{Binding EditIsActive}" />
+            <Border Style="{StaticResource Banner.Error}" Margin="0,16,0,0"
+                    Visibility="{Binding EditorError, Converter={StaticResource StringToVisibility}}">
+              <TextBlock Text="{Binding EditorError}" Style="{StaticResource Text.Error}" />
+            </Border>
           </StackPanel>
-
-          <StackPanel Visibility="{Binding IsMethodEditor, Converter={StaticResource BoolToVisibility}}">
-            <TextBlock Text="Code" Style="{StaticResource Text.Label}" />
-            <TextBox Text="{Binding EditCode, UpdateSourceTrigger=PropertyChanged}" CharacterCasing="Upper" MaxLength="20" Margin="0,0,0,14" />
-            <TextBlock Text="Order on the payment screen" Style="{StaticResource Text.Label}" />
-            <TextBox Text="{Binding EditSortOrder, UpdateSourceTrigger=PropertyChanged}" MaxLength="4" Margin="0,0,0,14" />
-            <CheckBox Content="Ask for a reference number" IsChecked="{Binding EditRequiresReference}" Margin="0,0,0,10" />
-          </StackPanel>
-
-          <CheckBox Content="Active" IsChecked="{Binding EditIsActive}" />
-          <Border Style="{StaticResource Banner.Error}" Margin="0,16,0,0"
-                  Visibility="{Binding EditorError, Converter={StaticResource StringToVisibility}}">
-            <TextBlock Text="{Binding EditorError}" Style="{StaticResource Text.Error}" />
-          </Border>
-        </StackPanel>
+        </ScrollViewer>
         <Grid Grid.Row="1" Margin="0,20,0,0">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />

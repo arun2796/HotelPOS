@@ -172,6 +172,10 @@ public sealed class WebUiFixTests : TestContext
         // As in FavouritesTests: let the start-up work (connect attempt, draft and table reads) settle first.
         await Task.Delay(500);
         page.FindAll("button.item-card")[1].Click();
+        if (page.FindAll("[data-testid=options-confirm]").FirstOrDefault() is { } confirm)
+        {
+            confirm.Click();
+        }
         page.Find(".cart h2").TextContent.Should().Be("Order · 1 item");
         page.Find("[data-testid=cart-review]").Click();
         page.FindAll(".cart-line").Should().ContainSingle();

@@ -40,6 +40,11 @@ internal sealed class DeactivateModifierOptionHandler : ICommandHandler<Deactiva
 
         if (option.IsActive)
         {
+            if (await _modifiers.CheckOptionDeactivationAsync(groupId, optionId, cancellationToken) is { } linkError)
+            {
+                return linkError;
+            }
+
             option.Deactivate();
             _audit.Add(AuditActions.ModifierOptionDeactivated, nameof(ModifierGroup), groupId.ToString(),
                 newValues: new { OptionId = option.Id, option.Name });

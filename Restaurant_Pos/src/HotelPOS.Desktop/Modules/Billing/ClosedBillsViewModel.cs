@@ -13,6 +13,8 @@ using HotelPOS.Desktop.Services.Ui;
 
 namespace HotelPOS.Desktop.Modules.Billing;
 
+public sealed record OrderTypeFilterOption(OrderType? Type, string Label);
+
 public sealed record ClosedBillRow(BillSummaryDto Bill)
 {
     public string Invoice => Bill.InvoiceNumber ?? $"Bill {Bill.BillNumber}";
@@ -48,6 +50,7 @@ public sealed partial class ClosedBillsViewModel : ViewModelBase, INavigationAwa
     private readonly IDocumentPrinter _printer;
     private readonly IPrintApi _printApi;
     private readonly IFilePicker _files;
+    private List<ClosedBillRow> _allBills = new();
 
     public ClosedBillsViewModel(IBillingApi billingApi, IDialogService dialogs, INotificationService notifications, IDocumentPrinter printer, IPrintApi printApi, IFilePicker files)
     {
@@ -57,11 +60,25 @@ public sealed partial class ClosedBillsViewModel : ViewModelBase, INavigationAwa
         _printer = printer;
         _printApi = printApi;
         _files = files;
+
+        OrderTypeFilters = new[]
+        {
+            new OrderTypeFilterOption(null, "All"),
+            new OrderTypeFilterOption(OrderType.DineIn, "Dine-In"),
+            new OrderTypeFilterOption(OrderType.Takeaway, "Takeaway"),
+            new OrderTypeFilterOption(OrderType.Delivery, "Delivery"),
+        };
+        _selectedOrderType = OrderTypeFilters[0];
     }
 
     public ObservableCollection<ClosedBillRow> Bills { get; } = new();
 
     public ObservableCollection<PaymentRow> Payments { get; } = new();
+
+    public IReadOnlyList<OrderTypeFilterOption> OrderTypeFilters { get; }
+
+    [ObservableProperty]
+    private OrderTypeFilterOption _selectedOrderType;
 
     [ObservableProperty]
     private DateTime? _selectedDate;
@@ -113,15 +130,8 @@ public sealed partial class ClosedBillsViewModel : ViewModelBase, INavigationAwa
             }
 
             ErrorMessage = null;
-            var keep = SelectedBill?.Bill.Id;
-            Bills.Clear();
-            foreach (var bill in result.Data)
-            {
-                Bills.Add(new ClosedBillRow(bill));
-            }
-
-            SelectedBill = Bills.FirstOrDefault(b => b.Bill.Id == keep);
-            OnPropertyChanged(nameof(SummaryText));
+            _allBills = result.Data.Select(bill => new ClosedBillRow(bill)).ToList();
+            ApplyOrderTypeFilter();
         }
         finally
         {
@@ -141,7 +151,33 @@ public sealed partial class ClosedBillsViewModel : ViewModelBase, INavigationAwa
 
     partial void OnSelectedDateChanged(DateTime? value) => _ = RefreshAsync();
 
+    partial void OnSelectedOrderTypeChanged(OrderTypeFilterOption value)
+    {
+        if (value is not null)
+        {
+            ApplyOrderTypeFilter();
+        }
+    }
+
     partial void OnSelectedBillChanged(ClosedBillRow? value) => _ = LoadDetailAsync(value?.Bill.Id);
+
+    private void ApplyOrderTypeFilter()
+    {
+        var keep = SelectedBill?.Bill.Id;
+        var type = SelectedOrderType?.Type;
+        var filtered = type is { } t
+            ? _allBills.Where(b => b.Bill.OrderType == t)
+            : _allBills;
+
+        Bills.Clear();
+        foreach (var row in filtered)
+        {
+            Bills.Add(row);
+        }
+
+        SelectedBill = Bills.FirstOrDefault(b => b.Bill.Id == keep);
+        OnPropertyChanged(nameof(SummaryText));
+    }
 
     [RelayCommand]
     private async Task RefundAsync(PaymentRow? row)

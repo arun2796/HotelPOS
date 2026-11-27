@@ -329,6 +329,12 @@ public sealed partial class ShellViewModel : ObservableObject, INavigationAware,
     }
 
     [RelayCommand]
+    private void CloseNotices()
+    {
+        IsNoticesOpen = false;
+    }
+
+    [RelayCommand]
     private void MarkAllNoticesRead() => Notices.MarkAllRead();
 
     [RelayCommand]

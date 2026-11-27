@@ -6,6 +6,7 @@
 @inject NavigationManager Navigation
 @inject NotificationRouter Notifications
 @inject NotificationCenter NotificationList
+@inject IClientHost Host
 
 <div class="shell @(Mode == ShellMode.Kitchen ? "kitchen" : "waiter")">
     <header class="topbar">
@@ -89,6 +90,10 @@
                 <NotificationPanel OnClose="() => _more = false" />
             </section>
             <NavLink class="btn block more-link" href="settings" @onclick="() => _more = false"><Icon Name="settings" /> Settings</NavLink>
+            @if (Host.CanChangeServer)
+            {
+                <a class="btn block more-link" href="server" data-testid="more-change-server" @onclick="() => _more = false"><Icon Name="swap" /> Change server</a>
+            }
             <button type="button" class="btn block danger-outline more-link" @onclick="AskSignOut"><Icon Name="logout" /> Sign out</button>
         </BottomSheet>
     }

@@ -133,7 +133,7 @@ internal sealed class PreviewImportHandler : IQueryHandler<PreviewImportQuery, I
         return header with
         {
             ErrorRows = menu?.ErrorRows ?? customers!.ErrorRows,
-            ValidRows = menu?.Rows.Count ?? customers!.Rows.Count,
+            ValidRows = menu?.ValidRows ?? customers!.ValidRows,
             ToCreate = menu?.ToCreate ?? customers!.ToCreate,
             ToUpdate = menu?.ToUpdate ?? customers!.ToUpdate,
             Errors = errors.Take(ImportLimits.MaxErrorsListed).ToList(),
@@ -178,7 +178,7 @@ internal sealed class ApplyImportHandler : ICommandHandler<ApplyImportCommand, I
 
         var (menu, customers) = await _session.PlanAsync(request.Kind, loaded, cancellationToken);
         var errors = menu?.Errors ?? customers!.Errors;
-        var validRows = menu?.Rows.Count ?? customers!.Rows.Count;
+        var validRows = menu?.ValidRows ?? customers!.ValidRows;
         var total = menu?.TotalRows ?? customers!.TotalRows;
         if (errors.Count > 0 && !request.SkipInvalid)
         {

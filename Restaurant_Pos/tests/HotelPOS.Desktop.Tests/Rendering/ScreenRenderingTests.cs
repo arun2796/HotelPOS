@@ -574,27 +574,27 @@ public class ScreenRenderingTests
             screen.Select(c => c.Content).Should().Equal("A", "B", "C", "D");
             screen.Select(c => c.Tooltip).Should().OnlyContain(t => t.EndsWith("free"), "nobody has ordered yet: every seat is free");
 
-            // one chair at a time: tapping B after A moves the selection to B only
+            // multi-seat toggle: tapping B after A selects both A and B together
             await InspectAsync(env, shell, null, root => { Toggle(root, "T05A"); Toggle(root, "T05B"); return SeatChips(root); });
-            builder.SelectedSeat.Should().Be("T05B", "seats are picked one at a time: B replaces A");
+            builder.SelectedSeat.Should().Be("T05A+B", "seats are toggled into the selection: A and B together");
             builder.AddItemCommand.Execute(builder.Items.Single(i => i.Name == "Veg Spring Roll"));
-            builder.Cart.Single().SeatCode.Should().Be("T05B", "the dish is saved with the one seat");
+            builder.Cart.Single().SeatCode.Should().Be("T05A+B", "the dish is saved with the seat group");
 
             var afterAdd = await InspectAsync(env, shell, "61-order-builder-seats-2", root => SeatChips(root));
-            afterAdd.Select(c => c.Content).Should().Equal("A", "B ●", "C", "D");
+            afterAdd.Select(c => c.Content).Should().Equal("A ●", "B ●", "C", "D");
+            afterAdd[0].Tooltip.Should().Contain("already has dishes");
             afterAdd[1].Tooltip.Should().Contain("already has dishes");
-            afterAdd.Select(c => c.IsChecked).Should().Equal(false, true, false, false);
+            afterAdd.Select(c => c.IsChecked).Should().Equal(true, true, false, false);
 
-            // another free seat replaces the selection; a taken seat selects only itself; tapping it again is the whole table
+            // tapping an already selected group toggles the whole group off back to the whole table
+            await InspectAsync(env, shell, null, root => { Toggle(root, "T05A"); return SeatChips(root); });
+            builder.SelectedSeat.Should().Be(OrderBuilderViewModel.WholeTable, "toggling off the group goes back to the whole table");
             await InspectAsync(env, shell, null, root => { Toggle(root, "T05C"); return SeatChips(root); });
             builder.SelectedSeat.Should().Be("T05C");
             await InspectAsync(env, shell, null, root => { Toggle(root, "T05D"); return SeatChips(root); });
-            builder.SelectedSeat.Should().Be("T05D", "a second free seat replaces the first, never joins it");
-            var again1 = await InspectAsync(env, shell, null, root => { Toggle(root, "T05B"); return SeatChips(root); });
-            builder.SelectedSeat.Should().Be("T05B", "tapping a taken seat selects that seat only");
-            again1.Select(c => c.IsChecked).Should().Equal(false, true, false, false);
-            await InspectAsync(env, shell, null, root => { Toggle(root, "T05B"); return SeatChips(root); });
-            builder.SelectedSeat.Should().Be(OrderBuilderViewModel.WholeTable, "tapping the selected seat again goes back to the whole table");
+            builder.SelectedSeat.Should().Be("T05C+D", "tapping D adds it to C");
+            await InspectAsync(env, shell, null, root => { Toggle(root, "T05C"); Toggle(root, "T05D"); return SeatChips(root); });
+            builder.SelectedSeat.Should().Be(OrderBuilderViewModel.WholeTable, "toggling off returns to whole table");
             builder.OnNavigatedFrom();
 
             // ---- the order is opened again later to add dishes: the group is still owned

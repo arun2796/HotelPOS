@@ -75,6 +75,19 @@ public class SessionTransportTests
         handler.Calls.Should().ContainSingle(c => c.Contains("api/auth/logout") && c.Contains("refresh-1"));
     }
 
+    [Fact]
+    public async Task SignOut_WhenServerTimesOut_StillClearsTheStore()
+    {
+        var store = new FakeTokenStore { Token = "refresh-1" };
+        var handler = new FakeHandler();
+        handler.OnPost["api/auth/logout"] = _ => throw new TaskCanceledException("timeout");
+        var transport = new TokenSessionTransport(new HttpClient(handler), new FakeHost(), store);
+
+        await transport.SignOutAsync(default);
+
+        store.Token.Should().BeNull("switching servers while offline must clear local credentials without throwing");
+    }
+
     private static HttpResponseMessage Login(string access, string refresh) => new(HttpStatusCode.OK)
     {
         Content = JsonContent.Create(ApiResponse.Ok(new LoginResponse

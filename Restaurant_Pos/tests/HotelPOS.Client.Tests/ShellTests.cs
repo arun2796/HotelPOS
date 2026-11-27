@@ -61,7 +61,7 @@ public sealed class ShellTests : TestContext
         }
     }
 
-    private async Task RenderShellAsync(string role, params string[] permissions)
+    private async Task RenderShellAsync(string role, bool canChangeServer = false, params string[] permissions)
     {
         var transport = Substitute.For<ISessionTransport>();
         transport.SignInAsync(Arg.Any<LoginRequest>(), Arg.Any<CancellationToken>()).Returns(ApiResult<LoginResponse>.Ok(new LoginResponse
@@ -71,7 +71,7 @@ public sealed class ShellTests : TestContext
             User = new CurrentUserDto { Id = Me, Username = "w", DisplayName = "Asha Rao", Roles = new[] { role }, Permissions = permissions },
         }, HttpStatusCode.OK));
         transport.SignOutAsync(Arg.Any<CancellationToken>()).Returns(_ => { _signOuts++; return Task.CompletedTask; });
-        var host = new FakeClientHost { ServerBase = new Uri("http://127.0.0.1:1/") };
+        var host = new FakeClientHost { ServerBase = new Uri("http://127.0.0.1:1/"), CanChangeServer = canChangeServer };
         var auth = new WebAuthState(transport, host);
         (await auth.SignInAsync("w", "x", "WEB-1", DeviceType.Waiter)).Success.Should().BeTrue();
         Services.AddSingleton<IClientHost>(host);
@@ -88,6 +88,9 @@ public sealed class ShellTests : TestContext
         Services.AddSingleton<NotificationPreferences>();
         Services.AddSingleton<NotificationRouter>();
     }
+
+    private Task RenderShellAsync(string role, params string[] permissions) =>
+        RenderShellAsync(role, canChangeServer: false, permissions);
 
     private IRenderedComponent<MainLayout> Layout() =>
         RenderComponent<MainLayout>(p => p.Add(c => c.Body, (RenderFragment)(b => b.AddContent(0, "body"))));
@@ -138,6 +141,22 @@ public sealed class ShellTests : TestContext
     }
 
     [Fact]
+    public async Task NewOrder_PickingActiveTable_OpensAddItemsOnItsCurrentOrder()
+    {
+        await RenderShellAsync("Waiter", Permissions.TablesView);
+        var layout = Layout();
+
+        layout.FindAll("nav.bottomnav button").Single(b => b.TextContent.Contains("New order")).Click();
+        layout.WaitForAssertion(() => layout.Find("[data-testid=picker-mine] .picker-table"));
+
+        layout.Find("[data-testid=picker-mine] .picker-table").Click();
+
+        Services.GetRequiredService<NavigationManager>().Uri.Should().EndWith("tables/3/order/30/add");
+        layout.FindAll(".bsheet").Should().BeEmpty("the sheet closes after picking");
+        await Services.GetRequiredService<WebRealtimeClient>().StopAsync();
+    }
+
+    [Fact]
     public async Task More_OpensSheet_WithNotifications_Settings_Profile_Device_AndSignOut()
     {
         await RenderShellAsync("Waiter", Permissions.TablesView);
@@ -149,6 +168,7 @@ public sealed class ShellTests : TestContext
         layout.Find(".bsheet .more-name").TextContent.Should().Be("Asha Rao");
         layout.Find(".bsheet .notice-panel").Should().NotBeNull();
         layout.Find(".bsheet a[href=settings]").TextContent.Should().Contain("Settings");
+        layout.FindAll("[data-testid=more-change-server]").Should().BeEmpty("browser client cannot change server");
         layout.Find("[data-testid=device-version]").TextContent.Should().Be("v0.1.0");
         layout.Find("[data-testid=device-name]").TextContent.Should().StartWith("WEB-WAITER-");
 
@@ -178,6 +198,21 @@ public sealed class ShellTests : TestContext
         layout.Find("header button[aria-label='Sign out']").Click();
         layout.Find("[data-testid=confirm-sign-out]").Click();
         layout.WaitForAssertion(() => _signOuts.Should().Be(1));
+        await Services.GetRequiredService<WebRealtimeClient>().StopAsync();
+    }
+
+    [Fact]
+    public async Task More_WhenHostAllowsChangingServer_ShowsChangeServerButton()
+    {
+        await RenderShellAsync("Waiter", canChangeServer: true, Permissions.TablesView);
+        var layout = Layout();
+
+        layout.FindAll("nav.bottomnav button").Single(b => b.TextContent.Contains("More")).Click();
+
+        layout.WaitForAssertion(() => layout.Find("[data-testid=more-change-server]").Should().NotBeNull());
+        var link = layout.Find("a[data-testid=more-change-server]");
+        link.GetAttribute("href").Should().Be("server");
+        link.TextContent.Should().Contain("Change server");
         await Services.GetRequiredService<WebRealtimeClient>().StopAsync();
     }
 }

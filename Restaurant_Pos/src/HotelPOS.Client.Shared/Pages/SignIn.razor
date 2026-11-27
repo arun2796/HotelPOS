@@ -1,5 +1,6 @@
 @page "/signin"
 @layout EmptyLayout
+@implements IDisposable
 @inject WebAuthState Auth
 @inject DeviceIdentity Device
 @inject WebRealtimeClient Realtime
@@ -56,6 +57,18 @@
             <span class="muted small">Terminal <b data-testid="signin-device">@_deviceName</b></span>
             <StatusBadge Display="ServerDisplay" />
         </div>
+        @if (Host.CanChangeServer)
+        {
+            <div class="signin-server" data-testid="signin-server">
+                @if (Host.IsConfigured)
+                {
+                    <div class="muted small signin-server-url" data-testid="server-address">@Host.ServerBase.ToString().TrimEnd('/')</div>
+                }
+                <a class="btn block" href="server" data-testid="change-server">
+                    <Icon Name="swap" Size="18" /> Change server
+                </a>
+            </div>
+        }
     </div>
 </div>
 
@@ -64,6 +77,7 @@
 
     private static readonly IReadOnlyList<TabItem> DeviceTypes = new[] { new TabItem(nameof(DeviceType.Waiter), "Waiter"), new TabItem(nameof(DeviceType.Kitchen), "Kitchen") };
 
+    private readonly CancellationTokenSource _dispose = new();
     private string _username = string.Empty;
     private string _password = string.Empty;
     private string? _error;
@@ -91,15 +105,34 @@
 
         _type = await Device.GetPreferredTypeAsync();
         _deviceName = await Device.GetOrCreateNameAsync(_type);
-        var info = await Api.GetAsync<SystemInfoDto>("api/system/info");
-        if (info.Success && info.Data is { } data)
-        {
-            _restaurant = data.RestaurantName;
-            _serverOnline = true;
-        }
-        else
+        if (!Host.IsConfigured)
         {
             _serverOnline = false;
+            return;
+        }
+
+        try
+        {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(_dispose.Token);
+            cts.CancelAfter(TimeSpan.FromSeconds(5));
+            var info = await Api.GetAsync<SystemInfoDto>("api/system/info", cts.Token);
+            if (info.Success && info.Data is { } data)
+            {
+                _restaurant = data.RestaurantName;
+                _serverOnline = true;
+            }
+            else
+            {
+                _serverOnline = false;
+            }
+        }
+        catch (OperationCanceledException) when (!_dispose.IsCancellationRequested)
+        {
+            _serverOnline = false;
+        }
+        catch (OperationCanceledException)
+        {
+            // Disposing while navigating away (for example to the Server page).
         }
     }
 
@@ -143,5 +176,11 @@
         {
             _busy = false;
         }
+    }
+
+    public void Dispose()
+    {
+        _dispose.Cancel();
+        _dispose.Dispose();
     }
 }

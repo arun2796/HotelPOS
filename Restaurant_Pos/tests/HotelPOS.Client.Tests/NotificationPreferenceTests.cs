@@ -121,6 +121,7 @@ public sealed class NotificationPreferenceTests : TestContext
         var page = RenderComponent<Settings>();
         page.Find("[data-testid=settings-profile]").TextContent.Should().Contain("Kitchen");
         page.Find("[data-testid=device-name]").TextContent.Should().StartWith("WEB-KITCHEN-");
+        page.FindAll("[data-testid=settings-server]").Should().BeEmpty("browser client cannot change server");
 
         page.WaitForAssertion(() => page.FindAll("[data-kind]").Should().HaveCount(NotificationPreferenceDefaults.AllKinds.Count));
         page.Find("[data-testid=sound-TicketCreated]").HasAttribute("checked").Should().BeTrue();
@@ -136,5 +137,27 @@ public sealed class NotificationPreferenceTests : TestContext
 
         page.Find("[data-testid=test-sound]").Click();
         await _signal.Received(1).SignalAsync();
+    }
+
+    [Fact]
+    public async Task SettingsPage_WhenHostAllowsChangingServer_ShowsServerCardAndButton()
+    {
+        var auth = await SignInAsync("Kitchen");
+        var appHost = new FakeClientHost { ServerBase = new Uri("http://192.168.1.15:5000/"), CanChangeServer = true, DeviceNamePrefix = "APP" };
+        Services.AddSingleton(auth);
+        Services.AddSingleton(_signal);
+        Services.AddSingleton<IBrowserStorage>(_storage);
+        Services.AddSingleton<NotificationPreferences>();
+        Services.AddSingleton<ShellState>();
+        Services.AddSingleton<IClientHost>(appHost);
+        Services.AddSingleton<WebRealtimeClient>();
+        Services.AddSingleton<DeviceIdentity>();
+        JSInterop.Mode = JSRuntimeMode.Loose;
+
+        var page = RenderComponent<Settings>();
+
+        page.Find("[data-testid=settings-server]").Should().NotBeNull();
+        page.Find("[data-testid=server-address]").TextContent.Should().Be("http://192.168.1.15:5000");
+        page.Find("a[data-testid=change-server]").GetAttribute("href").Should().Be("server");
     }
 }

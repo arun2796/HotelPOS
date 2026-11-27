@@ -65,10 +65,10 @@
     </Border>
 
     <Grid Grid.Row="4">
-      <DataGrid ItemsSource="{Binding Backups}" HorizontalScrollBarVisibility="Disabled">
+      <DataGrid ItemsSource="{Binding Backups}" HorizontalScrollBarVisibility="Auto">
         <DataGrid.Columns>
-          <DataGridTextColumn Header="STARTED" Binding="{Binding Started}" Width="1.2*" MinWidth="140" />
-          <DataGridTemplateColumn Header="STATUS" Width="0.8*" MinWidth="104">
+          <DataGridTextColumn Header="STARTED" Binding="{Binding Started}" Width="165" MinWidth="165" ElementStyle="{StaticResource Text.GridTrim}" />
+          <DataGridTemplateColumn Header="STATUS" Width="95" MinWidth="95">
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate>
                 <controls:StatusBadge Label="{Binding Status}">
@@ -92,11 +92,11 @@
               </DataTemplate>
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>
-          <DataGridTextColumn Header="SIZE" Binding="{Binding Size}" Width="0.6*" MinWidth="70" />
-          <DataGridTextColumn Header="DURATION" Binding="{Binding Duration}" Width="0.7*" MinWidth="95" />
-          <DataGridTextColumn Header="TRIGGER" Binding="{Binding Trigger}" Width="1*" MinWidth="110" />
-          <DataGridTextColumn Header="FILE" Binding="{Binding Backup.FileName}" Width="2*" MinWidth="240" ElementStyle="{StaticResource Text.GridTrim}" />
-          <DataGridTextColumn Header="ERROR" Binding="{Binding Backup.Error}" Width="1.6*" MinWidth="120" ElementStyle="{StaticResource Text.GridTrim}" />
+          <DataGridTextColumn Header="SIZE" Binding="{Binding Size}" Width="90" MinWidth="90" />
+          <DataGridTextColumn Header="DURATION" Binding="{Binding Duration}" Width="90" MinWidth="85" />
+          <DataGridTextColumn Header="TRIGGER" Binding="{Binding Trigger}" Width="1.2*" MinWidth="170" ElementStyle="{StaticResource Text.GridTrim}" />
+          <DataGridTextColumn Header="FILE" Binding="{Binding Backup.FileName}" Width="2.5*" MinWidth="260" ElementStyle="{StaticResource Text.GridTrim}" />
+          <DataGridTextColumn Header="ERROR" Binding="{Binding Backup.Error}" Width="1.5*" MinWidth="100" ElementStyle="{StaticResource Text.GridTrim}" />
         </DataGrid.Columns>
       </DataGrid>
       <ProgressBar IsIndeterminate="True" Height="3" VerticalAlignment="Top"

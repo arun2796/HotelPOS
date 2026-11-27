@@ -44,6 +44,15 @@ internal sealed class UpdateModifierGroupHandler : ICommandHandler<UpdateModifie
             return AppErrors.Duplicate($"A modifier group named '{request.Name.Trim()}' already exists.");
         }
 
+        if (request.IsActive && request.MinSelections > 0)
+        {
+            var activeOptions = await _db.ModifierOptions.CountAsync(o => o.ModifierGroupId == id && o.IsActive, cancellationToken);
+            if (await _modifiers.CheckLinkedMinimumAsync(id, request.Name.Trim(), request.MinSelections, activeOptions, cancellationToken) is { } linkError)
+            {
+                return linkError;
+            }
+        }
+
         var oldValues = new { group.Name, group.MinSelections, group.MaxSelections, group.IsActive };
         group.Update(request.Name, request.MinSelections, request.MaxSelections);
         if (request.IsActive)

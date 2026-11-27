@@ -5,6 +5,7 @@
 @inject NotificationPreferences Preferences
 @inject IAlertSignal Signal
 @inject ShellState Shell
+@inject IClientHost Host
 
 <PageTitle>Settings · HotelPOS</PageTitle>
 
@@ -35,6 +36,17 @@
 <section class="settings-section" aria-label="This device">
     <h2 class="section-head">This device</h2>
     <DeviceStatusCard Type="@(Auth.IsInRole(Roles.Kitchen) ? DeviceType.Kitchen : DeviceType.Waiter)" />
+    @if (Host.CanChangeServer)
+    {
+        <div class="card settings-row" style="margin-top:8px" data-testid="settings-server">
+            <span class="settings-ico"><Icon Name="swap" /></span>
+            <div class="grow">
+                <div>Server</div>
+                <div class="muted small" data-testid="server-address">@(Host.IsConfigured ? Host.ServerBase.ToString().TrimEnd('/') : "Not configured")</div>
+            </div>
+            <a class="btn" href="server" data-testid="change-server">Change server</a>
+        </div>
+    }
 </section>
 
 <section class="settings-section" aria-label="Notifications on this device">

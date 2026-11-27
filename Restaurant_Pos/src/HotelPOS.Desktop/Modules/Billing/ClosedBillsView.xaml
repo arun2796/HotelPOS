@@ -25,7 +25,10 @@
         <DatePicker SelectedDate="{Binding SelectedDate}" Width="150" VerticalAlignment="Center" ToolTip="Business day (empty = today)"
                     md:HintAssist.Hint="Business day" AutomationProperties.Name="Business day" />
         <Button Content="Today" Command="{Binding TodayCommand}" Margin="8,0,0,0" />
-        <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" Width="240" Margin="16,0,0,0" MaxLength="50"
+        <ComboBox ItemsSource="{Binding OrderTypeFilters}" SelectedItem="{Binding SelectedOrderType}"
+                  DisplayMemberPath="Label" Width="130" Margin="8,0,0,0" VerticalAlignment="Center"
+                  ToolTip="Filter by order type" AutomationProperties.Name="Order type filter" />
+        <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" Width="240" Margin="12,0,0,0" MaxLength="50"
                  VerticalContentAlignment="Center" ToolTip="Table, invoice or order number"
                  md:HintAssist.Hint="Table, invoice or order no." AutomationProperties.Name="Search bills">
           <TextBox.InputBindings>

@@ -44,6 +44,12 @@ internal sealed class UpdateModifierOptionHandler : ICommandHandler<UpdateModifi
             return AppErrors.Duplicate($"The group already has an option named '{request.Name.Trim()}'.");
         }
 
+        if (option.IsActive && !request.IsActive
+            && await _modifiers.CheckOptionDeactivationAsync(groupId, optionId, cancellationToken) is { } linkError)
+        {
+            return linkError;
+        }
+
         var oldValues = new { OptionId = option.Id, option.Name, option.PriceDelta, option.IsActive };
         option.Update(request.Name, request.PriceDelta, request.SortOrder);
         if (request.IsActive)

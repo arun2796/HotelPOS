@@ -422,6 +422,50 @@ public sealed class BillingViewModelTests
         vm.Dispose();
     }
 
+    [Fact]
+    public async Task ClosedBills_FiltersByOrderType_AndUpdatesSummary()
+    {
+        _api.GetClosedAsync(Arg.Any<DateOnly?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(ApiResult<List<BillSummaryDto>>.Ok(new List<BillSummaryDto>
+        {
+            Summary(1, "01", null, 30) with { Status = BillStatus.Settled, OrderType = OrderType.DineIn, GrandTotal = 500m },
+            Summary(2, "TA-10", null, 20) with { Status = BillStatus.Settled, OrderType = OrderType.Takeaway, GrandTotal = 200m },
+            Summary(3, "DL-04", null, 10) with { Status = BillStatus.Settled, OrderType = OrderType.Delivery, GrandTotal = 350m },
+        }));
+
+        var vm = new ClosedBillsViewModel(
+            _api,
+            Substitute.For<IDialogService>(),
+            Substitute.For<INotificationService>(),
+            Substitute.For<HotelPOS.Desktop.Services.Printing.IDocumentPrinter>(),
+            Substitute.For<IPrintApi>(),
+            Substitute.For<IFilePicker>());
+
+        await vm.OnNavigatedToAsync(null);
+
+        vm.OrderTypeFilters.Select(o => o.Label).Should().Equal("All", "Dine-In", "Takeaway", "Delivery");
+        vm.SelectedOrderType.Label.Should().Be("All");
+        vm.Bills.Select(b => b.Bill.Id).Should().Equal(1, 2, 3);
+        vm.SummaryText.Should().Be($"3 bills · {Money.Format(1050m)} taken");
+
+        vm.SelectedOrderType = vm.OrderTypeFilters.Single(o => o.Type == OrderType.DineIn);
+        vm.Bills.Select(b => b.Bill.Id).Should().Equal(1);
+        vm.SummaryText.Should().Be($"1 bills · {Money.Format(500m)} taken");
+
+        vm.SelectedOrderType = vm.OrderTypeFilters.Single(o => o.Type == OrderType.Takeaway);
+        vm.Bills.Select(b => b.Bill.Id).Should().Equal(2);
+        vm.SummaryText.Should().Be($"1 bills · {Money.Format(200m)} taken");
+
+        vm.SelectedOrderType = vm.OrderTypeFilters.Single(o => o.Type == OrderType.Delivery);
+        vm.Bills.Select(b => b.Bill.Id).Should().Equal(3);
+        vm.SummaryText.Should().Be($"1 bills · {Money.Format(350m)} taken");
+
+        await vm.RefreshAsync();
+        vm.Bills.Select(b => b.Bill.Id).Should().Equal(3);
+
+        vm.SelectedOrderType = vm.OrderTypeFilters[0];
+        vm.Bills.Select(b => b.Bill.Id).Should().Equal(1, 2, 3);
+    }
+
     private BillDetailViewModel DetailViewModel(string role = "Cashier", IDialogService? dialogs = null, ICustomersApi? customers = null, IOrdersApi? orders = null, INavigationService? nav = null)
     {
         var session = Substitute.For<IAuthSession>();

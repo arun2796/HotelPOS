@@ -11,14 +11,7 @@
             <span class="table-elapsed num-tab"><Icon Name="clock" Size="14" /> @Elapsed</span>
         }
     </div>
-    @if (Table.Status == TableStatus.Available)
-    {
-        <span class="table-empty">Empty</span>
-    }
-    else
-    {
-        <StatusBadge Display="StatusPresentation.For(Table.Status)" />
-    }
+    <StatusBadge Display="StatusPresentation.For(Table.Status)" />
     <div class="table-meta muted small">
         <span>@Guests</span>
         @if (Table.CurrentOrderNumber is { } number)

@@ -7,7 +7,7 @@
 .kds-back { gap: 4px; }
 .kds-menu-wrap { position: relative; }
 .kds-menu-backdrop { position: fixed; inset: 0; z-index: 30; }
-.kds-menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 31; min-width: 240px; padding: 6px; background: var(--surface);
+.kds-menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 31; min-width: 240px; max-width: calc(100vw - 32px); padding: 6px; background: var(--surface);
   border: 1px solid var(--border); border-radius: var(--radius-card); box-shadow: 0 8px 24px rgba(9, 9, 11, 0.18); display: flex; flex-direction: column; gap: 2px; }
 .kds-menu-item { display: flex; align-items: center; gap: 10px; min-height: var(--touch); padding: 0 12px; border-radius: var(--radius-button); color: var(--text); text-decoration: none; font-weight: 600; }
 .kds-menu-item:hover, .kds-menu-item.active { background: var(--primary-soft); }
@@ -85,10 +85,12 @@
   .shell.kitchen .topbar .brand, .shell.kitchen .topbar .clock, .shell.kitchen .topbar .theme-toggle { display: none; }
   .shell.kitchen .topbar { gap: 2px; padding-left: 8px; }
   .shell.kitchen .headnav a { padding: 0 6px; min-width: 40px; }
-  /* Control row: the station chips take a full line (scrolling sideways), then search + refresh + more. */
-  .kds-header { flex-wrap: wrap; }
+  /* Control row: the station chips take a full line (scrolling sideways), then search + refresh + more.
+     flex-basis: 0 keeps search on the same line as Refresh and More so the overflow menu stays on the right edge. */
+  .kds-header { flex-wrap: wrap; justify-content: flex-end; }
   .kds-stations { flex: 1 1 100%; order: -1; }
-  .kds-search { flex: 1 1 auto; min-width: 0; }
+  .kds-search { flex: 1 1 0; min-width: 0; }
+  .kds-menu { min-width: 0; width: 240px; max-width: calc(100vw - 32px); }
   /* Five KPI tiles in two columns; "Completed today" spans the last row. */
   .kds-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .kds-kpis .kpi:last-child { grid-column: 1 / -1; }

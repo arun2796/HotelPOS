@@ -162,6 +162,38 @@ public class MenuTests : DatabaseTestBase
     }
 
     [Fact]
+    public async Task EmptyOrUnsatisfiableRequiredModifierGroup_IsBlockedOnSave_AndOmittedFromGetMenu()
+    {
+        var setup = await SetupAsync();
+        var emptyRequired = await SendAsync(new CreateModifierGroupCommand(new SaveModifierGroupRequest { Name = "Table A", MinSelections = 1, MaxSelections = 4 }));
+        var item = await CreateItemAsync(setup, "Water Bottle", withGroup: true);
+
+        var onCreate = await SendAsync(new CreateMenuItemCommand(ItemRequest(setup, "Soda") with { ModifierGroupIds = new[] { emptyRequired.Value.Id } }));
+        var onUpdate = await SendAsync(new UpdateMenuItemCommand(item.Id, UpdateRequest(item) with { ModifierGroupIds = new[] { setup.GroupId, emptyRequired.Value.Id } }));
+        var raiseMin = await SendAsync(new UpdateModifierGroupCommand(setup.GroupId, new SaveModifierGroupRequest { Name = "Spice level", MinSelections = 3, MaxSelections = 3, IsActive = true }));
+        var oneOptionId = (await QueryAsync(db => db.ModifierOptions.Where(o => o.ModifierGroupId == setup.GroupId && o.IsActive).OrderBy(o => o.Id).FirstAsync())).Id;
+        var dropFirst = await SendAsync(new DeactivateModifierOptionCommand(setup.GroupId, oneOptionId));
+        var secondOptionId = (await QueryAsync(db => db.ModifierOptions.Where(o => o.ModifierGroupId == setup.GroupId && o.IsActive).OrderBy(o => o.Id).FirstAsync())).Id;
+        var dropLast = await SendAsync(new DeactivateModifierOptionCommand(setup.GroupId, secondOptionId));
+
+        onCreate.Error!.Code.Should().Be(ErrorCodes.ValidationError);
+        onUpdate.Error!.Code.Should().Be(ErrorCodes.ValidationError);
+        raiseMin.Error!.Code.Should().Be(ErrorCodes.BusinessRule);
+        dropFirst.IsSuccess.Should().BeTrue("still 1 active option left for MinSelections=1");
+        dropLast.Error!.Code.Should().Be(ErrorCodes.BusinessRule);
+
+        // Even if a pre-existing DB link exists to an empty required group, GetMenu omits it so waiters are never trapped.
+        await QueryAsync(async db =>
+        {
+            db.MenuItemModifierGroups.Add(new Domain.Menu.MenuItemModifierGroup { MenuItemId = item.Id, ModifierGroupId = emptyRequired.Value.Id, SortOrder = 2 });
+            return await db.SaveChangesAsync();
+        });
+        var menu = (await SendAsync(new GetMenuQuery(null))).Value;
+        menu.ModifierGroups.Select(g => g.Id).Should().NotContain(emptyRequired.Value.Id);
+        menu.Items.Single(i => i.Id == item.Id).ModifierGroupIds.Should().Equal(setup.GroupId);
+    }
+
+    [Fact]
     public async Task UploadImage_ResizesThePicture_AndRejectsNonImagesAndLargeFiles()
     {
         var setup = await SetupAsync();

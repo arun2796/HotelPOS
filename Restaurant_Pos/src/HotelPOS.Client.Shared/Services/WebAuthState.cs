@@ -61,15 +61,30 @@ public sealed class WebAuthState : AuthenticationStateProvider
     }
 
     /// <summary>Called once at start-up: turns the stored session (cookie or secure store) back into a signed-in state.</summary>
-    public async Task<bool> TryRestoreAsync() => _host.IsConfigured && await RefreshAsync();
-
-    /// <summary>Single-flight refresh. Returns false when there is no valid session any more.</summary>
-    public async Task<bool> RefreshAsync()
+    public async Task<bool> TryRestoreAsync(CancellationToken cancellationToken = default)
     {
-        await _refreshLock.WaitAsync();
+        if (!_host.IsConfigured)
+        {
+            return false;
+        }
+
         try
         {
-            var result = await _transport.RefreshAsync(CancellationToken.None);
+            return await RefreshAsync(cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>Single-flight refresh. Returns false when there is no valid session any more.</summary>
+    public async Task<bool> RefreshAsync(CancellationToken cancellationToken = default)
+    {
+        await _refreshLock.WaitAsync(cancellationToken);
+        try
+        {
+            var result = await _transport.RefreshAsync(cancellationToken);
             if (result.Success && result.Data is { } login)
             {
                 Apply(login);

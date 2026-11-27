@@ -85,49 +85,51 @@
           <RowDefinition Height="*" />
           <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <StackPanel>
-          <TextBlock Text="{Binding EditorTitle}" Style="{StaticResource Text.Title}" TextWrapping="Wrap" Margin="0,0,0,20" />
-          <TextBlock Text="Name" Style="{StaticResource Text.Label}" />
-          <TextBox Text="{Binding EditName, UpdateSourceTrigger=PropertyChanged}" MaxLength="100" Margin="0,0,0,14" />
+        <ScrollViewer VerticalScrollBarVisibility="Auto" PanningMode="VerticalOnly">
+          <StackPanel Margin="0,0,4,0">
+            <TextBlock Text="{Binding EditorTitle}" Style="{StaticResource Text.Title}" TextWrapping="Wrap" Margin="0,0,0,20" />
+            <TextBlock Text="Name" Style="{StaticResource Text.Label}" />
+            <TextBox Text="{Binding EditName, UpdateSourceTrigger=PropertyChanged}" MaxLength="100" Margin="0,0,0,14" />
 
-          <Grid Margin="0,0,0,14" Visibility="{Binding IsEditingGroup, Converter={StaticResource BoolToVisibility}}">
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="*" />
-              <ColumnDefinition Width="12" />
-              <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-            <StackPanel>
-              <TextBlock Text="Minimum to pick" Style="{StaticResource Text.Label}" />
-              <TextBox Text="{Binding EditMin, UpdateSourceTrigger=PropertyChanged}" MaxLength="2" />
-            </StackPanel>
-            <StackPanel Grid.Column="2">
-              <TextBlock Text="Maximum to pick" Style="{StaticResource Text.Label}" />
-              <TextBox Text="{Binding EditMax, UpdateSourceTrigger=PropertyChanged}" MaxLength="2" />
-            </StackPanel>
-          </Grid>
+            <Grid Margin="0,0,0,14" Visibility="{Binding IsEditingGroup, Converter={StaticResource BoolToVisibility}}">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <StackPanel>
+                <TextBlock Text="Minimum to pick" Style="{StaticResource Text.Label}" />
+                <TextBox Text="{Binding EditMin, UpdateSourceTrigger=PropertyChanged}" MaxLength="2" />
+              </StackPanel>
+              <StackPanel Grid.Column="2">
+                <TextBlock Text="Maximum to pick" Style="{StaticResource Text.Label}" />
+                <TextBox Text="{Binding EditMax, UpdateSourceTrigger=PropertyChanged}" MaxLength="2" />
+              </StackPanel>
+            </Grid>
 
-          <Grid Margin="0,0,0,14" Visibility="{Binding IsEditingOption, Converter={StaticResource BoolToVisibility}}">
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="*" />
-              <ColumnDefinition Width="12" />
-              <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-            <StackPanel>
-              <TextBlock Text="Price change" Style="{StaticResource Text.Label}" />
-              <TextBox Text="{Binding EditPriceDelta, UpdateSourceTrigger=PropertyChanged}" MaxLength="10" />
-            </StackPanel>
-            <StackPanel Grid.Column="2">
-              <TextBlock Text="Sort order" Style="{StaticResource Text.Label}" />
-              <TextBox Text="{Binding EditSortOrder, UpdateSourceTrigger=PropertyChanged}" MaxLength="4" />
-            </StackPanel>
-          </Grid>
+            <Grid Margin="0,0,0,14" Visibility="{Binding IsEditingOption, Converter={StaticResource BoolToVisibility}}">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <StackPanel>
+                <TextBlock Text="Price change" Style="{StaticResource Text.Label}" />
+                <TextBox Text="{Binding EditPriceDelta, UpdateSourceTrigger=PropertyChanged}" MaxLength="10" />
+              </StackPanel>
+              <StackPanel Grid.Column="2">
+                <TextBlock Text="Sort order" Style="{StaticResource Text.Label}" />
+                <TextBox Text="{Binding EditSortOrder, UpdateSourceTrigger=PropertyChanged}" MaxLength="4" />
+              </StackPanel>
+            </Grid>
 
-          <CheckBox Content="Active" IsChecked="{Binding EditIsActive}" />
-          <Border Style="{StaticResource Banner.Error}" Margin="0,16,0,0"
-                  Visibility="{Binding EditorError, Converter={StaticResource StringToVisibility}}">
-            <TextBlock Text="{Binding EditorError}" Style="{StaticResource Text.Error}" />
-          </Border>
-        </StackPanel>
+            <CheckBox Content="Active" IsChecked="{Binding EditIsActive}" />
+            <Border Style="{StaticResource Banner.Error}" Margin="0,16,0,0"
+                    Visibility="{Binding EditorError, Converter={StaticResource StringToVisibility}}">
+              <TextBlock Text="{Binding EditorError}" Style="{StaticResource Text.Error}" />
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
         <Grid Grid.Row="1" Margin="0,20,0,0">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />

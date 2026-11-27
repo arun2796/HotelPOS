@@ -75,8 +75,20 @@ internal sealed class MenuItems
             return AppErrors.Validation("modifierGroupIds", "A modifier group can be linked only once.");
         }
 
-        var found = await _db.ModifierGroups.CountAsync(g => distinct.Contains(g.Id) && g.IsActive, cancellationToken);
-        return found == distinct.Count ? null : AppErrors.Validation("modifierGroupIds", "Select active modifier groups only.");
+        var found = await _db.ModifierGroups.AsNoTracking()
+            .Where(g => distinct.Contains(g.Id) && g.IsActive)
+            .Select(g => new { g.Id, g.Name, g.MinSelections, ActiveOptions = g.Options.Count(o => o.IsActive) })
+            .ToListAsync(cancellationToken);
+        if (found.Count != distinct.Count)
+        {
+            return AppErrors.Validation("modifierGroupIds", "Select active modifier groups only.");
+        }
+
+        var missingOptions = found.FirstOrDefault(g => g.MinSelections > g.ActiveOptions);
+        return missingOptions is null
+            ? null
+            : AppErrors.Validation("modifierGroupIds",
+                $"Modifier group '{missingOptions.Name}' needs at least {missingOptions.MinSelections} active option(s) before it can be attached to a dish.");
     }
 
     public async Task<AppError?> CheckUniqueAsync(int categoryId, string name, string? code, int? excludingId, CancellationToken cancellationToken)

@@ -97,20 +97,41 @@ public class WebPolishTests
         ctx.JSInterop.Invocations.Should().Contain(i => i.Identifier == "hotelposTheme.set" && (string?)i.Arguments[0] == "dark");
     }
 
-    private static string SharedCss()
+    private static string ClientCss(string file)
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "src", "HotelPOS.Client.Shared", "wwwroot", "css", "app.css")))
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "src", "HotelPOS.Client.Shared", "wwwroot", "css", file)))
             dir = dir.Parent;
-        return File.ReadAllText(Path.Combine(dir!.FullName, "src", "HotelPOS.Client.Shared", "wwwroot", "css", "app.css"));
+        return File.ReadAllText(Path.Combine(dir!.FullName, "src", "HotelPOS.Client.Shared", "wwwroot", "css", file));
     }
 
     [Fact]
     public void SharedCss_HasNoHasSelector_AndWaiterToastsSitAtTheTop()
     {
-        var css = SharedCss();
+        var css = ClientCss("app.css");
 
         System.Text.RegularExpressions.Regex.Replace(css, @"/\*.*?\*/", "", System.Text.RegularExpressions.RegexOptions.Singleline).Should().NotContain(":has(");
         css.Should().Contain(".shell.waiter .toasts");
+    }
+
+    [Fact]
+    public void KitchenCss_OnMobile_KeepsOverflowMenuAnchoredInsideViewport()
+    {
+        var css = ClientCss("kitchen.css");
+        var mobileBlock = css[css.IndexOf("@media (max-width: 599px)", StringComparison.Ordinal)..];
+
+        css.Should().Contain(".kds-menu").And.Contain("max-width: calc(100vw - 32px)");
+        mobileBlock.Should().Contain("justify-content: flex-end");
+        mobileBlock.Should().Contain(".kds-search { flex: 1 1 0; min-width: 0; }");
+        mobileBlock.Should().Contain(".kds-menu { min-width: 0; width: 240px; max-width: calc(100vw - 32px); }");
+    }
+
+    [Fact]
+    public void WaiterCss_UsesPastelTableCards_AndThreeColumnsOnMobile()
+    {
+        var css = ClientCss("waiter.css");
+
+        css.Should().Contain("background: var(--tb); border: 1px solid var(--tbd);");
+        css.Should().Contain(".table-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }");
     }
 }

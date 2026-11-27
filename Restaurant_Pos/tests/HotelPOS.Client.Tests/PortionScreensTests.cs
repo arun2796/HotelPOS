@@ -57,16 +57,16 @@ public sealed partial class WaiterScreensTests
         page.FindAll("div.item-wrap").Single(w => w.QuerySelector(".item-name")!.TextContent == name);
 
     [Fact]
-    public async Task Card_WithTwoOrMoreActivePortions_ShowsChipsDefaultSelected_AndAddNamesThePrice()
+    public async Task Card_WithTwoOrMoreActivePortions_OpensSheetWithPortions_DefaultSelected()
     {
         var page = await RenderBuilderAsync(PortionHandler(PortionMenu()));
 
-        var card = PortionCard(page, "Mutton Biryani");
+        await page.InvokeAsync(() => PortionCard(page, "Mutton Biryani").QuerySelector("button.item-card")!.Click());
 
-        card.QuerySelectorAll("[data-testid=portion-chip]").Select(c => c.QuerySelector("b")!.TextContent).Should().Equal("Quarter", "Half", "Full");
-        card.QuerySelectorAll("[data-testid=portion-chip]").Select(c => c.GetAttribute("aria-checked")).Should().Equal("false", "true", "false");
-        card.QuerySelector("[data-testid=portion-add]")!.TextContent.Trim().Should().Be("Add Half · 180.00");
-        card.QuerySelector("[data-testid=portion-chip][aria-checked=true] .portion-qty")!.TextContent.Should().Contain("500 GM");
+        page.FindAll("[data-testid=sheet-portion]").Select(c => c.QuerySelector("b")!.TextContent).Should().Equal("Quarter", "Half", "Full");
+        page.FindAll("[data-testid=sheet-portion]").Select(c => c.GetAttribute("aria-checked")).Should().Equal("false", "true", "false");
+        page.Find("[data-testid=sheet-portion][aria-checked=true]")!.TextContent.Should().Contain("500 GM");
+        page.Find("[data-testid=options-confirm]")!.TextContent.Trim().Should().Be("Add to order");
         await StopRealtimeAsync();
     }
 
@@ -75,15 +75,21 @@ public sealed partial class WaiterScreensTests
     {
         var page = await RenderBuilderAsync(PortionHandler(PortionMenu()));
 
-        await page.InvokeAsync(() => PortionCard(page, "Mutton Biryani").QuerySelectorAll("[data-testid=portion-chip]")[0].Click());
+        // Tap card to open options sheet
+        await page.InvokeAsync(() => PortionCard(page, "Mutton Biryani").QuerySelector("button.item-card")!.Click());
 
-        var card = PortionCard(page, "Mutton Biryani");
-        card.QuerySelectorAll("[data-testid=portion-chip]").Select(c => c.GetAttribute("aria-checked")).Should().Equal("true", "false", "false");
-        card.QuerySelector("[data-testid=portion-add]")!.TextContent.Trim().Should().Be("Add Quarter · 100.00");
+        // Select Quarter portion in sheet
+        await page.InvokeAsync(() => page.FindAll("[data-testid=sheet-portion]")[0].Click());
+        page.FindAll("[data-testid=sheet-portion]").Select(c => c.GetAttribute("aria-checked")).Should().Equal("true", "false", "false");
+        page.Find("[data-testid=options-price]")!.TextContent.Trim().Should().Be("100.00");
 
-        await page.InvokeAsync(() => PortionCard(page, "Mutton Biryani").QuerySelector("[data-testid=portion-add]")!.Click());
-        await page.InvokeAsync(() => PortionCard(page, "Mutton Biryani").QuerySelectorAll("[data-testid=portion-chip]")[2].Click());
-        await page.InvokeAsync(() => PortionCard(page, "Mutton Biryani").QuerySelector("[data-testid=portion-add]")!.Click());
+        // Add Quarter to order
+        await page.InvokeAsync(() => page.Find("[data-testid=options-confirm]")!.Click());
+
+        // Tap card again to open options sheet for Full portion
+        await page.InvokeAsync(() => PortionCard(page, "Mutton Biryani").QuerySelector("button.item-card")!.Click());
+        await page.InvokeAsync(() => page.FindAll("[data-testid=sheet-portion]")[2].Click());
+        await page.InvokeAsync(() => page.Find("[data-testid=options-confirm]")!.Click());
 
         page.Find("[data-testid=cart-bar] .cart-total").TextContent.Should().Be("420.00", "PQuarter 100 + PFull 320");
         await page.InvokeAsync(() => page.Find("[data-testid=cart-review]").Click());
@@ -97,10 +103,10 @@ public sealed partial class WaiterScreensTests
         var page = await RenderBuilderAsync(PortionHandler(PortionMenu()));
 
         var card = PortionCard(page, "Butter Naan");
-        card.QuerySelectorAll("[data-testid=portion-chip]").Should().BeEmpty();
-        card.QuerySelector("[data-testid=portion-add]").Should().BeNull();
-
         await page.InvokeAsync(() => card.QuerySelector("button.item-card")!.Click());
+
+        page.FindAll("[data-testid=sheet-portion]").Should().BeEmpty();
+        await page.InvokeAsync(() => page.Find("[data-testid=options-confirm]")!.Click());
 
         page.Find("[data-testid=cart-bar] .cart-total").TextContent.Should().Be("50.00");
         await StopRealtimeAsync();
@@ -113,8 +119,8 @@ public sealed partial class WaiterScreensTests
 
         var card = PortionCard(page, "Mutton Biryani");
 
-        card.QuerySelectorAll("[data-testid=portion-chip]").Should().OnlyContain(c => c.HasAttribute("disabled"));
-        card.QuerySelector("[data-testid=portion-add]")!.HasAttribute("disabled").Should().BeTrue();
+        card.QuerySelector("button.item-card")!.HasAttribute("disabled").Should().BeTrue();
+        card.QuerySelector(".chip.danger.sold")!.TextContent.Should().Be("Sold out");
         await StopRealtimeAsync();
     }
 
@@ -123,20 +129,21 @@ public sealed partial class WaiterScreensTests
     {
         var page = await RenderBuilderAsync(PortionHandler(PortionMenu()));
 
-        // Add opens the options sheet because the dish has a spice option; the card's chosen portion arrives pre-selected.
-        await page.InvokeAsync(() => PortionCard(page, "Chicken Biryani").QuerySelectorAll("[data-testid=portion-chip]")[0].Click());
-        await page.InvokeAsync(() => PortionCard(page, "Chicken Biryani").QuerySelector("[data-testid=portion-add]")!.Click());
+        // Tapping the card opens the options sheet; default portion (Half) arrives pre-selected.
+        await page.InvokeAsync(() => PortionCard(page, "Chicken Biryani").QuerySelector("button.item-card")!.Click());
 
-        page.FindAll("[data-testid=sheet-portion]").Select(b => (b.QuerySelector("b")!.TextContent, b.GetAttribute("aria-checked"))).Should().Equal(("Quarter", "true"), ("Half", "false"));
-        page.Find("[data-testid=options-price]").TextContent.Should().Be("100.00");
-
-        await page.InvokeAsync(() => page.FindAll("[data-testid=sheet-portion]")[1].Click());
+        page.FindAll("[data-testid=sheet-portion]").Select(b => (b.QuerySelector("b")!.TextContent, b.GetAttribute("aria-checked"))).Should().Equal(("Quarter", "false"), ("Half", "true"));
         page.Find("[data-testid=options-price]").TextContent.Should().Be("180.00");
 
+        // Select Quarter
+        await page.InvokeAsync(() => page.FindAll("[data-testid=sheet-portion]")[0].Click());
+        page.Find("[data-testid=options-price]").TextContent.Should().Be("100.00");
+
+        // Select Spice level option
         await page.InvokeAsync(() => page.FindAll(".options-group[aria-label='Spice level'] button.option-btn")[0].Click());
         await page.InvokeAsync(() => page.Find("[data-testid=options-confirm]").Click());
 
-        page.Find("[data-testid=cart-bar] .cart-total").TextContent.Should().Be("180.00");
+        page.Find("[data-testid=cart-bar] .cart-total").TextContent.Should().Be("100.00");
         await StopRealtimeAsync();
     }
 
@@ -199,9 +206,13 @@ public sealed partial class WaiterScreensTests
     public async Task EditingACartLine_ToAnotherPortion_ChangesItsPortionAndPrice_AndKeepsItsPlace()
     {
         var page = await RenderBuilderAsync(PortionHandler(PortionMenu()));
-        await page.InvokeAsync(() => PortionCard(page, "Mutton Biryani").QuerySelectorAll("[data-testid=portion-chip]")[0].Click());
-        await page.InvokeAsync(() => PortionCard(page, "Mutton Biryani").QuerySelector("[data-testid=portion-add]")!.Click());
+        await page.InvokeAsync(() => PortionCard(page, "Mutton Biryani").QuerySelector("button.item-card")!.Click());
+        await page.InvokeAsync(() => page.FindAll("[data-testid=sheet-portion]")[0].Click());
+        await page.InvokeAsync(() => page.Find("[data-testid=options-confirm]").Click());
+
         await page.InvokeAsync(() => PortionCard(page, "Butter Naan").QuerySelector("button.item-card")!.Click());
+        await page.InvokeAsync(() => page.Find("[data-testid=options-confirm]").Click());
+
         await page.InvokeAsync(() => page.Find("[data-testid=cart-review]").Click());
 
         await page.InvokeAsync(() => page.FindAll("[data-testid=cart-line-edit]")[0].Click());

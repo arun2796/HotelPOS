@@ -1,6 +1,7 @@
 using HotelPOS.Application.Common;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Common.Results;
+using HotelPOS.Application.Features.Menu;
 using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Floor;
 using HotelPOS.Contracts.Menu;
@@ -103,6 +104,7 @@ internal sealed class OrderItemFactory
             var linkedGroups = menuItem.ModifierGroups
                 .Where(l => groups.ContainsKey(l.ModifierGroupId))
                 .Select(l => groups[l.ModifierGroupId])
+                .Where(g => MenuModifiers.CanOffer(g.Options.Count(o => o.IsActive), g.MinSelections))
                 .ToList();
             var options = linkedGroups.SelectMany(g => g.Options.Where(o => o.IsActive)).ToDictionary(o => o.Id);
 

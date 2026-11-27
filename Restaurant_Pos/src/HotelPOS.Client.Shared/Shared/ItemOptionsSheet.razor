@@ -5,6 +5,12 @@
 @using HotelPOS.Contracts.Orders
 
 <BottomSheet Open="true" Title="@Item.Name" OnClose="OnClose">
+    @if (!string.IsNullOrEmpty(ImageUrl))
+    {
+        <div class="sheet-item-hero">
+            <img src="@ImageUrl" alt="@Item.Name" />
+        </div>
+    }
     <div class="options-price num-tab" data-testid="options-price">@CurrentPrice.ToString("N2")</div>
 
     @if (HasPortions)
@@ -19,6 +25,10 @@
                     <button type="button" role="radio" class="btn option-btn @(on ? "primary" : null)" data-testid="sheet-portion" aria-checked="@(on ? "true" : "false")"
                             @onclick="() => _portionId = portion.Id">
                         <b>@portion.Name</b> <span class="num-tab">@portion.Price.ToString("N2")</span>
+                        @if (portion.Quantity is { } qty && !string.IsNullOrEmpty(portion.Unit))
+                        {
+                            <span class="muted small" style="font-size:11px">@qty @portion.Unit</span>
+                        }
                     </button>
                 }
             </div>
@@ -59,7 +69,9 @@
 
     <div class="options-foot">
         <Stepper @bind-Value="_quantity" Min="1" Max="OrderLimits.MaxQuantity" />
-        <button type="button" class="btn primary lg grow" data-testid="options-confirm" disabled="@(!AllSatisfied || NeedsPortion)" @onclick="ConfirmAsync">@ConfirmLabel</button>
+        <button type="button" class="btn primary lg grow" data-testid="options-confirm" disabled="@(!AllSatisfied || NeedsPortion)" @onclick="ConfirmAsync">
+            @ConfirmLabel
+        </button>
     </div>
 </BottomSheet>
 
@@ -69,6 +81,9 @@
     private string _notes = string.Empty;
 
     [Parameter, EditorRequired] public MenuEntryDto Item { get; set; } = new();
+
+    /// <summary>Absolute picture URL (IClientHost.ImageUrl); null draws no hero banner.</summary>
+    [Parameter] public string? ImageUrl { get; set; }
 
     [Parameter] public IReadOnlyList<MenuModifierGroupDto> Groups { get; set; } = Array.Empty<MenuModifierGroupDto>();
 
@@ -110,7 +125,11 @@
         _selected = Groups.ToDictionary(g => g.Id, g => g.Options.Where(o => initial.Contains(o.Id)).Select(o => o.Id).ToHashSet());
         _quantity = Math.Clamp(InitialQuantity, 1, OrderLimits.MaxQuantity);
         _notes = InitialNotes ?? string.Empty;
-        _portionId = Item.Portions.Any(p => p.Id == InitialPortionId) ? InitialPortionId : HasPortions ? null : OrderComposer.DefaultPortion(Item)?.Id;
+        _portionId = Item.Portions.Any(p => p.Id == InitialPortionId)
+            ? InitialPortionId
+            : HasPortions
+                ? (OrderComposer.DefaultPortion(Item)?.Id ?? Portions.FirstOrDefault()?.Id)
+                : OrderComposer.DefaultPortion(Item)?.Id;
     }
 
     private void Toggle(MenuModifierGroupDto group, MenuModifierOptionDto option)

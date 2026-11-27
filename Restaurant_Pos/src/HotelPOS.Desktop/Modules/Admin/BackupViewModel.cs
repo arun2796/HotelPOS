@@ -33,8 +33,8 @@ public sealed record BackupRow(BackupDto Backup)
     public string Trigger => Backup.Trigger switch
     {
         BackupTrigger.Schedule => "Scheduled",
-        BackupTrigger.DayEnd => $"Day End ({Backup.TriggeredBy})",
-        _ => $"Manual ({Backup.TriggeredBy})",
+        BackupTrigger.DayEnd => string.IsNullOrWhiteSpace(Backup.TriggeredBy) ? "Day End" : $"Day End ({Backup.TriggeredBy})",
+        _ => string.IsNullOrWhiteSpace(Backup.TriggeredBy) ? "Manual" : $"Manual ({Backup.TriggeredBy})",
     };
 }
 

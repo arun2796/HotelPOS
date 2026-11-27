@@ -109,7 +109,7 @@ public sealed partial class ImportWizardViewModel : ViewModelBase, INavigationAw
     public bool HasErrors => Preview is { ErrorRows: > 0 };
 
     public string KindHelp => Kind == ImportKind.Menu
-        ? "Columns: category, item name and price are needed; tax, station, code, description, HSN/SAC and modifiers are optional. Items already on the menu (same category and name) are updated."
+        ? "Columns: category, item name and price are needed. Optional: portion (repeat category + item name for Half, Full, 1 KG...), portion qty/unit, default, tax, station, code, packing charge, description, HSN/SAC, sort order, available, stock and modifiers. Existing items are updated."
         : "Columns: name is needed; phone, email, GSTIN, legal name, state and address are optional. Customers are matched by phone, then GSTIN.";
 
     public string Summary => Preview is null

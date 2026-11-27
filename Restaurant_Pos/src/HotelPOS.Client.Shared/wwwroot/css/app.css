@@ -324,7 +324,7 @@ svg.ic { flex: none; vertical-align: middle; }
 .filter-count { min-width: 22px; padding: 0 6px; border-radius: 999px; background: var(--surface-subtle); color: var(--text-2); font-size: var(--fs-caption); line-height: 22px; text-align: center; font-variant-numeric: tabular-nums; }
 .filter-chip.on .filter-count, .filter-chip[aria-pressed="true"] .filter-count { background: var(--on-primary); color: var(--primary-fg); }
 /* Chips that cannot be used right now are flat and neutral, like a disabled button. */
-.chip-btn:disabled, .filter-chip:disabled { background: var(--state-disabled-bg); border-color: var(--border); color: var(--state-disabled-fg); cursor: not-allowed; }
+.chip-btn:disabled, .filter-chip:disabled { background: var(--state-disabled-bg); border-color: var(--border); color: var(--state-disabled-fg); opacity: 0.52; cursor: not-allowed; }
 
 .timeline { list-style: none; margin: 0; padding: 0; display: flex; align-items: flex-start; }
 .timeline-step { flex: 1; position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; color: var(--text-2); font-size: var(--fs-caption); }
@@ -480,4 +480,4 @@ svg.ic { flex: none; vertical-align: middle; }
 input[type=search]::-webkit-search-cancel-button, input[type=search]::-webkit-search-decoration { -webkit-appearance: none; appearance: none; display: none; }
 
 /* A seat that already has dishes: tinted, so the waiter sees which seats are taken. */
-.chip-btn.taken:not(.on) { border-color: var(--warning, #b45309); color: var(--warning, #b45309); }
+.chip-btn.taken:not(.on):not(:disabled) { border-color: var(--warning, #b45309); color: var(--warning, #b45309); }

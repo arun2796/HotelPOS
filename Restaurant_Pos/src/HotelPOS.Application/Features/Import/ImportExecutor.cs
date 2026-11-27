@@ -2,6 +2,7 @@ using System.Text.Json;
 using HotelPOS.Application.Common.Interfaces;
 using HotelPOS.Application.Features.Menu;
 using HotelPOS.Contracts.Admin;
+using HotelPOS.Contracts.Enums;
 using HotelPOS.Domain.Administration;
 using HotelPOS.Domain.Customers;
 using HotelPOS.Domain.Menu;
@@ -19,6 +20,7 @@ internal sealed class ImportExecutor
     private const string TGroup = "ModifierGroup";
     private const string TOption = "ModifierOption";
     private const string TItem = "MenuItem";
+    private const string TStockMovement = "StockMovement";
     private const string TCustomer = "Customer";
 
     private static readonly JsonSerializerOptions Json = new();
@@ -36,8 +38,13 @@ internal sealed class ImportExecutor
 
     private sealed record OptionBefore(decimal PriceDelta, bool IsActive);
 
+    private sealed record PortionBefore(
+        int Id, string Name, decimal? Quantity, string? Unit, decimal Price, bool IsDefault, bool IsActive, int SortOrder);
+
     private sealed record ItemBefore(
-        int CategoryId, string Name, string? Code, string? Description, decimal Price, int? TaxId, int StationId, int SortOrder, string? HsnSac, bool IsActive, int[] GroupIds);
+        int CategoryId, string Name, string? Code, string? Description, decimal Price, int? TaxId, int StationId, int SortOrder, string? HsnSac, bool IsActive,
+        int[] GroupIds, decimal PackagingCharge, bool IsAvailable, StockTrackingMode StockMode, int? StockOpening, int? StockRemaining, int? ReorderLevel,
+        PortionBefore[] Portions);
 
     private sealed record CustomerBefore(string Name, string? Phone, string? Email, string? Gstin, string? LegalName, string? StateCode, string? Address, bool IsActive);
 
@@ -174,6 +181,7 @@ internal sealed class ImportExecutor
         var items = await _db.MenuItems.Include(i => i.ModifierGroups).Include(i => i.Portions).Where(i => categoryIds.Contains(i.CategoryId)).ToListAsync(cancellationToken);
         var itemsByKey = items.GroupBy(i => (i.CategoryId, i.Name.ToUpperInvariant())).ToDictionary(g => g.Key, g => g.First());
         var createdItems = new List<MenuItem>();
+        var pendingStockMovements = new List<(MenuItem Item, int Previous, int Now)>();
         var sort = 0;
         foreach (var row in rows)
         {
@@ -191,17 +199,53 @@ internal sealed class ImportExecutor
             {
                 batch.Add(TItem, item.Id, ImportAction.Updated, Serialize(new ItemBefore(
                     item.CategoryId, item.Name, item.Code, item.Description, item.Price, item.TaxId, item.PreparationStationId,
-                    item.SortOrder, item.HsnSac, item.IsActive, item.ModifierGroups.OrderBy(l => l.SortOrder).Select(l => l.ModifierGroupId).ToArray())));
-                item.Update(category.Id, item.Name, row.Code ?? item.Code, row.Description ?? item.Description, row.Price, tax?.Id ?? item.TaxId, station.Id, item.SortOrder);
+                    item.SortOrder, item.HsnSac, item.IsActive,
+                    item.ModifierGroups.OrderBy(l => l.SortOrder).Select(l => l.ModifierGroupId).ToArray(),
+                    item.PackagingCharge, item.IsAvailable, item.StockMode, item.StockOpening, item.StockRemaining, item.ReorderLevel,
+                    item.Portions.OrderBy(p => p.SortOrder).ThenBy(p => p.Id)
+                        .Select(p => new PortionBefore(p.Id, p.Name, p.Quantity, p.Unit, p.Price, p.IsDefault, p.IsActive, p.SortOrder)).ToArray())));
+                item.Update(category.Id, item.Name, row.Code ?? item.Code, row.Description ?? item.Description, row.Price, tax?.Id ?? item.TaxId, station.Id, row.SortOrder ?? item.SortOrder);
                 if (row.Hsn is not null) { item.SetHsnSac(row.Hsn); }
+                if (row.PackingCharge is { } packing) { item.SetPackagingCharge(packing); }
+                if (row.HasExplicitPortions) { item.SetPortions(ToPortionSpecs(row, item.Portions)); }
                 if (groupIds.Count > 0) { item.SetModifierGroups(groupIds); }
+                if (row.StockMode is { } stockMode)
+                {
+                    var previous = item.StockRemaining ?? 0;
+                    item.ConfigureStock(stockMode, stockMode == StockTrackingMode.None ? null : row.StockCount);
+                    if (stockMode != StockTrackingMode.None)
+                    {
+                        pendingStockMovements.Add((item, previous, item.StockRemaining ?? 0));
+                    }
+                }
+
+                if (row.ReorderLevel is { } reorder) { item.SetReorderLevel(reorder); }
+                if (row.IsAvailable is { } available)
+                {
+                    item.SetAvailability(available && !(item.IsStockTracked && (item.StockRemaining ?? 0) <= 0));
+                }
+
                 item.Activate();
             }
             else
             {
-                item = new MenuItem(category.Id, row.Item, row.Code, row.Description, row.Price, tax?.Id, station.Id, Math.Min(sort, 9999));
+                item = new MenuItem(category.Id, row.Item, row.Code, row.Description, row.Price, tax?.Id, station.Id, row.SortOrder ?? Math.Min(sort, 9999));
                 item.SetHsnSac(row.Hsn);
+                if (row.PackingCharge is { } packing) { item.SetPackagingCharge(packing); }
+                if (row.HasExplicitPortions) { item.SetPortions(ToPortionSpecs(row, null)); }
                 item.SetModifierGroups(groupIds);
+                if (row.StockMode is { } stockMode && stockMode != StockTrackingMode.None)
+                {
+                    item.ConfigureStock(stockMode, row.StockCount);
+                    pendingStockMovements.Add((item, 0, item.StockRemaining ?? 0));
+                }
+
+                if (row.ReorderLevel is { } reorder) { item.SetReorderLevel(reorder); }
+                if (row.IsAvailable is { } available)
+                {
+                    item.SetAvailability(available && !(item.IsStockTracked && (item.StockRemaining ?? 0) <= 0));
+                }
+
                 createdItems.Add(item);
                 _db.MenuItems.Add(item);
             }
@@ -210,6 +254,20 @@ internal sealed class ImportExecutor
         await _db.SaveChangesAsync(cancellationToken);
         foreach (var option in newOptions) { batch.Add(TOption, option.Id, ImportAction.Created, null); }
         foreach (var item in createdItems) { batch.Add(TItem, item.Id, ImportAction.Created, null); }
+        if (pendingStockMovements.Count > 0)
+        {
+            var movements = new List<StockMovement>(pendingStockMovements.Count);
+            foreach (var (item, previous, now) in pendingStockMovements)
+            {
+                var movement = new StockMovement(item.Id, StockMovementType.Opening, previous, now - previous, now, null, "Opening stock set (import)");
+                movements.Add(movement);
+                _db.StockMovements.Add(movement);
+            }
+
+            await _db.SaveChangesAsync(cancellationToken);
+            foreach (var movement in movements) { batch.Add(TStockMovement, movement.Id, ImportAction.Created, null); }
+        }
+
         await _menuChanges.SaveAsync(cancellationToken);
     }
 
@@ -276,10 +334,18 @@ internal sealed class ImportExecutor
         var id = entry.EntityId;
         switch (entry.EntityType)
         {
+            case TStockMovement:
+                if (await _db.StockMovements.FirstOrDefaultAsync(m => m.Id == id, cancellationToken) is { } movement)
+                {
+                    _db.StockMovements.Remove(movement);
+                }
+
+                break;
             case TItem:
                 if (await _db.MenuItems.FirstOrDefaultAsync(i => i.Id == id, cancellationToken) is { } item)
                 {
-                    if (await _db.OrderItems.AnyAsync(o => o.MenuItemId == id, cancellationToken)) { item.Deactivate(); } else { _db.MenuItems.Remove(item); }
+                    if (await _db.OrderItems.AnyAsync(o => o.MenuItemId == id, cancellationToken)
+                        || await _db.StockMovements.AnyAsync(m => m.MenuItemId == id, cancellationToken)) { item.Deactivate(); } else { _db.MenuItems.Remove(item); }
                 }
 
                 break;
@@ -347,7 +413,20 @@ internal sealed class ImportExecutor
                 var b = Deserialize<ItemBefore>(entry);
                 item.Update(b.CategoryId, b.Name, b.Code, b.Description, b.Price, b.TaxId, b.StationId, b.SortOrder);
                 item.SetHsnSac(b.HsnSac);
+                item.SetPackagingCharge(b.PackagingCharge);
+                if (b.Portions is { Length: > 0 })
+                {
+                    var specs = b.Portions.Select(pb =>
+                    {
+                        var keepId = item.Portions.Any(p => p.Id == pb.Id) ? pb.Id : (int?)null;
+                        return new PortionSpec(keepId, pb.Name, pb.Quantity, pb.Unit, pb.Price, pb.IsDefault, pb.IsActive, pb.SortOrder);
+                    }).ToList();
+                    item.SetPortions(specs);
+                }
+
                 item.SetModifierGroups(b.GroupIds);
+                item.SetReorderLevel(b.ReorderLevel);
+                item.RestoreStockState(b.StockMode, b.StockOpening, b.StockRemaining, b.IsAvailable);
                 if (b.IsActive) { item.Activate(); } else { item.Deactivate(); }
                 break;
             case TCustomer when await _db.Customers.FirstOrDefaultAsync(c => c.Id == id, cancellationToken) is { } customer:
@@ -355,6 +434,24 @@ internal sealed class ImportExecutor
                 customer.Update(c.Name, c.Phone, c.Email, c.Gstin, c.LegalName, c.StateCode, c.Address);
                 break;
         }
+    }
+
+    private static List<PortionSpec> ToPortionSpecs(MenuRowData row, IReadOnlyCollection<MenuItemPortion>? existing)
+    {
+        var defaultRow = row.Portions.FirstOrDefault(p => p.IsDefault == true && p.IsActive)
+            ?? row.Portions.FirstOrDefault(p => p.IsActive)
+            ?? row.Portions[0];
+
+        var specs = new List<PortionSpec>(row.Portions.Count);
+        for (var i = 0; i < row.Portions.Count; i++)
+        {
+            var p = row.Portions[i];
+            var name = string.IsNullOrWhiteSpace(p.Name) ? "Regular" : p.Name.Trim();
+            var matchId = existing?.FirstOrDefault(e => Same(e.Name, name))?.Id;
+            specs.Add(new PortionSpec(matchId, name, p.Quantity, p.Unit, p.Price, ReferenceEquals(p, defaultRow), p.IsActive, i + 1));
+        }
+
+        return specs;
     }
 
     private static bool Same(string? a, string? b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);

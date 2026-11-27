@@ -19,6 +19,9 @@
   .tables-toolbar-controls .segment { flex: 1 1 0; white-space: nowrap; }
 }
 .table-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; margin-bottom: 8px; }
+@media (max-width: 599px) {
+  .table-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 .table-grid + .section-head { margin-top: 18px; }
 
 /* ---- Phase 22 P3: floor map. Percent-placed tiles in a box that keeps the plan's aspect ratio. ---- */
@@ -41,25 +44,26 @@
 @container (max-width: 63px) { .floor-tile-meta { display: none; } }
 .map-hint { margin: 4px 0 8px; }
 
-/* Phase 25 pass 4: a plain card with a 3 px tone stripe along the top and the quiet status badge, instead of a solid
-   pastel block with a tone border (the "sticker" look). The tone still reaches the stripe, the timer and the badge
-   (never colour alone: the badge carries the word). Ready keeps a full ring so it is seen from across the room. */
+/* Pastel card: soft tone fill, tone border, dark text (never colour alone: the badge carries icon + words). */
 .table-card { --tc: var(--neutral-text); --tb: var(--neutral-soft); --tbd: var(--neutral);
-  display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-height: 104px; padding: 12px 10px 10px; text-align: left;
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card); color: var(--text); cursor: pointer;
-  box-shadow: inset 0 3px 0 0 var(--tbd); }
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-height: 104px; min-width: 0; padding: 10px; text-align: left;
+  background: var(--tb); border: 1px solid var(--tbd); border-radius: var(--radius-card); color: var(--text); cursor: pointer; }
 .table-card.st-available { --tc: var(--success-text); --tb: var(--success-soft); --tbd: var(--success); }
 .table-card.st-occupied, .table-card.st-ordering { --tc: var(--info-text); --tb: var(--info-soft); --tbd: var(--info); }
 .table-card.st-preparing, .table-card.st-billing { --tc: var(--warning-text); --tb: var(--warning-soft); --tbd: var(--warning); }
-.table-card.st-ready { --tc: var(--success-text); --tb: var(--success-soft); --tbd: var(--success); border-color: var(--success); box-shadow: inset 0 3px 0 0 var(--success), inset 0 0 0 1px var(--success); }
+.table-card.st-ready { --tc: var(--success-text); --tb: var(--success-soft); --tbd: var(--success); box-shadow: inset 0 0 0 1px var(--success); }
 .table-card.st-outofservice { opacity: 0.75; }
 .table-card-head { display: flex; align-items: center; justify-content: space-between; gap: 4px; width: 100%; flex-wrap: wrap; /* a long "26 h 40 min" timer wraps under the code instead of widening the page */ }
 .table-code { font-size: var(--fs-20); font-weight: 700; line-height: 1; color: var(--text); }
-.table-elapsed { display: inline-flex; align-items: center; gap: 2px; font-size: var(--fs-caption); color: var(--text-2); font-weight: 500; white-space: nowrap; }
-.table-card.st-preparing .table-elapsed, .table-card.st-billing .table-elapsed { color: var(--tc); font-weight: 600; } /* the waits that matter read in the tone */
-.table-card .status-badge { padding: 2px 8px 2px 6px; font-size: var(--fs-caption); max-width: 100%; }
-.table-card .status-badge { align-items: flex-start; line-height: 1.2; }
+.table-elapsed { display: inline-flex; align-items: center; gap: 2px; font-size: var(--fs-caption); color: var(--tc); font-weight: 600; white-space: nowrap; }
+.table-card .status-badge { padding: 2px 8px 2px 6px; font-size: var(--fs-caption); max-width: 100%; align-items: flex-start; line-height: 1.2; }
+.table-card .status-badge.soft { background: transparent; border-color: transparent; padding: 0; font-weight: 600; }
+.table-card .status-badge.soft::before { display: none; }
+.table-card .status-badge.soft > svg { display: inline; flex: none; margin-top: 1px; }
 .table-card .status-badge span { min-width: 0; white-space: normal; overflow-wrap: normal; word-break: normal; } /* the label wraps between words, never mid-word: status is never colour alone */
+@media (hover: hover) {
+  .table-card:hover { background: var(--tb); filter: brightness(0.97); }
+}
 .table-meta { display: flex; align-items: center; justify-content: space-between; gap: 4px; width: 100%; margin-top: auto; }
 .table-order { font-weight: 600; color: var(--text); }
 .table-draft { margin-top: 2px; font-size: var(--fs-12); padding: 1px 6px; }
@@ -126,6 +130,8 @@
 .review-notes { margin-top: 8px; }
 .review-notes textarea { min-height: 64px; padding: 10px 12px; resize: vertical; }
 .review-foot { border-top: 1px solid var(--border); padding-top: 12px; margin-top: 12px; }
+.sheet-item-hero { width: 100%; max-height: 180px; border-radius: var(--radius-card, 12px); overflow: hidden; margin-bottom: 12px; background: var(--surface-subtle, #f1f5f9); display: flex; align-items: center; justify-content: center; }
+.sheet-item-hero img { width: 100%; max-height: 180px; object-fit: cover; border-radius: var(--radius-card, 12px); }
 .options-price { font-size: var(--fs-section); font-weight: 600; color: var(--success-text); margin: -4px 0 8px; }
 .options-group { margin: 12px 0; }
 .options-head { margin-bottom: 6px; }
@@ -205,6 +211,8 @@
 .input-wrap .input { padding-right: 48px; }
 .input-eye { position: absolute; top: 0; right: 0; width: var(--touch); height: 100%; border: 0; background: transparent; color: var(--text-2); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
 .signin-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 16px; }
+.signin-server { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-subtle); display: flex; flex-direction: column; gap: 8px; }
+.signin-server-url { word-break: break-all; }
 .offline-banner { display: flex; align-items: center; gap: 8px; }
 .offline-banner svg { flex: none; color: var(--warning-text); }
 .offline-banner.success svg { color: var(--success-text); }
@@ -250,11 +258,8 @@
 @media (hover: hover) { .parcel-toggle:not(.on):hover { background: var(--state-hover); } .btn.cart-line-parcel.on:hover:not(:disabled) { background: var(--warning-soft); } }
 .parcel-toggle:active { transform: scale(0.98); }
 
-/* Free tables read as "Empty" in muted text instead of a green status badge; a busy table keeps its badge. */
-.table-empty { font-size: var(--fs-12); color: var(--text-2); font-weight: 500; line-height: 1.3; }
-
-/* Table card focus ring keeps the stripe (the card's own box-shadow). */
-.table-card:focus-visible, .table-card.st-ready:focus-visible { outline: none; box-shadow: inset 0 3px 0 0 var(--tbd), var(--focus-ring); }
+.table-card:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.table-card.st-ready:focus-visible { outline: none; box-shadow: inset 0 0 0 1px var(--success), var(--focus-ring); }
 
 /* ---- Portions: an item sold as Quarter / Half / Full... shows chips on its card (the default selected) and an Add button that
    names the chosen portion and its price. Chips are 44 px touch targets and wrap on a 360 px phone. ---- */

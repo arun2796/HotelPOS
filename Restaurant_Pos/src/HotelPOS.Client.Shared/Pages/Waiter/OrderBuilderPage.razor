@@ -91,19 +91,37 @@ else
             <div class="seat-picker" role="group" aria-label="Seat for the next dishes" data-testid="seat-picker">
                 <span class="seat-picker-label muted small">Seat</span>
                 <div class="chip-row seat-chips">
-                    <button type="button" class="chip-btn @(_seatsOn.Count == 0 ? "on" : null)" data-testid="seat-whole" aria-pressed="@(_seatsOn.Count == 0 ? "true" : "false")" @onclick="_seatsOn.Clear">Whole table</button>
+                    @if (ShowWholeTable)
+                    {
+                        <button type="button" class="chip-btn @(_seatsOn.Count == 0 ? "on" : null)" data-testid="seat-whole" aria-pressed="@(_seatsOn.Count == 0 ? "true" : "false")" @onclick="_seatsOn.Clear">Whole table</button>
+                    }
                     @foreach (var code in _seatCodes)
                     {
                         var seat = code;
+                        var locked = IsSeatLocked(seat);
                         var owner = SeatOwners.GetValueOrDefault(seat);
-                        <button type="button" class="chip-btn @(_seatsOn.Contains(seat) ? "on" : null) @(owner is not null ? "taken" : null)" data-testid="seat-chip" data-seat="@seat"
+                        <button type="button" class="chip-btn @(_seatsOn.Contains(seat) ? "on" : null) @(!locked && owner is not null ? "taken" : null) @(locked ? "locked" : null)"
+                                data-testid="seat-chip" data-seat="@seat"
                                 data-taken="@(owner is not null ? "true" : "false")"
-                                aria-label="@(owner is null ? $"Seat {seat}, free" : owner == seat ? $"Seat {seat}, already has dishes" : $"Seat {seat}, already has dishes with the group {owner}")"
-                                title="@(owner is null ? $"Seat {seat} · free" : owner == seat ? $"Seat {seat} · already has dishes. Tap to add more." : $"Seat {seat} · taken by the group {owner}. Tap to add to that group.")"
+                                data-locked="@(locked ? "true" : "false")"
+                                disabled="@locked"
+                                aria-label="@(locked ? $"Seat {seat}, already ordered (locked until billed)" : owner is null ? $"Seat {seat}, free" : owner == seat ? $"Seat {seat}, already has dishes" : $"Seat {seat}, already has dishes with the group {owner}")"
+                                title="@(locked ? $"Seat {seat} · already ordered (locked until billed)" : owner is null ? $"Seat {seat} · free" : owner == seat ? $"Seat {seat} · already has dishes. Tap to add more." : $"Seat {seat} · taken by the group {owner}. Tap to add to that group.")"
                                 aria-pressed="@(_seatsOn.Contains(seat) ? "true" : "false")" @onclick="() => ToggleSeat(seat)">@seat@(owner is not null ? " ●" : null)</button>
                     }
                 </div>
-                <div class="muted small seat-hint">Tap seats to select one or more. Tap a selected seat again to unselect it. ● Has dishes: tap to add more.</div>
+                @if (FreeSeatCodes.Count == 0)
+                {
+                    <div class="muted small seat-hint" data-testid="no-free-seats">All seats on this table already have orders until billed.</div>
+                }
+                else if (ServerSeatOwners.Count > 0)
+                {
+                    <div class="muted small seat-hint">Select an available seat to order. Greyed-out seats are locked until billed.</div>
+                }
+                else
+                {
+                    <div class="muted small seat-hint">Tap seats to select one or more. Tap a selected seat again to unselect it. ● Has dishes: tap to add more.</div>
+                }
             </div>
         }
         <button type="button" class="parcel-toggle @(_parcel ? "on" : null)" data-testid="parcel-toggle" aria-pressed="@(_parcel ? "true" : "false")" @onclick="() => _parcel = !_parcel">
@@ -179,7 +197,7 @@ else
 
 @if (_options is { } options)
 {
-    <ItemOptionsSheet Item="options.Item" Groups="options.Groups" InitialOptionIds="options.Line?.ModifierOptionIds" InitialPortionId="options.Line?.PortionId ?? options.Portion?.Id" InitialQuantity="options.Line?.Quantity ?? 1"
+    <ItemOptionsSheet Item="options.Item" ImageUrl="@Host.ImageUrl(options.Item.ImageUrl)" Groups="options.Groups" InitialOptionIds="options.Line?.ModifierOptionIds" InitialPortionId="options.Line?.PortionId ?? options.Portion?.Id" InitialQuantity="options.Line?.Quantity ?? 1"
                       InitialNotes="@options.Line?.Notes" ConfirmLabel="@(options.Line is null ? "Add to order" : "Save changes")"
                       OnConfirm="r => ConfirmOptions(options, r)" OnClose="() => _options = null" />
 }
@@ -230,6 +248,11 @@ else
 
     private void SetOrderType(OrderType type)
     {
+        if (_orderType == type)
+        {
+            return;
+        }
+
         _orderType = type;
         if (type == OrderType.Delivery && !IsDeliveryDetailsComplete)
         {
@@ -237,10 +260,23 @@ else
         }
 
         // Takeaway and delivery have no seats: nothing may still point at one.
+        // Takeaway and delivery also default to parcel for all items.
         if (type != OrderType.DineIn)
         {
             _seatsOn.Clear();
-            Change(_cart.ClearSeats);
+            _parcel = true;
+            Change(() =>
+            {
+                _cart.ClearSeats();
+                foreach (var line in _cart.Lines.Where(c => !c.IsParcel).ToList())
+                {
+                    _cart.SetParcel(line, true, _menu?.Items.FirstOrDefault(i => i.Id == line.MenuItemId)?.PackagingCharge);
+                }
+            });
+        }
+        else
+        {
+            _parcel = false;
         }
 
         SetTitle();
@@ -254,36 +290,51 @@ else
 
     private bool ShowSeatPicker => _orderType == OrderType.DineIn && _seatCodes.Count > 0;
 
-    // The dishes tapped next are for these seats together ("T01A+B"); nothing tapped means the whole table.
-    private string? ActiveSeat => ShowSeatPicker && _seatsOn.Count > 0 ? SeatSelection.Join(_seatCodes.Where(_seatsOn.Contains)) : null;
+    // Seats that already have dishes on the server's open order stay locked until the table is billed.
+    private Dictionary<string, string> ServerSeatOwners => BuildSeatOwners(_serverSeatGroups);
+
+    private bool IsSeatLocked(string seat) => !IsEdit && ServerSeatOwners.ContainsKey(seat);
+
+    private bool ShowWholeTable => ServerSeatOwners.Count == 0;
+
+    private IReadOnlyList<string> FreeSeatCodes =>
+        _seatCodes.Where(s => !IsSeatLocked(s)).ToList();
+
+    // The dishes tapped next are for these seats together ("T01A+B"); nothing tapped means the whole table (only allowed before any seat is locked).
+    private string? ActiveSeat => ShowSeatPicker && _seatsOn.Count > 0 ? SeatSelection.Join(FreeSeatCodes.Where(_seatsOn.Contains)) : null;
 
     // Which seat group already has dishes for each seat: the dishes in the cart and those already on the order.
-    private Dictionary<string, string> SeatOwners
-    {
-        get
-        {
-            var owner = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var raw in _serverSeatGroups.Concat(_cart.Lines.Select(l => l.SeatCode ?? string.Empty)).Where(g => !string.IsNullOrWhiteSpace(g)))
-            {
-                var group = SeatSelection.Join(SeatSelection.Parse(raw));
-                foreach (var seat in SeatSelection.Parse(group))
-                {
-                    owner.TryAdd(seat, group);
-                }
-            }
+    private Dictionary<string, string> SeatOwners =>
+        BuildSeatOwners(_serverSeatGroups.Concat(_cart.Lines.Select(l => l.SeatCode ?? string.Empty)));
 
-            return owner;
+    private static Dictionary<string, string> BuildSeatOwners(IEnumerable<string> rawGroups)
+    {
+        var owner = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var raw in rawGroups.Where(g => !string.IsNullOrWhiteSpace(g)))
+        {
+            var group = SeatSelection.Join(SeatSelection.Parse(raw));
+            foreach (var seat in SeatSelection.Parse(group))
+            {
+                owner.TryAdd(seat, group);
+            }
         }
+
+        return owner;
     }
 
-    // Tapping a seat adds it to the selection (supports multiple seats); tapping an already selected seat toggles it off.
-    // If a seat belongs to an existing group, toggling it toggles that whole group.
+    // Tapping an available seat toggles it (supports multiple seats); locked seats already ordered on this table cannot be tapped until billed.
+    // If an unlocked cart seat belongs to a local group, toggling it toggles that whole group.
     private void ToggleSeat(string seat)
     {
+        if (IsSeatLocked(seat))
+        {
+            return;
+        }
+
         var owners = SeatOwners;
         var group = owners.GetValueOrDefault(seat);
         var seatsToToggle = group is not null
-            ? _seatCodes.Where(s => owners.GetValueOrDefault(s) == group).ToList()
+            ? FreeSeatCodes.Where(s => owners.GetValueOrDefault(s) == group).ToList()
             : new List<string> { seat };
 
         var allOn = seatsToToggle.All(_seatsOn.Contains);
@@ -323,8 +374,10 @@ else
 
     private string SearchText { get; set; } = string.Empty;
 
+    private int? _resolvedOrderId;
+    private int? EffectiveOrderId => OrderId ?? _resolvedOrderId;
     private bool IsEdit => Navigation.Uri.Contains("/edit", StringComparison.OrdinalIgnoreCase);
-    private bool IsAppend => OrderId is not null && !IsEdit;
+    private bool IsAppend => EffectiveOrderId is not null && !IsEdit;
     private string? _orderRowVersion;
 
     private bool IsSearching => SearchText.Trim().Length > 0;
@@ -392,6 +445,11 @@ else
             _orderType = OrderType.Takeaway;
         }
 
+        if (_orderType != OrderType.DineIn)
+        {
+            _parcel = true;
+        }
+
         SetTitle();
         await Realtime.StartAsync();
         _menuSubscription = Realtime.Subscribe<MenuChangedEvent>(HubEvents.MenuChanged, changed => { Api.InvalidateMenu(); _ = InvokeAsync(LoadAsync); });
@@ -421,6 +479,10 @@ else
             {
                 _orderRowVersion = order.RowVersion;
                 _orderType = order.OrderType;
+                if (_orderType != OrderType.DineIn)
+                {
+                    _parcel = true;
+                }
                 _customerName = order.CustomerName;
                 _customerPhone = order.CustomerPhone;
                 _deliveryAddress = order.DeliveryAddress;
@@ -439,6 +501,11 @@ else
             if (table.Success && table.Data is { } detail)
             {
                 _tableCode = detail.Table.Code;
+                if (!IsEdit && OrderId is null && detail.Table.CurrentOrderId is { } activeOrderId)
+                {
+                    _resolvedOrderId = activeOrderId;
+                }
+
                 if (!IsAppend && draft is null && detail.Table.GuestCount is { } guests)
                 {
                     _cart.Guests = guests;
@@ -448,18 +515,24 @@ else
             }
 
             // Dishes already on the order own their seats too.
-            if (IsAppend && OrderId is { } existingId)
+            if (IsAppend && EffectiveOrderId is { } existingId)
             {
-                var existing = await Api.GetOrderAsync(existingId);
-                if (existing.Success && existing.Data is { } existingOrder)
-                {
-                    _serverSeatGroups = existingOrder.SeatGroups.Select(g => g.SeatCode).ToList();
-                }
+                await LoadServerSeatGroupsAsync(existingId);
             }
         }
 
         SetTitle();
         await LoadAsync();
+    }
+
+    private async Task LoadServerSeatGroupsAsync(int orderId)
+    {
+        var existing = await Api.GetOrderAsync(orderId);
+        if (existing.Success && existing.Data is { } existingOrder)
+        {
+            _serverSeatGroups = existingOrder.SeatGroups.Select(g => g.SeatCode).ToList();
+            _seatsOn.RemoveWhere(ServerSeatOwners.ContainsKey);
+        }
     }
 
     // The table's own seats, then the seats of every table merged into it (one order may use the seats of both). The table
@@ -490,6 +563,13 @@ else
             _menu = menu;
             // A loaded draft or order is tied to today's portions (by id, then by name); one that is gone must be chosen again.
             _cart.ResolvePortions(menu);
+            if (_orderType != OrderType.DineIn)
+            {
+                foreach (var line in _cart.Lines.Where(c => !c.IsParcel).ToList())
+                {
+                    _cart.SetParcel(line, true, menu.Items.FirstOrDefault(i => i.Id == line.MenuItemId)?.PackagingCharge);
+                }
+            }
             _error = null;
             var hasFavourites = Favourites.Items(menu).Count > 0;
             var known = menu.Categories.Any(c => c.Id == _categoryId) || (_categoryId == FavouritesStore.CategoryId && hasFavourites);
@@ -511,19 +591,38 @@ else
     // portion: the one selected on the card of an item with several portions; null adds the item's default portion.
     private void Pick(MenuEntryDto item, MenuItemPortionDto? portion = null)
     {
-        var groups = GroupsFor(item);
-        if (groups.Count == 0)
+        if (!EnsureSeatSelectedBeforeAdding())
         {
-            Change(() => _cart.Add(item, Array.Empty<MenuModifierOptionDto>(), 1, null, _parcel, ActiveSeat, portion));
-            Toasts.Success(AddedText(item, portion));
             return;
         }
 
+        var groups = GroupsFor(item);
         _options = new OptionsRequest(item, groups, null, portion);
     }
 
+    private bool EnsureSeatSelectedBeforeAdding()
+    {
+        if (IsEdit || !ShowSeatPicker || ShowWholeTable || ActiveSeat is not null)
+        {
+            return true;
+        }
+
+        if (FreeSeatCodes.Count == 0)
+        {
+            Toasts.Error("All seats on this table already have orders until billed.");
+        }
+        else
+        {
+            Toasts.Info("Select an available seat first.");
+        }
+
+        return false;
+    }
+
     private List<MenuModifierGroupDto> GroupsFor(MenuEntryDto item) =>
-        _menu!.ModifierGroups.Where(g => item.ModifierGroupIds.Contains(g.Id)).ToList();
+        _menu!.ModifierGroups
+            .Where(g => item.ModifierGroupIds.Contains(g.Id) && g.Options.Count >= Math.Max(1, g.MinSelections))
+            .ToList();
 
     // Editing a line reopens the same sheet with its options, quantity and note filled in. An item the menu no longer
     // lists keeps its options and only quantity and note can change.
@@ -539,6 +638,11 @@ else
         _options = null;
         if (request.Line is not { } line)
         {
+            if (!EnsureSeatSelectedBeforeAdding())
+            {
+                return;
+            }
+
             var portion = result.Portion ?? request.Portion;
             Change(() => _cart.Add(request.Item, result.Options, result.Quantity, result.Notes, _parcel, ActiveSeat, portion));
             Toasts.Success(AddedText(request.Item, portion));
@@ -576,7 +680,7 @@ else
 
     private ValueTask PersistAsync() => _cart.IsEmpty && _pendingKey is null
         ? Drafts.RemoveAsync(DraftKey)
-        : Drafts.SaveAsync(_cart.ToDraft(DraftKey, OrderId, _pendingKey));
+        : Drafts.SaveAsync(_cart.ToDraft(DraftKey, EffectiveOrderId, _pendingKey));
 
     // A line whose portion is no longer on the menu is never saved or sent with a guessed portion: say which dish and portion.
     private string? UnresolvedPortionMessage() =>
@@ -729,7 +833,7 @@ else
             }
 
             var result = IsAppend
-                ? await Sender.SendAsync(key, (k, ct) => Api.AppendItemsAsync(OrderId!.Value, new AppendOrderItemsRequest { Items = _cart.ToInputs() }, k, ct))
+                ? await Sender.SendAsync(key, (k, ct) => Api.AppendItemsAsync(EffectiveOrderId!.Value, new AppendOrderItemsRequest { Items = _cart.ToInputs() }, k, ct))
                 : await Sender.SendAsync(key, (k, ct) => Api.CreateOrderAsync(new CreateOrderRequest
                 {
                     OrderType = _orderType,
@@ -762,9 +866,9 @@ else
                 // Another device changed the table/order. Keep the cart and the pending key (the draft is
                 // already persisted), re-read the server state and let the waiter send again.
                 Toasts.Error(WaiterApi.ConflictMessage);
-                if (IsAppend)
+                if (IsAppend && EffectiveOrderId is { } appendOrderId)
                 {
-                    await Api.GetOrderAsync(OrderId!.Value);
+                    await LoadServerSeatGroupsAsync(appendOrderId);
                 }
 
                 if (TableId.HasValue)

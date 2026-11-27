@@ -61,6 +61,25 @@ public class OrderTests : DatabaseTestBase
     }
 
     [Fact]
+    public async Task Create_AllowsOrderingItem_WhenPreExistingLinkedModifierGroupHasNoActiveOptions()
+    {
+        var s = await SetupAsync();
+        var emptyGroup = await SendAsAdminAsync(new CreateModifierGroupCommand(new SaveModifierGroupRequest { Name = "Table A", MinSelections = 1, MaxSelections = 4 }));
+        await QueryAsync(async db =>
+        {
+            db.MenuItemModifierGroups.Add(new Domain.Menu.MenuItemModifierGroup { MenuItemId = s.Naan, ModifierGroupId = emptyGroup.Value.Id, SortOrder = 1 });
+            return await db.SaveChangesAsync();
+        });
+        await AsWaiterAsync(s.WaiterA);
+
+        var menu = (await SendAsync(new GetMenuQuery(null))).Value;
+        menu.Items.Single(i => i.Id == s.Naan).ModifierGroupIds.Should().BeEmpty();
+
+        var order = await CreateAsync(s, submit: true, Line(s.Naan, 1));
+        order.Items.Should().ContainSingle().Which.ItemName.Should().Be("Butter Naan");
+    }
+
+    [Fact]
     public async Task Create_SetsTableStatus_AndASecondOrderOnTheTableIsRefusedWithTheExistingOne()
     {
         var s = await SetupAsync();

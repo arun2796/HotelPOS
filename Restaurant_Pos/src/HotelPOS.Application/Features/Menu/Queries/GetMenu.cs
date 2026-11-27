@@ -59,6 +59,7 @@ internal sealed class GetMenuHandler : IQueryHandler<GetMenuQuery, MenuDto>
                     .ToList(),
             })
             .ToListAsync(cancellationToken);
+        groups = groups.Where(g => MenuModifiers.CanOffer(g.Options.Count, g.MinSelections)).ToList();
         var activeGroups = groups.Select(g => g.Id).ToHashSet();
 
         // The charge a parcel of each item pays: its own, else the restaurant-wide one (Admin > Settings).

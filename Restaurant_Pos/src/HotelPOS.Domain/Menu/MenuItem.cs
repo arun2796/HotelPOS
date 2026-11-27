@@ -206,6 +206,14 @@ public sealed class MenuItem : BaseEntity, IHasRowVersion
         IsAvailable = quantity > 0;
     }
 
+    public void RestoreStockState(StockTrackingMode mode, int? opening, int? remaining, bool isAvailable)
+    {
+        StockMode = mode;
+        StockOpening = opening;
+        StockRemaining = remaining;
+        IsAvailable = isAvailable;
+    }
+
     // Adds to what is left (a second vessel is loaded) without restarting the opening count.
     public void AddStock(int quantity)
     {

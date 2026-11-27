@@ -259,14 +259,79 @@
             Visibility="{Binding IsPreferencesOpen, Converter={StaticResource BoolToVisibility}}">
         <ContentControl Content="{Binding Preferences}" HorizontalAlignment="Center" VerticalAlignment="Center" Focusable="False" />
       </Grid>
+    </Grid>
 
-      <!-- Notices panel under the bell -->
-      <Grid Grid.Row="2" Width="380" Margin="0,8,16,0" HorizontalAlignment="Right" VerticalAlignment="Top"
-            Visibility="{Binding IsNoticesOpen, Converter={StaticResource BoolToVisibility}}">
+    <!-- ============================ Status bar ============================ -->
+    <Border Grid.Row="1" Grid.ColumnSpan="2" Background="{DynamicResource Brush.Surface}"
+            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,1,0,0" Padding="16,0"
+            DataContext="{Binding StatusBar}">
+      <Grid VerticalAlignment="Center">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <StackPanel Orientation="Horizontal">
+          <Ellipse Width="10" Height="10" VerticalAlignment="Center">
+            <Ellipse.Style>
+              <Style TargetType="Ellipse">
+                <Setter Property="Fill" Value="{DynamicResource Brush.Danger}" />
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding Status}" Value="Connected">
+                    <Setter Property="Fill" Value="{DynamicResource Brush.Success}" />
+                  </DataTrigger>
+                  <DataTrigger Binding="{Binding Status}" Value="Connecting">
+                    <Setter Property="Fill" Value="{DynamicResource Brush.Warning}" />
+                  </DataTrigger>
+                  <DataTrigger Binding="{Binding Status}" Value="Reconnecting">
+                    <Setter Property="Fill" Value="{DynamicResource Brush.Warning}" />
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </Ellipse.Style>
+          </Ellipse>
+          <TextBlock Text="{Binding StatusText}" FontSize="13" FontWeight="SemiBold" Margin="8,0,0,0" VerticalAlignment="Center" />
+        </StackPanel>
+        <TextBlock Grid.Column="1" Style="{StaticResource Text.Caption}" Margin="24,0,0,0" VerticalAlignment="Center">
+          <Run Text="Server" />
+          <Run Text="{Binding ServerAddress, Mode=OneWay}" />
+          <Run Text="  ·  Terminal" />
+          <Run Text="{Binding DeviceName, Mode=OneWay}" />
+        </TextBlock>
+        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+          <Border Background="{DynamicResource Brush.DangerSoft}" CornerRadius="8" Padding="8,2" Margin="0,0,16,0"
+                  Visibility="{Binding HasFailedPrints, Converter={StaticResource BoolToVisibility}}">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="&#xE749;" Style="{StaticResource Text.Icon}" FontSize="12" Foreground="{DynamicResource Brush.Danger}" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding FailedPrintText}" FontSize="12" FontWeight="SemiBold" Margin="6,0,8,0" VerticalAlignment="Center"
+                         Foreground="{DynamicResource Brush.Danger}" />
+              <Button Content="Retry" Command="{Binding RetryPrintsCommand}" Style="{StaticResource Button.Link}" FontSize="12" Padding="4,0" MinHeight="20" />
+              <Button Content="Discard" Command="{Binding DiscardPrintsCommand}" Style="{StaticResource Button.Link}" FontSize="12" Padding="4,0" MinHeight="20" Margin="4,0,0,0" />
+            </StackPanel>
+          </Border>
+          <TextBlock Text="{Binding Version}" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- ============================ Notices panel (click anywhere outside to close) ============================ -->
+    <Grid Grid.RowSpan="2" Grid.ColumnSpan="2" Background="Transparent"
+          Visibility="{Binding IsNoticesOpen, Converter={StaticResource BoolToVisibility}}"
+          MouseLeftButtonDown="OnNoticesScrimClicked">
+      <Grid Width="380" Margin="0,72,16,0" HorizontalAlignment="Right" VerticalAlignment="Top"
+            MouseLeftButtonDown="OnNoticesCardClicked">
         <Border CornerRadius="12" Background="{DynamicResource Brush.Surface}" Effect="{DynamicResource Shadow.Popup}" />
         <Border Style="{StaticResource Card}" Padding="16" DataContext="{Binding Notices}">
           <StackPanel>
-            <TextBlock Text="Notices" Style="{StaticResource Text.Subtitle}" />
+            <Grid Margin="0,0,0,4">
+              <TextBlock Text="Notices" Style="{StaticResource Text.Subtitle}" VerticalAlignment="Center" />
+              <Button Style="{StaticResource Button.Icon}" Width="32" Height="32" MinWidth="32" MinHeight="32"
+                      HorizontalAlignment="Right" VerticalAlignment="Center"
+                      Command="{Binding DataContext.CloseNoticesCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                      ToolTip="Close (Esc)">
+                <controls:Icon Kind="x" Width="14" Height="14" Foreground="{DynamicResource Brush.TextSecondary}" />
+              </Button>
+            </Grid>
             <Grid Margin="0,2,0,10">
               <TextBlock Text="Since you signed in." Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
               <Button Content="Mark all read" Style="{StaticResource Button.Ghost}" HorizontalAlignment="Right"
@@ -352,59 +417,6 @@
         </Border>
       </Grid>
     </Grid>
-
-    <!-- ============================ Status bar ============================ -->
-    <Border Grid.Row="1" Grid.ColumnSpan="2" Background="{DynamicResource Brush.Surface}"
-            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,1,0,0" Padding="16,0"
-            DataContext="{Binding StatusBar}">
-      <Grid VerticalAlignment="Center">
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="Auto" />
-          <ColumnDefinition Width="*" />
-          <ColumnDefinition Width="Auto" />
-        </Grid.ColumnDefinitions>
-        <StackPanel Orientation="Horizontal">
-          <Ellipse Width="10" Height="10" VerticalAlignment="Center">
-            <Ellipse.Style>
-              <Style TargetType="Ellipse">
-                <Setter Property="Fill" Value="{DynamicResource Brush.Danger}" />
-                <Style.Triggers>
-                  <DataTrigger Binding="{Binding Status}" Value="Connected">
-                    <Setter Property="Fill" Value="{DynamicResource Brush.Success}" />
-                  </DataTrigger>
-                  <DataTrigger Binding="{Binding Status}" Value="Connecting">
-                    <Setter Property="Fill" Value="{DynamicResource Brush.Warning}" />
-                  </DataTrigger>
-                  <DataTrigger Binding="{Binding Status}" Value="Reconnecting">
-                    <Setter Property="Fill" Value="{DynamicResource Brush.Warning}" />
-                  </DataTrigger>
-                </Style.Triggers>
-              </Style>
-            </Ellipse.Style>
-          </Ellipse>
-          <TextBlock Text="{Binding StatusText}" FontSize="13" FontWeight="SemiBold" Margin="8,0,0,0" VerticalAlignment="Center" />
-        </StackPanel>
-        <TextBlock Grid.Column="1" Style="{StaticResource Text.Caption}" Margin="24,0,0,0" VerticalAlignment="Center">
-          <Run Text="Server" />
-          <Run Text="{Binding ServerAddress, Mode=OneWay}" />
-          <Run Text="  ·  Terminal" />
-          <Run Text="{Binding DeviceName, Mode=OneWay}" />
-        </TextBlock>
-        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-          <Border Background="{DynamicResource Brush.DangerSoft}" CornerRadius="8" Padding="8,2" Margin="0,0,16,0"
-                  Visibility="{Binding HasFailedPrints, Converter={StaticResource BoolToVisibility}}">
-            <StackPanel Orientation="Horizontal">
-              <TextBlock Text="&#xE749;" Style="{StaticResource Text.Icon}" FontSize="12" Foreground="{DynamicResource Brush.Danger}" VerticalAlignment="Center" />
-              <TextBlock Text="{Binding FailedPrintText}" FontSize="12" FontWeight="SemiBold" Margin="6,0,8,0" VerticalAlignment="Center"
-                         Foreground="{DynamicResource Brush.Danger}" />
-              <Button Content="Retry" Command="{Binding RetryPrintsCommand}" Style="{StaticResource Button.Link}" FontSize="12" Padding="4,0" MinHeight="20" />
-              <Button Content="Discard" Command="{Binding DiscardPrintsCommand}" Style="{StaticResource Button.Link}" FontSize="12" Padding="4,0" MinHeight="20" Margin="4,0,0,0" />
-            </StackPanel>
-          </Border>
-          <TextBlock Text="{Binding Version}" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
-        </StackPanel>
-      </Grid>
-    </Border>
 
     <!-- ============================ Command palette (Ctrl+K) ============================ -->
     <Grid Grid.RowSpan="2" Grid.ColumnSpan="2" Background="{DynamicResource Brush.Overlay}"

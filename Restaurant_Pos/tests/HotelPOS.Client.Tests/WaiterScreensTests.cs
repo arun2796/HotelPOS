@@ -148,6 +148,7 @@ public sealed partial class WaiterScreensTests : TestContext
         t01.TextContent.Should().Contain("2 guests").And.Contain("1 h 55 min").And.Contain("#1003");
         var t02 = page.FindAll("[data-testid=table-card]").Single(c => c.TextContent.Contains("T02"));
         t02.ClassList.Should().Contain("st-available");
+        t02.QuerySelector(".status-badge")!.TextContent.Should().Be("Available");
         t02.TextContent.Should().Contain("4 seats").And.NotContain("min");
         page.Find("[data-testid=tables-summary]").TextContent.Should().Be("2 available · 2 in use · 4 tables");
         page.FindAll(".legend").Should().BeEmpty("every card carries its own badge with icon and words");
@@ -307,6 +308,10 @@ public sealed partial class WaiterScreensTests : TestContext
         await page.InvokeAsync(() => Chips()[0].Click());
         await page.InvokeAsync(() => page.FindAll("button.chip-btn").Single(c => c.TextContent == "Breads").Click());
         await page.InvokeAsync(() => page.FindAll("button.item-card")[0].Click());
+        if (page.FindAll("[data-testid=options-confirm]").FirstOrDefault() is { } confirm)
+        {
+            await page.InvokeAsync(() => confirm.Click());
+        }
         Chips().Select(c => c.GetAttribute("data-taken")).Should().Equal("true", "false", "false", "false");
 
         // a free chair can be toggled; clicking taken chair A toggles A
@@ -315,6 +320,95 @@ public sealed partial class WaiterScreensTests : TestContext
         await page.InvokeAsync(() => Chips()[2].Click());
         await page.InvokeAsync(() => Chips()[0].Click());
         Chips().Select(c => c.GetAttribute("aria-pressed")).Should().Equal("false", "false", "false", "false");
+        await StopRealtimeAsync();
+    }
+
+    [Fact]
+    public async Task Builder_ActiveTableOrder_DisablesOrderedSeatsAndHidesWholeTable_RequiringAnAvailableSeat()
+    {
+        var handler = new RouteHandler
+        {
+            Respond = r => (r.Method.Method, r.RequestUri!.AbsolutePath) switch
+            {
+                ("GET", "/api/menu") => Menu,
+                ("GET", "/api/tables/5") => new TableDetailDto
+                {
+                    Table = new TableDto
+                    {
+                        Id = 5, Code = "01", Status = TableStatus.Preparing, GuestCount = 4, CurrentOrderId = 30,
+                        SeatCodes = new[] { "01A", "01B", "01C", "01D", "01E", "01F" },
+                    },
+                },
+                ("GET", "/api/orders/30") => new OrderDetailDto
+                {
+                    Id = 30, OrderNumber = 1030, TableId = 5, Status = OrderStatus.Preparing,
+                    SeatGroups = new[] { new SeatGroupStatusDto { SeatCode = "01A+B" } },
+                },
+                _ => null,
+            },
+        };
+        var page = await RenderBuilderAsync(handler, orderId: 30);
+
+        page.FindAll("[data-testid=seat-whole]").Should().BeEmpty("Whole table is hidden once seats on the table already have dishes");
+        var chips = page.FindAll("[data-testid=seat-chip]");
+        chips.Select(c => c.GetAttribute("data-seat")).Should().Equal("01A", "01B", "01C", "01D", "01E", "01F");
+        chips.Select(c => c.HasAttribute("disabled")).Should().Equal(true, true, false, false, false, false);
+        chips.Select(c => c.GetAttribute("data-locked")).Should().Equal("true", "true", "false", "false", "false", "false");
+
+        // Tapping a dish before picking an available seat asks the waiter to choose one instead of silently adding to Whole table.
+        await page.InvokeAsync(() => page.FindAll("button.chip-btn").Single(c => c.TextContent == "Breads").Click());
+        await page.InvokeAsync(() => page.FindAll("button.item-card")[0].Click());
+        page.FindAll("[data-testid=options-confirm]").Should().BeEmpty();
+        Services.GetRequiredService<ToastService>().Items.Should().Contain(t => t.Text.Contains("Select an available seat first"));
+
+        // Selecting an available seat allows adding dishes for that seat, while 01A and 01B stay disabled.
+        await page.InvokeAsync(() => page.FindAll("[data-testid=seat-chip]")[2].Click());
+        page.FindAll("[data-testid=seat-chip]")[2].GetAttribute("aria-pressed").Should().Be("true");
+        await page.InvokeAsync(() => page.FindAll("button.item-card")[0].Click());
+        if (page.FindAll("[data-testid=options-confirm]").FirstOrDefault() is { } confirm)
+        {
+            await page.InvokeAsync(() => confirm.Click());
+        }
+        Services.GetRequiredService<ToastService>().Items.Should().Contain(t => t.Text.Contains("for seat 01C"));
+        await StopRealtimeAsync();
+    }
+
+    [Fact]
+    public async Task Builder_ActiveTableOrder_WhenAllSeatsOrdered_DisablesAllSeatsAndBlocksAdding()
+    {
+        var handler = new RouteHandler
+        {
+            Respond = r => (r.Method.Method, r.RequestUri!.AbsolutePath) switch
+            {
+                ("GET", "/api/menu") => Menu,
+                ("GET", "/api/tables/5") => new TableDetailDto
+                {
+                    Table = new TableDto
+                    {
+                        Id = 5, Code = "01", Status = TableStatus.Preparing, GuestCount = 4, CurrentOrderId = 30,
+                        SeatCodes = new[] { "01A", "01B" },
+                    },
+                },
+                ("GET", "/api/orders/30") => new OrderDetailDto
+                {
+                    Id = 30, OrderNumber = 1030, TableId = 5, Status = OrderStatus.Preparing,
+                    SeatGroups = new[] { new SeatGroupStatusDto { SeatCode = "01A" }, new SeatGroupStatusDto { SeatCode = "01B" } },
+                },
+                _ => null,
+            },
+        };
+        var page = await RenderBuilderAsync(handler);
+
+        page.FindAll("[data-testid=seat-whole]").Should().BeEmpty();
+        var chips = page.FindAll("[data-testid=seat-chip]");
+        chips.Select(c => c.GetAttribute("data-seat")).Should().Equal("01A", "01B");
+        chips.All(c => c.HasAttribute("disabled")).Should().BeTrue();
+        page.Find("[data-testid=no-free-seats]").TextContent.Should().Contain("All seats on this table already have orders until billed");
+
+        await page.InvokeAsync(() => page.FindAll("button.chip-btn").Single(c => c.TextContent == "Breads").Click());
+        await page.InvokeAsync(() => page.FindAll("button.item-card")[0].Click());
+        page.FindAll("[data-testid=options-confirm]").Should().BeEmpty();
+        Services.GetRequiredService<ToastService>().Items.Should().Contain(t => t.Text.Contains("All seats on this table already have orders until billed"));
         await StopRealtimeAsync();
     }
 
@@ -375,12 +469,59 @@ public sealed partial class WaiterScreensTests : TestContext
     }
 
     [Fact]
+    public async Task Builder_EmptyOrUnsatisfiableModifierGroup_IsSkippedSoAddToOrderStaysEnabled()
+    {
+        var menuWithEmptyGroup = new MenuDto
+        {
+            Version = 2,
+            Categories = new[] { new MenuCategoryDto(1, "Drinks", 1) },
+            Items = new[]
+            {
+                new MenuEntryDto { Id = 3, CategoryId = 1, Name = "Water Bottle (Bisleri)", Price = 20m, IsAvailable = true, SortOrder = 1, ModifierGroupIds = new[] { 9 }, ImageUrl = "/images/menu/water.jpg" },
+            },
+            ModifierGroups = new[]
+            {
+                new MenuModifierGroupDto { Id = 9, Name = "Table A", MinSelections = 1, MaxSelections = 4, Options = Array.Empty<MenuModifierOptionDto>() },
+            },
+        };
+        var handler = new RouteHandler
+        {
+            Respond = r => (r.Method.Method, r.RequestUri!.AbsolutePath) switch
+            {
+                ("GET", "/api/menu") => menuWithEmptyGroup,
+                ("GET", "/api/tables/5") => new TableDetailDto { Table = new TableDto { Id = 5, Code = "T05", Status = TableStatus.Occupied, GuestCount = 1 } },
+                _ => null,
+            },
+        };
+        var page = await RenderBuilderAsync(handler);
+
+        page.Find(".item-card img").GetAttribute("src").Should().Be("http://127.0.0.1:1/images/menu/water.jpg");
+
+        await page.InvokeAsync(() => page.FindAll("button.item-card")[0].Click());
+
+        page.Find(".sheet-item-hero img").GetAttribute("src").Should().Be("http://127.0.0.1:1/images/menu/water.jpg");
+        page.FindAll(".options-group").Select(g => g.GetAttribute("aria-label")).Should().Equal("Special instructions");
+        var confirm = page.Find("[data-testid=options-confirm]");
+        confirm.HasAttribute("disabled").Should().BeFalse("an empty modifier group must not block Add to order");
+
+        await page.InvokeAsync(() => confirm.Click());
+
+        page.FindAll(".overlay").Should().BeEmpty();
+        page.Find(".cart h2").TextContent.Should().Be("Order · 1 item");
+        await StopRealtimeAsync();
+    }
+
+    [Fact]
     public async Task Builder_SendsOrderLevelNotes_AndGuests_OnTheCreateOrderRequest()
     {
         var handler = MenuHandler();
         var page = await RenderBuilderAsync(handler);
         await page.InvokeAsync(() => page.FindAll("button.chip-btn").Single(c => c.TextContent == "Breads").Click());
         await page.InvokeAsync(() => page.FindAll("button.item-card")[0].Click());
+        if (page.FindAll("[data-testid=options-confirm]").FirstOrDefault() is { } confirm)
+        {
+            await page.InvokeAsync(() => confirm.Click());
+        }
 
         page.Find("[data-testid=cart-review]").Click();
         page.Find("[data-testid=order-notes]").Change("No onion for biryani");
@@ -407,6 +548,10 @@ public sealed partial class WaiterScreensTests : TestContext
         var page = await RenderBuilderAsync(handler);
         await page.InvokeAsync(() => page.FindAll("button.chip-btn").Single(c => c.TextContent == "Breads").Click());
         await page.InvokeAsync(() => page.FindAll("button.item-card")[0].Click());
+        if (page.FindAll("[data-testid=options-confirm]").FirstOrDefault() is { } confirm)
+        {
+            await page.InvokeAsync(() => confirm.Click());
+        }
         page.Find("[data-testid=cart-review]").Click();
         page.Find("[data-testid=order-notes]").Change("Birthday table");
 
@@ -842,6 +987,30 @@ public sealed partial class WaiterScreensTests : TestContext
         await page.InvokeAsync(() => page.FindAll(".segmented .segment")[1].Click());
         page.WaitForAssertion(() => page.Find("[data-testid=signin-device]").TextContent.Should().StartWith("WEB-KITCHEN-"));
         page.Find("button[type=submit]").HasAttribute("disabled").Should().BeTrue("no credentials typed yet");
+        page.FindAll("[data-testid=change-server]").Should().BeEmpty("browser client runs at its origin server");
+    }
+
+    [Fact]
+    public async Task SignIn_WhenHostAllowsChangingServer_ShowsChangeServerButton_WithCurrentAddress()
+    {
+        var appHost = new FakeClientHost { ServerBase = new Uri("http://192.168.1.15:5000/"), CanChangeServer = true, DeviceNamePrefix = "APP" };
+        var handler = new RouteHandler { Respond = r => r.RequestUri!.AbsolutePath == "/api/system/info" ? new SystemInfoDto { RestaurantName = "Saravana Bhavan" } : null };
+        var transport = Substitute.For<ISessionTransport>();
+        var auth = new WebAuthState(transport, appHost);
+        Services.AddSingleton<IClientHost>(appHost);
+        Services.AddSingleton(auth);
+        Services.AddSingleton<IBrowserStorage>(_storage);
+        Services.AddSingleton<DeviceIdentity>();
+        Services.AddSingleton(new WebApiClient(new HttpClient(handler), appHost, auth));
+        Services.AddSingleton<WebRealtimeClient>();
+
+        var page = RenderComponent<SignIn>();
+        page.WaitForAssertion(() => page.Find(".signin-brand").TextContent.Should().Be("Saravana Bhavan"));
+
+        page.Find("[data-testid=server-address]").TextContent.Should().Be("http://192.168.1.15:5000");
+        var change = page.Find("a[data-testid=change-server]");
+        change.GetAttribute("href").Should().Be("server");
+        change.TextContent.Should().Contain("Change server");
     }
 
     [Fact]

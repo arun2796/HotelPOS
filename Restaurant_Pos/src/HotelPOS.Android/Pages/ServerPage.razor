@@ -10,6 +10,8 @@
 @inject HttpClient Http
 @inject WebAuthState Auth
 @inject WebRealtimeClient Realtime
+@inject NotificationCenter NotificationList
+@inject ISecureTokenStore TokenStore
 @inject NavigationManager Navigation
 
 <PageTitle>Server · HotelPOS Staff</PageTitle>
@@ -22,7 +24,8 @@
 
         <label class="field">
             <span>Server address</span>
-            <input class="input" @bind="_address" placeholder="http://192.168.1.100:5000" inputmode="url" autocapitalize="none" autocomplete="off" />
+            <input class="input" @bind="_address" @bind:event="oninput" @bind:after="OnAddressChanged"
+                   placeholder="http://192.168.1.100:5000" inputmode="url" autocapitalize="none" autocomplete="off" />
         </label>
 
         @if (_message is not null)
@@ -36,7 +39,7 @@
         </div>
         @if (Host.IsConfigured)
         {
-            <a class="btn block ghost" style="margin-top:8px" href="">Cancel</a>
+            <a class="btn block ghost" style="margin-top:8px" href="@(Auth.IsSignedIn ? "" : "signin")">Cancel</a>
         }
         <div class="muted small" style="margin-top:16px">Changing the server signs you out. App version @Host.AppVersion.</div>
     </div>
@@ -51,6 +54,13 @@
 
     protected override void OnInitialized() => _address = Host.IsConfigured ? Host.ServerBase.ToString().TrimEnd('/') : "http://192.168.1.100:5000";
 
+    private void OnAddressChanged()
+    {
+        _ok = false;
+        _tested = null;
+        _message = null;
+    }
+
     private async Task TestAsync()
     {
         _ok = false;
@@ -64,8 +74,9 @@
         _busy = true;
         try
         {
-            using var response = await Http.GetAsync(new Uri(uri, "api/system/info"));
-            var result = await WebApiClient.ReadAsync<SystemInfoDto>(response, CancellationToken.None);
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
+            using var response = await Http.GetAsync(new Uri(uri, "api/system/info"), cts.Token);
+            var result = await WebApiClient.ReadAsync<SystemInfoDto>(response, cts.Token);
             if (result.Success && result.Data is { } info)
             {
                 _ok = true;
@@ -77,7 +88,7 @@
                 _message = result.Message;
             }
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
         {
             _message = "No HotelPOS server answered at that address. Check the Wi-Fi and the address.";
         }
@@ -95,13 +106,21 @@
         }
 
         var changed = !Host.IsConfigured || Host.ServerBase != _tested;
-        Host.SetServer(_tested);
-        if (changed && Auth.IsSignedIn)
+        if (changed)
         {
-            await Realtime.StopAsync();
-            await Auth.SignOutAsync();
+            if (Auth.IsSignedIn)
+            {
+                NotificationList.Clear();
+                await Realtime.StopAsync();
+                await Auth.SignOutAsync();
+            }
+            else
+            {
+                await TokenStore.SetRefreshTokenAsync(null);
+            }
         }
 
-        Navigation.NavigateTo("signin", replace: true);
+        Host.SetServer(_tested);
+        Navigation.NavigateTo(changed || !Auth.IsSignedIn ? "signin" : string.Empty, replace: true);
     }
 }

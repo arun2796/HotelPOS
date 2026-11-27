@@ -5,6 +5,7 @@ using HotelPOS.Application.Features.Import;
 using HotelPOS.Application.Tests.Support;
 using HotelPOS.Contracts.Admin;
 using HotelPOS.Contracts.Common;
+using HotelPOS.Contracts.Enums;
 using HotelPOS.Contracts.Realtime;
 using HotelPOS.Contracts.Security;
 using HotelPOS.Infrastructure.Documents;
@@ -269,5 +270,93 @@ public class ImportTests : DatabaseTestBase
 
         var bad = () => reader.Read(new MemoryStream(new byte[] { 1, 2, 3 }), "t.xlsx");
         bad.Should().Throw<TabularFormatException>();
+    }
+
+    [Fact]
+    public async Task MenuTemplateWorkbook_ImportsMultiPortionDishes_Packing_Stock_AndUndoRemovesAll()
+    {
+        var xlsx = ImportTemplates.Menu();
+        var request = new ImportFileRequest(ImportKind.Menu, "menu-import-template.xlsx", xlsx, null, SkipInvalid: false);
+
+        var preview = (await SendAsync(new PreviewImportQuery(request))).Value;
+        preview.ErrorRows.Should().Be(0, string.Join("; ", preview.Errors.Select(e => $"R{e.Row} {e.Field}: {e.Message}")));
+        preview.TotalRows.Should().Be(5);
+        preview.ValidRows.Should().Be(5);
+        preview.ToCreate.Should().Be(4, "Chicken Biryani spans 2 portion rows");
+
+        var applied = await SendAsync(new ApplyImportCommand(request));
+        applied.IsSuccess.Should().BeTrue(applied.Error?.Message);
+        applied.Value.Skipped.Should().Be(0);
+
+        var biryani = await QueryAsync(db => db.MenuItems.Include(i => i.Portions).Include(i => i.ModifierGroups).SingleAsync(i => i.Name == "Chicken Biryani"));
+        biryani.Price.Should().Be(200m);
+        biryani.PackagingCharge.Should().Be(20m);
+        biryani.SortOrder.Should().Be(20);
+        biryani.IsAvailable.Should().BeTrue();
+        biryani.StockMode.Should().Be(StockTrackingMode.Exact);
+        biryani.StockRemaining.Should().Be(40);
+        biryani.ReorderLevel.Should().Be(10);
+        biryani.Portions.OrderBy(p => p.SortOrder).Select(p => (p.Name, p.Quantity, p.Unit, p.Price, p.IsDefault, p.IsActive))
+            .Should().Equal(
+                ("Half", 500m, "GM", 200m, true, true),
+                ("Full", 1m, "KG", 360m, false, true));
+        biryani.ModifierGroups.Should().ContainSingle();
+
+        var lassi = await QueryAsync(db => db.MenuItems.SingleAsync(i => i.Name == "Fresh Lime Soda"));
+        lassi.StockMode.Should().Be(StockTrackingMode.Approximate);
+        lassi.StockRemaining.Should().Be(50);
+
+        var movementsBeforeUndo = await QueryAsync(db => db.StockMovements.CountAsync());
+        movementsBeforeUndo.Should().Be(3, "Chicken 65, Chicken Biryani and Fresh Lime Soda have opening stock movements");
+
+        var undone = await SendAsync(new UndoImportCommand());
+        undone.IsSuccess.Should().BeTrue(undone.Error?.Message);
+        (await QueryAsync(db => db.MenuItems.CountAsync())).Should().Be(0);
+        (await QueryAsync(db => db.StockMovements.CountAsync())).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task PortionAndStockImport_ValidatesErrors_AndReImportUndoRestoresPreviousPortions()
+    {
+        var badCsv = "Category,Item name,Portion,Portion qty,Portion unit,Price,Default portion,Portion active,Stock tracking,Stock count\n"
+            + "Biryani,Mutton Biryani,Half,500,GM,180,Yes,Yes,Exact,\n"
+            + "Biryani,Mutton Biryani,Half,,GM,200,Yes,No,Approx,10\n"
+            + "Biryani,Mutton Biryani,Normal,,UNKNOWN,150,No,No,BadMode,5\n";
+
+        var badPreview = (await SendAsync(new PreviewImportQuery(Csv(ImportKind.Menu, badCsv)))).Value;
+        badPreview.ErrorRows.Should().Be(3);
+        badPreview.Errors.Should().Contain(e => e.Row == 2 && e.Field == "Stock count");
+        badPreview.Errors.Should().Contain(e => e.Row == 3 && e.Field == "Portion qty");
+        badPreview.Errors.Should().Contain(e => e.Row == 4 && e.Field == "Portion unit");
+        badPreview.Errors.Should().Contain(e => e.Row == 4 && e.Field == "Stock tracking");
+
+        var initialCsv = "Category,Item name,Portion,Portion qty,Portion unit,Price,Default portion,Packing charge,Stock tracking,Stock count\n"
+            + "Biryani,Mutton Biryani,Half,500,GM,240,Yes,15,Exact,25\n"
+            + "Biryani,Mutton Biryani,Full,1,KG,440,No,,,\n";
+        (await SendAsync(new ApplyImportCommand(Csv(ImportKind.Menu, initialCsv)))).IsSuccess.Should().BeTrue();
+
+        var updatedCsv = "Category,Item name,Portion,Portion qty,Portion unit,Price,Default portion,Packing charge,Stock tracking,Stock count\n"
+            + "Biryani,Mutton Biryani,Quarter,250,GM,150,No,25,Exact,60\n"
+            + "Biryani,Mutton Biryani,Full,1,KG,480,Yes,,,\n"
+            + "Biryani,Mutton Biryani,Family,2,KG,880,No,,,\n";
+        var reimport = await SendAsync(new ApplyImportCommand(Csv(ImportKind.Menu, updatedCsv)));
+        reimport.IsSuccess.Should().BeTrue(reimport.Error?.Message);
+        reimport.Value.Updated.Should().Be(1);
+
+        var updated = await QueryAsync(db => db.MenuItems.Include(i => i.Portions).SingleAsync(i => i.Name == "Mutton Biryani"));
+        updated.Price.Should().Be(480m);
+        updated.PackagingCharge.Should().Be(25m);
+        updated.StockRemaining.Should().Be(60);
+        updated.Portions.OrderBy(p => p.SortOrder).Select(p => p.Name).Should().Equal("Quarter", "Full", "Family");
+
+        var undone = await SendAsync(new UndoImportCommand());
+        undone.IsSuccess.Should().BeTrue(undone.Error?.Message);
+
+        var restored = await QueryAsync(db => db.MenuItems.Include(i => i.Portions).SingleAsync(i => i.Name == "Mutton Biryani"));
+        restored.Price.Should().Be(240m);
+        restored.PackagingCharge.Should().Be(15m);
+        restored.StockRemaining.Should().Be(25);
+        restored.Portions.OrderBy(p => p.SortOrder).Select(p => (p.Name, p.Price, p.IsDefault))
+            .Should().Equal(("Half", 240m, true), ("Full", 440m, false));
     }
 }
